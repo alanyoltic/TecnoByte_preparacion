@@ -2,6 +2,8 @@
     <form method="POST" action="{{ route('register') }}" class="space-y-6">
         @csrf
 
+        <h2 class="text-2xl font-bold text-center text-gray-800">Crear Nuevo Usuario</h2>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <x-input-label for="nombre" value="Nombre" />
@@ -46,13 +48,24 @@
             <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
         </div>
 
+        <div class="mt-4">
+            <x-input-label for="role_id" value="Asignar Rol" />
+            
+            <select id="role_id" name="role_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                <option value="">-- Seleccionar un rol --</option>
+                
+                @foreach($roles as $role)
+                    <option value="{{ $role->id }}" {{ old('role_id') == $role->id ? 'selected' : '' }}>
+                        {{ $role->nombre }}
+                    </option>
+                @endforeach
+            </select>
+            
+            <x-input-error :messages="$errors->get('role_id')" class="mt-2" />
+        </div>
         <div class="flex items-center justify-end mt-4">
-            <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('login') }}">
-                ¿Ya tienes una cuenta?
-            </a>
-
             <x-primary-button class="ms-4">
-                Registrar
+                Crear Usuario
             </x-primary-button>
         </div>
     </form>

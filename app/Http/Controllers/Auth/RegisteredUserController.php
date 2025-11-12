@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Roles; // <-- 1. ¡IMPORTAMOS EL MODELO ROLES!
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,17 +20,21 @@ class RegisteredUserController extends Controller
      */
     public function create(): View
     {
-        return view('auth.register');
+        // 2. BUSCAMOS TODOS LOS ROLES
+        $roles = Roles::all();
+        
+        // 3. SE LOS PASAMOS A LA VISTA
+        return view('auth.register', [
+            'roles' => $roles
+        ]);
     }
 
     /**
      * Maneja la petición de registro.
-     *
-     * @throws \Illuminate\Validation\ValidationException
      */
     public function store(Request $request): RedirectResponse
     {
-        // 1. REGLAS DE VALIDACIÓN ACTUALIZADAS
+        // 4. AÑADIMOS LA VALIDACIÓN PARA EL ROL
         $request->validate([
             'nombre' => ['required', 'string', 'max:255'],
             'segundo_nombre' => ['nullable', 'string', 'max:255'],
@@ -37,9 +42,10 @@ class RegisteredUserController extends Controller
             'apellido_materno' => ['nullable', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'role_id' => ['required', 'integer', 'exists:roles,id'], // <-- REGLA NUEVA
         ]);
 
-        // 2. CREACIÓN DE USUARIO ACTUALIZADA
+        // 5. AÑADIMOS EL ROLE_ID AL CREAR EL USUARIO
         $user = User::create([
             'nombre' => $request->nombre,
             'segundo_nombre' => $request->segundo_nombre,
@@ -47,14 +53,14 @@ class RegisteredUserController extends Controller
             'apellido_materno' => $request->apellido_materno,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'is_active' => true, // Lo activamos por defecto
-            // 'role_id' se queda como NULL por ahora
+            'role_id' => $request->role_id, // <-- CAMPO NUEVO
+            'is_active' => true,
         ]);
 
         event(new Registered($user));
 
-        Auth::login($user);
-
-        return redirect(route('dashboard', absolute: false));
+        // Como el admin creó el usuario, no iniciamos sesión como él.
+        // Lo regresamos al dashboard con un mensaje de éxito.
+        return redirect()->route('dashboard')->with('status', '¡Usuario creado exitosamente!');
     }
 }

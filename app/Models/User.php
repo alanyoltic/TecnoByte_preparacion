@@ -2,30 +2,35 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+// ¡Asegúrate de que esta importación esté aquí!
+use App\Models\Roles; 
+use Illuminate\Contracts\Auth\MustVerifyEmail; // Importa esto
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable
+// Asegúrate de que 'implements MustVerifyEmail' esté aquí
+class User extends Authenticatable implements MustVerifyEmail
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes;
 
     /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
+     * Los atributos que se pueden asignar masivamente.
      */
     protected $fillable = [
-    'nombre', 'segundo_nombre', 'apellido_paterno', 'apellido_materno',
-    'email', 'password', 'role_id', 'is_active',                
+        'nombre',
+        'segundo_nombre',
+        'apellido_paterno',
+        'apellido_materno',
+        'email',
+        'password',
+        'role_id',
+        'is_active',
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
+     * Los atributos que deben estar ocultos.
      */
     protected $hidden = [
         'password',
@@ -33,15 +38,25 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
+     * Los atributos que deben ser casteados.
      */
-    protected function casts(): array
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+        'is_active' => 'boolean',
+    ];
+
+    /**
+     * ====================================================
+     * ¡AQUÍ ESTÁ LA SOLUCIÓN!
+     * La función se llama 'role' (singular)
+     * pero apunta al modelo 'Roles' (plural).
+     * ====================================================
+     */
+    public function role()
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        // Esto le dice: "Esta función se conecta con el modelo
+        // 'App\Models\Roles' usando la columna 'role_id'".
+        return $this->belongsTo(Roles::class, 'role_id');
     }
 }
