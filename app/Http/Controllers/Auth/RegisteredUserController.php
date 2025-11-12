@@ -15,7 +15,7 @@ use Illuminate\View\View;
 class RegisteredUserController extends Controller
 {
     /**
-     * Display the registration view.
+     * Muestra la vista de registro.
      */
     public function create(): View
     {
@@ -23,22 +23,32 @@ class RegisteredUserController extends Controller
     }
 
     /**
-     * Handle an incoming registration request.
+     * Maneja la petición de registro.
      *
      * @throws \Illuminate\Validation\ValidationException
      */
     public function store(Request $request): RedirectResponse
     {
+        // 1. REGLAS DE VALIDACIÓN ACTUALIZADAS
         $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'nombre' => ['required', 'string', 'max:255'],
+            'segundo_nombre' => ['nullable', 'string', 'max:255'],
+            'apellido_paterno' => ['required', 'string', 'max:255'],
+            'apellido_materno' => ['nullable', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
+        // 2. CREACIÓN DE USUARIO ACTUALIZADA
         $user = User::create([
-            'name' => $request->name,
+            'nombre' => $request->nombre,
+            'segundo_nombre' => $request->segundo_nombre,
+            'apellido_paterno' => $request->apellido_paterno,
+            'apellido_materno' => $request->apellido_materno,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'is_active' => true, // Lo activamos por defecto
+            // 'role_id' se queda como NULL por ahora
         ]);
 
         event(new Registered($user));
