@@ -29,34 +29,23 @@ class User extends Authenticatable implements MustVerifyEmail
         'is_active',
     ];
 
-    /**
-     * Los atributos que deben estar ocultos.
-     */
+
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Los atributos que deben ser casteados.
-     */
+
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'is_active' => 'boolean',
     ];
 
-    /**
-     * ====================================================
-     * ¡AQUÍ ESTÁ LA SOLUCIÓN!
-     * La función se llama 'role' (singular)
-     * pero apunta al modelo 'Roles' (plural).
-     * ====================================================
-     */
+ 
     public function role()
     {
-        // Esto le dice: "Esta función se conecta con el modelo
-        // 'App\Models\Roles' usando la columna 'role_id'".
+
         return $this->belongsTo(Roles::class, 'role_id');
     }
 }

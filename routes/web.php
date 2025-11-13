@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
-// ¡ASEGÚRATE DE QUE ESTA LÍNEA ESTÉ ARRIBA!
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 
 Route::get('/', function () {
@@ -27,6 +27,7 @@ Route::middleware(['auth', 'role:ceo,admin'])->group(function () {
                 ->name('register');
 
     Route::post('register', [RegisteredUserController::class, 'store']);
+    Route::get('usuarios', [UserController::class, 'index'])->name('users.index');
     
   
 

@@ -9,11 +9,14 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
+public function up(): void
     {
         Schema::create('proveedores', function (Blueprint $table) {
             $table->id();
             $table->string('nombre_empresa')->unique();
+
+            $table->string('abreviacion', 50)->unique(); 
+
             $table->string('email_contacto')->nullable();
             $table->string('telefono_contacto', 50)->nullable();
             $table->timestamps();

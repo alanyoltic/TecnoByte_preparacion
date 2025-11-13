@@ -12,12 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         
-        
+        // Esta es la única modificación que debe tener este archivo
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
         ]);
         
-
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // ...
