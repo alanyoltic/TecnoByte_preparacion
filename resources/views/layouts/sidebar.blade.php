@@ -1,5 +1,6 @@
 <div
-    class="fixed inset-y-0 left-0 z-30 h-screen bg-company-dark text-gray-200 transition-all duration-300 ease-in-out"
+    class="fixed inset-y-0 left-0 z-30 h-screen bg-company-dark text-gray-200 border-r border-transparent 
+           dark:bg-gray-900 dark:border-gray-700 transition-all duration-300 ease-in-out"
     :class="sidebarOpen ? 'w-64' : 'w-20'"
 >
     <div class="flex flex-col h-full">
@@ -18,8 +19,10 @@
             </button>
         </div>
 
-        <nav class="mt-8 flex-1"> <a 
-                class="flex items-center px-6 py-3 mt-4 text-gray-100 hover:bg-gray-700" 
+        <nav class="mt-8 flex-1">
+            
+            <a 
+                class="flex items-center px-6 py-3 mt-4 text-gray-100 hover:bg-gray-700 dark:hover:bg-gray-700" 
                 :class="{ 'justify-center': !sidebarOpen }"
                 href="{{ route('dashboard') }}"
                 title="Dashboard"
@@ -30,41 +33,33 @@
 
             @if(in_array(auth()->user()->role?->slug, ['ceo', 'admin']))
                 <x-dropdown align="right" width="64">
-                    
                     <x-slot name="trigger">
                         <button 
-                            class="flex items-center w-full px-6 py-3 mt-4 text-gray-100 hover:bg-gray-700" 
+                            class="flex items-center w-full px-6 py-3 mt-4 text-gray-100 hover:bg-gray-700 dark:hover:bg-gray-700" 
                             :class="{ 'justify-center': !sidebarOpen }"
                             title="Administrar Usuarios"
                         >
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                            
                             <span class="mx-3" x-show="sidebarOpen" x-transition>Usuarios</span>
-
                             <svg class="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20" x-show="sidebarOpen" x-transition>
                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                             </svg>
                         </button>
                     </x-slot>
-
                     <x-slot name="content">
-                        <x-dropdown-link :href="route('register')">
-                            Agregar Usuario
-                        </x-dropdown-link>
-                        <x-dropdown-link :href="route('users.index')">
-                            Administrar Usuarios
-                        </x-dropdown-link>
+                        <x-dropdown-link :href="route('register')">Agregar Usuario</x-dropdown-link>
+                        <x-dropdown-link :href="route('users.index')">Administrar Usuarios</x-dropdown-link>
                     </x-slot>
                 </x-dropdown>
             @endif
 
-            </nav>
+        </nav>
 
-        <div class="border-t border-gray-700">
+        <div class="border-t border-gray-700 dark:border-gray-700">
             <x-dropdown align="top" width="64">
                 
                 <x-slot name="trigger">
-                    <button class="flex items-center w-full px-6 py-4 text-sm font-medium rounded-md text-gray-400 hover:text-gray-100 hover:bg-gray-700 focus:outline-none transition ease-in-out duration-150"
+                    <button class="flex items-center w-full px-6 py-4 text-sm font-medium rounded-md text-gray-400 hover:text-gray-100 hover:bg-gray-700 dark:hover:bg-gray-700 focus:outline-none transition ease-in-out duration-150"
                         :class="{ 'justify-center': !sidebarOpen }">
                         
                         <svg class="w-8 h-8 rounded-full" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 17a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clip-rule="evenodd"></path></svg>
@@ -77,11 +72,24 @@
                         <div class="ms-auto" x-show="sidebarOpen" x-transition>
                             <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01"></path></svg>
                         </div>
-
                     </button>
                 </x-slot>
 
                 <x-slot name="content">
+                    
+                    <div class="px-4 py-2">
+                        <button 
+                            @click="darkMode = !darkMode" 
+                            class="w-full flex items-center justify-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                            <svg x-show="!darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                            <svg x-show="darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                            
+                            <span class="ml-2" x-show="!darkMode">Modo Oscuro</span>
+                            <span class="ml-2" x-show="darkMode">Modo Claro</span>
+                        </button>
+                    </div>
+                    <div class="border-t border-gray-200 dark:border-gray-600"></div>
                     <x-dropdown-link :href="route('profile.edit')">
                         {{ __('Profile') }}
                     </x-dropdown-link>

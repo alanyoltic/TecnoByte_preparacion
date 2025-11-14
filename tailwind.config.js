@@ -3,6 +3,10 @@ import forms from '@tailwindcss/forms';
 
 /** @type {import('tailwindcss').Config} */
 export default {
+    // --- ¡AÑADE ESTA LÍNEA! ---
+    darkMode: 'class',
+    // -------------------------
+
     content: [
         './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
         './storage/framework/views/*.php',
@@ -16,7 +20,6 @@ export default {
             },
             colors: {
                 'company-dark': '#0C0435',
-                
             },
         },
     },
