@@ -55,81 +55,174 @@
             </button>
         </div>
 
-        {{-- NAV --}}
-        <nav class="mt-4 flex-1 space-y-1">
+ {{-- NAV --}}
+<nav class="mt-4 flex-1 space-y-1">
 
-            @php
-                $linkBase = "group relative flex items-center rounded-xl 
-                             px-3 py-2 mx-2 text-sm font-medium
-                             text-slate-700 dark:text-slate-300
-                             transition-all duration-200 
-                             hover:text-slate-900 dark:hover:text-white
-                             hover:bg-slate-200/70 dark:hover:bg-white/5";
-                $iconBase = "w-6 h-6 flex-shrink-0 
-                             text-slate-400 dark:text-slate-400 
-                             group-hover:text-indigo-500 dark:group-hover:text-indigo-400
-                             transition-colors duration-200";
-                $labelBase = "ml-3 whitespace-nowrap";
-            @endphp
+    @php
+        // Volvemos al base original, con mx-2 y sin w-full
+        $linkBase = "group relative flex items-center rounded-xl 
+                     px-3 py-2 mx-2 text-sm font-medium
+                     text-slate-700 dark:text-slate-300
+                     transition-all duration-200 
+                     hover:text-slate-900 dark:hover:text-white
+                     hover:bg-slate-200/70 dark:hover:bg-white/5";
 
-            {{-- DASHBOARD --}}
-            @php $isDashboard = request()->routeIs('dashboard'); @endphp
-            <a 
-                href="{{ route('dashboard') }}"
-                title="Dashboard"
-                :class="sidebarOpen ? 'justify-start' : 'justify-center'"
-                class="{{ $linkBase }} {{ $isDashboard ? 'bg-slate-200/80 dark:bg-white/10 border-l-4 border-indigo-500/80' : 'border-l-4 border-transparent' }}"
-            >
-                <svg class="{{ $iconBase }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6-4h.01M12 12h.01M15 15h.01M12 9h.01M9 15h.01M12 15h.01" />
-                </svg>
-                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>
-                    Dashboard
-                </span>
-            </a>
+        $iconBase = "w-6 h-6 flex-shrink-0 
+                     text-slate-400 dark:text-slate-400 
+                     group-hover:text-indigo-500 dark:group-hover:text-indigo-400
+                     transition-colors duration-200";
 
-            {{-- USUARIOS (CEO / ADMIN) --}}
-            @if(in_array(auth()->user()->role?->slug, ['ceo', 'admin']))
-                <x-dropdown align="right" width="64">
-                    <x-slot name="trigger">
-                        <button 
-                            class="{{ $linkBase }} w-full mt-1 
-                                   flex items-center
-                                   border-l-4 border-transparent
-                                   @if(request()->routeIs('users.*') || request()->routeIs('register')) 
-                                        bg-slate-200/80 dark:bg-white/10 border-indigo-500/80 
-                                   @endif"
-                            :class="sidebarOpen ? 'justify-start' : 'justify-center'"
-                            title="Administrar Usuarios"
-                        >
-                            <svg class="{{ $iconBase }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                            <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>
-                                Usuarios
-                            </span>
-                            <svg class="w-4 h-4 ml-auto 
-                                        text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400
-                                        transition-colors duration-200"
-                                 fill="currentColor" viewBox="0 0 20 20"
-                                 x-show="sidebarOpen" x-transition>
-                                <path fill-rule="evenodd"
-                                      d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                      clip-rule="evenodd" />
-                            </svg>
-                        </button>
-                    </x-slot>
+        $labelBase = "ml-3 whitespace-nowrap";
+    @endphp
 
-                    <x-slot name="content">
-                        <x-dropdown-link :href="route('register')">Agregar Usuario</x-dropdown-link>
-                        <x-dropdown-link :href="route('users.index')">Administrar Usuarios</x-dropdown-link>
-                    </x-slot>
-                </x-dropdown>
+    {{-- DASHBOARD --}}
+    @php $isDashboard = request()->routeIs('dashboard'); @endphp
+    <a 
+        href="{{ route('dashboard') }}"
+        title="Dashboard"
+        :class="sidebarOpen ? 'justify-start' : 'justify-center'"
+        class="{{ $linkBase }} {{ $isDashboard 
+            ? 'bg-slate-200/80 dark:bg-white/10 border-l-4 border-indigo-500/80' 
+            : 'border-l-4 border-transparent' }}"
+    >
+        <div class="flex items-center justify-center w-8">
+            <svg class="{{ $iconBase }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6-4h.01M12 12h.01M15 15h.01M12 9h.01M9 15h.01M12 15h.01" />
+            </svg>
+        </div>
+
+        <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>
+            Dashboard
+        </span>
+    </a>
+
+
+
+
+
+    {{-- 
+            ==============================================================
+            3. GESTIÓN DE EQUIPOS (NUEVO DROPDOWN)
+            ==============================================================
+            --}}
+            {{-- Solo visible para Técnicos, Admins y CEO --}}
+            @if(in_array(auth()->user()->role?->slug, ['tecnico', 'admin', 'ceo']))
+                <div class="w-full mt-4">
+                    <x-dropdown align="right" width="64" contentClasses="py-1 bg-white dark:bg-gray-700">
+                        
+                        <x-slot name="trigger">
+                            <button 
+                                type="button"
+                                class="{{ $linkBase }} w-full"
+                                :class="sidebarOpen ? 'justify-between' : 'justify-center'"
+                                title="Gestión de Equipos"
+                            >
+                                {{-- GRUPO IZQUIERDO --}}
+                                <div class="flex items-center">
+                                    <div class="flex items-center justify-center w-8">
+                                        <!-- Icono: Computadora / Desktop -->
+                                        <svg class="{{ $iconBase }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                    </div>
+                                    
+                                    <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>
+                                        Equipos
+                                    </span>
+                                </div>
+
+                                {{-- GRUPO DERECHO (FLECHA) --}}
+                                <svg class="w-4 h-4 ml-2 text-slate-400 group-hover:text-indigo-500 transition-colors duration-200" fill="currentColor" viewBox="0 0 20 20" x-show="sidebarOpen" x-transition>
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </x-slot>
+
+                        <x-slot name="content">
+                            <!-- 1. Registrar Entrada -->
+                            <x-dropdown-link :href="route('equipos.create')" class="dark:text-gray-300 dark:hover:bg-gray-600">
+                                ➕ Registrar Entrada
+                            </x-dropdown-link>
+                            
+                            <!-- 2. En Taller / Pendientes -->
+                            {{-- (Aún no creamos esta ruta, pon # por ahora) --}}
+                            <x-dropdown-link href="#" class="dark:text-gray-300 dark:hover:bg-gray-600">
+                                🛠️ En Taller
+                            </x-dropdown-link>
+
+                            <!-- 3. Garantía Proveedor (TU CAMBIO) -->
+                            {{-- (Aún no creamos esta ruta, pon # por ahora) --}}
+                            <x-dropdown-link href="#" class="dark:text-gray-300 dark:hover:bg-gray-600">
+                                📦 Garantía Proveedor
+                            </x-dropdown-link>
+
+                            <!-- 4. Inventario Terminado -->
+                             {{-- (Opcional: Para ver lo que ya está listo) --}}
+                            <x-dropdown-link href="#" class="dark:text-gray-300 dark:hover:bg-gray-600">
+                                ✅ Inventario Listo
+                            </x-dropdown-link>
+                        </x-slot>
+                    </x-dropdown>
+                </div>
             @endif
 
-        </nav>
+    {{-- USUARIOS (CEO / ADMIN) --}}
+    @if(in_array(auth()->user()->role?->slug, ['ceo', 'admin']))
+
+        @php
+            $isUsuarios = request()->routeIs('users.*') || request()->routeIs('register');
+        @endphp
+
+<x-dropdown align="right" width="64">
+    <x-slot name="trigger">
+        {{-- Wrapper con mismo margen lateral que Dashboard --}}
+        <div class="mx-2 mt-1">
+            <button 
+                class="{{ $linkBase }} w-full mx-0 flex items-center 
+                        {{ $isUsuarios 
+                            ? 'bg-slate-200/80 dark:bg-white/10 border-l-4 border-indigo-500/80' 
+                            : 'border-l-4 border-transparent' }}"
+                :class="sidebarOpen ? 'justify-start' : 'justify-center -translate-x-[1px]'" 
+                title="Administrar Usuarios"
+            >
+                <div class="flex items-center justify-center w-8">
+                    <svg
+                        class="{{ $iconBase }}"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                </div>
+
+                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>
+                    Usuarios
+                </span>
+
+                <svg class="w-4 h-4 ml-auto 
+                            text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400
+                            transition-colors duration-200"
+                     fill="currentColor" viewBox="0 0 20 20"
+                     x-show="sidebarOpen" x-transition>
+                    <path fill-rule="evenodd"
+                          d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                          clip-rule="evenodd" />
+                </svg>
+            </button>
+        </div>
+    </x-slot>
+
+    <x-slot name="content">
+        <x-dropdown-link :href="route('register')">Agregar Usuario</x-dropdown-link>
+        <x-dropdown-link :href="route('users.index')">Administrar Usuarios</x-dropdown-link>
+    </x-slot>
+</x-dropdown>
+
+    @endif
+
+</nav>
+
 
         {{-- FOOTER / PERFIL + MODO OSCURO --}}
         <div class="border-t border-slate-200/90 dark:border-slate-800/80 mt-2 pt-2">
