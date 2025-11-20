@@ -37,11 +37,9 @@ Route::middleware(['auth', 'role:ceo,admin'])->group(function () {
     Route::get('usuarios', [UserController::class, 'index'])->name('users.index');
 
 
-        // --- ¡AÑADE ESTAS DOS LÍNEAS! ---
-    // 1. La ruta que MUESTRA el formulario de edición
     Route::get('usuarios/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
     
-    // 2. La ruta que GUARDA los cambios
+
     Route::patch('usuarios/{user}', [UserController::class, 'update'])->name('users.update');
     
   

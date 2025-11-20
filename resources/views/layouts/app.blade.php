@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 <html 
     lang="{{ str_replace('_', '-', app()->getLocale()) }}"
-    
+    class ="text-[18px]"
     x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }"
     x-init="$watch('darkMode', val => localStorage.setItem('darkMode', val))"
     :class="{ 'dark': darkMode }"
@@ -18,8 +18,10 @@
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @livewireStyles
+
     </head>
-    <body class="font-sans antialiased">
+    <body class="font-sans text-lg antialiased">
         
         <div 
             x-data="{ sidebarOpen: false }" 
@@ -47,6 +49,8 @@
                 </main>
             </div>
         </div>
+        @livewireScripts
         <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
     </body>
 </html>

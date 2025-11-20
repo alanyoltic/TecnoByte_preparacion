@@ -2,17 +2,26 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class LoteModeloRecibido extends Model
 {
-    use HasFactory;
+    protected $table = 'lote_modelos_recibidos';
 
-    /**
-     * El nombre de la tabla asociada con el modelo.
-     */
-    protected $table = 'lote_modelos_recibidos'; // <-- ¡AÑADE ESTA LÍNEA!
+    protected $fillable = [
+        'lote_id',
+        'marca',
+        'modelo',
+        'cantidad_recibida',
+    ];
 
-    protected $guarded = [];
+    public function lote()
+    {
+        return $this->belongsTo(Lote::class);
+    }
+
+    public function equipos()
+    {
+        return $this->hasMany(Equipo::class, 'lote_modelo_id');
+    }
 }

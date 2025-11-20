@@ -13,15 +13,26 @@ class Lote extends Model
     // Esto permite la creación masiva (del seeder)
     protected $guarded = [];
 
-    /**
-     * ====================================================
-     * ¡AQUÍ ESTÁ LA FUNCIÓN QUE FALTABA!
-     * ====================================================
-     */
+    protected $table = 'lotes';
+
+        protected $fillable = [
+        'nombre_lote',
+        'proveedor_id',
+        'fecha_llegada',
+    ];
+
+
+
+
     public function proveedor()
     {
         // Esto le dice que la columna 'proveedor_id' 
         // se conecta con el modelo 'Proveedor'
         return $this->belongsTo(Proveedor::class);
+    }
+
+        public function modelosRecibidos()
+    {
+        return $this->hasMany(LoteModeloRecibido::class, 'lote_id');
     }
 }

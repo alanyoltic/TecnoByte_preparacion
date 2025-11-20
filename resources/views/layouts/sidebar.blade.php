@@ -39,20 +39,21 @@
             </a>
 
             {{-- Botón hamburguesa --}}
-            <button 
-                @click="sidebarOpen = !sidebarOpen" 
-                class="p-2 rounded-xl 
-                       text-slate-500 dark:text-slate-400 
-                       hover:text-slate-900 dark:hover:text-slate-50 
-                       hover:bg-slate-200/70 dark:hover:bg-white/10 
-                       focus:outline-none
-                       transition-all duration-200"
-            >
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-            </button>
+<button 
+    @click="sidebarOpen = !sidebarOpen" 
+    class="p-3 rounded-2xl 
+           text-slate-500 dark:text-slate-400 
+           hover:text-slate-900 dark:hover:text-slate-50 
+           hover:bg-slate-200/70 dark:hover:bg-white/10 
+           focus:outline-none
+           transition-all duration-200"
+>
+    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+</button>
+
         </div>
 
  {{-- NAV --}}
@@ -61,16 +62,17 @@
     @php
         // Volvemos al base original, con mx-2 y sin w-full
         $linkBase = "group relative flex items-center rounded-xl 
-                     px-3 py-2 mx-2 text-sm font-medium
+                     px-4 py-3 mx-2 text-base font-medium
                      text-slate-700 dark:text-slate-300
                      transition-all duration-200 
                      hover:text-slate-900 dark:hover:text-white
                      hover:bg-slate-200/70 dark:hover:bg-white/5";
 
-        $iconBase = "w-6 h-6 flex-shrink-0 
-                     text-slate-400 dark:text-slate-400 
-                     group-hover:text-indigo-500 dark:group-hover:text-indigo-400
-                     transition-colors duration-200";
+$iconBase = "w-7 h-7 flex-shrink-0 
+             text-slate-400 dark:text-slate-400 
+             group-hover:text-indigo-500 dark:group-hover:text-indigo-400
+             transition-colors duration-200";
+
 
         $labelBase = "ml-3 whitespace-nowrap";
     @endphp
@@ -140,25 +142,25 @@
                         <x-slot name="content">
                             <!-- 1. Registrar Entrada -->
                             <x-dropdown-link :href="route('equipos.create')" class="dark:text-gray-300 dark:hover:bg-gray-600">
-                                ➕ Registrar Entrada
+                                 Registrar Entrada
                             </x-dropdown-link>
                             
                             <!-- 2. En Taller / Pendientes -->
                             {{-- (Aún no creamos esta ruta, pon # por ahora) --}}
                             <x-dropdown-link href="#" class="dark:text-gray-300 dark:hover:bg-gray-600">
-                                🛠️ En Taller
+                                 En Taller
                             </x-dropdown-link>
 
                             <!-- 3. Garantía Proveedor (TU CAMBIO) -->
                             {{-- (Aún no creamos esta ruta, pon # por ahora) --}}
                             <x-dropdown-link href="#" class="dark:text-gray-300 dark:hover:bg-gray-600">
-                                📦 Garantía Proveedor
+                                 Garantía Proveedor
                             </x-dropdown-link>
 
                             <!-- 4. Inventario Terminado -->
                              {{-- (Opcional: Para ver lo que ya está listo) --}}
                             <x-dropdown-link href="#" class="dark:text-gray-300 dark:hover:bg-gray-600">
-                                ✅ Inventario Listo
+                                 Inventario Listo
                             </x-dropdown-link>
                         </x-slot>
                     </x-dropdown>
@@ -229,7 +231,7 @@
             <x-dropdown align="top" width="64">
                 <x-slot name="trigger">
                     <button 
-                        class="group flex items-center w-full px-4 py-3 text-xs font-medium 
+                        class="group flex items-center w-full px-4 py-3 text-sm font-medium 
                                text-slate-700 dark:text-slate-300 
                                rounded-2xl 
                                hover:bg-slate-200/80 dark:hover:bg-white/5
@@ -249,7 +251,7 @@
 
                         {{-- Nombre + correo --}}
                         <div class="ml-3 text-left space-y-0.5" x-show="sidebarOpen" x-transition>
-                            <div class="text-sm font-semibold text-slate-900 dark:text-slate-50">
+                            <div class="text-base font-semibold text-slate-900 dark:text-slate-50">
                                 {{ Auth::user()->nombre }} {{ Auth::user()->apellido_paterno }}
                             </div>
                             <div class="text-[0.7rem] text-slate-500 dark:text-slate-400 truncate max-w-[10rem]">
