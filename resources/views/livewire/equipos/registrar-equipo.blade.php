@@ -42,26 +42,38 @@
                     <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
                         Lote
                     </label>
-                    <select
-                        wire:model="lote_id"
-                        wire:change="actualizarLote($event.target.value)"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                            bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
-                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
+                        <select
+    wire:model="lote_id"
+    wire:change="actualizarLote($event.target.value)"
+    class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+        bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
+        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+>
+    <option value="">Selecciona un lote</option>
 
-                        <option value="">Selecciona un lote</option>
-                        @foreach($lotes as $lote)
-                            @php
-                                $fecha = $lote->fecha_llegada
-                                    ? \Carbon\Carbon::parse($lote->fecha_llegada)->format('d/m/Y')
-                                    : 'Sin fecha';
-                            @endphp
-                            <option value="{{ $lote->id }}">
-                                Lote {{ $lote->nombre_lote }} — {{ $fecha }}
-                            </option>
-                        @endforeach
-                    </select>
+    @foreach($lotes as $lote)
+        @php
+            $fecha = $lote->fecha_llegada
+                ? \Carbon\Carbon::parse($lote->fecha_llegada)->format('d/m/Y')
+                : 'Sin fecha';
+
+            // Verificamos si este lote está en la lista de terminados
+            $esTerminado = in_array($lote->id, $lotesTerminadosIds ?? []);
+        @endphp
+
+        <option
+            value="{{ $lote->id }}"
+            @if($esTerminado) disabled @endif
+        >
+            Lote {{ $lote->nombre_lote }} — {{ $fecha }}
+            @if($esTerminado)
+                (lote terminado)
+            @endif
+        </option>
+    @endforeach
+</select>
+
+
                     @error('lote_id')
                         <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                     @enderror
@@ -110,9 +122,9 @@
                         type="text"
                         wire:model.defer="numero_serie"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            bg-slate-50 dark:bg-slate-900
+                            text-sm px-3 py-2
+                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                     @error('numero_serie')
                         <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
@@ -124,117 +136,111 @@
                     <label class="block text-sm font-medium mb-1">
                         Marca
                     </label>
-                        <input
-                            type="text"
-                            wire:model.defer="marca"
-                            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                                bg-slate-100 dark:bg-slate-800
-                                text-sm px-3 py-2
-                                focus:outline-none focus:ring-0 focus:border-slate-300"
-                            readonly
-                        >
-
+                    <input
+                        type="text"
+                        wire:model.defer="marca"
+                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                            bg-slate-100 dark:bg-slate-800
+                            text-sm px-3 py-2
+                            focus:outline-none focus:ring-0 focus:border-slate-300"
+                        readonly
+                    >
                     @error('marca')
                         <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                     @enderror
                 </div>
 
-
-                
                 {{-- Modelo (del lote seleccionado) --}}
                 <div>
                     <label class="block text-sm font-medium mb-1">
                         Modelo *
                     </label>
-                    <select
-                        wire:model="lote_modelo_id"
-                        wire:change="actualizarModelo($event.target.value)"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                            bg-slate-50 dark:bg-slate-900
-                            text-sm px-3 py-2
-                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        @disabled(!$lote_id || empty($modelosLote))
-                    >
+<select
+    wire:model="lote_modelo_id"
+    wire:change="actualizarModelo($event.target.value)"
+    class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+        bg-slate-50 dark:bg-slate-900
+        text-sm px-3 py-2
+        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+    @disabled(!$lote_id || empty($modelosLote))
+>
+    <option value="">Selecciona un modelo</option>
+    @foreach($modelosLote as $m)
+        <option value="{{ $m['id'] }}">
+            {{ $m['marca'] }} {{ $m['modelo'] }}
+        </option>
+    @endforeach
+</select>
 
-                    
 
-                        <option value="">Selecciona un modelo</option>
-                        @foreach($modelosLote as $m)
-                            <option value="{{ $m['id'] }}">
-                                {{ $m['marca'] }} {{ $m['modelo'] }}
-                            </option>
-                        @endforeach
-                    </select>
+
                     @error('lote_modelo_id')
                         <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                     @enderror
                 </div>
 
+                {{-- Tipo de equipo --}}
+                <div>
+                    <label class="block text-sm font-medium mb-1">
+                        Tipo de equipo
+                    </label>
+                    <select
+                        wire:model.defer="tipo_equipo"
+                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                            bg-slate-50 dark:bg-slate-900
+                            text-sm px-3 py-2
+                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                        <option value="">Selecciona</option>
+                        <option value="Laptop">Laptop</option>
+                        <option value="Desktop">Desktop</option>
+                        <option value="All in One">All in One</option>
+                        <option value="Mini PC">Mini PC</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                    @error('tipo_equipo')
+                        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                    @enderror
+                </div>
 
+                {{-- Sistema operativo --}}
+                <div>
+                    <label class="block text-sm font-medium mb-1">
+                        Sistema operativo
+                    </label>
+                    <input
+                        type="text"
+                        wire:model.defer="sistema_operativo"
+                        placeholder="Ej. Windows 10 Pro"
+                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                            bg-slate-50 dark:bg-slate-900
+                            text-sm px-3 py-2
+                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                    @error('sistema_operativo')
+                        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                    @enderror
+                </div>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-    {{-- Tipo equipo --}}
-    <div class="md:col-span-1">
-        <label class="block text-sm font-medium mb-1">
-            Tipo de equipo
-        </label>
-        <select
-            wire:model.defer="tipo_equipo"
-            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                   bg-slate-50 dark:bg-slate-900
-                   text-sm px-3 py-2
-                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-        >
-            <option value="">Selecciona</option>
-            <option value="Laptop">Laptop</option>
-            <option value="Desktop">Desktop</option>
-            <option value="All in One">All in One</option>
-            <option value="Mini PC">Mini PC</option>
-            <option value="Otro">Otro</option>
-        </select>
-        @error('tipo_equipo')
-            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-        @enderror
-    </div>
-
-    {{-- Sistema operativo --}}
-    <div class="md:col-span-1">
-        <label class="block text-sm font-medium mb-1">
-            Sistema operativo
-        </label>
-        <input
-            type="text"
-            wire:model.defer="sistema_operativo"
-            placeholder="Ej. Windows 10 Pro"
-            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                   bg-slate-50 dark:bg-slate-900
-                   text-sm px-3 py-2
-                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-        >
-        @error('sistema_operativo')
-            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-        @enderror
-    </div>
-
-    {{-- Área / tienda --}}
-    <div class="md:col-span-1">
-        <label class="block text-sm font-medium mb-1">
-            Área / Tienda
-        </label>
-        <input
-            type="text"
-            wire:model.defer="area_tienda"
-            placeholder="Ej. Sucursal Querétaro"
-            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                   bg-slate-50 dark:bg-slate-900
-                   text-sm px-3 py-2
-                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-        >
-        @error('area_tienda')
-            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-        @enderror
-    </div>
-</div>
+                {{-- Área / Tienda --}}
+                <div>
+                    <label class="block text-sm font-medium mb-1">
+                        Área / Tienda
+                    </label>
+                    <input
+                        type="text"
+                        wire:model.defer="area_tienda"
+                        placeholder="Ej. Sucursal Querétaro"
+                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                            bg-slate-50 dark:bg-slate-900
+                            text-sm px-3 py-2
+                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                    @error('area_tienda')
+                        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
 
         </div>
 
@@ -623,7 +629,7 @@
                     </label>
                     <input
                         type="number"
-                        min="0"
+                        min="30"
                         max="100"
                         wire:model.defer="bateria_salud_percent"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700

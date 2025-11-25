@@ -19,11 +19,29 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+
     Route::middleware('auth')->group(function () {
     Route::get('/equipos/registrar', function () {
         return view('equipos.registrar');
     })->name('equipos.create');
+
+
+
+    Route::get('/inventario/listo', function () {
+    return view('inventario.listo');
+})->name('inventario.listo');
+
+
 });
+
+
+
+
+Route::get('/inventario/piezas-pendientes', function () {
+    return view('inventario.pendientes-piezas');
+})->name('inventario.piezas-pendientes');
+
 
 });
 
@@ -45,6 +63,11 @@ Route::middleware(['auth', 'role:ceo,admin'])->group(function () {
   
 
 });
+
+
+
+
+
 
 
 

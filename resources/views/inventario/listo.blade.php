@@ -1,5 +1,5 @@
 <x-app-layout>
-    {{-- HEADER IGUAL QUE EL DASHBOARD PERO PARA REGISTRO --}}
+    {{-- HEADER IGUAL QUE EL DASHBOARD PERO PARA INVENTARIO --}}
     <x-slot name="header">
         <div class="-mx-4 sm:-mx-6 lg:-mx-8">
             <div
@@ -15,23 +15,22 @@
                     <div class="flex flex-col">
                         <div class="flex items-center gap-2">
                             <h2 class="font-semibold text-lg sm:text-xl text-slate-900 dark:text-slate-50 leading-tight">
-                                Registro de equipos
+                                Inventario listo
                             </h2>
 
                             <span
                                 class="inline-flex items-center px-2.5 py-0.5 rounded-full
                                        text-[0.65rem] font-medium tracking-wide
-                                       bg-indigo-500/10 text-indigo-600
-                                       dark:bg-indigo-400/15 dark:text-indigo-200
-                                       border border-indigo-500/25"
+                                       bg-emerald-500/10 text-emerald-600
+                                       dark:bg-emerald-400/15 dark:text-emerald-200
+                                       border border-emerald-500/25"
                             >
-                                Preparación · Entrada
-
+                                Inventario · Equipos registrados
                             </span>
                         </div>
 
                         <p class="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                            Captura de equipos que ingresan a preparación.
+                            Consulta y filtra los equipos que ya están capturados en el sistema.
                         </p>
                     </div>
 
@@ -43,7 +42,7 @@
         </div>
     </x-slot>
 
-    {{-- FONDO IGUAL QUE EL DASHBOARD --}}
+    {{-- FONDO IGUAL QUE EL DASHBOARD / REGISTRO --}}
     <div class="relative py-10 bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300
                 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 min-h-screen overflow-hidden">
 
@@ -54,8 +53,8 @@
 
         <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8">
             <div class="max-w-7xl mx-auto">
-                {{-- AQUÍ VA EL COMPONENTE LIVEWIRE --}}
-                <livewire:equipos.registrar-equipo />
+                {{-- AQUÍ VA EL COMPONENTE LIVEWIRE DE INVENTARIO --}}
+                <livewire:inventario.inventario-listo />
             </div>
         </div>
     </div>

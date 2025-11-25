@@ -22,21 +22,25 @@
             class="flex items-center h-16 px-4"
             :class="sidebarOpen ? 'justify-between' : 'justify-center'"
         >
-            {{-- Logo / Nombre --}}
-            <a href="{{ route('dashboard') }}" 
-               class="text-slate-900 dark:text-slate-50 text-xl font-semibold tracking-tight 
-                      flex items-center gap-2"
-               x-show="sidebarOpen"
-               x-transition.opacity.duration.300ms
-            >
-                <span
-                    class="inline-flex items-center justify-center w-8 h-8 rounded-2xl
-                           bg-gradient-to-tr from-indigo-500 via-indigo-400 to-blue-500
-                           shadow-[0_0_20px_rgba(79,70,229,0.7)] text-sm font-bold text-white">
-                    TB
-                </span>
-                <span class="leading-none">TecnoByte</span>
-            </a>
+                {{-- LOGO TECNOBYTE --}}
+<a href="{{ route('dashboard') }}"
+   class="flex items-center"
+   :class="sidebarOpen ? 'justify-start px-3' : 'justify-center px-0'"
+   x-transition.opacity.duration.300ms
+>
+    <img
+    x-cloak
+        src="{{ asset('images/logo-tecnobyte.png') }}"
+        alt="TecnoByte"
+        class="object-contain max-w-full transition-all duration-300
+               drop-shadow-[0_0_18px_rgba(37,99,235,0.45)]"
+        :class="sidebarOpen ? 'w-24 h-24' : 'w-16 h-16'"
+    />
+</a>
+
+
+
+
 
             {{-- Botón hamburguesa --}}
 <button 
@@ -76,9 +80,11 @@ $iconBase = "w-7 h-7 flex-shrink-0
 
         $labelBase = "ml-3 whitespace-nowrap";
     @endphp
+    
 
     {{-- DASHBOARD --}}
-    @php $isDashboard = request()->routeIs('dashboard'); @endphp
+    @php $isDashboard = request()->routeIs('dashboard'); 
+    $isInventario = request()->routeIs('inventario.*');@endphp
     <a 
         href="{{ route('dashboard') }}"
         title="Dashboard"
@@ -109,7 +115,8 @@ $iconBase = "w-7 h-7 flex-shrink-0
             ==============================================================
             --}}
             {{-- Solo visible para Técnicos, Admins y CEO --}}
-            @if(in_array(auth()->user()->role?->slug, ['tecnico', 'admin', 'ceo']))
+            @if(auth()->check() && in_array(auth()->user()->role?->slug, ['tecnico', 'admin', 'ceo']))
+
                 <div class="w-full mt-4">
                     <x-dropdown align="right" width="64" contentClasses="py-1 bg-white dark:bg-gray-700">
                         
@@ -147,8 +154,8 @@ $iconBase = "w-7 h-7 flex-shrink-0
                             
                             <!-- 2. En Taller / Pendientes -->
                             {{-- (Aún no creamos esta ruta, pon # por ahora) --}}
-                            <x-dropdown-link href="#" class="dark:text-gray-300 dark:hover:bg-gray-600">
-                                 En Taller
+                            <x-dropdown-link href="{{ route('inventario.piezas-pendientes') }}" class="dark:text-gray-300 dark:hover:bg-gray-600">
+                                 Repuestos
                             </x-dropdown-link>
 
                             <!-- 3. Garantía Proveedor (TU CAMBIO) -->
@@ -157,14 +164,84 @@ $iconBase = "w-7 h-7 flex-shrink-0
                                  Garantía Proveedor
                             </x-dropdown-link>
 
-                            <!-- 4. Inventario Terminado -->
-                             {{-- (Opcional: Para ver lo que ya está listo) --}}
-                            <x-dropdown-link href="#" class="dark:text-gray-300 dark:hover:bg-gray-600">
-                                 Inventario Listo
+                            {{-- Equipos en espera de pieza --}}
+                           <x-dropdown-link :href="route('inventario.piezas-pendientes')">
+                            Pendiente de piezas
                             </x-dropdown-link>
+
+
+
                         </x-slot>
                     </x-dropdown>
                 </div>
+
+
+
+                {{-- Solo visible para Técnicos, Admins y CEO --}}
+@if(auth()->check() && in_array(auth()->user()->role?->slug, ['tecnico', 'admin', 'ceo']))
+
+    {{-- DROPDOWN EQUIPOS (como lo tienes ya, sin inventario) --}}
+    <div class="w-full mt-4">
+        {{-- ... aquí tu <x-dropdown> de Equipos tal como ya lo dejaste ... --}}
+    </div>
+
+    {{-- NUEVA SECCIÓN: INVENTARIO (APARTE) --}}
+    @php
+        // ya definimos $isInventario arriba con request()->routeIs('inventario.*')
+    @endphp
+
+    <x-dropdown align="right" width="64">
+        <x-slot name="trigger">
+            {{-- similar al botón de Usuarios para que se vea consistente --}}
+            <div class="mx-2 mt-2">
+                <button 
+                    class="{{ $linkBase }} w-full mx-0 flex items-center
+                            {{ $isInventario 
+                                ? 'bg-slate-200/80 dark:bg-white/10 border-l-4 border-indigo-500/80' 
+                                : 'border-l-4 border-transparent' }}"
+                    :class="sidebarOpen ? 'justify-start' : 'justify-center -translate-x-[1px]'"
+                    title="Inventario"
+                >
+                    <div class="flex items-center justify-center w-8">
+                        {{-- Icono de cajas / inventario --}}
+                        <svg class="{{ $iconBase }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M3 7l9-4 9 4-9 4-9-4z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M3 7v10l9 4 9-4V7" />
+                        </svg>
+                    </div>
+
+                    <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>
+                        Inventario
+                    </span>
+
+                    <svg class="w-4 h-4 ml-auto 
+                                text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400
+                                transition-colors duration-200"
+                         fill="currentColor" viewBox="0 0 20 20"
+                         x-show="sidebarOpen" x-transition>
+                        <path fill-rule="evenodd"
+                              d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                              clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+        </x-slot>
+
+        <x-slot name="content">
+            {{-- Inventario listo --}}
+            <x-dropdown-link :href="route('inventario.listo')">
+                Inventario listo
+            </x-dropdown-link>
+
+
+        </x-slot>
+    </x-dropdown>
+
+@endif
+
+
             @endif
 
     {{-- USUARIOS (CEO / ADMIN) --}}
@@ -174,7 +251,9 @@ $iconBase = "w-7 h-7 flex-shrink-0
             $isUsuarios = request()->routeIs('users.*') || request()->routeIs('register');
         @endphp
 
-<x-dropdown align="right" width="64">
+<x-dropdown 
+    align="right"  width="64"   contentClasses="py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl"
+>
     <x-slot name="trigger">
         {{-- Wrapper con mismo margen lateral que Dashboard --}}
         <div class="mx-2 mt-1">
@@ -216,8 +295,13 @@ $iconBase = "w-7 h-7 flex-shrink-0
     </x-slot>
 
     <x-slot name="content">
-        <x-dropdown-link :href="route('register')">Agregar Usuario</x-dropdown-link>
-        <x-dropdown-link :href="route('users.index')">Administrar Usuarios</x-dropdown-link>
+        <x-dropdown-link :href="route('register')">
+            Agregar Usuario
+        </x-dropdown-link>
+
+        <x-dropdown-link :href="route('users.index')">
+            Administrar Usuarios
+        </x-dropdown-link>
     </x-slot>
 </x-dropdown>
 
@@ -228,7 +312,10 @@ $iconBase = "w-7 h-7 flex-shrink-0
 
         {{-- FOOTER / PERFIL + MODO OSCURO --}}
         <div class="border-t border-slate-200/90 dark:border-slate-800/80 mt-2 pt-2">
-            <x-dropdown align="top" width="64">
+            <x-dropdown 
+    align="top"     width="64"    contentClasses="py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl"
+>
+
                 <x-slot name="trigger">
                     <button 
                         class="group flex items-center w-full px-4 py-3 text-sm font-medium 

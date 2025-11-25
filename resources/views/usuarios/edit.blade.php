@@ -87,7 +87,8 @@
                 {{-- FORMULARIO --}}
                 <form method="POST" action="{{ route('users.update', $usuario) }}" class="space-y-8">
                     @csrf
-                    @method('PUT')
+                    @method('PATCH')
+                    
 
                     {{-- SECCIÓN: Datos personales --}}
                     <div class="space-y-4">

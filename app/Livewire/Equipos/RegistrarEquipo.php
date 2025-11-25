@@ -122,49 +122,15 @@ class RegistrarEquipo extends Component
   
 
 
-    public function updatedLoteId($value)
-{
-    // Reset modelo y campos ligados
-    $this->lote_modelo_id = null;
-    $this->marca          = null;
-    $this->modelo         = null;
-    $this->modelosLote    = [];
 
-    // Si se limpia el select
-    if (!$value) {
-        $this->proveedor_id = null;
-        return;
-    }
 
-    // Buscar lote con proveedor y con sus modelos
-    $lote = Lote::with(['proveedor', 'modelosRecibidos'])->find($value);
-
-    if (!$lote) {
-        $this->proveedor_id = null;
-        return;
-    }
-
-    // 🔹 Seleccionar proveedor automáticamente
-    $this->proveedor_id = $lote->proveedor_id;
-
-    // 🔹 Cargar modelos de ese lote para el select dependiente
-    $this->modelosLote = $lote->modelosRecibidos()
-        ->orderBy('modelo')
-        ->get(['id', 'marca', 'modelo'])
-        ->toArray();
-        
-
-}
 
 
 
 
 public function actualizarLote($loteId)
 {
-    // ⚠️ Si quieres ver que entra aquí, deja esta línea un momento:
-    // dd('Entró a actualizarLote', $loteId);
-
-    // Reset modelo y campos ligados
+    // Reset de campos ligados al modelo
     $this->lote_modelo_id = null;
     $this->marca          = null;
     $this->modelo         = null;
@@ -175,7 +141,7 @@ public function actualizarLote($loteId)
         return;
     }
 
-    // Buscar lote con proveedor y modelos
+    // Traemos lote con proveedor + modelos
     $lote = Lote::with(['proveedor', 'modelosRecibidos'])->find($loteId);
 
     if (!$lote) {
@@ -183,22 +149,38 @@ public function actualizarLote($loteId)
         return;
     }
 
-    // 🔹 Seleccionar proveedor automáticamente
+    // Proveedor automático según el lote
     $this->proveedor_id = $lote->proveedor_id;
 
-    // 🔹 Cargar modelos de ese lote
+    // SOLO modelos con equipos pendientes
     $this->modelosLote = $lote->modelosRecibidos()
-        ->orderBy('modelo')
-        ->get(['id', 'marca', 'modelo'])
+        ->withCount('equipos')  // relación equipos() en LoteModeloRecibido
+        ->get()
+        ->filter(function ($modelo) {
+            // total que llegaron en este lote (ajusta el nombre de columna si es distinto)
+            $total       = $modelo->cantidad_recibida;
+            // cuántos equipos ya se registraron
+            $registrados = $modelo->equipos_count ?? 0;
+
+            // solo dejamos pasar los que aún tienen disponibles
+            return $registrados < $total;
+        })
+        ->map(function ($modelo) {
+            // devolvemos SOLO lo que usa el Blade
+            return [
+                'id'     => $modelo->id,
+                'marca'  => $modelo->marca,
+                'modelo' => $modelo->modelo,
+            ];
+        })
+        ->values()
         ->toArray();
 }
 
 // Método explícito cuando cambia el modelo (también desde la vista)
 public function actualizarModelo($modeloId)
 {
-    // ⚠️ Para debug, puedes poner:
-    // dd('Entró a actualizarModelo', $modeloId);
-
+    // Limpiamos primero
     $this->marca  = null;
     $this->modelo = null;
 
@@ -206,16 +188,16 @@ public function actualizarModelo($modeloId)
         return;
     }
 
+    // Buscamos el modelo en la tabla lote_modelos_recibidos
     $loteModelo = LoteModeloRecibido::find($modeloId);
 
     if (!$loteModelo) {
         return;
     }
 
-    // 🔹 Prellenar marca y modelo
+    // Prellenar marca y modelo
     $this->marca  = $loteModelo->marca;
     $this->modelo = $loteModelo->modelo;
-
 }
 
 
@@ -224,22 +206,19 @@ public function actualizarModelo($modeloId)
 
 
 
-// Cuando cambia el lote seleccionado
+
 protected function onLoteChanged($value)
 {
-    // Reset modelo y campos ligados
     $this->lote_modelo_id = null;
     $this->marca          = null;
     $this->modelo         = null;
     $this->modelosLote    = [];
 
-    // Si se limpia el select
     if (!$value) {
         $this->proveedor_id = null;
         return;
     }
 
-    // Buscar lote con proveedor y modelos
     $lote = Lote::with(['proveedor', 'modelosRecibidos'])->find($value);
 
     if (!$lote) {
@@ -247,17 +226,14 @@ protected function onLoteChanged($value)
         return;
     }
 
-    // 🔹 Seleccionar proveedor automáticamente
     $this->proveedor_id = $lote->proveedor_id;
 
-    // 🔹 Cargar modelos de ese lote para el select
     $this->modelosLote = $lote->modelosRecibidos()
         ->orderBy('modelo')
         ->get(['id', 'marca', 'modelo'])
         ->toArray();
 }
 
-// Cuando cambia el modelo del lote
 protected function onLoteModeloChanged($value)
 {
     $this->marca  = null;
@@ -273,7 +249,6 @@ protected function onLoteModeloChanged($value)
         return;
     }
 
-    // 🔹 Prellenar marca y modelo según la tabla lote_modelos_recibidos
     $this->marca  = $loteModelo->marca;
     $this->modelo = $loteModelo->modelo;
 }
@@ -282,18 +257,61 @@ protected function onLoteModeloChanged($value)
 
 public function mount()
 {
-    // 🔹 Lotes disponibles (ordenados por fecha más reciente)
-    $this->lotes = Lote::with('proveedor')
+    $lotesConEquipos = Lote::with(['proveedor', 'modelosRecibidos'])
+        ->whereHas('modelosRecibidos')        // solo lotes con modelos
         ->orderBy('fecha_llegada', 'desc')
         ->get();
 
-    // 🔹 Inicialmente no hay modelos cargados
+    
+        $todosLotes = Lote::with([
+            'proveedor',
+            'modelosRecibidos' => function ($q) {
+                $q->withCount('equipos'); // relación equipos() en LoteModeloRecibido
+            },
+        ])
+        ->orderBy('fecha_llegada', 'desc')
+        ->get();
+
+    $lotesConPendientes = collect();
+    $lotesTerminados    = collect();
+
+    foreach ($todosLotes as $lote) {
+        // ¿Este lote tiene al menos UN modelo con equipos pendientes?
+        $tienePendientes = $lote->modelosRecibidos->contains(function ($modelo) {
+            $total       = $modelo->cantidad_recibida;      // ajusta nombre de columna si es distinto
+            $registrados = $modelo->equipos_count ?? 0;
+
+            return $registrados < $total;
+        });
+
+        if ($tienePendientes) {
+            $lotesConPendientes->push($lote);
+        } else {
+            // Lote sin modelos o con todos sus modelos llenos -> terminado
+            $lotesTerminados->push($lote);
+        }
+    }
+
+    // Tomamos solo los últimos 2 lotes terminados
+    $terminadosTomados = $lotesTerminados->take(2);
+
+    // Guardamos sus IDs en una propiedad para usarlos en la vista
+    $this->lotesTerminadosIds = $terminadosTomados->pluck('id')->toArray();
+
+    // 1) Primero todos los lotes con equipos pendientes
+    // 2) Luego los últimos 2 terminados
+    $this->lotes = $lotesConPendientes
+        ->concat($terminadosTomados)
+        ->values();
+
+
+
     $this->modelosLote = [];
 
-    // 🔹 Proveedores (para mostrar nombre en el select / info)
+   
     $this->proveedores  = Proveedor::orderBy('nombre_empresa')->get();
 
-    // 🔹 Defaults que ya tenías
+
     $this->estatus_general = 'En Revisión';
     $this->almacenamiento_secundario_capacidad = 'N/A';
     $this->almacenamiento_secundario_tipo      = 'N/A';
@@ -351,6 +369,9 @@ public function mount()
         unset($this->lectores[$index]);
         $this->lectores = array_values($this->lectores);
     }
+
+    public $lotesTerminadosIds = [];
+
 
     // =======================
     //  Guardar equipo
