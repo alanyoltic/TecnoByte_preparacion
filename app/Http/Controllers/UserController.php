@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Models\Roles; // <-- ¡Importante!
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
@@ -43,32 +45,57 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user)
     {
+        // (Opcional extra) Sólo permitir que admin / ceo editen usuarios:
+        // if (!in_array(auth()->user()->role?->slug, ['admin', 'ceo'])) {
+        //     abort(403);
+        // }
+
         // 1. Valida los datos que vienen del formulario
-        $request->validate([
-            'nombre' => ['required', 'string', 'max:255'],
-            'apellido_paterno' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email,'.$user->id], // Único, ignorando a este usuario
-            'role_id' => ['required', 'integer', 'exists:roles,id'],
-            'password' => ['nullable', 'confirmed', Rules\Password::defaults()], // Opcional: solo si quieren cambiar la contraseña
+        $validated = $request->validate([
+            'nombre'            => ['required', 'string', 'max:255'],
+            'segundo_nombre'    => ['nullable', 'string', 'max:255'],
+            'apellido_paterno'  => ['required', 'string', 'max:255'],
+            'apellido_materno'  => ['nullable', 'string', 'max:255'],
+            'email'             => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'role_id'           => ['required', 'integer', 'exists:roles,id'],
+            'password'          => ['nullable', 'confirmed', Rules\Password::defaults()],
+            'foto_perfil'       => ['nullable', 'image', 'max:2048'], // 👈 nueva validación
         ]);
 
-        // 2. Actualiza los datos del usuario
+        // 2. Si viene una nueva foto, la guardamos
+        if ($request->hasFile('foto_perfil')) {
+
+            // Si el usuario ya tenía una foto, la borramos del storage
+            if ($user->foto_perfil && Storage::disk('public')->exists($user->foto_perfil)) {
+                Storage::disk('public')->delete($user->foto_perfil);
+            }
+
+            // Guardamos la nueva foto en storage/app/public/fotos_perfil
+            $path = $request->file('foto_perfil')->store('fotos_perfil', 'public');
+
+            // La agregamos al arreglo validado
+            $validated['foto_perfil'] = $path;
+        }
+
+        // 3. Actualiza los datos básicos del usuario
         $user->update([
-            'nombre' => $request->nombre,
-            'segundo_nombre' => $request->segundo_nombre,
-            'apellido_paterno' => $request->apellido_paterno,
-            'apellido_materno' => $request->apellido_materno,
-            'email' => $request->email,
-            'role_id' => $request->role_id,
+            'nombre'           => $validated['nombre'],
+            'segundo_nombre'   => $validated['segundo_nombre'] ?? null,
+            'apellido_paterno' => $validated['apellido_paterno'],
+            'apellido_materno' => $validated['apellido_materno'] ?? null,
+            'email'            => $validated['email'],
+            'role_id'          => $validated['role_id'],
+            // foto_perfil se agrega sólo si existe en $validated
+            'foto_perfil'      => $validated['foto_perfil'] ?? $user->foto_perfil,
         ]);
 
-        // 3. (Opcional) Si escribieron una contraseña, actualízala
-        if ($request->filled('password')) {
-            $user->password = Hash::make($request->password);
+        // 4. (Opcional) Si escribieron una contraseña, actualízala
+        if (!empty($validated['password'])) {
+            $user->password = Hash::make($validated['password']);
             $user->save();
         }
 
-        // 4. Redirige de vuelta a la tabla con un mensaje de éxito
+        // 5. Redirige de vuelta a la tabla con un mensaje de éxito
         return redirect()->route('users.index')->with('status', '¡Usuario actualizado exitosamente!');
     }
 }

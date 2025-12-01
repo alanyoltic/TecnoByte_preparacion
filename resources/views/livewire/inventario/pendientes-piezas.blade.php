@@ -2,19 +2,26 @@
 
     {{-- FILA SUPERIOR: RESUMEN + BUSCADOR --}}
     <div class="flex flex-col lg:flex-row gap-6">
+
         {{-- Tarjetas resumen --}}
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
+
             {{-- Total equipos con piezas faltantes --}}
-            <div class="
-                rounded-2xl border border-slate-300/70 dark:border-slate-700/70
-                bg-white/90 dark:bg-slate-900/80
-                px-4 py-3 shadow-sm
-                transition-all duration-300
-                hover:-translate-y-0.5
-                hover:shadow-[0_10px_24px_rgba(15,23,42,0.45)]
-                hover:border-[#FF9521] dark:hover:border-indigo-400/60
-            ">
-                <p class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+            <div
+                class="rounded-2xl
+                       bg-white/80 dark:bg-slate-950/60
+                       border border-slate-200/80 dark:border-white/10
+                       backdrop-blur-xl dark:backdrop-blur-2xl
+                       px-4 py-3
+                       shadow-md shadow-slate-900/10
+                       dark:shadow-lg dark:shadow-slate-900/30
+                       transition-all duration-300
+                       hover:-translate-y-1
+                       hover:shadow-lg hover:shadow-indigo-500/20
+                       dark:hover:shadow-2xl dark:hover:shadow-indigo-500/25
+                       hover:border-[#FF9521] dark:hover:border-indigo-400/60"
+            >
+                <p class="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
                     Equipos en espera
                 </p>
                 <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-50">
@@ -23,55 +30,70 @@
             </div>
 
             {{-- Piezas Pendiente Compra --}}
-            <div class="
-                rounded-2xl border border-amber-200/80 dark:border-amber-700/70
-                bg-amber-50/80 dark:bg-amber-900/30
-                px-4 py-3 shadow-sm
-                transition-all duration-300
-                hover:-translate-y-0.5
-                hover:shadow-[0_10px_24px_rgba(180,83,9,0.45)]
-                hover:border-amber-400/70
-            ">
-                <p class="text-sm font-semibold text-amber-700 dark:text-amber-200 uppercase tracking-wide">
+            <div
+                class="rounded-2xl
+                       bg-amber-50/90 dark:bg-amber-950/40
+                       border border-amber-200/80 dark:border-amber-500/70
+                       backdrop-blur-xl dark:backdrop-blur-2xl
+                       px-4 py-3
+                       shadow-md shadow-amber-900/10
+                       dark:shadow-lg dark:shadow-amber-900/30
+                       transition-all duration-300
+                       hover:-translate-y-1
+                       hover:shadow-lg hover:shadow-amber-500/40
+                       dark:hover:shadow-2xl dark:hover:shadow-amber-400/50
+                       hover:border-amber-400/70"
+            >
+                <p class="text-sm font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wide">
                     Pendiente compra
                 </p>
-                <p class="mt-2 text-2xl font-bold text-amber-800 dark:text-amber-100">
+                <p class="mt-2 text-2xl font-bold text-amber-900 dark:text-amber-100">
                     {{ $stats['pendiente_compra'] ?? 0 }}
                 </p>
             </div>
 
             {{-- Piezas Compradas --}}
-            <div class="
-                rounded-2xl border border-sky-200/80 dark:border-sky-700/70
-                bg-sky-50/80 dark:bg-sky-900/30
-                px-4 py-3 shadow-sm
-                transition-all duration-300
-                hover:-translate-y-0.5
-                hover:shadow-[0_10px_24px_rgba(14,116,144,0.45)]
-                hover:border-sky-400/70
-            ">
-                <p class="text-sm font-semibold text-sky-700 dark:text-sky-200 uppercase tracking-wide">
+            <div
+                class="rounded-2xl
+                       bg-sky-50/90 dark:bg-sky-950/40
+                       border border-sky-200/80 dark:border-sky-500/70
+                       backdrop-blur-xl dark:backdrop-blur-2xl
+                       px-4 py-3
+                       shadow-md shadow-sky-900/10
+                       dark:shadow-lg dark:shadow-sky-900/30
+                       transition-all duration-300
+                       hover:-translate-y-1
+                       hover:shadow-lg hover:shadow-sky-500/40
+                       dark:hover:shadow-2xl dark:hover:shadow-sky-400/50
+                       hover:border-sky-400/70"
+            >
+                <p class="text-sm font-semibold text-sky-800 dark:text-sky-200 uppercase tracking-wide">
                     Piezas compradas
                 </p>
-                <p class="mt-2 text-2xl font-bold text-sky-800 dark:text-sky-100">
+                <p class="mt-2 text-2xl font-bold text-sky-900 dark:text-sky-100">
                     {{ $stats['compradas'] ?? 0 }}
                 </p>
             </div>
 
             {{-- Piezas Instaladas --}}
-            <div class="
-                rounded-2xl border border-emerald-200/80 dark:border-emerald-700/70
-                bg-emerald-50/80 dark:bg-emerald-900/30
-                px-4 py-3 shadow-sm
-                transition-all duration-300
-                hover:-translate-y-0.5
-                hover:shadow-[0_10px_24px_rgba(22,163,74,0.45)]
-                hover:border-emerald-400/70
-            ">
-                <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-200 uppercase tracking-wide">
+            <div
+                class="rounded-2xl
+                       bg-emerald-50/90 dark:bg-emerald-950/40
+                       border border-emerald-200/80 dark:border-emerald-500/70
+                       backdrop-blur-xl dark:backdrop-blur-2xl
+                       px-4 py-3
+                       shadow-md shadow-emerald-900/10
+                       dark:shadow-lg dark:shadow-emerald-900/30
+                       transition-all duration-300
+                       hover:-translate-y-1
+                       hover:shadow-lg hover:shadow-emerald-500/40
+                       dark:hover:shadow-2xl dark:hover:shadow-emerald-400/50
+                       hover:border-emerald-400/70"
+            >
+                <p class="text-sm font-semibold text-emerald-800 dark:text-emerald-200 uppercase tracking-wide">
                     Piezas instaladas
                 </p>
-                <p class="mt-2 text-2xl font-bold text-emerald-800 dark:text-emerald-100">
+                <p class="mt-2 text-2xl font-bold text-emerald-900 dark:text-emerald-100">
                     {{ $stats['instaladas'] ?? 0 }}
                 </p>
             </div>
@@ -79,7 +101,7 @@
 
         {{-- Buscador --}}
         <div class="w-full lg:w-80">
-            <label class="block text-base font-semibold text-slate-200/90 dark:text-slate-200 mb-2">
+            <label class="block text-base font-semibold text-slate-700 dark:text-slate-200 mb-2">
                 Buscar equipo o pieza
             </label>
             <div class="relative">
@@ -90,10 +112,11 @@
                     type="text"
                     wire:model.live.debounce.500ms="search"
                     placeholder="Serie, marca, modelo, tipo, pieza..."
-                    class="w-full pl-10 pr-4 py-2.5 text-lg rounded-xl border border-slate-300/80
-                           bg-slate-900/80/90 dark:bg-slate-900/80 dark:border-slate-700/80
-                           text-slate-100 dark:text-slate-100
-                           placeholder:text-slate-500 dark:placeholder:text-slate-500
+                    class="w-full pl-10 pr-4 py-2.5 text-sm sm:text-base rounded-xl
+                           border border-slate-300/80 dark:border-slate-700/80
+                           bg-white/80 text-slate-800
+                           dark:bg-slate-950/80 dark:text-slate-100
+                           placeholder:text-slate-400 dark:placeholder:text-slate-500
                            focus:outline-none focus:ring-2
                            focus:ring-[#FF9521] focus:border-[#FF9521]
                            dark:focus:ring-indigo-500/70 dark:focus:border-indigo-500/70"
@@ -103,15 +126,19 @@
     </div>
 
     {{-- FILTROS --}}
-    <div class="
-        rounded-2xl border border-slate-200/80 dark:border-slate-700/80
-        bg-white/95 dark:bg-slate-900/90
-        shadow-sm
-        transition-all duration-300
-        hover:-translate-y-0.5
-        hover:shadow-[0_10px_24px_rgba(15,23,42,0.45)]
-        hover:border-[#FF9521] dark:hover:border-indigo-400/50
-    ">
+    <div
+        class="rounded-2xl
+               bg-white/80 dark:bg-slate-950/70
+               border border-slate-200/80 dark:border-white/10
+               backdrop-blur-xl dark:backdrop-blur-2xl
+               shadow-md shadow-slate-900/10
+               dark:shadow-lg dark:shadow-slate-900/30
+               transition-all duration-300
+               hover:-translate-y-1
+               hover:shadow-lg hover:shadow-indigo-500/20
+               dark:hover:shadow-2xl dark:hover:shadow-indigo-500/25
+               hover:border-[#FF9521] dark:hover:border-indigo-400/50"
+    >
         <div class="px-5 py-4 border-b border-slate-200/60 dark:border-slate-800/80 flex items-center justify-between">
             <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Filtros
@@ -136,9 +163,13 @@
                 </label>
                 <select
                     wire:model.live="filtroEstatus"
-                    class="w-full rounded-xl border border-slate-500/80 bg-slate-800/90
-                           text-base text-slate-100
-                           focus:outline-none focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521]
+                    class="w-full rounded-xl
+                           border border-slate-300/80 dark:border-slate-700/80
+                           bg-white/80 text-slate-800
+                           dark:bg-slate-950/80 dark:text-slate-100
+                           text-sm sm:text-base
+                           focus:outline-none focus:ring-2
+                           focus:ring-[#FF9521] focus:border-[#FF9521]
                            dark:focus:ring-indigo-500/70 dark:focus:border-indigo-500/70"
                 >
                     <option value="todos">Todos</option>
@@ -156,9 +187,13 @@
                 </label>
                 <select
                     wire:model.live="filtroProveedor"
-                    class="w-full rounded-xl border border-slate-500/80 bg-slate-800/90
-                           text-base text-slate-100
-                           focus:outline-none focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521]
+                    class="w-full rounded-xl
+                           border border-slate-300/80 dark:border-slate-700/80
+                           bg-white/80 text-slate-800
+                           dark:bg-slate-950/80 dark:text-slate-100
+                           text-sm sm:text-base
+                           focus:outline-none focus:ring-2
+                           focus:ring-[#FF9521] focus:border-[#FF9521]
                            dark:focus:ring-indigo-500/70 dark:focus:border-indigo-500/70"
                 >
                     <option value="todos">Todos los proveedores</option>
@@ -175,9 +210,9 @@
 
             {{-- Resumen móvil --}}
             <div class="flex items-end md:hidden">
-                <p class="text-base text-slate-300">
+                <p class="text-base text-slate-600 dark:text-slate-300">
                     Mostrando
-                    <span class="font-semibold text-slate-100">
+                    <span class="font-semibold text-slate-900 dark:text-slate-100">
                         {{ $piezasPendientes->total() }}
                     </span>
                     registro(s)
@@ -190,18 +225,23 @@
     </div>
 
     {{-- TABLA PRINCIPAL --}}
-    <div class="
-        rounded-2xl border border-slate-200/80 dark:border-slate-700/80
-        bg-white/95 dark:bg-slate-900/95
-        shadow-sm overflow-hidden
-        transition-all duration-300
-        hover:-translate-y-0.5
-        hover:shadow-[0_10px_24px_rgba(15,23,42,0.45)]
-        hover:border-[#FF9521] dark:hover:border-indigo-400/50
-    ">
+    <div
+        class="rounded-2xl
+               bg-white/80 dark:bg-slate-950/80
+               border border-slate-200/80 dark:border-white/10
+               backdrop-blur-xl dark:backdrop-blur-2xl
+               shadow-md shadow-slate-900/10
+               dark:shadow-lg dark:shadow-slate-900/30
+               overflow-hidden
+               transition-all duration-300
+               hover:-translate-y-1
+               hover:shadow-lg hover:shadow-indigo-500/20
+               dark:hover:shadow-2xl dark:hover:shadow-indigo-500/25
+               hover:border-[#FF9521] dark:hover:border-indigo-400/50"
+    >
         <div class="overflow-x-auto">
             <table class="min-w-full text-base text-left">
-                <thead class="bg-slate-100 border-b border-slate-200 dark:bg-slate-950/90 dark:border-slate-800/80">
+                <thead class="bg-slate-100/90 border-b border-slate-200 dark:bg-slate-950/90 dark:border-slate-800/80">
                     <tr>
                         <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Equipo</th>
                         <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Pieza faltante</th>
@@ -238,7 +278,11 @@
                             );
                         @endphp
 
-                        <tr class="border-b border-slate-200 dark:border-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors">
+                        <tr
+                            class="border-b border-slate-200 dark:border-slate-800/80
+                                   hover:bg-slate-50/80 dark:hover:bg-slate-900/80
+                                   transition-colors"
+                        >
                             {{-- Equipo --}}
                             <td class="px-4 py-3 align-top min-w-[220px]">
                                 <div class="flex flex-col">
@@ -249,7 +293,7 @@
                                         Serie: <span class="font-mono">{{ $equipo->numero_serie ?? '—' }}</span>
                                     </span>
                                     @if($equipo->tipo_equipo)
-                                        <span class="text-xs text-slate-400 uppercase tracking-wide">
+                                        <span class="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide">
                                             {{ $equipo->tipo_equipo }}
                                         </span>
                                     @endif
@@ -300,13 +344,12 @@
                                                 'bg-red-100 text-red-900 border border-red-300' => $badgeUrgencia === 'CRÍTICO',
                                                 'bg-amber-100 text-amber-900 border border-amber-300' => $badgeUrgencia === 'Atención',
                                                 'bg-emerald-100 text-emerald-900 border border-emerald-300' => $badgeUrgencia === 'Reciente',
-                                            ])
-                                        ">
+                                            ])">
                                             {{ $badgeUrgencia }}
                                         </span>
                                     @endif
                                 @else
-                                    <span class="text-base text-slate-400">—</span>
+                                    <span class="text-base text-slate-400 dark:text-slate-500">—</span>
                                 @endif
                             </td>
 
@@ -314,9 +357,13 @@
                             <td class="px-4 py-3 align-top text-right">
                                 <button
                                     type="button"
-                                    class="inline-flex items-center px-3 py-1.5 text-sm rounded-xl border border-slate-400/80
-                                           text-slate-800 dark:text-slate-100 dark:border-slate-500
-                                           hover:bg-slate-100/70 dark:hover:bg-slate-800/80 transition"
+                                    class="inline-flex items-center px-3 py-1.5 text-sm rounded-full
+                                           bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                                           text-white
+                                           shadow-sm shadow-blue-800/50
+                                           backdrop-blur-md
+                                           transition-all duration-200
+                                           hover:shadow-blue-500/80 hover:-translate-y-0.5"
                                 >
                                     Ver ficha
                                 </button>
@@ -324,7 +371,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-4 py-8 text-center text-lg text-slate-300">
+                            <td colspan="6" class="px-4 py-8 text-center text-lg text-slate-500 dark:text-slate-400">
                                 No hay equipos en espera de piezas con los filtros actuales.
                             </td>
                         </tr>
@@ -334,7 +381,7 @@
         </div>
 
         {{-- Paginación --}}
-        <div class="border-t border-slate-200 dark:border-slate-800/80 px-4 py-3 bg-white/95 dark:bg-transparent">
+        <div class="border-t border-slate-200 dark:border-slate-800/80 px-4 py-3 bg-white/80 dark:bg-slate-950/70">
             {{ $piezasPendientes->links() }}
         </div>
     </div>

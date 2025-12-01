@@ -1,11 +1,17 @@
 <div
-    class="bg-white/70 dark:bg-slate-900/60
-           border border-white/60 dark:border-slate-700/70 
-           backdrop-blur-xl rounded-2xl shadow-lg shadow-slate-900/30
+    class="bg-white/80 dark:bg-slate-950/60
+           border border-slate-200/80 dark:border-white/10
+           backdrop-blur-xl dark:backdrop-blur-2xl
+           rounded-2xl
+           shadow-md shadow-slate-900/10
+           dark:shadow-lg dark:shadow-slate-900/30
            px-4 py-5 sm:px-6 sm:py-6
            transition-all duration-300 ease-out
-           hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/25"
+           hover:-translate-y-1
+           hover:shadow-lg hover:shadow-indigo-500/20
+           dark:hover:shadow-2xl dark:hover:shadow-indigo-500/25"
 >
+
     {{-- Mensaje de éxito --}}
     @if (session('success'))
         <div class="mb-4 rounded-xl border border-green-200 bg-green-50/90 px-4 py-2 text-sm text-green-700">
@@ -724,15 +730,21 @@
         <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Puertos USB
         </span>
-        <button
-            type="button"
-            wire:click="addPuertoUsb"
-            class="inline-flex items-center px-2.5 py-1 rounded-full text-[0.7rem] font-medium
-                   bg-indigo-500/90 text-white hover:bg-indigo-600
-                   shadow-sm shadow-indigo-500/40 transition"
-        >
-            + Añadir puerto USB
-        </button>
+            <button
+                type="button"
+                wire:click="addPuertoUsb"
+                class="inline-flex items-center px-2.5 py-1 rounded-full text-[0.7rem] font-medium
+                    bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                    text-white
+                    shadow-sm shadow-blue-800/40
+                    backdrop-blur-md
+                    transition-all duration-200
+                    hover:shadow-blue-500/70 hover:-translate-y-0.5"
+            >
+                + Añadir puerto USB
+            </button>
+
+
     </div>
 
     @if(empty($puertos_usb))
@@ -800,15 +812,20 @@
         <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Puertos de video
         </span>
-        <button
-            type="button"
-            wire:click="addPuertoVideo"
-            class="inline-flex items-center px-2.5 py-1 rounded-full text-[0.7rem] font-medium
-                   bg-indigo-500/90 text-white hover:bg-indigo-600
-                   shadow-sm shadow-indigo-500/40 transition"
-        >
-            + Añadir puerto de video
-        </button>
+            <button
+                type="button"
+                wire:click="addPuertoVideo"
+                class="inline-flex items-center px-2.5 py-1 rounded-full text-[0.7rem] font-medium
+                    bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                    text-white
+                    shadow-sm shadow-blue-800/40
+                    backdrop-blur-md
+                    transition-all duration-200
+                    hover:shadow-blue-500/70 hover:-translate-y-0.5"
+            >
+                + Añadir puerto de video
+            </button>
+
     </div>
 
     @if(empty($puertos_video))
@@ -879,15 +896,20 @@
         <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Lectores / ranuras
         </span>
-        <button
-            type="button"
-            wire:click="addLector"
-            class="inline-flex items-center px-2.5 py-1 rounded-full text-[0.7rem] font-medium
-                   bg-indigo-500/90 text-white hover:bg-indigo-600
-                   shadow-sm shadow-indigo-500/40 transition"
-        >
-            + Añadir lector / ranura
-        </button>
+            <button
+                type="button"
+                wire:click="addLector"
+                class="inline-flex items-center px-2.5 py-1 rounded-full text-[0.7rem] font-medium
+                    bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                    text-white
+                    shadow-sm shadow-blue-800/40
+                    backdrop-blur-md
+                    transition-all duration-200
+                    hover:shadow-blue-500/70 hover:-translate-y-0.5"
+            >
+                + Añadir lector / ranura
+            </button>
+
     </div>
 
     @if(empty($lectores))
@@ -952,13 +974,17 @@
             <button
                 type="submit"
                 class="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium
-                       bg-indigo-600 hover:bg-indigo-700 text-white
-                       shadow-md shadow-indigo-500/40 hover:shadow-lg
-                       transition-all"
+                    bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                    text-white
+                    shadow-md shadow-blue-800/60 hover:shadow-lg hover:shadow-blue-500/80
+                    backdrop-blur-md
+                    transition-all duration-200
+                    hover:-translate-y-0.5"
                 wire:loading.attr="disabled">
                 <span wire:loading.remove>Guardar equipo</span>
                 <span wire:loading>Guardando...</span>
             </button>
         </div>
+
     </form>
 </div>

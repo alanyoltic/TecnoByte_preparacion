@@ -3,10 +3,12 @@
     {{-- FONDO ESTILO LOGIN + CONTENIDO DASHBOARD --}}
     <div
         class="relative min-h-screen overflow-hidden
-               bg-gradient-to-br from-slate-950 via-[#020617] to-slate-950"
+               bg-gradient-to-br
+               from-slate-100 via-slate-100 to-slate-200
+               dark:from-slate-950 dark:via-[#020617] dark:to-slate-950"
     >
 
-        {{-- Luces estilo login --}}
+        {{-- Luces estilo login (sirven para ambos modos) --}}
         @php
             // Azul superior izq
             $glow1Top  = rand(-420, -260);
@@ -16,9 +18,9 @@
             $glow2Bottom = rand(-420, -260);
             $glow2Right  = rand(-320, -120);
 
-            // Naranja central (jugamos con X)
-            $glow3Bottom     = rand(-340, -220);
-            $glow3LeftPercent = rand(30, 70); // 30% a 70% del ancho
+            // Naranja central
+            $glow3Bottom      = rand(-340, -220);
+            $glow3LeftPercent = rand(30, 70);
         @endphp
 
         <div class="pointer-events-none absolute inset-0">
@@ -28,7 +30,7 @@
                 id="glow-1"
                 class="absolute w-[1100px] h-[1100px]
                        bg-[#1E3A8A] rounded-full blur-[240px]
-                       opacity-90 mix-blend-screen"
+                       opacity-70 md:opacity-90 mix-blend-screen"
                 style="top: {{ $glow1Top }}px; left: {{ $glow1Left }}px;"
             ></div>
 
@@ -37,7 +39,7 @@
                 id="glow-2"
                 class="absolute w-[1000px] h-[1000px]
                        bg-[#0F1A35] rounded-full blur-[240px]
-                       opacity-95 mix-blend-screen"
+                       opacity-70 md:opacity-95 mix-blend-screen"
                 style="bottom: {{ $glow2Bottom }}px; right: {{ $glow2Right }}px;"
             ></div>
 
@@ -45,34 +47,35 @@
             <div
                 id="glow-3"
                 class="absolute w-[850px] h-[850px]
-                       bg-[#FF9521]/50 rounded-full blur-[260px]
-                       opacity-90 mix-blend-screen"
+                       bg-[#FF9521]/40 md:bg-[#FF9521]/50
+                       rounded-full blur-[260px]
+                       opacity-80 md:opacity-90 mix-blend-screen"
                 style="bottom: {{ $glow3Bottom }}px; left: {{ $glow3LeftPercent }}%;"
             ></div>
         </div>
 
         {{-- Capa glass suave --}}
-        <div class="absolute inset-0 bg-slate-950/30 backdrop-blur-2xl"></div>
+        <div class="absolute inset-0 bg-white/40 dark:bg-slate-950/30 backdrop-blur-2xl"></div>
 
         {{-- CONTENIDO DEL DASHBOARD (HEADER + TARJETAS + GRÁFICAS) --}}
         <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10">
 
             {{-- HEADER COMO TARJETA DENTRO DEL FONDO --}}
             <div
-                class="relative overflow-hidden
+                class="relative overflow-hidden mb-6
                        rounded-3xl
-                       bg-slate-950/70
-                       border border-white/10
-                       shadow-2xl shadow-slate-950/70
-                       backdrop-blur-2xl
-                       px-6 sm:px-8 lg:px-10 py-4 sm:py-5 mb-6"
+                       bg-white/80 dark:bg-slate-950/70
+                       border border-slate-200/80 dark:border-white/10
+                       shadow-lg shadow-slate-900/10 dark:shadow-2xl dark:shadow-slate-950/70
+                       backdrop-blur-xl dark:backdrop-blur-2xl
+                       px-6 sm:px-8 lg:px-10 py-4 sm:py-5"
             >
                 <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
 
                     {{-- IZQUIERDA: título y resumen --}}
                     <div class="space-y-1.5">
                         <div class="flex items-center gap-3">
-                            <h2 class="font-semibold text-xl text-slate-50 leading-tight">
+                            <h2 class="font-semibold text-xl text-slate-900 dark:text-slate-50 leading-tight">
                                 Dashboard General
                             </h2>
 
@@ -87,13 +90,13 @@
                             </span>
                         </div>
 
-                        <p class="text-xs sm:text-sm text-slate-400">
+                        <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
                             Meta mensual cumplida:
                             <span class="font-semibold text-[#FF9521]">
                                 {{ $radialPercent }}%
                             </span>
                             · Equipos este mes:
-                            <span class="font-semibold text-slate-50">
+                            <span class="font-semibold text-slate-900 dark:text-slate-50">
                                 {{ $kpis['equiposMes'] }}
                             </span>
                         </p>
@@ -105,7 +108,7 @@
                         @if($monthFinished)
                             <span class="inline-flex items-center px-2.5 py-1 rounded-full
                                          text-[0.7rem] font-medium tracking-wide
-                                         bg-amber-500/10 text-amber-300
+                                         bg-amber-500/10 text-amber-600 dark:text-amber-300
                                          border border-amber-400/40">
                                 ⚠ Este mes ya terminó
                             </span>
@@ -115,11 +118,14 @@
                             <select
                                 name="month"
                                 onchange="this.form.submit()"
-                                class="text-xs sm:text-sm rounded-xl border border-white/15
-                                       bg-slate-950/80 text-slate-100
+                                class="text-xs sm:text-sm rounded-xl
+                                       border border-slate-300/80 dark:border-white/15
+                                       bg-white/80 text-slate-800
+                                       dark:bg-slate-950/80 dark:text-slate-100
                                        py-1.5 pl-2 pr-8
-                                       shadow-inner shadow-black/40
-                                       focus:outline-none focus:ring-2 focus:ring-[#FF9521]/60 focus:border-[#FF9521]"
+                                       shadow-inner shadow-slate-200/80 dark:shadow-black/40
+                                       focus:outline-none focus:ring-2
+                                       focus:ring-[#FF9521]/60 focus:border-[#FF9521]"
                             >
                                 @foreach($monthsOptions as $opt)
                                     <option value="{{ $opt['value'] }}" @if($opt['value'] === $selectedMonthValue) selected @endif>
@@ -128,21 +134,21 @@
                                 @endforeach
                             </select>
 
+                            {{-- Botón azul (como pediste) --}}
                             <button
                                 type="button"
                                 class="hidden sm:inline-flex items-center gap-2
-                                    px-3.5 py-1.5 rounded-full text-xs font-medium
-                                    bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                                    text-white
-                                    shadow-lg shadow-blue-800/60
-                                    backdrop-blur-xl
-                                    transition-all duration-200
-                                    hover:shadow-blue-500/80 hover:-translate-y-0.5"
+                                       px-3.5 py-1.5 rounded-full text-xs font-medium
+                                       bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                                       text-white
+                                       shadow-lg shadow-blue-800/60
+                                       backdrop-blur-xl
+                                       transition-all duration-200
+                                       hover:shadow-blue-500/80 hover:-translate-y-0.5"
                             >
                                 <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-300"></span>
                                 Vista resumen mensual
                             </button>
-
                         </form>
                     </div>
 
@@ -158,16 +164,21 @@
                         {{-- ===== 3 Tarjetas KPI ===== --}}
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                             @php
-                                $cardClass = "bg-slate-950/60 border border-white/10
-                                              backdrop-blur-2xl rounded-2xl
-                                              shadow-lg shadow-slate-900/30
+                                $cardClass = "bg-white/80 dark:bg-slate-950/60
+                                              border border-slate-200/80 dark:border-white/10
+                                              backdrop-blur-xl dark:backdrop-blur-2xl
+                                              rounded-2xl
+                                              shadow-md shadow-slate-900/10
+                                              dark:shadow-lg dark:shadow-slate-900/30
                                               px-4 py-5 flex flex-col gap-2
                                               transition-all duration-300 ease-out
-                                              hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/25";
+                                              hover:-translate-y-1
+                                              hover:shadow-lg hover:shadow-indigo-500/20
+                                              dark:hover:shadow-2xl dark:hover:shadow-indigo-500/25";
 
                                 $labelClass = "text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400";
                                 $valueClass = "text-3xl font-bold text-slate-900 dark:text-slate-50";
-                                $badgeClass = "inline-flex items-center text-xs font-semibold text-emerald-500";
+                                $badgeClass = "inline-flex items-center text-xs font-semibold text-emerald-600 dark:text-emerald-500";
                             @endphp
 
                             {{-- KPI Equipos Hoy --}}
@@ -203,13 +214,18 @@
 
                         {{-- ===== GRÁFICA Línea ===== --}}
                         <div
-                            class="bg-slate-950/60 border border-white/10
-                                   backdrop-blur-2xl rounded-2xl shadow-lg shadow-slate-900/30
+                            class="bg-white/80 dark:bg-slate-950/60
+                                   border border-slate-200/80 dark:border-white/10
+                                   backdrop-blur-xl dark:backdrop-blur-2xl
+                                   rounded-2xl shadow-md shadow-slate-900/10
+                                   dark:shadow-lg dark:shadow-slate-900/30
                                    p-5 lg:p-6 transition-all duration-300 ease-out
-                                   hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/25"
+                                   hover:-translate-y-1
+                                   hover:shadow-lg hover:shadow-indigo-500/20
+                                   dark:hover:shadow-2xl dark:hover:shadow-indigo-500/25"
                         >
                             <div class="flex items-center justify-between mb-2">
-                                <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-50">
+                                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
                                     Equipos por Semana
                                 </h3>
                                 <span class="text-xs text-slate-500 dark:text-slate-400">
@@ -221,13 +237,18 @@
 
                         {{-- ===== GRÁFICA Barras Técnico ===== --}}
                         <div
-                            class="bg-slate-950/60 border border-white/10
-                                   backdrop-blur-2xl rounded-2xl shadow-lg shadow-slate-900/30
+                            class="bg-white/80 dark:bg-slate-950/60
+                                   border border-slate-200/80 dark:border-white/10
+                                   backdrop-blur-xl dark:backdrop-blur-2xl
+                                   rounded-2xl shadow-md shadow-slate-900/10
+                                   dark:shadow-lg dark:shadow-slate-900/30
                                    p-5 lg:p-6 transition-all duration-300 ease-out
-                                   hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/25"
+                                   hover:-translate-y-1
+                                   hover:shadow-lg hover:shadow-indigo-500/20
+                                   dark:hover:shadow-2xl dark:hover:shadow-indigo-500/25"
                         >
                             <div class="flex items-center justify-between mb-2">
-                                <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-50">
+                                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
                                     Producción por Técnico
                                 </h3>
                                 <span class="text-xs text-slate-500 dark:text-slate-400">
@@ -244,15 +265,20 @@
 
                         {{-- RADIAL: Avance Meta Mensual --}}
                         <div
-                            class="bg-slate-950/60 border border-white/10
-                                   backdrop-blur-2xl rounded-2xl shadow-lg shadow-slate-900/30
+                            class="bg-white/80 dark:bg-slate-950/60
+                                   border border-slate-200/80 dark:border-white/10
+                                   backdrop-blur-xl dark:backdrop-blur-2xl
+                                   rounded-2xl shadow-md shadow-slate-900/10
+                                   dark:shadow-lg dark:shadow-slate-900/30
                                    p-5 lg:p-6 transition-all duration-300 ease-out
-                                   hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/25"
+                                   hover:-translate-y-1
+                                   hover:shadow-lg hover:shadow-indigo-500/20
+                                   dark:hover:shadow-2xl dark:hover:shadow-indigo-500/25"
                         >
-                            <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-50 mb-1">
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50 mb-1">
                                 Avance de Meta Mensual
                             </h3>
-                            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                            <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">
                                 Progreso general de la cuota mensual de equipos.
                             </p>
                             <div id="radial-chart" class="mt-2"></div>
@@ -260,13 +286,18 @@
 
                         {{-- DETALLE META MENSUAL --}}
                         <div
-                            class="bg-slate-950/60 border border-white/10
-                                   backdrop-blur-2xl rounded-2xl shadow-lg shadow-slate-900/30
+                            class="bg-white/80 dark:bg-slate-950/60
+                                   border border-slate-200/80 dark:border-white/10
+                                   backdrop-blur-xl dark:backdrop-blur-2xl
+                                   rounded-2xl shadow-md shadow-slate-900/10
+                                   dark:shadow-lg dark:shadow-slate-900/30
                                    p-5 lg:p-6 transition-all duration-300 ease-out
-                                   hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/25"
+                                   hover:-translate-y-1
+                                   hover:shadow-lg hover:shadow-indigo-500/20
+                                   dark:hover:shadow-2xl dark:hover:shadow-indigo-500/25"
                         >
                             <div class="flex items-center justify-between mb-3">
-                                <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-50">
+                                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
                                     Detalle de Meta Mensual
                                 </h3>
                             </div>
@@ -274,7 +305,7 @@
                             <div class="space-y-3">
                                 @foreach($breakdown as $item)
                                     <div class="flex justify-between items-center text-sm">
-                                        <span class="text-slate-600 dark:text-slate-300">
+                                        <span class="text-slate-700 dark:text-slate-300">
                                             {{ $item['label'] }}
                                         </span>
                                         <span class="font-semibold text-slate-900 dark:text-slate-50">
@@ -296,7 +327,7 @@
         </div>
     </div>
 
-    {{-- SCRIPTS GRÁFICAS (igual que ya tenías) --}}
+    {{-- SCRIPTS GRÁFICAS (sin cambios, ya soportan dark/light por JS) --}}
     <script>
         document.addEventListener("DOMContentLoaded", function () {
 
@@ -341,7 +372,7 @@
             };
 
             const getLineOptions = (t) => {
-                const mainColor = t.isDark ? "#6366F1" : "#1718FF";
+                const mainColor = t.isDark ? "#6366F1" : "#2563EB";
                 return {
                     series: [{
                         name: "Equipos",
@@ -401,8 +432,8 @@
             };
 
             const getBarOptions = (t) => {
-                const mainColor = t.isDark ? "#1D1B5F" : "#1718FF";
-                const gradientTo = t.isDark ? "#4F46E5" : "#3440FF";
+                const mainColor = t.isDark ? "#1D1B5F" : "#2563EB";
+                const gradientTo = t.isDark ? "#4F46E5" : "#3B82F6";
                 return {
                     series: [{
                         name: "Equipos Registrados",
@@ -462,8 +493,8 @@
             };
 
             const getRadialOptions = (t) => {
-                const mainColor = t.isDark ? "#2563EB" : "#1718FF";
-                const gradTo    = t.isDark ? "#60A5FA" : "#516CFF";
+                const mainColor = t.isDark ? "#2563EB" : "#2563EB";
+                const gradTo    = t.isDark ? "#60A5FA" : "#93C5FD";
                 return {
                     series: [radialData],
                     chart: {

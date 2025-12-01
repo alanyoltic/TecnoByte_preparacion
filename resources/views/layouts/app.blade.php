@@ -23,20 +23,38 @@
             }
         </script>
 
+
+        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @livewireStyles
 
-        <style>
-            [x-cloak] { display: none !important; }
-        </style>
+<style>
+    html, body {
+        
+        background-color: #020617; /* parecido a slate-950 */
+    }
+
+    [x-cloak] { 
+        display: none !important; 
+    }
+</style>
+
     </head>
 
-    {{-- IMPORTANTE: quitamos el fondo gris y bloqueamos scroll horizontal --}}
-    <body class="font-sans text-lg antialiased overflow-x-hidden">
+<body class="font-sans text-lg antialiased overflow-x-hidden bg-transparent">
 
+        {{-- FONDO GLOBAL FIJO DETRÁS DE TODO (para evitar el bloque negro) --}}
+        <div
+            class="fixed inset-0 -z-50
+                   bg-gradient-to-br
+                   from-slate-100 via-slate-200 to-slate-300
+                   dark:from-slate-900 dark:via-slate-950 dark:to-slate-900">
+        </div>
+
+        {{-- CONTENEDOR PRINCIPAL --}}
         <div 
             x-data="{ sidebarOpen: false }" 
-            class="relative min-h-screen flex bg-transparent dark:bg-transparent"
+            class="relative min-h-screen flex bg-transparent"
         >
             @include('layouts.sidebar')
 

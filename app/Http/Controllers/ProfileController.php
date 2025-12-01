@@ -2,59 +2,96 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ProfileUpdateRequest;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Redirect;
-use Illuminate\View\View;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class ProfileController extends Controller
 {
-    /**
-     * Display the user's profile form.
-     */
-    public function edit(Request $request): View
+    public function show(Request $request)
     {
-        return view('profile.edit', [
-            'user' => $request->user(),
-        ]);
-    }
-
-    /**
-     * Update the user's profile information.
-     */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
-    {
-        $request->user()->fill($request->validated());
-
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
-        }
-
-        $request->user()->save();
-
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
-    }
-
-    /**
-     * Delete the user's account.
-     */
-    public function destroy(Request $request): RedirectResponse
-    {
-        $request->validateWithBag('userDeletion', [
-            'password' => ['required', 'current_password'],
-        ]);
-
         $user = $request->user();
 
-        Auth::logout();
+        return view('profile.show', [
+            'user' => $user,
+        ]);
+    }
 
-        $user->delete();
+    public function edit(Request $request)
+    {
+        $user = $request->user();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        // ⚠️ Lógica única: si NO es admin ni ceo → soloPassword = true
+        $soloPassword = ! in_array(optional($user->role)->slug, ['admin', 'ceo']);
 
-        return Redirect::to('/');
+        return view('profile.edit', [
+            'user'         => $user,
+            'soloPassword' => $soloPassword,
+        ]);
+    }
+
+    public function update(Request $request)
+    {
+        $user = $request->user();
+
+        // 🔁 Usamos la MISMA idea aquí:
+        $soloPassword = ! in_array(optional($user->role)->slug, ['admin', 'ceo']);
+        $esAdminOCeo  = ! $soloPassword; // inverso directo, así nunca se contradicen
+
+        if ($esAdminOCeo) {
+            // ✅ Admin / CEO: pueden editar todo
+            $validated = $request->validate([
+                'nombre'           => ['required', 'string', 'max:255'],
+                'segundo_nombre'   => ['nullable', 'string', 'max:255'],
+                'apellido_paterno' => ['required', 'string', 'max:255'],
+                'apellido_materno' => ['nullable', 'string', 'max:255'],
+                'email'            => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+                'password'         => ['nullable', 'confirmed', Password::defaults()],
+                'foto_perfil'      => ['nullable', 'image', 'max:2048'],
+            ]);
+
+            $user->nombre           = $validated['nombre'];
+            $user->segundo_nombre   = $validated['segundo_nombre']   ?? null;
+            $user->apellido_paterno = $validated['apellido_paterno'];
+            $user->apellido_materno = $validated['apellido_materno'] ?? null;
+            $user->email            = $validated['email'];
+
+            if (! empty($validated['password'])) {
+                $user->password = Hash::make($validated['password']);
+            }
+
+            if ($request->hasFile('foto_perfil')) {
+                $path = $request->file('foto_perfil')->store('fotos_perfil', 'public');
+                $user->foto_perfil = $path;
+            }
+
+            $user->save();
+
+            return back()->with('status', 'Perfil actualizado correctamente.');
+        }
+
+        // 🚫 Resto de roles: SOLO password + foto
+        $validated = $request->validate([
+            'password'    => ['nullable', 'confirmed', Password::defaults()],
+            'foto_perfil' => ['nullable', 'image', 'max:2048'],
+        ]);
+
+        if (! empty($validated['password'])) {
+            $user->password = Hash::make($validated['password']);
+        }
+
+        if ($request->hasFile('foto_perfil')) {
+            $path = $request->file('foto_perfil')->store('fotos_perfil', 'public');
+            $user->foto_perfil = $path;
+        }
+
+        $user->save();
+
+        return back()->with('status', 'Perfil actualizado correctamente.');
+    }
+
+    public function destroy(Request $request)
+    {
+        //
     }
 }

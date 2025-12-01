@@ -1,6 +1,6 @@
 <x-app-layout>
 
-    {{-- FONDO ESTILO LOGIN + INVENTARIO LISTO --}}
+    {{-- FONDO ESTILO LOGIN + PENDIENTES PIEZAS --}}
     <div
         class="relative min-h-screen overflow-hidden
                bg-gradient-to-br
@@ -26,6 +26,7 @@
         <div class="pointer-events-none absolute inset-0">
             {{-- Glow azul grande superior izquierdo --}}
             <div
+                id="glow-1"
                 class="absolute w-[1100px] h-[1100px]
                        bg-[#1E3A8A] rounded-full blur-[240px]
                        opacity-70 md:opacity-90 mix-blend-screen"
@@ -34,6 +35,7 @@
 
             {{-- Glow azul grande inferior derecho --}}
             <div
+                id="glow-2"
                 class="absolute w-[1000px] h-[1000px]
                        bg-[#0F1A35] rounded-full blur-[240px]
                        opacity-70 md:opacity-95 mix-blend-screen"
@@ -42,6 +44,7 @@
 
             {{-- Glow naranja suave central --}}
             <div
+                id="glow-3"
                 class="absolute w-[850px] h-[850px]
                        bg-[#FF9521]/40 md:bg-[#FF9521]/50
                        rounded-full blur-[260px]
@@ -53,10 +56,10 @@
         {{-- Capa glass suave --}}
         <div class="absolute inset-0 bg-white/40 dark:bg-slate-950/30 backdrop-blur-2xl"></div>
 
-        {{-- CONTENIDO: HEADER + TABLA / LISTA INVENTARIO --}}
+        {{-- CONTENIDO: HEADER + TABLA LIVEWIRE --}}
         <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10">
 
-            {{-- HEADER GLASS PARA INVENTARIO LISTO --}}
+            {{-- HEADER GLASS PARA PENDIENTES PIEZAS --}}
             <div
                 class="relative overflow-hidden mb-6
                        rounded-3xl
@@ -72,36 +75,35 @@
                     <div class="space-y-1.5">
                         <div class="flex items-center gap-3">
                             <h2 class="font-semibold text-xl text-slate-900 dark:text-slate-50 leading-tight">
-                                Inventario listo
+                                Equipos pendientes por piezas
                             </h2>
 
                             {{-- Chip sección --}}
                             <span
                                 class="inline-flex items-center px-2.5 py-0.5 rounded-full
                                        text-[0.7rem] font-semibold tracking-wide
-                                       bg-emerald-500/10 text-emerald-700
-                                       dark:bg-emerald-400/15 dark:text-emerald-200
-                                       border border-emerald-500/25"
+                                       bg-[#FF9521]/10 text-[#FF9521]
+                                       border border-[#FF9521]/40"
                             >
-                                Inventario · Equipos registrados
+                                Preparación · Piezas
                             </span>
                         </div>
 
                         <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-                            Consulta y filtra los equipos que ya están capturados en el sistema.
+                            Equipos que no pueden darse por terminados porque están esperando la compra o instalación de una pieza.
                         </p>
                     </div>
 
-                    {{-- DERECHA: espacio por si luego quieres poner algo --}}
-                    <div class="hidden sm:flex flex-col items-end gap-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                        {{-- Aquí puedes agregar un botón o contador global más adelante --}}
+                    {{-- DERECHA: espacio para info/resumen si luego quieres --}}
+                    <div class="flex flex-col items-end gap-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                        {{-- Ej: aquí podrías mostrar un pequeño contador global o un botón extra en el futuro --}}
                     </div>
                 </div>
             </div>
 
-            {{-- CONTENIDO PRINCIPAL: LIVEWIRE INVENTARIO LISTO --}}
+            {{-- CONTENIDO PRINCIPAL: LIVEWIRE --}}
             <div class="max-w-7xl mx-auto">
-                <livewire:inventario.inventario-listo />
+                <livewire:inventario.pendientes-piezas />
             </div>
         </div>
     </div>

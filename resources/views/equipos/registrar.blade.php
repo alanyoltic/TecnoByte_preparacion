@@ -1,60 +1,105 @@
 <x-app-layout>
-    {{-- HEADER IGUAL QUE EL DASHBOARD PERO PARA REGISTRO --}}
-    <x-slot name="header">
-        <div class="-mx-4 sm:-mx-6 lg:-mx-8">
+
+    {{-- FONDO ESTILO LOGIN + REGISTRO DE EQUIPOS --}}
+    <div
+        class="relative min-h-screen overflow-hidden
+               bg-gradient-to-br
+               from-slate-100 via-slate-100 to-slate-200
+               dark:from-slate-950 dark:via-[#020617] dark:to-slate-950"
+    >
+
+        {{-- Luces estilo login (con posiciones aleatorias) --}}
+        @php
+            // Azul superior izq
+            $glow1Top  = rand(-420, -260);
+            $glow1Left = rand(-340, -120);
+
+            // Azul inferior der
+            $glow2Bottom = rand(-420, -260);
+            $glow2Right  = rand(-340, -120);
+
+            // Naranja central
+            $glow3Bottom      = rand(-360, -220);
+            $glow3LeftPercent = rand(25, 75);
+        @endphp
+
+        <div class="pointer-events-none absolute inset-0">
+            {{-- Glow azul grande superior izquierdo --}}
             <div
-                class="px-4 sm:px-6 lg:px-8 py-3
-                       bg-gradient-to-r 
-                           from-slate-100/90 via-slate-200/95 to-slate-100/90
-                       dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95
-                       backdrop-blur-xl
-                       border-b border-slate-200/70 dark:border-slate-800/80
-                       shadow-md shadow-slate-900/40"
+                class="absolute w-[1100px] h-[1100px]
+                       bg-[#1E3A8A] rounded-full blur-[240px]
+                       opacity-70 md:opacity-90 mix-blend-screen"
+                style="top: {{ $glow1Top }}px; left: {{ $glow1Left }}px;"
+            ></div>
+
+            {{-- Glow azul grande inferior derecho --}}
+            <div
+                class="absolute w-[1000px] h-[1000px]
+                       bg-[#0F1A35] rounded-full blur-[240px]
+                       opacity-70 md:opacity-95 mix-blend-screen"
+                style="bottom: {{ $glow2Bottom }}px; right: {{ $glow2Right }}px;"
+            ></div>
+
+            {{-- Glow naranja suave central --}}
+            <div
+                class="absolute w-[850px] h-[850px]
+                       bg-[#FF9521]/40 md:bg-[#FF9521]/50
+                       rounded-full blur-[260px]
+                       opacity-80 md:opacity-90 mix-blend-screen"
+                style="bottom: {{ $glow3Bottom }}px; left: {{ $glow3LeftPercent }}%;"
+            ></div>
+        </div>
+
+        {{-- Capa glass suave --}}
+        <div class="absolute inset-0 bg-white/40 dark:bg-slate-950/30 backdrop-blur-2xl"></div>
+
+        {{-- CONTENIDO: HEADER + FORMULARIO (LIVEWIRE) --}}
+        <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10">
+
+            {{-- HEADER GLASS PARA REGISTRO --}}
+            <div
+                class="relative overflow-hidden mb-6
+                       rounded-3xl
+                       bg-white/80 dark:bg-slate-950/70
+                       border border-slate-200/80 dark:border-white/10
+                       shadow-lg shadow-slate-900/10 dark:shadow-2xl dark:shadow-slate-950/70
+                       backdrop-blur-xl dark:backdrop-blur-2xl
+                       px-6 sm:px-8 lg:px-10 py-4 sm:py-5"
             >
-                <div class="flex items-center justify-between gap-4">
-                    <div class="flex flex-col">
-                        <div class="flex items-center gap-2">
-                            <h2 class="font-semibold text-lg sm:text-xl text-slate-900 dark:text-slate-50 leading-tight">
+                <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+
+                    {{-- IZQUIERDA: título y descripción --}}
+                    <div class="space-y-1.5">
+                        <div class="flex items-center gap-3">
+                            <h2 class="font-semibold text-xl text-slate-900 dark:text-slate-50 leading-tight">
                                 Registro de equipos
                             </h2>
 
+                            {{-- Chip sección --}}
                             <span
                                 class="inline-flex items-center px-2.5 py-0.5 rounded-full
-                                       text-[0.65rem] font-medium tracking-wide
-                                       bg-indigo-500/10 text-indigo-600
-                                       dark:bg-indigo-400/15 dark:text-indigo-200
-                                       border border-indigo-500/25"
+                                       text-[0.7rem] font-semibold tracking-wide
+                                       bg-[#FF9521]/10 text-[#FF9521]
+                                       border border-[#FF9521]/40"
                             >
                                 Preparación · Entrada
-
                             </span>
                         </div>
 
-                        <p class="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                        <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
                             Captura de equipos que ingresan a preparación.
                         </p>
                     </div>
 
-                    <div class="hidden sm:flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                        {{-- Aquí podrás poner algún botón después si quieres --}}
+                    {{-- DERECHA: espacio para futuro botón / info --}}
+                    <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                        {{-- Aquí puedes poner algún botón o indicador después --}}
                     </div>
                 </div>
             </div>
-        </div>
-    </x-slot>
 
-    {{-- FONDO IGUAL QUE EL DASHBOARD --}}
-    <div class="relative py-10 bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300
-                dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 min-h-screen overflow-hidden">
-
-        <div class="pointer-events-none absolute inset-0 
-                    bg-white/10 dark:bg-white/5 
-                    backdrop-blur-2xl">
-        </div>
-
-        <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8">
+            {{-- CONTENEDOR PRINCIPAL DEL FORMULARIO --}}
             <div class="max-w-7xl mx-auto">
-                {{-- AQUÍ VA EL COMPONENTE LIVEWIRE --}}
                 <livewire:equipos.registrar-equipo />
             </div>
         </div>
