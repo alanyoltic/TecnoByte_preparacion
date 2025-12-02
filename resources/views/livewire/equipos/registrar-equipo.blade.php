@@ -262,64 +262,86 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {{-- Modelo CPU --}}
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium mb-1">
-                        Procesador (modelo)
-                    </label>
-                    <input
-                        type="text"
-                        wire:model.defer="procesador_modelo"
-                        placeholder="Ej. Core i5-8250U"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                    @error('procesador_modelo')
-                        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-                    @enderror
-                </div>
 
-                {{-- Generación --}}
-                <div>
-                    <label class="block text-sm font-medium mb-1">
-                        Generación
-                    </label>
-                    <input
-                        type="text"
-                        wire:model.defer="procesador_generacion"
-                        placeholder="Ej. 8va gen"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                    @error('procesador_generacion')
-                        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-                    @enderror
-                </div>
+    {{-- Modelo CPU --}}
+    <div class="md:col-span-2">
+        <label class="block text-sm font-medium mb-1">
+            Procesador (modelo)
+        </label>
+        <input
+            type="text"
+            wire:model.defer="procesador_modelo"
+            placeholder="Ej. Core i5-8250U"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                   bg-slate-50 dark:bg-slate-900
+                   text-sm px-3 py-2
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+        >
+        @error('procesador_modelo')
+            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+        @enderror
+    </div>
 
-                {{-- Núcleos --}}
-                <div>
-                    <label class="block text-sm font-medium mb-1">
-                        Núcleos
-                    </label>
-                    <input
-                        type="number"
-                        min="1"
-                        max="32"
-                        wire:model.defer="procesador_nucleos"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                    @error('procesador_nucleos')
-                        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
+    {{-- Frecuencia CPU (GHz) --}}
+    <div class="md:col-span-1">
+        <label class="block text-sm font-medium mb-1">
+            Frecuencia (GHz)
+        </label>
+        <input
+            type="text"
+            wire:model.defer="procesador_frecuencia"
+            placeholder="Ej. 1.90 GHz"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                   bg-slate-50 dark:bg-slate-900
+                   text-sm px-3 py-2
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+        >
+        @error('procesador_frecuencia')
+            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+        @enderror
+    </div>
+
+    {{-- Generación --}}
+    <div>
+        <label class="block text-sm font-medium mb-1">
+            Generación
+        </label>
+        <input
+            type="text"
+            wire:model.defer="procesador_generacion"
+            placeholder="Ej. 8va gen"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                   bg-slate-50 dark:bg-slate-900
+                   text-sm px-3 py-2
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+        >
+        @error('procesador_generacion')
+            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+        @enderror
+    </div>
+
+    {{-- Núcleos --}}
+    <div>
+        <label class="block text-sm font-medium mb-1">
+            Núcleos
+        </label>
+        <input
+            type="number"
+            min="1"
+            max="32"
+            wire:model.defer="procesador_nucleos"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                   bg-slate-50 dark:bg-slate-900
+                   text-sm px-3 py-2
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+        >
+        @error('procesador_nucleos')
+            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+        @enderror
+    </div>
+
+</div>
+
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {{-- RAM total --}}

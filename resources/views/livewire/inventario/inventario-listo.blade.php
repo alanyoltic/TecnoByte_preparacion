@@ -404,21 +404,39 @@
         <div class="bg-white border-2 border-blue-700 box-border overflow-hidden relative flex flex-col"
              style="width: 74mm; height: 50mm; padding: 1.5mm;">
 
-        {{-- Encabezado azul --}}
-        <div class="bg-black text-white text-center py-1 mb-1 shrink-0"
-            style="-webkit-print-color-adjust: exact; print-color-adjust: exact;">
+            {{-- Encabezado negro --}}
+            <div
+                class="bg-black text-white text-center mb-1 shrink-0"
+                style="
+                    height: 6mm;                 /* ← Ajusta aquí el grosor de la barra */
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                "
+            >
+
                 <h1
-                    class="text-[10px] tracking-wide uppercase leading-tight"
+                    class="titulo-equipo"
                     style="
                         font-family: 'Arial Black', Arial, sans-serif;
                         font-weight: 900;
+                        font-size: 12pt;      
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        white-space: nowrap;
+                        margin: 0;
+                        padding: 0;
                     "
                 >
                     {{ \Illuminate\Support\Str::upper(
-                        \Illuminate\Support\Str::limit(($equipo->marca . ' ' . $equipo->modelo) ?: 'SIN MODELO', 40, '')
+                        ($equipo->marca . ' ' . $equipo->modelo) ?: 'SIN MODELO'
                     ) }}
                 </h1>
-        </div>
+
+            </div>
+
 
 
             {{-- Contenido principal --}}
@@ -427,99 +445,141 @@
                            
                                 {{-- Logo Tecnobyte (imagen real) --}}
                         <div class="flex flex-col items-center justify-center"
-                            style="width: 22mm; margin-top: 3.5mm;">
+                            style="
+                                width: 29mm;
+                                margin-top: 10mm;   /* ↓ Bajar un poquito más el logo */
+                            ">
                             <img src="{{ asset('images/logo-tecnobyte.png') }}"
-                                style="width: 20mm; object-fit: contain; margin-bottom: 0.5mm;">
+                                style="
+                                    width: 25mm;       /* ← Más grande (antes 20mm) */
+                                    object-fit: contain;
+                                    margin-bottom: 0.5mm;
+                                ">
                         </div>
 
 
+
                                 {{-- ESPECIFICACIONES CON FORMATO EXACTO Y DINÁMICAS --}}
-                        @php
-                            // ===== CPU =====
-                            $cpuRaw = strtoupper(trim($equipo->procesador_modelo ?? ''));
-                            $textoCpu = $cpuRaw ?: 'I5- 8265U 1.60 GHz';
+                      @php
+                        // ===== CPU =====
+                        $cpuRaw     = strtoupper(trim($equipo->procesador_modelo ?? ''));
+                        $freqManual = strtoupper(trim($equipo->procesador_frecuencia ?? '')); // ← NUEVO
+                        $textoCpu   = 'I5- 8265U 1.60 GHz'; // fallback
 
-                            if ($cpuRaw) {
-                                if (preg_match('/(I[3579]\s*-?\s*\d{3,4}[A-Z]?)/', $cpuRaw, $mCpu)) {
-                                    $segmento = strtoupper(str_replace(' ', '', $mCpu[1])); 
-                                    $segmento = preg_replace('/(I[3579])\-?(\d)/', '$1- $2', $segmento);
+                        $segmento = null;
+                        $freq     = null;
 
-                                    $freq = '';
-                                    if (preg_match('/(\d+(\.\d+)?)\s*GHZ/i', $cpuRaw, $mFreq)) {
-                                        $freq = strtoupper($mFreq[1] . ' GHz');
-                                    }
-
-                                    $textoCpu = trim($segmento . ($freq ? ' ' . $freq : ''));
-                                }
-                            }
-
-                            // ===== DISCO: capacidad + tipo =====
-                            $capacidad = strtoupper(trim($equipo->almacenamiento_principal_capacidad ?? ''));
-                            $tipoAlm   = strtoupper(trim($equipo->almacenamiento_principal_tipo ?? ''));
-                            if ($capacidad && $tipoAlm) {
-                                $textoDisco = "$capacidad $tipoAlm";
-                            } elseif ($capacidad) {
-                                $textoDisco = $capacidad;
+                        if ($cpuRaw) {
+                            // Capturar segmento tipo "I7-8650U"
+                            if (preg_match('/(I[3579]\s*-?\s*\d{3,4}[A-Z]?)/', $cpuRaw, $mCpu)) {
+                                // Normalizar: I7- 8650U
+                                $segmento = strtoupper(str_replace(' ', '', $mCpu[1]));
+                                $segmento = preg_replace('/(I[3579])\-?(\d)/', '$1- $2', $segmento);
                             } else {
-                                $textoDisco = '256 GB M2';
+                                // Si no matchea el patrón, usamos el texto tal cual
+                                $segmento = $cpuRaw;
                             }
 
-                            // ===== RAM: cantidad + RAM + tipo =====
-                            $ramCant = strtoupper(trim($equipo->ram_total ?? ''));
-                            if ($ramCant && !str_contains($ramCant, 'GB')) {
-                                $ramCant .= ' GB';
+                            // Intentar leer GHz DESDE el modelo (por si lo traes ahí)
+                            if (preg_match('/(\d+(\.\d+)?)\s*GHZ/i', $cpuRaw, $mFreq)) {
+                                $freq = strtoupper($mFreq[1] . ' GHz');
                             }
+                        }
 
-                            $ramTipo = strtoupper(trim($equipo->ram_tipo ?? ''));
-                            if ($ramCant && $ramTipo) {
-                                $textoRam = "$ramCant RAM $ramTipo";
-                            } elseif ($ramCant) {
-                                $textoRam = "$ramCant RAM";
-                            } else {
-                                $textoRam = "8 GB RAM DDR3";
-                            }
+                        // Si no encontramos GHz en el modelo, usamos la columna nueva
+                        if (!$freq && $freqManual !== '') {
+                            $freq = $freqManual;  // Ej: "1.90 GHz"
+                        }
 
-                            // ===== SISTEMA OPERATIVO =====
-                            $textoSO = strtoupper($equipo->sistema_operativo ?? 'WINDOWS 10 PRO');
+                        // Construir texto final: EJ "I7- 8650U 1.90 GHz"
+                        if ($segmento) {
+                            $textoCpu = trim($segmento . ($freq ? ' ' . $freq : ''));
+                        }
 
-                            // ===== TOUCH SOLO SI SÍ ES =====
-                            $mostrarTouch = (bool) ($equipo->pantalla_es_touch ?? false);
-                        @endphp
+                        // ===== DISCO: capacidad + tipo =====
+                        $capacidad = strtoupper(trim($equipo->almacenamiento_principal_capacidad ?? ''));
+                        $tipoAlm   = strtoupper(trim($equipo->almacenamiento_principal_tipo ?? ''));
+                        if ($capacidad && $tipoAlm) {
+                            $textoDisco = "$capacidad $tipoAlm";
+                        } elseif ($capacidad) {
+                            $textoDisco = $capacidad;
+                        } else {
+                            $textoDisco = '256 GB M2';
+                        }
+
+                        // ===== RAM: cantidad + RAM + tipo =====
+                        $ramCant = strtoupper(trim($equipo->ram_total ?? ''));
+                        if ($ramCant && !str_contains($ramCant, 'GB')) {
+                            $ramCant .= ' GB';
+                        }
+
+                        $ramTipo = strtoupper(trim($equipo->ram_tipo ?? ''));
+                        if ($ramCant && $ramTipo) {
+                            $textoRam = "$ramCant RAM $ramTipo";
+                        } elseif ($ramCant) {
+                            $textoRam = "$ramCant RAM";
+                        } else {
+                            $textoRam = "8 GB RAM DDR3";
+                        }
+
+                        // ===== SISTEMA OPERATIVO =====
+                        $textoSO = strtoupper($equipo->sistema_operativo ?? 'WINDOWS 10 PRO');
+
+                        // ===== TOUCH SOLO SI SÍ ES =====
+                        $mostrarTouch = (bool) ($equipo->pantalla_es_touch ?? false);
+
+
+                        // ===== GPU DEDICADA =====
+                    $gpuModelo = strtoupper(trim($equipo->grafica_dedicada_modelo ?? ''));
+                    $gpuVRAM   = strtoupper(trim($equipo->grafica_dedicada_vram ?? ''));
+
+                    // Solo mostrar si alguno tiene información
+                    $mostrarGPU = ($gpuModelo !== '' || $gpuVRAM !== '');
+
+                    // Construir texto final GPU (ej: "NVIDIA MX130 2GB")
+                    if ($mostrarGPU) {
+                        if ($gpuModelo && $gpuVRAM) {
+                            $textoGPU = $gpuModelo . ' ' . $gpuVRAM;  
+                        } elseif ($gpuModelo) {
+                            $textoGPU = $gpuModelo;
+                        } else {
+                            $textoGPU = $gpuVRAM; // caso raro pero soportado
+                        }
+                    }
+
+                    @endphp
+
 
 
                         <div
                             class="flex flex-col justify-center text-gray-900 uppercase"
                                 style="
-                                    width: 31.2mm;
+                                    width: 33mm;
                                     height: 22.6mm;
                                     margin-top: 2mm;
                                     margin-left: 2mm;  /* base pequeña */
                                     font-size: 9pt;
                                     line-height: 1.15;
                                     font-family: 'Bahnschrift SemiCondensed', 'Bahnschrift', 'Segoe UI', sans-serif;
-                                    font-weight: 600;
+                                    font-weight: 400;
 
                                     /* DESPLAZAMIENTO REAL A LA DERECHA */
-                                    transform: translateX(11mm);
+                                    transform: translateX(2mm);
                                 "
                         >
 
-                            {{-- 1) CPU --}}
-                            <p>{{ Str::limit($textoCpu, 32) }}</p>
+                        <p>{{ Str::limit($textoCpu, 32) }}</p>
+                        <p>{{ Str::limit($textoDisco, 32) }}</p>
+                        <p>{{ Str::limit($textoRam, 32) }}</p>
+                        <p>{{ Str::limit($textoSO, 32) }}</p>
+                        @if($mostrarGPU)
+                            <p>{{ Str::limit($textoGPU, 32) }}</p>
+                        @endif
 
-                            {{-- 2) DISCO --}}
-                            <p>{{ Str::limit($textoDisco, 32) }}</p>
+                        @if($mostrarTouch)
+                            <p>TOUCH</p>
+                        @endif
 
-                            {{-- 3) RAM --}}
-                            <p>{{ Str::limit($textoRam, 32) }}</p>
-
-                            {{-- 4) SISTEMA OPERATIVO --}}
-                            <p>{{ Str::limit($textoSO, 32) }}</p>
-
-                            {{-- 5) TOUCH SOLO SI APLICA --}}
-                            @if($mostrarTouch)
-                                <p>TOUCH</p>
-                            @endif
                         </div>
 
 
@@ -531,9 +591,15 @@
 
                 {{-- Serial y código --}}
                 <div class="flex flex-col justify-end pb-1">
-                    <p class="text-[9px] font-bold text-gray-900 leading-none">
-                        {{ $smartID }}
-                    </p>
+                    <p class="font-weight: 400 text-gray-900 leading-none"
+                        style="
+                                font-size: 12px;
+                                font-family: 'Century Gothic', 'Gothic', sans-serif;
+                                letter-spacing: 0.5px;
+                        ">
+                            {{ $smartID }}
+                        </p>
+
                     <p class="text-[8px] font-bold text-orange-500 leading-none mt-0.5"
                        style="-webkit-print-color-adjust: exact; print-color-adjust: exact;">
                                 
@@ -541,7 +607,9 @@
                 </div>
 
                 {{-- Código de barras dinámico --}}
-                <div class="flex flex-col items-center w-[45mm]">
+                <div class="flex flex-col items-center"
+                    style="width: 60mm; margin-left: 6mm;">
+
                     <svg class="barcode-target w-full"
                          data-serie="{{ $equipo->numero_serie ?? $equipo->id }}">
                     </svg>
@@ -667,23 +735,24 @@ if (svg) {
         const serie = svg.dataset.serie || '';
 
         // 1) Generar el código igual que antes pero con barras un poco más finas
-        JsBarcode(svg, serie, {
-            format: "CODE128",
-            width: 1,              // antes 1.2 → un poco más delgado
-            height: 20,            // misma altura física
-            displayValue: true,    // texto pegado abajo
-            text: '*' + serie + '*', // texto personalizado entre *
-            fontSize: 9,
-            fontOptions: "bold",
-            textAlign: "center",
-            textMargin: 1,
-            margin: 0
-        });
+JsBarcode(svg, serie, {
+    format: "CODE128",
 
-        // 2) Adelgazar TODO el código de barras horizontalmente
-        //    (sin moverlo de lugar ni cambiar la altura)
-        svg.style.transformOrigin = 'right center';
-        svg.style.transform = 'scaleX(0.7)';  // 0.8 = 80% del ancho; si lo quieres más angosto, baja a 0.7 o 0.6
+    width: 0.6,          
+    height: 15,
+
+    displayValue: true,
+    text: '*' + serie + '*',
+    fontSize: 9,         
+    fontOptions: "bold",
+    textAlign: "center",
+    textMargin: 1,
+    margin: 0
+});
+
+
+
+
 
     } catch (e) {
         console.error(e);
@@ -703,6 +772,22 @@ if (svg) {
         window.print();
     }
 </script>
+
+
+<script>
+    // Auto-ajustar tamaño del título para que siempre quepa en una sola línea
+    document.querySelectorAll('.titulo-equipo').forEach(function (el) {
+        const parentWidth = el.parentElement.clientWidth;
+        let size = parseFloat(window.getComputedStyle(el).fontSize);
+        const minSize = 8; // tamaño mínimo en pt para no verse ridículo
+
+        while (el.scrollWidth > parentWidth && size > minSize) {
+            size -= 0.5;                    // bajar de medio punto en medio punto
+            el.style.fontSize = size + 'pt';
+        }
+    });
+</script>
+
 
 </div>
 

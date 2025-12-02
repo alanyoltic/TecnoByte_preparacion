@@ -35,6 +35,8 @@ class RegistrarEquipo extends Component
     public $procesador_modelo;
     public $procesador_generacion;
     public $procesador_nucleos;
+    public $procesador_frecuencia;
+
 
     public $pantalla_pulgadas;
     public $pantalla_resolucion;
@@ -397,6 +399,8 @@ public function mount()
             'procesador_modelo'      => 'nullable|string|max:255',
             'procesador_generacion'  => 'nullable|string|max:100',
             'procesador_nucleos'     => 'nullable|integer|min:1|max:64',
+            'procesador_frecuencia' => ['nullable', 'string', 'max:20'],
+
 
             // Pantalla
             'pantalla_pulgadas'   => 'nullable|string|max:20',
@@ -642,6 +646,8 @@ public function mount()
             'procesador_modelo'      => $this->procesador_modelo,
             'procesador_generacion'  => $this->procesador_generacion,
             'procesador_nucleos'     => $this->procesador_nucleos,
+            'procesador_frecuencia' => $this->procesador_frecuencia,
+
 
             'pantalla_pulgadas'   => $this->pantalla_pulgadas,
             'pantalla_resolucion' => $this->pantalla_resolucion,
