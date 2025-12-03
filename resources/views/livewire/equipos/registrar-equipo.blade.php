@@ -264,14 +264,14 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
 
     {{-- Modelo CPU --}}
-    <div class="md:col-span-2">
+    <div class="md:col-span-1">
         <label class="block text-sm font-medium mb-1">
             Procesador (modelo)
         </label>
         <input
             type="text"
             wire:model.defer="procesador_modelo"
-            placeholder="Ej. Core i5-8250U"
+            placeholder="Ej. i5-8250U"
             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                    bg-slate-50 dark:bg-slate-900
                    text-sm px-3 py-2
@@ -381,8 +381,7 @@
                         <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                     @enderror
                 </div>
-
-                {{-- RAM soldada --}}
+                                {{-- RAM soldada --}}
                 <div class="flex items-center gap-2">
                     <div>
                         <label class="block text-sm font-medium mb-1">
@@ -401,6 +400,8 @@
                         </div>
                     </div>
                 </div>
+
+
 
                 {{-- Slots / expansión --}}
                 <div>

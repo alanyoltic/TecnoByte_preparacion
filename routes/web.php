@@ -5,7 +5,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\DashboardController;
-use App\Livewire\Equipos\RegistrarEquipo; 
+use App\Livewire\Equipos\RegistrarEquipo;
+use App\Livewire\Inventario\GestionEquipos;
+use App\Livewire\Inventario\EditarEquipo;
 use App\Models\Equipo;
 
 
@@ -158,6 +160,18 @@ Route::middleware(['auth', 'role:ceo,admin'])->group(function () {
 
     Route::patch('usuarios/{user}', [UserController::class, 'update'])
         ->name('users.update');
+
+    // Panel general de inventario (solo para autenticados, luego afinamos roles)
+    Route::get('/inventario/admin', function () {
+        return view('inventario.admin');
+    })->middleware('auth')->name('inventario.admin');
+
+    // Edición individual de un equipo
+    Route::get('/inventario/admin/equipos/{equipo}', function (Equipo $equipo) {
+        return view('inventario.editar-equipo', compact('equipo'));
+    })->middleware('auth')->name('inventario.equipos.editar');
+
+
 });
 
 // ===============================

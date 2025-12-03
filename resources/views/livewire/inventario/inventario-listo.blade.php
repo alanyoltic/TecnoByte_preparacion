@@ -370,31 +370,76 @@
                         </td>
 <td class="px-3 py-3 align-top text-right">
 
-    {{-- 1. LÓGICA PHP (Smart ID) --}}
     @php
+        // 1) SMART ID (igual que antes)
         $iniNom = $usuario ? substr($usuario->nombre, 0, 1) : 'X';
         $iniApe = $usuario ? substr($usuario->apellido_paterno, 0, 1) : 'X';
         $iniciales = strtoupper($iniNom . $iniApe);
-        $fechaSmart = now()->format('dmY'); 
-        $provSmart = isset($proveedor) && $proveedor->abreviacion 
-                     ? $proveedor->abreviacion 
-                     : substr($proveedor->nombre_empresa ?? 'XX', 0, 2);
+        $fechaSmart = now()->format('dmY');
+        $provSmart = isset($proveedor) && $proveedor->abreviacion
+            ? $proveedor->abreviacion
+            : substr($proveedor->nombre_empresa ?? 'XX', 0, 2);
         $smartID = $iniciales . $fechaSmart . strtoupper($provSmart);
+
+        // 2) Rol para ver si puede editar
+        $user = auth()->user();
+        $esAdminCeo = $user && in_array(optional($user->role)->slug, ['admin', 'ceo']);
     @endphp
 
-    {{-- 2. BOTÓN IMPRIMIR --}}
-    <button
-        type="button"
-        onclick="imprimirEtiquetaFinal('{{ $equipo->id }}')"
-        class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-xl
-               bg-blue-600 hover:bg-blue-500 text-white shadow transition-all"
-    >
-        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
-            </path>
-        </svg>
-        Imprimir
+    {{-- MENÚ DE ACCIONES (Imprimir / Editar) --}}
+    <div x-data="{ open: false }" class="relative inline-block text-left z-50">
+
+        <button
+            type="button"
+            @click="open = !open"
+            class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-xl
+                   bg-blue-600 hover:bg-blue-500 text-white shadow transition-all"
+        >
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+            </svg>
+            Acciones
+            <svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd"
+                      d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                      clip-rule="evenodd" />
+            </svg>
+        </button>
+
+        {{-- Dropdown --}}
+        <div
+            x-show="open"
+            x-transition
+            @click.outside="open = false"
+            class="origin-top-right absolute right-0 mt-1 w-40
+                   rounded-xl bg-white dark:bg-slate-900
+                   border border-slate-200/80 dark:border-slate-700/80
+                   shadow-lg shadow-slate-900/20 z-30"
+        >
+            <div class="py-1 text-xs text-slate-700 dark:text-slate-200">
+
+                {{-- Opción: Imprimir ticket --}}
+                <button
+                    type="button"
+                    @click="open = false; imprimirEtiquetaFinal('{{ $equipo->id }}')"
+                    class="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800/80"
+                >
+                    Imprimir ticket
+                </button>
+
+                {{-- Opción: Editar equipo (solo admin / ceo) --}}
+                @if($esAdminCeo)
+                    <a
+                        href="{{ route('inventario.equipos.editar', $equipo->id) }}"
+                        class="block px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800/80"
+                    >
+                        Editar equipo
+                    </a>
+                @endif
+            </div>
+        </div>
+    </div>
     </button>
 
     {{-- 3. ETIQUETA OCULTA (DISEÑO NUEVO TIPO IMAGEN) --}}
@@ -552,32 +597,32 @@
 
 
                         <div
-                            class="flex flex-col justify-center text-gray-900 uppercase"
+                            class=" spec-block flex flex-col justify-center text-gray-900 uppercase"
                                 style="
                                     width: 33mm;
                                     height: 22.6mm;
                                     margin-top: 2mm;
                                     margin-left: 2mm;  /* base pequeña */
-                                    font-size: 9pt;
+                                    font-size: 8pt;
                                     line-height: 1.15;
                                     font-family: 'Bahnschrift SemiCondensed', 'Bahnschrift', 'Segoe UI', sans-serif;
-                                    font-weight: 400;
+                                    font-weight: 300;
 
                                     /* DESPLAZAMIENTO REAL A LA DERECHA */
                                     transform: translateX(2mm);
                                 "
                         >
 
-                        <p>{{ Str::limit($textoCpu, 32) }}</p>
-                        <p>{{ Str::limit($textoDisco, 32) }}</p>
-                        <p>{{ Str::limit($textoRam, 32) }}</p>
-                        <p>{{ Str::limit($textoSO, 32) }}</p>
+                        <p class="spec-line">{{ Str::limit($textoCpu, 32) }}</p>
+                        <p class="spec-line">{{ Str::limit($textoDisco, 32) }}</p>
+                        <p class="spec-line">{{ Str::limit($textoRam, 32) }}</p>
+                        <p class="spec-line">{{ Str::limit($textoSO, 32) }}</p>
                         @if($mostrarGPU)
-                            <p>{{ Str::limit($textoGPU, 32) }}</p>
+                            <p class="spec-line">{{ $textoGPU }}</p>
                         @endif
 
                         @if($mostrarTouch)
-                            <p>TOUCH</p>
+                            <p class="spec-line">TOUCH</p>
                         @endif
 
                         </div>
@@ -728,36 +773,43 @@
         const etiqueta = fuente.firstElementChild.cloneNode(true);
         area.appendChild(etiqueta);
 
+        // Auto-resize de especificaciones
+        const specBlock = area.querySelector('.spec-block');
+        if (specBlock) {
+            autoResizeSpecLines(specBlock);
+        }
+
+
         // Generar el código de barras
-const svg = area.querySelector('.barcode-target');
-if (svg) {
-    try {
-        const serie = svg.dataset.serie || '';
+        const svg = area.querySelector('.barcode-target');
+        if (svg) {
+            try {
+                const serie = svg.dataset.serie || '';
 
-        // 1) Generar el código igual que antes pero con barras un poco más finas
-JsBarcode(svg, serie, {
-    format: "CODE128",
+                // 1) Generar el código igual que antes pero con barras un poco más finas
+        JsBarcode(svg, serie, {
+            format: "CODE128",
 
-    width: 0.6,          
-    height: 15,
+            width: 0.6,          
+            height: 15,
 
-    displayValue: true,
-    text: '*' + serie + '*',
-    fontSize: 9,         
-    fontOptions: "bold",
-    textAlign: "center",
-    textMargin: 1,
-    margin: 0
-});
-
-
+            displayValue: true,
+            text: '*' + serie + '*',
+            fontSize: 9,         
+            fontOptions: "bold",
+            textAlign: "center",
+            textMargin: 1,
+            margin: 0
+        });
 
 
 
-    } catch (e) {
-        console.error(e);
-    }
-}
+
+
+            } catch (e) {
+                console.error(e);
+            }
+        }
 
 
 
@@ -786,7 +838,28 @@ JsBarcode(svg, serie, {
             el.style.fontSize = size + 'pt';
         }
     });
+
+
+
+
+    function autoResizeSpecLines(container) {
+    const lines = container.querySelectorAll('.spec-line');
+
+    lines.forEach(line => {
+        let size = 9;  // tamaño base que usas
+        line.style.fontSize = size + "pt";
+
+        // Si el texto está muy largo, reduce font-size poco a poco
+        while (line.scrollWidth > container.clientWidth && size > 7) {
+            size -= 0.3;
+            line.style.fontSize = size + "pt";
+        }
+    });
+}
+
 </script>
+
+
 
 
 </div>

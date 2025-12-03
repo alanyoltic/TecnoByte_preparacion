@@ -210,70 +210,89 @@
 
 
 {{-- ===================== INVENTARIO ===================== --}}
-    <x-dropdown
-        align="right"
-        width="64"
-        contentClasses="py-2 bg-white/90 dark:bg-slate-900/95
-                        border border-slate-200/70 dark:border-slate-700/70
-                        rounded-2xl shadow-[0_18px_45px_rgba(15,23,42,0.65)]
-                        backdrop-blur-xl"
-    >
-<x-slot name="trigger">
-    <div class="w-full mt-2 px-3">
-        <button
-            class="{{ $linkBase }} {{ $isInventario
-                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                   text-white font-semibold
-                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
-                   border-blue-400/70
-                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
-                : 'bg-white/10 dark:bg-slate-900/20
-                    text-slate-700 dark:text-slate-400
-                    hover:bg-white/20 dark:hover:bg-slate-900/30
-                    hover:text-slate-900 dark:hover:text-white' }}"
-            :class="sidebarOpen ? 'justify-start' : 'justify-center'"
-            title="Inventario"
-        >
-            <div class="flex items-center justify-center w-7 h-7">
-                <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M3 7l9-4 9 4-9 4-9-4z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M3 7v10l9 4 9-4V7" />
-                </svg>
-            </div>
+@php
+    $esAdminCeo = in_array(optional(auth()->user()->role)->slug, ['admin', 'ceo']);
+@endphp
 
-            <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>
-                Inventario
-            </span>
-
-            <svg class="w-4 h-4 ml-auto
-                        text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400
-                        transition-colors duration-200"
-                 fill="currentColor" viewBox="0 0 20 20"
-                 x-show="sidebarOpen" x-transition>
-                <path fill-rule="evenodd"
-                      d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                      clip-rule="evenodd" />
-            </svg>
-        </button>
-    </div>
-</x-slot>
-
-
-        <x-slot name="content">
-            <x-dropdown-link
-                :href="route('inventario.listo')"
-                class="flex items-center gap-2 px-4 py-2 text-[0.80rem]
-                    text-slate-700 dark:text-slate-200
-                    hover:bg-slate-100/90 dark:hover:bg-slate-800/80
-                    hover:text-slate-900 dark:hover:text-white
-                    transition-colors duration-150"
+<x-dropdown
+    align="right"
+    width="64"
+    contentClasses="py-2 bg-white/90 dark:bg-slate-900/95
+                    border border-slate-200/70 dark:border-slate-700/70
+                    rounded-2xl shadow-[0_18px_45px_rgba(15,23,42,0.65)]
+                    backdrop-blur-xl"
+>
+    <x-slot name="trigger">
+        <div class="w-full mt-2 px-3">
+            <button
+                class="{{ $linkBase }} {{ $isInventario
+                    ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                       text-white font-semibold
+                       drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                       border-blue-400/70
+                       shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                    : 'bg-white/10 dark:bg-slate-900/20
+                        text-slate-700 dark:text-slate-400
+                        hover:bg-white/20 dark:hover:bg-slate-900/30
+                        hover:text-slate-900 dark:hover:text-white' }}"
+                :class="sidebarOpen ? 'justify-start' : 'justify-center'"
+                title="Inventario"
             >
-                Inventario listo
+                <div class="flex items-center justify-center w-7 h-7">
+                    <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M3 7l9-4 9 4-9 4-9-4z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M3 7v10l9 4 9-4V7" />
+                    </svg>
+                </div>
+
+                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>
+                    Inventario
+                </span>
+
+                <svg class="w-4 h-4 ml-auto
+                            text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400
+                            transition-colors duration-200"
+                    fill="currentColor" viewBox="0 0 20 20"
+                    x-show="sidebarOpen" x-transition>
+                    <path fill-rule="evenodd"
+                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                        clip-rule="evenodd" />
+                </svg>
+            </button>
+        </div>
+    </x-slot>
+
+    <x-slot name="content">
+        {{-- Vista normal: inventario listo (para todos los que tengan permiso a esa ruta) --}}
+        <x-dropdown-link
+            :href="route('inventario.listo')"
+            class="flex items-center gap-2 px-4 py-2 text-[0.80rem]
+                   text-slate-700 dark:text-slate-200
+                   hover:bg-slate-100/90 dark:hover:bg-slate-800/80
+                   hover:text-slate-900 dark:hover:text-white
+                   transition-colors duration-150"
+        >
+            Inventario listo
+        </x-dropdown-link>
+
+        {{-- Panel solo para CEO / Admin --}}
+        @if($esAdminCeo)
+            <x-dropdown-link
+                :href="route('inventario.admin')"
+                class="flex items-center gap-2 px-4 py-2 text-[0.80rem]
+                       text-slate-700 dark:text-slate-200
+                       hover:bg-slate-100/90 dark:hover:bg-slate-800/80
+                       hover:text-slate-900 dark:hover:text-white
+                       transition-colors duration-150"
+            >
+                Editar inventario
             </x-dropdown-link>
-        </x-slot>
-    </x-dropdown>
+        @endif
+    </x-slot>
+</x-dropdown>
+
 
     @endif
 
