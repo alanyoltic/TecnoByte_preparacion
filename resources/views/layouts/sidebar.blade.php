@@ -265,7 +265,8 @@
     </x-slot>
 
     <x-slot name="content">
-        {{-- Vista normal: inventario listo (para todos los que tengan permiso a esa ruta) --}}
+
+        {{-- Vista para todos --}}
         <x-dropdown-link
             :href="route('inventario.listo')"
             class="flex items-center gap-2 px-4 py-2 text-[0.80rem]
@@ -277,21 +278,25 @@
             Inventario listo
         </x-dropdown-link>
 
-        {{-- Panel solo para CEO / Admin --}}
-        @if($esAdminCeo)
+        {{-- ===================== NUEVO: Gestión de Inventario (SOLO ADMIN/CEO) ===================== --}}
+        @if ($esAdminCeo)
             <x-dropdown-link
-                :href="route('inventario.admin')"
+                :href="route('inventario.gestion')"
                 class="flex items-center gap-2 px-4 py-2 text-[0.80rem]
                        text-slate-700 dark:text-slate-200
-                       hover:bg-slate-100/90 dark:hover:bg-slate-800/80
-                       hover:text-slate-900 dark:hover:text-white
+                       hover:bg-indigo-100/80 dark:hover:bg-slate-800/80
+                       hover:text-indigo-700 dark:hover:text-indigo-300
+                       border-l-4 border-transparent hover:border-indigo-500
                        transition-colors duration-150"
             >
-                Editar inventario
+                Gestión de inventario
             </x-dropdown-link>
         @endif
+
     </x-slot>
+
 </x-dropdown>
+
 
 
     @endif

@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Livewire\Equipos\RegistrarEquipo;
 use App\Livewire\Inventario\GestionEquipos;
 use App\Livewire\Inventario\EditarEquipo;
+use App\Livewire\Inventario\EditarInventario;
 use App\Models\Equipo;
 
 
@@ -143,7 +144,7 @@ Route::middleware('auth')->group(function () {
 // RUTAS SOLO CEO / ADMIN
 // ===============================
 
-Route::middleware(['auth', 'role:ceo,admin'])->group(function () {
+Route::middleware(['auth', 'onlyAdminCeo'])->group(function ()  {
 
     // Registro de nuevos usuarios (solo CEO/Admin)
     Route::get('register', [RegisteredUserController::class, 'create'])
@@ -161,21 +162,20 @@ Route::middleware(['auth', 'role:ceo,admin'])->group(function () {
     Route::patch('usuarios/{user}', [UserController::class, 'update'])
         ->name('users.update');
 
-    // Panel general de inventario (solo para autenticados, luego afinamos roles)
-    Route::get('/inventario/admin', function () {
-        return view('inventario.admin');
-    })->middleware('auth')->name('inventario.admin');
+
 
     // Edición individual de un equipo
     Route::get('/inventario/admin/equipos/{equipo}', function (Equipo $equipo) {
         return view('inventario.editar-equipo', compact('equipo'));
     })->middleware('auth')->name('inventario.equipos.editar');
 
+    Route::get('/inventario/admin/gestion', function () {
+            return view('inventario.gestion-inventario');
+        })->name('inventario.gestion');
+
 
 });
 
-// ===============================
-// AUTH POR DEFECTO (LOGIN, LOGOUT, ETC.)
-// ===============================
+
 
 require __DIR__.'/auth.php';

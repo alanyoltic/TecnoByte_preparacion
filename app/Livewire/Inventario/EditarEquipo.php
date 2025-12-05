@@ -4,92 +4,279 @@ namespace App\Livewire\Inventario;
 
 use Livewire\Component;
 use App\Models\Equipo;
+use App\Models\Lote;
+use App\Models\Proveedor;
+use App\Models\LoteModeloRecibido;
 
 class EditarEquipo extends Component
 {
     public Equipo $equipo;
 
-    // Campos editables (puedes ir agregando más según tu tabla)
+    // Catálogos (por si los sigues usando en la vista)
+    public $lotes = [];
+    public $proveedores = [];
+    public $lotesTerminadosIds = [];
+    public $modelosLote = [];
+
+    // ===== CAMPOS BÁSICOS =====
+    public $lote_id;          // solo para que la vista no truene (aunque BD usa lote_modelo_id)
+    public $proveedor_id;
+    public $numero_serie;
     public $marca;
     public $modelo;
+    public $lote_modelo_id;
     public $tipo_equipo;
-    public $numero_serie;
+    public $sistema_operativo;
+    public $area_tienda;
 
+    // ===== PROCESADOR / RAM =====
     public $procesador_modelo;
     public $procesador_frecuencia;
     public $procesador_generacion;
+    public $procesador_nucleos;
 
     public $ram_total;
     public $ram_tipo;
+    public $ram_es_soldada = false;
+    public $ram_slots_totales;
+    public $ram_expansion_max;
 
+    // ===== PANTALLA =====
+    public $pantalla_pulgadas;
+    public $pantalla_resolucion;
+    public $pantalla_tipo;
+    public $pantalla_es_touch = false;
+
+    // ===== ALMACENAMIENTO =====
     public $almacenamiento_principal_capacidad;
     public $almacenamiento_principal_tipo;
+    public $almacenamiento_secundario_capacidad;
+    public $almacenamiento_secundario_tipo;
 
-    public $sistema_operativo;
-    public $pantalla_es_touch;
-
+    // ===== GRÁFICOS =====
+    public $grafica_integrada_modelo;
     public $grafica_dedicada_modelo;
     public $grafica_dedicada_vram;
 
+    // ===== BATERÍA / OTROS =====
+    public $bateria_salud_percent;
+    public $bateria_cantidad;
+    public $teclado_idioma;
     public $estatus_general;
-    public $grado;
+    public $notas_generales;
+
+    // ===== ARRAYS UI: PUERTOS / LECTORES (LOS QUE USAS EN LA VISTA) =====
+    public $puertos_usb = [];   // mapeado a puertos_usb_2, puertos_usb_30, etc
+    public $puertos_video = []; // mapeado a puertos_hdmi, vga, etc
+    public $lectores = [];      // mapeado a lectores_sd, sc, esata, sim
 
     public function mount(Equipo $equipo)
     {
         $this->equipo = $equipo;
 
-        // Llenamos el formulario con lo que ya tiene el equipo
-        $this->marca      = $equipo->marca;
-        $this->modelo     = $equipo->modelo;
-        $this->tipo_equipo = $equipo->tipo_equipo;
-        $this->numero_serie = $equipo->numero_serie;
+        // Catálogos básicos (aunque solo uses parte en la vista)
+        $this->lotes       = Lote::orderBy('fecha_llegada', 'desc')->get();
+        $this->proveedores = Proveedor::orderBy('nombre_empresa')->get();
+        $this->lotesTerminadosIds = [];
+        $this->modelosLote = [];
 
-        $this->procesador_modelo      = $equipo->procesador_modelo;
-        $this->procesador_frecuencia  = $equipo->procesador_frecuencia;
-        $this->procesador_generacion  = $equipo->procesador_generacion;
+        // ====== CARGAR DATOS DEL EQUIPO ======
 
-        $this->ram_total = $equipo->ram_total;
-        $this->ram_tipo  = $equipo->ram_tipo;
+        // Básicos
+        $this->lote_id        = null; // tu tabla no tiene lote_id, solo lote_modelo_id
+        $this->proveedor_id   = $equipo->proveedor_id ?? null;
+        $this->numero_serie   = $equipo->numero_serie;
+        $this->marca          = $equipo->marca;
+        $this->modelo         = $equipo->modelo;
+        $this->lote_modelo_id = $equipo->lote_modelo_id ?? null;
+        $this->tipo_equipo    = $equipo->tipo_equipo;
+        $this->sistema_operativo = $equipo->sistema_operativo;
+        $this->area_tienda    = $equipo->area_tienda;
 
-        $this->almacenamiento_principal_capacidad = $equipo->almacenamiento_principal_capacidad;
-        $this->almacenamiento_principal_tipo      = $equipo->almacenamiento_principal_tipo;
+        // Procesador / RAM
+        $this->procesador_modelo     = $equipo->procesador_modelo;
+        $this->procesador_frecuencia = $equipo->procesador_frecuencia;
+        $this->procesador_generacion = $equipo->procesador_generacion;
+        $this->procesador_nucleos    = $equipo->procesador_nucleos;
 
-        $this->sistema_operativo   = $equipo->sistema_operativo;
+        $this->ram_total         = $equipo->ram_total;
+        $this->ram_tipo          = $equipo->ram_tipo;
+        $this->ram_es_soldada    = (bool) $equipo->ram_es_soldada;
+        $this->ram_slots_totales = $equipo->ram_slots_totales;
+        $this->ram_expansion_max = $equipo->ram_expansion_max;
+
+        // Pantalla
+        $this->pantalla_pulgadas   = $equipo->pantalla_pulgadas;
+        $this->pantalla_resolucion = $equipo->pantalla_resolucion;
+        $this->pantalla_tipo       = $equipo->pantalla_tipo;
         $this->pantalla_es_touch   = (bool) $equipo->pantalla_es_touch;
 
-        $this->grafica_dedicada_modelo = $equipo->grafica_dedicada_modelo;
-        $this->grafica_dedicada_vram   = $equipo->grafica_dedicada_vram;
+        // Almacenamiento
+        $this->almacenamiento_principal_capacidad  = $equipo->almacenamiento_principal_capacidad;
+        $this->almacenamiento_principal_tipo       = $equipo->almacenamiento_principal_tipo;
+        $this->almacenamiento_secundario_capacidad = $equipo->almacenamiento_secundario_capacidad;
+        $this->almacenamiento_secundario_tipo      = $equipo->almacenamiento_secundario_tipo;
 
-        $this->estatus_general = $equipo->estatus_general;
-        $this->grado           = $equipo->grado;
+        // Gráficos
+        $this->grafica_integrada_modelo = $equipo->grafica_integrada_modelo;
+        $this->grafica_dedicada_modelo  = $equipo->grafica_dedicada_modelo;
+        $this->grafica_dedicada_vram    = $equipo->grafica_dedicada_vram;
+
+        // Batería / otros
+        $this->bateria_salud_percent = $equipo->bateria_salud_percent;
+        $this->bateria_cantidad      = $equipo->bateria_cantidad;
+        $this->teclado_idioma        = $equipo->teclado_idioma;
+        $this->estatus_general       = $equipo->estatus_general;
+        $this->notas_generales       = $equipo->notas_generales;
+
+        // ====== MAPEAR BD → ARRAYS PARA LA UI (USB / VIDEO / LECTORES) ======
+
+        // --- Puertos USB ---
+        $this->puertos_usb = [];
+
+        if ($equipo->puertos_usb_2) {
+            $this->puertos_usb[] = [
+                'tipo'     => 'USB 2.0',
+                'cantidad' => (int) $equipo->puertos_usb_2,
+            ];
+        }
+        if ($equipo->puertos_usb_30) {
+            $this->puertos_usb[] = [
+                'tipo'     => 'USB 3.0',
+                'cantidad' => (int) $equipo->puertos_usb_30,
+            ];
+        }
+        if ($equipo->puertos_usb_31) {
+            $this->puertos_usb[] = [
+                'tipo'     => 'USB 3.1',
+                'cantidad' => (int) $equipo->puertos_usb_31,
+            ];
+        }
+        if ($equipo->puertos_usb_32) {
+            $this->puertos_usb[] = [
+                'tipo'     => 'USB 3.2',
+                'cantidad' => (int) $equipo->puertos_usb_32,
+            ];
+        }
+        if ($equipo->puertos_usb_c) {
+            $this->puertos_usb[] = [
+                'tipo'     => 'USB-C',
+                'cantidad' => (int) $equipo->puertos_usb_c,
+            ];
+        }
+
+        // --- Puertos de video ---
+        $this->puertos_video = [];
+
+        if ($equipo->puertos_hdmi) {
+            $this->puertos_video[] = [
+                'tipo'     => 'HDMI',
+                'cantidad' => (int) $equipo->puertos_hdmi,
+            ];
+        }
+        if ($equipo->puertos_mini_hdmi) {
+            $this->puertos_video[] = [
+                'tipo'     => 'Mini HDMI',
+                'cantidad' => (int) $equipo->puertos_mini_hdmi,
+            ];
+        }
+        if ($equipo->puertos_vga) {
+            $this->puertos_video[] = [
+                'tipo'     => 'VGA',
+                'cantidad' => (int) $equipo->puertos_vga,
+            ];
+        }
+        if ($equipo->puertos_dvi) {
+            $this->puertos_video[] = [
+                'tipo'     => 'DVI',
+                'cantidad' => (int) $equipo->puertos_dvi,
+            ];
+        }
+        if ($equipo->puertos_displayport) {
+            $this->puertos_video[] = [
+                'tipo'     => 'DisplayPort',
+                'cantidad' => (int) $equipo->puertos_displayport,
+            ];
+        }
+        if ($equipo->puertos_mini_dp) {
+            $this->puertos_video[] = [
+                'tipo'     => 'Mini DisplayPort',
+                'cantidad' => (int) $equipo->puertos_mini_dp,
+            ];
+        }
+
+        // --- Lectores / ranuras ---
+        $this->lectores = [];
+
+        if ($equipo->lectores_sd) {
+            $this->lectores[] = [
+                'tipo'    => 'SD',
+                'detalle' => $equipo->lectores_sd,
+            ];
+        }
+        if ($equipo->lectores_sc) {
+            $this->lectores[] = [
+                'tipo'    => 'SmartCard',
+                'detalle' => $equipo->lectores_sc,
+            ];
+        }
+        if ($equipo->lectores_esata) {
+            $this->lectores[] = [
+                'tipo'    => 'eSATA',
+                'detalle' => $equipo->lectores_esata,
+            ];
+        }
+        if ($equipo->lectores_sim) {
+            $this->lectores[] = [
+                'tipo'    => 'SIM',
+                'detalle' => $equipo->lectores_sim,
+            ];
+        }
     }
 
     protected function rules()
     {
         return [
-            'marca'       => 'nullable|string|max:100',
-            'modelo'      => 'nullable|string|max:150',
-            'tipo_equipo' => 'nullable|string|max:100',
-            'numero_serie'=> 'nullable|string|max:100',
+            'numero_serie' => 'nullable|string|max:255',
+            'marca'        => 'nullable|string|max:100',
+            'modelo'       => 'nullable|string|max:255',
+            'tipo_equipo'  => 'nullable|string|max:100',
 
-            'procesador_modelo'     => 'nullable|string|max:150',
-            'procesador_frecuencia' => 'nullable|string|max:50',
-            'procesador_generacion' => 'nullable|string|max:50',
+            'procesador_modelo'     => 'nullable|string|max:255',
+            'procesador_frecuencia' => 'nullable|string|max:20',
+            'procesador_generacion' => 'nullable|string|max:100',
+            'procesador_nucleos'    => 'nullable|integer',
 
-            'ram_total' => 'nullable|string|max:50',
-            'ram_tipo'  => 'nullable|string|max:50',
+            'ram_total'         => 'nullable|string|max:50',
+            'ram_tipo'          => 'nullable|string|max:50',
+            'ram_es_soldada'    => 'boolean',
+            'ram_slots_totales' => 'nullable|string|max:100',
+            'ram_expansion_max' => 'nullable|string|max:100',
 
-            'almacenamiento_principal_capacidad' => 'nullable|string|max:50',
-            'almacenamiento_principal_tipo'      => 'nullable|string|max:50',
+            'pantalla_pulgadas'   => 'nullable|string|max:20',
+            'pantalla_resolucion' => 'nullable|string|max:50',
+            'pantalla_tipo'       => 'nullable|string|max:100',
+            'pantalla_es_touch'   => 'boolean',
 
-            'sistema_operativo' => 'nullable|string|max:100',
-            'pantalla_es_touch' => 'nullable|boolean',
+            'almacenamiento_principal_capacidad'  => 'nullable|string|max:50',
+            'almacenamiento_principal_tipo'       => 'nullable|string|max:50',
+            'almacenamiento_secundario_capacidad' => 'nullable|string|max:50',
+            'almacenamiento_secundario_tipo'      => 'nullable|string|max:50',
 
-            'grafica_dedicada_modelo' => 'nullable|string|max:150',
-            'grafica_dedicada_vram'   => 'nullable|string|max:50',
+            'grafica_integrada_modelo' => 'nullable|string|max:255',
+            'grafica_dedicada_modelo'  => 'nullable|string|max:255',
+            'grafica_dedicada_vram'    => 'nullable|string|max:50',
 
-            'estatus_general' => 'nullable|string|max:100',
-            'grado'           => 'nullable|string|max:50',
+            'bateria_salud_percent' => 'nullable|integer|min:0|max:100',
+            'bateria_cantidad'      => 'nullable|string|max:100',
+            'teclado_idioma'        => 'nullable|string|max:50',
+            'estatus_general'       => 'nullable|string|max:100',
+            'notas_generales'       => 'nullable|string',
+
+            // arrays de la UI (no obligatorios)
+            'puertos_usb'   => 'array',
+            'puertos_video' => 'array',
+            'lectores'      => 'array',
         ];
     }
 
@@ -97,37 +284,216 @@ class EditarEquipo extends Component
     {
         $this->validate();
 
+        // ====== MAPEAR ARRAYS DE LA UI → CAMPOS REALES DE BD ======
+
+        // --- USB ---
+        $usb2 = $usb30 = $usb31 = $usb32 = $usbC = null;
+
+        foreach ($this->puertos_usb ?? [] as $puerto) {
+            $tipo = $puerto['tipo'] ?? null;
+            $cant = isset($puerto['cantidad']) ? (int) $puerto['cantidad'] : 0;
+
+            if (!$tipo || $cant <= 0) {
+                continue;
+            }
+
+            switch ($tipo) {
+                case 'USB 2.0':
+                    $usb2 = ($usb2 ?? 0) + $cant;
+                    break;
+                case 'USB 3.0':
+                    $usb30 = ($usb30 ?? 0) + $cant;
+                    break;
+                case 'USB 3.1':
+                    $usb31 = ($usb31 ?? 0) + $cant;
+                    break;
+                case 'USB 3.2':
+                    $usb32 = ($usb32 ?? 0) + $cant;
+                    break;
+                case 'USB-C':
+                    $usbC = ($usbC ?? 0) + $cant;
+                    break;
+            }
+        }
+
+        // --- Video ---
+        $hdmi = $miniHdmi = $vga = $dvi = $dp = $miniDp = null;
+
+        foreach ($this->puertos_video ?? [] as $p) {
+            $tipo = $p['tipo'] ?? null;
+            $cant = isset($p['cantidad']) ? (int) $p['cantidad'] : 0;
+
+            if (!$tipo || $cant <= 0) {
+                continue;
+            }
+
+            switch ($tipo) {
+                case 'HDMI':
+                    $hdmi = ($hdmi ?? 0) + $cant;
+                    break;
+                case 'Mini HDMI':
+                    $miniHdmi = ($miniHdmi ?? 0) + $cant;
+                    break;
+                case 'VGA':
+                    $vga = ($vga ?? 0) + $cant;
+                    break;
+                case 'DVI':
+                    $dvi = ($dvi ?? 0) + $cant;
+                    break;
+                case 'DisplayPort':
+                    $dp = ($dp ?? 0) + $cant;
+                    break;
+                case 'Mini DisplayPort':
+                    $miniDp = ($miniDp ?? 0) + $cant;
+                    break;
+            }
+        }
+
+        // --- Lectores ---
+        $lecSd = $lecSc = $lecEsata = $lecSim = null;
+
+        foreach ($this->lectores ?? [] as $lec) {
+            $tipo    = $lec['tipo'] ?? null;
+            $detalle = trim($lec['detalle'] ?? '');
+
+            if (!$tipo || $detalle === '') {
+                continue;
+            }
+
+            switch ($tipo) {
+                case 'SD':
+                    $lecSd = $detalle;
+                    break;
+                case 'microSD':
+                    $lecSd = $lecSd ? ($lecSd . ' | ' . $detalle) : $detalle;
+                    break;
+                case 'SmartCard':
+                    $lecSc = $detalle;
+                    break;
+                case 'eSATA':
+                    $lecEsata = $detalle;
+                    break;
+                case 'SIM':
+                    $lecSim = $detalle;
+                    break;
+                case 'Otro':
+                    // lo acumulamos en SD por no tener otro campo
+                    $lecSd = $lecSd ? ($lecSd . ' | ' . $detalle) : $detalle;
+                    break;
+            }
+        }
+
+        // ====== UPDATE A LA BD (SOLO CAMPOS QUE EXISTEN) ======
+
         $this->equipo->update([
-            'marca'       => $this->marca,
-            'modelo'      => $this->modelo,
-            'tipo_equipo' => $this->tipo_equipo,
-            'numero_serie'=> $this->numero_serie,
+            'numero_serie'   => $this->numero_serie,
+            'marca'          => $this->marca,
+            'modelo'         => $this->modelo,
+            'lote_modelo_id' => $this->lote_modelo_id, // no lo editas desde la vista, pero lo dejamos por si acaso
+            'proveedor_id'   => $this->proveedor_id,
+            'tipo_equipo'    => $this->tipo_equipo,
+            'sistema_operativo' => $this->sistema_operativo,
+            'area_tienda'    => $this->area_tienda,
 
             'procesador_modelo'     => $this->procesador_modelo,
             'procesador_frecuencia' => $this->procesador_frecuencia,
             'procesador_generacion' => $this->procesador_generacion,
+            'procesador_nucleos'    => $this->procesador_nucleos,
 
-            'ram_total' => $this->ram_total,
-            'ram_tipo'  => $this->ram_tipo,
+            'ram_total'         => $this->ram_total,
+            'ram_tipo'          => $this->ram_tipo,
+            'ram_es_soldada'    => $this->ram_es_soldada ? 1 : 0,
+            'ram_slots_totales' => $this->ram_slots_totales,
+            'ram_expansion_max' => $this->ram_expansion_max,
 
-            'almacenamiento_principal_capacidad' => $this->almacenamiento_principal_capacidad,
-            'almacenamiento_principal_tipo'      => $this->almacenamiento_principal_tipo,
+            'pantalla_pulgadas'   => $this->pantalla_pulgadas,
+            'pantalla_resolucion' => $this->pantalla_resolucion,
+            'pantalla_tipo'       => $this->pantalla_tipo,
+            'pantalla_es_touch'   => $this->pantalla_es_touch ? 1 : 0,
 
-            'sistema_operativo' => $this->sistema_operativo,
-            'pantalla_es_touch' => $this->pantalla_es_touch ? 1 : 0,
+            'almacenamiento_principal_capacidad'  => $this->almacenamiento_principal_capacidad,
+            'almacenamiento_principal_tipo'       => $this->almacenamiento_principal_tipo,
+            'almacenamiento_secundario_capacidad' => $this->almacenamiento_secundario_capacidad,
+            'almacenamiento_secundario_tipo'      => $this->almacenamiento_secundario_tipo,
 
-            'grafica_dedicada_modelo' => $this->grafica_dedicada_modelo,
-            'grafica_dedicada_vram'   => $this->grafica_dedicada_vram,
+            'grafica_integrada_modelo' => $this->grafica_integrada_modelo,
+            'grafica_dedicada_modelo'  => $this->grafica_dedicada_modelo,
+            'grafica_dedicada_vram'    => $this->grafica_dedicada_vram,
 
-            'estatus_general' => $this->estatus_general,
-            'grado'           => $this->grado,
+            'bateria_salud_percent' => $this->bateria_salud_percent,
+            'bateria_cantidad'      => $this->bateria_cantidad,
+            'teclado_idioma'        => $this->teclado_idioma,
+            'estatus_general'       => $this->estatus_general,
+            'notas_generales'       => $this->notas_generales,
+
+            // Mapeo puertos USB
+            'puertos_usb_2'   => $usb2,
+            'puertos_usb_30'  => $usb30,
+            'puertos_usb_31'  => $usb31,
+            'puertos_usb_32'  => $usb32,
+            'puertos_usb_c'   => $usbC,
+
+            // Mapeo video
+            'puertos_hdmi'        => $hdmi,
+            'puertos_mini_hdmi'   => $miniHdmi,
+            'puertos_vga'         => $vga,
+            'puertos_dvi'         => $dvi,
+            'puertos_displayport' => $dp,
+            'puertos_mini_dp'     => $miniDp,
+
+            // Mapeo lectores
+            'lectores_sd'    => $lecSd,
+            'lectores_sc'    => $lecSc,
+            'lectores_esata' => $lecEsata,
+            'lectores_sim'   => $lecSim,
         ]);
 
-        session()->flash('status', 'Equipo actualizado correctamente.');
+    session()->flash('toast', [
+        'title'   => 'Equipo actualizado correctamente',
+        'message' => 'Los cambios del equipo se guardaron ',
+    ]);
+
+    return redirect()->route('inventario.listo');
+    }
+
+    // Botones + / ✕ de tu vista
+    public function addPuertoUsb()
+    {
+        $this->puertos_usb[] = ['tipo' => '', 'cantidad' => 1];
+    }
+
+    public function removePuertoUsb($index)
+    {
+        unset($this->puertos_usb[$index]);
+        $this->puertos_usb = array_values($this->puertos_usb);
+    }
+
+    public function addPuertoVideo()
+    {
+        $this->puertos_video[] = ['tipo' => '', 'cantidad' => 1];
+    }
+
+    public function removePuertoVideo($index)
+    {
+        unset($this->puertos_video[$index]);
+        $this->puertos_video = array_values($this->puertos_video);
+    }
+
+    public function addLector()
+    {
+        $this->lectores[] = ['tipo' => '', 'detalle' => ''];
+    }
+
+    public function removeLector($index)
+    {
+        unset($this->lectores[$index]);
+        $this->lectores = array_values($this->lectores);
     }
 
     public function render()
     {
         return view('livewire.inventario.editar-equipo');
     }
+
+    
 }

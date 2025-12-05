@@ -1,4 +1,13 @@
-<div class="space-y-6">
+<div class="space-y-6 relative">
+
+   
+    <x-toast />
+    
+
+
+
+
+
 
     {{-- FILA SUPERIOR: RESUMEN + BUSCADOR --}}
     <div class="flex flex-col lg:flex-row gap-6">

@@ -49,4 +49,40 @@ class User extends Authenticatable implements MustVerifyEmail
 
         return $this->belongsTo(Roles::class, 'role_id');
     }
+
+
+    public function isAdminCeo()
+    {
+        return in_array($this->role?->slug, ['admin', 'ceo']);
+    }
+
+
+        public function getNombreInicialAttribute()
+    {
+        $nombre = $this->nombre ?? '';
+        $apellido = $this->apellido_paterno ?? '';
+
+        $inicial = $apellido ? strtoupper(mb_substr($apellido, 0, 1)) . '.' : '';
+
+        return trim("$nombre $inicial");
+    }
+
+    public function setNombreAttribute($value)
+{
+    $this->attributes['nombre'] = ucwords(mb_strtolower($value));
+}
+
+public function setApellidoPaternoAttribute($value)
+{
+    $this->attributes['apellido_paterno'] = ucwords(mb_strtolower($value));
+}
+
+public function setApellidoMaternoAttribute($value)
+{
+    $this->attributes['apellido_materno'] = ucwords(mb_strtolower($value));
+}
+
+
+
+
 }

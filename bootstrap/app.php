@@ -2,7 +2,7 @@
 
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
-use Illuminate\Foundation\Configuration\Middleware; // Asegúrate de que esto esté importado
+use Illuminate\Foundation\Configuration\Middleware; 
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -11,13 +11,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        
-        // Esta es la única modificación que debe tener este archivo
         $middleware->alias([
-            'role' => \App\Http\Middleware\CheckRole::class,
+            'role'         => \App\Http\Middleware\CheckRole::class,
+            'onlyAdminCeo' => \App\Http\Middleware\OnlyAdminCeo::class,
         ]);
-        
     })
+
     ->withExceptions(function (Exceptions $exceptions) {
-        // ...
+        
     })->create();

@@ -43,4 +43,11 @@ class Equipo extends Model
     {
         return $this->belongsTo(LoteModeloRecibido::class, 'lote_modelo_id');
     }
+
+    protected $casts = [
+    'puertos_usb'   => 'array',
+    'puertos_video' => 'array',
+    'lectores'      => 'array',
+];
+
 }
