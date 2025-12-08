@@ -1,5 +1,10 @@
 <x-app-layout>
 
+@php
+    $isAdminOrCeo = in_array(optional(auth()->user()->role)->slug, ['admin', 'ceo']);
+@endphp
+
+
     {{-- FONDO ESTILO LOGIN + CONTENIDO DASHBOARD --}}
     <div
         class="relative min-h-screen overflow-hidden
@@ -249,7 +254,11 @@
                         >
                             <div class="flex items-center justify-between mb-2">
                                 <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
+                                        @if($isTecnico)
+                                    Comparativa de tu producción
+                                @else
                                     Producción por Técnico
+                                @endif
                                 </h3>
                                 <span class="text-xs text-slate-500 dark:text-slate-400">
                                     Distribución de equipos
@@ -345,6 +354,7 @@
             const lineData    = @json($lineChart);
             const tecnicoData = @json($tecnicoChart);
             const radialData  = @json($radialPercent);
+            const isTecnico   = @json($isTecnico);
 
             const chartBase = {
                 animations: {
@@ -432,65 +442,70 @@
             };
 
             const getBarOptions = (t) => {
-                const mainColor = t.isDark ? "#1D1B5F" : "#2563EB";
-                const gradientTo = t.isDark ? "#4F46E5" : "#3B82F6";
-                return {
-                    series: [{
-                        name: "Equipos Registrados",
-                        data: tecnicoData.data
-                    }],
-                    chart: {
-                        ...chartBase,
-                        type: "bar",
-                        height: 260
-                    },
-                    theme: { mode: t.mode },
-                    grid: {
-                        borderColor: t.grid,
-                        strokeDashArray: 3
-                    },
-                    plotOptions: {
-                        bar: {
-                            columnWidth: "45%",
-                            borderRadius: 8
-                        }
-                    },
-                    dataLabels: { enabled: false },
-                    colors: [mainColor],
-                    fill: {
-                        type: "gradient",
-                        gradient: {
-                            shade: t.isDark ? "dark" : "light",
-                            type: "vertical",
-                            gradientToColors: [gradientTo],
-                            stops: [0, 40, 100],
-                            opacityFrom: 0.95,
-                            opacityTo: 0.8
-                        }
-                    },
-                    states: {
-                        hover: { filter: { type: "lighten", value: 0.08 } },
-                        active:{ filter: { type: "lighten", value: 0.12 } }
-                    },
-                    xaxis: {
-                        categories: tecnicoData.labels,
-                        axisBorder: { show: false },
-                        axisTicks: { show: false },
-                        labels: { style: { colors: t.text } }
-                    },
-                    yaxis: {
-                        labels: {
-                            style: { colors: t.text },
-                            formatter: value => Math.round(value)
-                        }
-                    },
-                    tooltip: {
-                        theme: t.mode,
-                        y: { formatter: val => `${val} equipos` }
-                    },
-                    legend: { labels: { colors: t.text } }
-                };
-            };
+    const colorActual   = t.isDark ? "#2563EB" : "#1D4ED8";  // azul
+    const colorAnterior = t.isDark ? "#22C55E" : "#16A34A";  // verde
+
+    const seriesActual   = (tecnicoData.series && tecnicoData.series.actual)   || [];
+    const seriesAnterior = (tecnicoData.series && tecnicoData.series.anterior) || [];
+
+    return {
+        series: [
+            {
+                name: isTecnico ? "Este año (tú)" : "Este año (equipo)",
+                data: seriesActual
+            },
+            {
+                name: isTecnico ? "Año anterior (tú)" : "Año anterior (equipo)",
+                data: seriesAnterior
+            }
+        ],
+        chart: {
+            ...chartBase,
+            type: "bar",
+            height: 260
+        },
+        theme: { mode: t.mode },
+        grid: {
+            borderColor: t.grid,
+            strokeDashArray: 3
+        },
+        plotOptions: {
+            bar: {
+                columnWidth: "45%",
+                borderRadius: 8
+            }
+        },
+        dataLabels: { enabled: false },
+        colors: [colorActual, colorAnterior],
+        fill: {
+            opacity: 0.9
+        },
+        states: {
+            hover: { filter: { type: "lighten", value: 0.08 } },
+            active:{ filter: { type: "lighten", value: 0.12 } }
+        },
+        xaxis: {
+            categories: tecnicoData.labels,
+            axisBorder: { show: false },
+            axisTicks: { show: false },
+            labels: { style: { colors: t.text } }
+        },
+        yaxis: {
+            labels: {
+                style: { colors: t.text },
+                formatter: value => Math.round(value)
+            }
+        },
+        tooltip: {
+            theme: t.mode,
+            y: { formatter: val => `${val} equipos` }
+        },
+        legend: {
+            labels: { colors: t.text }
+        }
+    };
+};
+
 
             const getRadialOptions = (t) => {
                 const mainColor = t.isDark ? "#2563EB" : "#2563EB";

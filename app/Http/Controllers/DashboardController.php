@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Equipo;
-use App\Models\Proveedor;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -13,7 +12,6 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         // ===== 1. MES SELECCIONADO DESDE EL HEADER =====
-        // Esperamos algo tipo ?month=2024-11
         $monthParam = $request->query('month');
 
         if ($monthParam) {
@@ -47,12 +45,43 @@ class DashboardController extends Controller
             ];
         }
 
+        // ===== ROLES / TIPO DE USUARIO =====
+        $user     = auth()->user();
+        $roleSlug = strtolower(optional($user->role)->slug ?? '');
+        $roleName = strtolower(optional($user->role)->nombre ?? '');
+
+        // Consideramos técnico si el slug o el nombre se parecen a "tecnico"/"técnico"
+        $isTecnico = in_array($roleSlug, ['tecnico', 'técnico'])
+            || in_array($roleName, ['tecnico', 'técnico']);
+
+        // Helper: si es técnico, filtra por él; si no, deja global
+        $aplicarFiltroTecnico = function ($query) use ($isTecnico, $user) {
+            if ($isTecnico && $user) {
+                $query->where('registrado_por_user_id', $user->id);
+            }
+            return $query;
+        };
+
         // ===== 2. KPIs =====
         $today = Carbon::today();
 
-        $equiposHoy    = Equipo::whereDate('created_at', $today)->count();
-        $equiposSemana = Equipo::whereBetween('created_at', [$today->copy()->startOfWeek(), $today->copy()->endOfWeek()])->count();
-        $equiposMes    = Equipo::whereBetween('created_at', [$startOfMonth, $endOfMonth])->count();
+        // HOY
+        $equiposHoy = $aplicarFiltroTecnico(
+            Equipo::whereDate('created_at', $today)
+        )->count();
+
+        // SEMANA
+        $semanaInicio = $today->copy()->startOfWeek();
+        $semanaFin    = $today->copy()->endOfWeek();
+
+        $equiposSemana = $aplicarFiltroTecnico(
+            Equipo::whereBetween('created_at', [$semanaInicio, $semanaFin])
+        )->count();
+
+        // MES (mes seleccionado)
+        $equiposMes = $aplicarFiltroTecnico(
+            Equipo::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+        )->count();
 
         $kpis = [
             'equiposHoy'    => $equiposHoy,
@@ -67,8 +96,9 @@ class DashboardController extends Controller
         $lineDataLabels = ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4', 'Semana 5'];
         $lineDataCounts = [0, 0, 0, 0, 0];
 
-        $equiposDelMes = Equipo::whereBetween('created_at', [$startOfMonth, $endOfMonth])
-                               ->get(['created_at']);
+        $equiposDelMes = $aplicarFiltroTecnico(
+            Equipo::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+        )->get(['created_at']);
 
         foreach ($equiposDelMes as $equipo) {
             $diaDelMes = $equipo->created_at->day;
@@ -86,17 +116,48 @@ class DashboardController extends Controller
             }
         }
 
-        // ===== 4. GRÁFICA BARRAS (producción por técnico del MES SELECCIONADO) =====
-        $equiposPorTecnico = Equipo::query()
-            ->join('users', 'equipos.registrado_por_user_id', '=', 'users.id')
-            ->whereBetween('equipos.created_at', [$startOfMonth, $endOfMonth])
-            ->select('users.nombre', DB::raw('count(*) as total'))
-            ->groupBy('users.nombre')
-            ->pluck('total', 'nombre');
+        // ===== 4. GRÁFICA BARRAS VS (4 meses · año actual vs año anterior) =====
+        $labels           = [];
+        $serieActualAno   = [];
+        $serieAnoAnterior = [];
+
+        // Recorremos desde 3 meses atrás hasta el mes seleccionado (orden cronológico)
+        for ($i = 3; $i >= 0; $i--) {
+            $monthDate = $selectedDate->copy()->subMonths($i);
+
+            // Etiqueta tipo "Oct", "Nov", "Dic"
+            $labels[] = ucfirst($monthDate->locale('es')->translatedFormat('M'));
+
+            // Rango del mes en el año actual
+            $currentYearStart = $monthDate->copy()->startOfMonth();
+            $currentYearEnd   = $monthDate->copy()->endOfMonth();
+
+            // Mismo mes pero del año anterior
+            $prevYearStart = $monthDate->copy()->subYear()->startOfMonth();
+            $prevYearEnd   = $monthDate->copy()->subYear()->endOfMonth();
+
+            // Query base para año actual
+            $queryCurrent = Equipo::whereBetween('created_at', [$currentYearStart, $currentYearEnd]);
+
+            // Query base para año anterior
+            $queryPrev = Equipo::whereBetween('created_at', [$prevYearStart, $prevYearEnd]);
+
+            // Si es técnico, filtramos por ese usuario
+            if ($isTecnico && $user) {
+                $queryCurrent->where('registrado_por_user_id', $user->id);
+                $queryPrev->where('registrado_por_user_id', $user->id);
+            }
+
+            $serieActualAno[]   = $queryCurrent->count();
+            $serieAnoAnterior[] = $queryPrev->count();
+        }
 
         $tecnicoChartData = [
-            'labels' => $equiposPorTecnico->keys(),
-            'data'   => $equiposPorTecnico->values(),
+            'labels' => $labels,
+            'series' => [
+                'actual'   => $serieActualAno,
+                'anterior' => $serieAnoAnterior,
+            ],
         ];
 
         // ===== 5. META MENSUAL (radial) =====
@@ -113,12 +174,12 @@ class DashboardController extends Controller
 
         $radialPercent = $percentMeta;
 
-        // ===== 6. Detalle Meta Mensual (tabla derecha) =====
+        // ===== 6. Detalle Meta Mensual =====
         $breakdown = [
-            ['label' => 'Meta mensual total',   'value' => $metaTotal],
+            ['label' => 'Meta mensual total',       'value' => $metaTotal],
             ['label' => 'Equipos realizados (mes)', 'value' => $equiposRealizadosMes],
             ['label' => 'Faltantes para la meta',   'value' => $equiposFaltantes],
-            ['label' => 'Colaboradores',        'value' => $colaboradores],
+            ['label' => 'Colaboradores',            'value' => $colaboradores],
         ];
 
         // ===== 7. Enviar a la vista =====
@@ -127,11 +188,12 @@ class DashboardController extends Controller
             'lineChart'          => ['labels' => $lineDataLabels, 'data' => $lineDataCounts],
             'tecnicoChart'       => $tecnicoChartData,
             'radialPercent'      => $radialPercent,
-            'currentMonthName'   => $currentMonthName,     // ahora es el mes SELECCIONADO
+            'currentMonthName'   => $currentMonthName,
             'breakdown'          => $breakdown,
             'monthsOptions'      => $monthsOptions,
             'selectedMonthValue' => $selectedMonthValue,
             'monthFinished'      => $monthFinished,
+            'isTecnico'          => $isTecnico,
         ]);
     }
 }
