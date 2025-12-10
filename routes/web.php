@@ -5,10 +5,12 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LoteController;
 use App\Livewire\Equipos\RegistrarEquipo;
 use App\Livewire\Inventario\GestionEquipos;
 use App\Livewire\Inventario\EditarEquipo;
 use App\Livewire\Inventario\EditarInventario;
+
 use App\Models\Equipo;
 
 
@@ -17,7 +19,7 @@ use App\Models\Equipo;
 // ===============================
 
 Route::get('/', function () {
-    return view('login');
+    return view('auth.login');
 });
 
 // ===============================
@@ -172,6 +174,11 @@ Route::middleware(['auth', 'onlyAdminCeo'])->group(function ()  {
     Route::get('/inventario/admin/gestion', function () {
             return view('inventario.gestion-inventario');
         })->name('inventario.gestion');
+
+Route::get('/lotes/registrar', [LoteController::class, 'registrar'])
+    ->middleware(['auth', 'role:ceo,admin'])
+    ->name('lotes.registrar');
+
 
 
 });

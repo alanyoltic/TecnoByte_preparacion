@@ -299,9 +299,96 @@
 
 
 
+
+@if(in_array(auth()->user()->role?->slug, ['ceo', 'admin']))
+    @php
+        $isUsuarios = request()->routeIs('users.*') || request()->routeIs('register');
+    @endphp
+
+    <x-dropdown
+        align="right"
+        width="64"
+        contentClasses="py-2 bg-white/90 dark:bg-slate-900/95
+                        border border-slate-200/70 dark:border-slate-700/70
+                        rounded-2xl shadow-[0_18px_45px_rgba(15,23,42,0.65)]
+                        backdrop-blur-xl"
+    >
+        <x-slot name="trigger">
+    <div class="w-full mt-2 px-3">
+        <button
+            class="{{ $linkBase }} {{ $isUsuarios
+                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                   text-white font-semibold
+                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                   border-blue-400/70
+                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                : 'bg-white/10 dark:bg-slate-900/20
+                    text-slate-700 dark:text-slate-400
+                    hover:bg-white/20 dark:hover:bg-slate-900/30
+                    hover:text-slate-900 dark:hover:text-white' }}"
+            :class="sidebarOpen ? 'justify-start' : 'justify-center'"
+            title="Administrar Usuarios"
+        >
+            <div class="flex items-center justify-center w-7 h-7">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-boxes" viewBox="0 0 16 16">
+                  <path d="M7.752.066a.5.5 0 0 1 .496 0l3.75 2.143a.5.5 0 0 1 .252.434v3.995l3.498 2A.5.5 0 0 1 16 9.07v4.286a.5.5 0 0 1-.252.434l-3.75 2.143a.5.5 0 0 1-.496 0l-3.502-2-3.502 2.001a.5.5 0 0 1-.496 0l-3.75-2.143A.5.5 0 0 1 0 13.357V9.071a.5.5 0 0 1 .252-.434L3.75 6.638V2.643a.5.5 0 0 1 .252-.434zM4.25 7.504 1.508 9.071l2.742 1.567 2.742-1.567zM7.5 9.933l-2.75 1.571v3.134l2.75-1.571zm1 3.134 2.75 1.571v-3.134L8.5 9.933zm.508-3.996 2.742 1.567 2.742-1.567-2.742-1.567zm2.242-2.433V3.504L8.5 5.076V8.21zM7.5 8.21V5.076L4.75 3.504v3.134zM5.258 2.643 8 4.21l2.742-1.567L8 1.076zM15 9.933l-2.75 1.571v3.134L15 13.067zM3.75 14.638v-3.134L1 9.933v3.134z"/>
+                </svg>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+            </div>
+
+            <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>
+                Lotes
+            </span>
+
+            <svg class="w-4 h-4 ml-auto
+                        text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400
+                        transition-colors duration-200"
+                 fill="currentColor" viewBox="0 0 20 20"
+                 x-show="sidebarOpen" x-transition>
+                <path fill-rule="evenodd"
+                      d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                      clip-rule="evenodd" />
+            </svg>
+        </button>
+    </div>
+</x-slot>
+
+
+        <x-slot name="content">
+            <x-dropdown-link
+                :href="route('lotes.registrar')"
+                class="flex items-center gap-2 px-4 py-2 text-[0.80rem]
+                       text-slate-700 dark:text-slate-200
+                       hover:bg-slate-100/90 dark:hover:bg-slate-800/80
+                       hover:text-slate-900 dark:hover:text-white
+                       transition-colors duration-150"
+            >
+                Registrar Lotes
+            </x-dropdown-link>
+
+            <x-dropdown-link
+                :href="route('users.index')"
+                class="flex items-center gap-2 px-4 py-2 text-[0.80rem]
+                       text-slate-700 dark:text-slate-200
+                       hover:bg-slate-100/90 dark:hover:bg-slate-800/80
+                       hover:text-slate-900 dark:hover:text-white
+                       transition-colors duration-150"
+            >
+                Editar lotes
+            </x-dropdown-link>
+        </x-slot>
+    </x-dropdown>
+@endif
+
+
+
+
+
     @endif
 
-    {{-- ===================== USUARIOS ===================== --}}
+   
 {{-- ===================== USUARIOS ===================== --}}
 @if(in_array(auth()->user()->role?->slug, ['ceo', 'admin']))
     @php

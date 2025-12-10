@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Equipo;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -27,15 +28,11 @@ class DashboardController extends Controller
         $startOfMonth = $selectedDate->copy()->startOfMonth();
         $endOfMonth   = $selectedDate->copy()->endOfMonth();
 
-        // Valor para el <select>
         $selectedMonthValue = $selectedDate->format('Y-m');
-        // Nombre bonito del mes (en español)
         $currentMonthName   = $selectedDate->locale('es')->translatedFormat('F Y');
+        $monthFinished      = $endOfMonth->lt(Carbon::now()->endOfDay());
 
-        // ¿Ese mes ya terminó?
-        $monthFinished = $endOfMonth->lt(Carbon::now()->endOfDay());
-
-        // Lista de últimos 12 meses para el selector
+        // Últimos 12 meses para el selector
         $monthsOptions = [];
         for ($i = 0; $i < 12; $i++) {
             $d = Carbon::now()->subMonths($i);
@@ -50,15 +47,23 @@ class DashboardController extends Controller
         $roleSlug = strtolower(optional($user->role)->slug ?? '');
         $roleName = strtolower(optional($user->role)->nombre ?? '');
 
-        // Consideramos técnico si el slug o el nombre se parecen a "tecnico"/"técnico"
+        // Técnico si slug o nombre son "tecnico"/"técnico"
         $isTecnico = in_array($roleSlug, ['tecnico', 'técnico'])
             || in_array($roleName, ['tecnico', 'técnico']);
 
-        // Helper: si es técnico, filtra por él; si no, deja global
-        $aplicarFiltroTecnico = function ($query) use ($isTecnico, $user) {
+        // Filtro de colaborador SOLO para admin/ceo
+        $selectedColaboradorId = $request->query('colaborador');
+
+        // Helper de filtro global para TODOS los queries
+        $aplicarFiltro = function ($query) use ($isTecnico, $user, $selectedColaboradorId) {
             if ($isTecnico && $user) {
+                // Técnico: siempre filtra por él
                 $query->where('registrado_por_user_id', $user->id);
+            } elseif (!$isTecnico && !empty($selectedColaboradorId)) {
+                // Admin/Ceo con filtro: filtra por colaborador elegido
+                $query->where('registrado_por_user_id', $selectedColaboradorId);
             }
+
             return $query;
         };
 
@@ -66,7 +71,7 @@ class DashboardController extends Controller
         $today = Carbon::today();
 
         // HOY
-        $equiposHoy = $aplicarFiltroTecnico(
+        $equiposHoy = $aplicarFiltro(
             Equipo::whereDate('created_at', $today)
         )->count();
 
@@ -74,12 +79,12 @@ class DashboardController extends Controller
         $semanaInicio = $today->copy()->startOfWeek();
         $semanaFin    = $today->copy()->endOfWeek();
 
-        $equiposSemana = $aplicarFiltroTecnico(
+        $equiposSemana = $aplicarFiltro(
             Equipo::whereBetween('created_at', [$semanaInicio, $semanaFin])
         )->count();
 
         // MES (mes seleccionado)
-        $equiposMes = $aplicarFiltroTecnico(
+        $equiposMes = $aplicarFiltro(
             Equipo::whereBetween('created_at', [$startOfMonth, $endOfMonth])
         )->count();
 
@@ -96,7 +101,7 @@ class DashboardController extends Controller
         $lineDataLabels = ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4', 'Semana 5'];
         $lineDataCounts = [0, 0, 0, 0, 0];
 
-        $equiposDelMes = $aplicarFiltroTecnico(
+        $equiposDelMes = $aplicarFiltro(
             Equipo::whereBetween('created_at', [$startOfMonth, $endOfMonth])
         )->get(['created_at']);
 
@@ -121,32 +126,28 @@ class DashboardController extends Controller
         $serieActualAno   = [];
         $serieAnoAnterior = [];
 
-        // Recorremos desde 3 meses atrás hasta el mes seleccionado (orden cronológico)
+        // De 3 meses atrás hasta el mes seleccionado (orden cronológico)
         for ($i = 3; $i >= 0; $i--) {
             $monthDate = $selectedDate->copy()->subMonths($i);
 
-            // Etiqueta tipo "Oct", "Nov", "Dic"
+            // "Oct", "Nov", "Dic"
             $labels[] = ucfirst($monthDate->locale('es')->translatedFormat('M'));
 
-            // Rango del mes en el año actual
+            // Año actual
             $currentYearStart = $monthDate->copy()->startOfMonth();
             $currentYearEnd   = $monthDate->copy()->endOfMonth();
 
-            // Mismo mes pero del año anterior
+            // Mismo mes año anterior
             $prevYearStart = $monthDate->copy()->subYear()->startOfMonth();
             $prevYearEnd   = $monthDate->copy()->subYear()->endOfMonth();
 
-            // Query base para año actual
-            $queryCurrent = Equipo::whereBetween('created_at', [$currentYearStart, $currentYearEnd]);
+            $queryCurrent = $aplicarFiltro(
+                Equipo::whereBetween('created_at', [$currentYearStart, $currentYearEnd])
+            );
 
-            // Query base para año anterior
-            $queryPrev = Equipo::whereBetween('created_at', [$prevYearStart, $prevYearEnd]);
-
-            // Si es técnico, filtramos por ese usuario
-            if ($isTecnico && $user) {
-                $queryCurrent->where('registrado_por_user_id', $user->id);
-                $queryPrev->where('registrado_por_user_id', $user->id);
-            }
+            $queryPrev = $aplicarFiltro(
+                Equipo::whereBetween('created_at', [$prevYearStart, $prevYearEnd])
+            );
 
             $serieActualAno[]   = $queryCurrent->count();
             $serieAnoAnterior[] = $queryPrev->count();
@@ -160,10 +161,47 @@ class DashboardController extends Controller
             ],
         ];
 
-        // ===== 5. META MENSUAL (radial) =====
-        $colaboradores      = 5;
+        // ===== 5. LISTA DE COLABORADORES (técnicos) =====
+        $tecnicosBaseQuery = User::query()
+            ->join('roles', 'users.role_id', '=', 'roles.id')
+            ->whereIn(DB::raw('LOWER(roles.slug)'), ['tecnico', 'técnico']);
+
+        $colaboradoresCount = (clone $tecnicosBaseQuery)->count();
+
+        $colaboradores = [];
+        if (!$isTecnico) {
+            $colaboradores = (clone $tecnicosBaseQuery)
+                ->orderBy('users.nombre')
+                ->get([
+                    'users.id',
+                    'users.nombre',
+                    'users.apellido_paterno',
+                ])
+                ->map(function ($u) {
+                    return [
+                        'id'     => $u->id,
+                        'nombre' => trim($u->nombre . ' ' . $u->apellido_paterno),
+                    ];
+                })
+                ->toArray();
+        }
+
+        // ===== 6. META MENSUAL (radial) =====
         $metaPorColaborador = 120;
-        $metaTotal          = $colaboradores * $metaPorColaborador; // 600
+
+        // ¿Para cuántos colaboradores calculamos la meta?
+        if ($isTecnico) {
+            // Técnico logueado: su propia meta
+            $colaboradoresMetaCount = 1;
+        } elseif (!$isTecnico && !empty($selectedColaboradorId)) {
+            // Admin/CEO filtrando a un solo colaborador
+            $colaboradoresMetaCount = 1;
+        } else {
+            // Vista global: todos los técnicos del sistema
+            $colaboradoresMetaCount = max($colaboradoresCount, 1);
+        }
+
+        $metaTotal = $colaboradoresMetaCount * $metaPorColaborador;
 
         $equiposRealizadosMes = $equiposMes;
         $equiposFaltantes     = max($metaTotal - $equiposRealizadosMes, 0);
@@ -174,26 +212,28 @@ class DashboardController extends Controller
 
         $radialPercent = $percentMeta;
 
-        // ===== 6. Detalle Meta Mensual =====
         $breakdown = [
             ['label' => 'Meta mensual total',       'value' => $metaTotal],
             ['label' => 'Equipos realizados (mes)', 'value' => $equiposRealizadosMes],
             ['label' => 'Faltantes para la meta',   'value' => $equiposFaltantes],
-            ['label' => 'Colaboradores',            'value' => $colaboradores],
+            ['label' => 'Colaboradores',            'value' => $colaboradoresMetaCount],
         ];
 
         // ===== 7. Enviar a la vista =====
         return view('dashboard', [
-            'kpis'               => $kpis,
-            'lineChart'          => ['labels' => $lineDataLabels, 'data' => $lineDataCounts],
-            'tecnicoChart'       => $tecnicoChartData,
-            'radialPercent'      => $radialPercent,
-            'currentMonthName'   => $currentMonthName,
-            'breakdown'          => $breakdown,
-            'monthsOptions'      => $monthsOptions,
-            'selectedMonthValue' => $selectedMonthValue,
-            'monthFinished'      => $monthFinished,
-            'isTecnico'          => $isTecnico,
+            'kpis'                 => $kpis,
+            'lineChart'            => ['labels' => $lineDataLabels, 'data' => $lineDataCounts],
+            'tecnicoChart'         => $tecnicoChartData,
+            'radialPercent'        => $radialPercent,
+            'currentMonthName'     => $currentMonthName,
+            'breakdown'            => $breakdown,
+            'monthsOptions'        => $monthsOptions,
+            'selectedMonthValue'   => $selectedMonthValue,
+            'monthFinished'        => $monthFinished,
+            'isTecnico'            => $isTecnico,
+            'colaboradores'        => $colaboradores,
+            'selectedColaboradorId'=> $selectedColaboradorId,
         ]);
+
     }
 }

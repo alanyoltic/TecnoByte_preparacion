@@ -120,41 +120,69 @@
                         @endif
 
                         <form method="GET" action="{{ route('dashboard') }}" class="flex items-center gap-2">
-                            <select
-                                name="month"
-                                onchange="this.form.submit()"
-                                class="text-xs sm:text-sm rounded-xl
-                                       border border-slate-300/80 dark:border-white/15
-                                       bg-white/80 text-slate-800
-                                       dark:bg-slate-950/80 dark:text-slate-100
-                                       py-1.5 pl-2 pr-8
-                                       shadow-inner shadow-slate-200/80 dark:shadow-black/40
-                                       focus:outline-none focus:ring-2
-                                       focus:ring-[#FF9521]/60 focus:border-[#FF9521]"
-                            >
-                                @foreach($monthsOptions as $opt)
-                                    <option value="{{ $opt['value'] }}" @if($opt['value'] === $selectedMonthValue) selected @endif>
-                                        {{ $opt['label'] }}
-                                    </option>
-                                @endforeach
-                            </select>
+    {{-- Selector de mes --}}
+    <select
+        name="month"
+        onchange="this.form.submit()"
+        class="text-xs sm:text-sm rounded-xl
+               border border-slate-300/80 dark:border-white/15
+               bg-white/80 text-slate-800
+               dark:bg-slate-950/80 dark:text-slate-100
+               py-1.5 pl-2 pr-8
+               shadow-inner shadow-slate-200/80 dark:shadow-black/40
+               focus:outline-none focus:ring-2
+               focus:ring-[#FF9521]/60 focus:border-[#FF9521]"
+    >
+        @foreach($monthsOptions as $opt)
+            <option value="{{ $opt['value'] }}" @if($opt['value'] === $selectedMonthValue) selected @endif>
+                {{ $opt['label'] }}
+            </option>
+        @endforeach
+    </select>
 
-                            {{-- Botón azul (como pediste) --}}
-                            <button
-                                type="button"
-                                class="hidden sm:inline-flex items-center gap-2
-                                       px-3.5 py-1.5 rounded-full text-xs font-medium
-                                       bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                                       text-white
-                                       shadow-lg shadow-blue-800/60
-                                       backdrop-blur-xl
-                                       transition-all duration-200
-                                       hover:shadow-blue-500/80 hover:-translate-y-0.5"
-                            >
-                                <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-300"></span>
-                                Vista resumen mensual
-                            </button>
-                        </form>
+    {{-- Selector de colaborador (solo admin/ceo) --}}
+    @if(!$isTecnico && !empty($colaboradores))
+        <select
+            name="colaborador"
+            onchange="this.form.submit()"
+            class="text-xs sm:text-sm rounded-xl
+                   border border-slate-300/80 dark:border-white/15
+                   bg-white/80 text-slate-800
+                   dark:bg-slate-950/80 dark:text-slate-100
+                   py-1.5 pl-2 pr-8
+                   shadow-inner shadow-slate-200/80 dark:shadow-black/40
+                   focus:outline-none focus:ring-2
+                   focus:ring-[#FF9521]/60 focus:border-[#FF9521]"
+        >
+            <option value="">Todos los colaboradores</option>
+            @foreach($colaboradores as $col)
+                <option
+                    value="{{ $col['id'] }}"
+                    @if((string)($selectedColaboradorId ?? '') === (string)$col['id']) selected @endif
+                >
+                    {{ $col['nombre'] }}
+                </option>
+            @endforeach
+        </select>
+    @endif
+
+    {{-- Botón azul --}}
+    <button
+        type="button"
+        class="hidden sm:inline-flex items-center gap-2
+               px-3.5 py-1.5 rounded-full text-xs font-medium
+               bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+               text-white
+               shadow-lg shadow-blue-800/60
+               backdrop-blur-xl
+               transition-all duration-200
+               hover:shadow-blue-500/80 hover:-translate-y-0.5"
+    >
+        <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-300"></span>
+        Vista resumen mensual
+    </button>
+</form>
+
                     </div>
 
                 </div>
@@ -443,7 +471,7 @@
 
             const getBarOptions = (t) => {
     const colorActual   = t.isDark ? "#2563EB" : "#1D4ED8";  // azul
-    const colorAnterior = t.isDark ? "#22C55E" : "#16A34A";  // verde
+    const colorAnterior = t.isDark ? "#ff9e36ff" : "#FF9521";  // verde
 
     const seriesActual   = (tecnicoData.series && tecnicoData.series.actual)   || [];
     const seriesAnterior = (tecnicoData.series && tecnicoData.series.anterior) || [];

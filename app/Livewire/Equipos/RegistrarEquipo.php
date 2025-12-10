@@ -49,6 +49,7 @@ class RegistrarEquipo extends Component
     public $ram_slots_totales;
     public $ram_expansion_max;
     public $ram_cantidad_soldada;
+    public $ram_sin_slots = false;
 
     public $almacenamiento_principal_capacidad;
     public $almacenamiento_principal_tipo;
@@ -372,6 +373,39 @@ public function mount()
         $this->lectores = array_values($this->lectores);
     }
 
+
+
+public function toggleRamSoldada()
+{
+    $this->ram_es_soldada = ! $this->ram_es_soldada;
+
+    // Si se desactiva RAM soldada:
+    if (! $this->ram_es_soldada) {
+        $this->ram_sin_slots = false;              // apagar RAM totalmente soldada
+        $this->ram_cantidad_soldada = null;        // limpiar RAM soldada
+        $this->ram_expansion_max = null;           // liberar valores
+        $this->ram_slots_totales = null;
+    }
+}
+
+public function toggleRamSinSlots()
+{
+    $this->ram_sin_slots = ! $this->ram_sin_slots;
+
+    if ($this->ram_sin_slots) {
+        // Sin expansión posible: forzamos 0
+        $this->ram_expansion_max = '0 GB';
+        $this->ram_slots_totales = '0';
+    } else {
+        // Si desmarcan: dejar libres para que el técnico defina
+        $this->ram_expansion_max = null;
+        $this->ram_slots_totales = null;
+    }
+}
+
+
+
+
     public $lotesTerminadosIds = [];
 
 
@@ -415,6 +449,9 @@ public function mount()
             'ram_slots_totales'    => 'nullable|string|max:100',
             'ram_expansion_max'    => 'nullable|string|max:100',
             'ram_cantidad_soldada' => 'nullable|string|max:100',
+            'ram_sin_slots' => 'boolean',
+
+            
 
             // Almacenamiento
             'almacenamiento_principal_capacidad' => 'nullable|string|max:50',
