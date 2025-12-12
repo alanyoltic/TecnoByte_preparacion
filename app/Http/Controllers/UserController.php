@@ -59,7 +59,7 @@ class UserController extends Controller
             'email'             => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email,' . $user->id],
             'role_id'           => ['required', 'integer', 'exists:roles,id'],
             'password'          => ['nullable', 'confirmed', Rules\Password::defaults()],
-            'foto_perfil'       => ['nullable', 'image', 'max:2048'], // 👈 nueva validación
+            'foto_perfil'       => ['nullable', 'image', 'max:20480'], 
         ]);
 
         // 2. Si viene una nueva foto, la guardamos

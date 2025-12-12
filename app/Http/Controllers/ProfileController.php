@@ -47,7 +47,7 @@ class ProfileController extends Controller
                 'apellido_materno' => ['nullable', 'string', 'max:255'],
                 'email'            => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
                 'password'         => ['nullable', 'confirmed', Password::defaults()],
-                'foto_perfil'      => ['nullable', 'image', 'max:2048'],
+                'foto_perfil'      => ['nullable', 'image', 'max:20480'],
             ]);
 
             $user->nombre           = $validated['nombre'];

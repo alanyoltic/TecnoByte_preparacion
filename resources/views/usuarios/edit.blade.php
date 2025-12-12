@@ -194,7 +194,7 @@
                                 >
 
                                 <p class="text-[0.7rem] text-slate-500 dark:text-slate-400">
-                                    Formatos permitidos: JPG, PNG. Tamaño máximo: 2 MB.
+                                    Formatos permitidos: JPG, PNG. Tamaño máximo: 20 MB.
                                 </p>
 
                                 @error('foto_perfil')

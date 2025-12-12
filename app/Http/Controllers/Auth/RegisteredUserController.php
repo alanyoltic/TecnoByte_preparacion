@@ -52,7 +52,7 @@ class RegisteredUserController extends Controller
             'password'          => ['required', 'confirmed', Rules\Password::defaults()],
 
             // Foto de perfil opcional
-            'foto_perfil'       => ['nullable', 'image', 'max:2048'], // 2 MB
+            'foto_perfil'       => ['nullable', 'image', 'max:20480'], 
         ]);
 
         // Manejar foto si se envió
