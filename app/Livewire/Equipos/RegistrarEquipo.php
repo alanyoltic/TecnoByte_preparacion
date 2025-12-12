@@ -102,6 +102,7 @@ class RegistrarEquipo extends Component
     public $bateria1_tipo  = null;
     public $bateria1_salud = null;
 
+    public $bateria2_tiene = false;
     public $bateria2_tipo  = null;
     public $bateria2_salud = null;
 
@@ -358,10 +359,26 @@ class RegistrarEquipo extends Component
         if (!$this->bateria_tiene) {
             $this->bateria1_tipo  = null;
             $this->bateria1_salud = null;
+
+            $this->bateria2_tiene = false;
             $this->bateria2_tipo  = null;
             $this->bateria2_salud = null;
         }
     }
+
+
+
+
+    public function toggleBateria2Tiene()
+{
+    $this->bateria2_tiene = !$this->bateria2_tiene;
+
+    if (!$this->bateria2_tiene) {
+        $this->bateria2_tipo  = null;
+        $this->bateria2_salud = null;
+    }
+}
+
 
     // =======================
     //  Guardar equipo

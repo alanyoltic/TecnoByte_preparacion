@@ -22,14 +22,13 @@
     {{-- Título principal --}}
     <div class="mb-5">
         <h3 class="text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-50">
-            Registro de equipo
+            Editar equipo
         </h3>
         <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Captura los datos principales del equipo. Los campos marcados con * son obligatorios.
         </p>
     </div>
 
-    {{-- IMPORTANTE: ahora llama a actualizarEquipo --}}
     <form wire:submit.prevent="actualizarEquipo" class="space-y-8 text-slate-900 dark:text-slate-100">
 
         {{-- =================== --}}
@@ -49,18 +48,16 @@
                     <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
                         Lote
                     </label>
-                        <select
-                            wire:model="lote_id"
-                            disabled
-                            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                                bg-slate-200 dark:bg-slate-800/60
-                                text-sm px-3 py-2 text-slate-500 dark:text-slate-400
-                                cursor-not-allowed"
-                        >
+                    <select
+                        wire:model="lote_id"
+                        wire:change="actualizarLote($event.target.value)"
+                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                               bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
+                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                        <option value="">Selecciona un lote</option>
 
-                        <option value="">lote proveniente</option>
-
-                        @foreach(($lotes ?? []) as $lote)
+                        @foreach($lotes as $lote)
                             @php
                                 $fecha = $lote->fecha_llegada
                                     ? \Carbon\Carbon::parse($lote->fecha_llegada)->format('d/m/Y')
@@ -96,13 +93,13 @@
                     <select
                         wire:model="proveedor_id"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                            bg-slate-100 dark:bg-slate-800
-                            text-sm px-3 py-2
-                            focus:outline-none focus:ring-0 focus:border-slate-300"
+                               bg-slate-100 dark:bg-slate-800
+                               text-sm px-3 py-2
+                               focus:outline-none focus:ring-0 focus:border-slate-300"
                         disabled
                     >
                         <option value="">Selecciona un lote primero</option>
-                        @foreach(($proveedores ?? []) as $prov)
+                        @foreach($proveedores as $prov)
                             <option value="{{ $prov->id }}">
                                 {{ $prov->abreviacion }} — {{ $prov->nombre_empresa }}
                             </option>
@@ -125,9 +122,9 @@
                         type="text"
                         wire:model.defer="numero_serie"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                            bg-slate-50 dark:bg-slate-900
-                            text-sm px-3 py-2
-                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               bg-slate-50 dark:bg-slate-900
+                               text-sm px-3 py-2
+                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                     @error('numero_serie')
                         <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
@@ -143,9 +140,9 @@
                         type="text"
                         wire:model.defer="marca"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                            bg-slate-100 dark:bg-slate-800
-                            text-sm px-3 py-2
-                            focus:outline-none focus:ring-0 focus:border-slate-300"
+                               bg-slate-100 dark:bg-slate-800
+                               text-sm px-3 py-2
+                               focus:outline-none focus:ring-0 focus:border-slate-300"
                         readonly
                     >
                     @error('marca')
@@ -153,51 +150,57 @@
                     @enderror
                 </div>
 
-               {{-- Modelo (solo lectura en edición) --}}
+                {{-- Modelo (del lote seleccionado) --}}
                 <div>
                     <label class="block text-sm font-medium mb-1">
                         Modelo *
                     </label>
-
-                    {{-- Campo solo lectura con el texto marca + modelo --}}
-                    <input
-                        type="text"
-                        value="{{ trim(($marca ?? '') . ' ' . ($modelo ?? '')) }}"
+                    <select
+                        wire:model="lote_modelo_id"
+                        wire:change="actualizarModelo($event.target.value)"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                            bg-slate-200 dark:bg-slate-800/60
-                            text-sm px-3 py-2 text-slate-600 dark:text-slate-300
-                            cursor-not-allowed"
-                        readonly
+                               bg-slate-50 dark:bg-slate-900
+                               text-sm px-3 py-2
+                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        @disabled(!$lote_id || empty($modelosLote))
                     >
-
-                    {{-- Campo oculto que mantiene el lote_modelo_id para Livewire / guardar --}}
-                    <input type="hidden" wire:model="lote_modelo_id">
+                        <option value="">Selecciona un modelo</option>
+                        @foreach($modelosLote as $m)
+                            <option value="{{ $m['id'] }}">
+                                {{ $m['marca'] }} {{ $m['modelo'] }}
+                            </option>
+                        @endforeach
+                    </select>
 
                     @error('lote_modelo_id')
                         <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                     @enderror
                 </div>
 
-
                 {{-- Tipo de equipo --}}
                 <div>
                     <label class="block text-sm font-medium mb-1">
-                        Tipo de equipo
+                        Tipo de equipo <span class="text-red-500">*</span>
                     </label>
+
                     <select
                         wire:model.defer="tipo_equipo"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                            bg-slate-50 dark:bg-slate-900
-                            text-sm px-3 py-2
-                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               bg-slate-50 dark:bg-slate-900
+                               text-sm px-3 py-2
+                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                         <option value="">Selecciona</option>
-                        <option value="Laptop">Laptop</option>
-                        <option value="Desktop">Desktop</option>
-                        <option value="All in One">All in One</option>
-                        <option value="Mini PC">Mini PC</option>
-                        <option value="Otro">Otro</option>
+
+                        <option value="LAPTOP">LAPTOP</option>
+                        <option value="ESCRITORORIO">ESCRITORIO</option>
+                        <option value="ALL IN ONE">ALL IN ONE</option>
+                        <option value="TABLET">TABLET</option>
+                        <option value="2 EN 1">2 EN 1</option>
+                        <option value="MICRO PC">MICRO PC</option>
+                        <option value="GAMER">GAMER</option>
                     </select>
+
                     @error('tipo_equipo')
                         <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                     @enderror
@@ -208,15 +211,39 @@
                     <label class="block text-sm font-medium mb-1">
                         Sistema operativo
                     </label>
-                    <input
-                        type="text"
+
+                    <select
                         wire:model.defer="sistema_operativo"
-                        placeholder="Ej. Windows 10 Pro"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                            bg-slate-50 dark:bg-slate-900
-                            text-sm px-3 py-2
-                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               bg-slate-50 dark:bg-slate-900
+                               text-sm px-3 py-2
+                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
+                        <option value="">Selecciona</option>
+
+                        <!-- WINDOWS 10 -->
+                        <option value="WIN 10 PRO">WIN 10 PRO</option>
+                        <option value="WIN 10 PRO WORKSTATION">WIN 10 PRO WORKSTATION</option>
+                        <option value="WIN 10 HOME">WIN 10 HOME</option>
+                        <option value="WIN 10 PRO EDUCATION">WIN 10 PRO EDUCATION</option>
+                        <option value="WIN 10 HOME SINGLE LANGUAGE">WIN 10 HOME SINGLE LANGUAGE</option>
+                        <option value="WIN 10 MOBILE">WIN 10 MOBILE</option>
+                        <option value="WIN 10 ENTERPRISE">WIN 10 ENTERPRISE</option>
+
+                        <!-- WINDOWS 11 -->
+                        <option value="WIN 11 PRO">WIN 11 PRO</option>
+                        <option value="WIN 11 PRO WORKSTATION">WIN 11 PRO WORKSTATION</option>
+                        <option value="WIN 11 HOME">WIN 11 HOME</option>
+                        <option value="WIN 11 HOME SINGLE LANGUAGE">WIN 11 HOME SINGLE LANGUAGE</option>
+                        <option value="WIN 11 MOBILE">WIN 11 MOBILE</option>
+                        <option value="WIN 11 ENTERPRISE">WIN 11 ENTERPRISE</option>
+
+                        <!-- WINDOWS 7 -->
+                        <option value="WIN 7 STARTER">WIN 7 STARTER</option>
+                        <option value="WIN 7 HOME">WIN 7 HOME</option>
+                        <option value="WIN 7 PRO">WIN 7 PRO</option>
+                    </select>
+
                     @error('sistema_operativo')
                         <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                     @enderror
@@ -232,9 +259,9 @@
                         wire:model.defer="area_tienda"
                         placeholder="Ej. Sucursal Querétaro"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                            bg-slate-50 dark:bg-slate-900
-                            text-sm px-3 py-2
-                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               bg-slate-50 dark:bg-slate-900
+                               text-sm px-3 py-2
+                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                     @error('area_tienda')
                         <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
@@ -255,6 +282,7 @@
                 <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
             </div>
 
+            {{-- CPU --}}
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
 
                 {{-- Modelo CPU --}}
@@ -298,17 +326,24 @@
                 {{-- Generación --}}
                 <div>
                     <label class="block text-sm font-medium mb-1">
-                        Generación
+                        Generación <span class="text-red-500">*</span>
                     </label>
-                    <input
-                        type="text"
+
+                    <select
                         wire:model.defer="procesador_generacion"
-                        placeholder="Ej. 8va gen"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
+                        <option value="">Selecciona</option>
+
+                        @foreach (range(1,14) as $gen)
+                            <option value="{{ $gen }}TH GEN">{{ $gen }}TH GEN</option>
+                        @endforeach
+
+                    </select>
+
                     @error('procesador_generacion')
                         <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                     @enderror
@@ -317,18 +352,32 @@
                 {{-- Núcleos --}}
                 <div>
                     <label class="block text-sm font-medium mb-1">
-                        Núcleos
+                        Núcleos <span class="text-red-500">*</span>
                     </label>
-                    <input
-                        type="number"
-                        min="1"
-                        max="32"
+
+                    <select
                         wire:model.defer="procesador_nucleos"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
+                        <option value="">Selecciona</option>
+
+                        <!-- OPCIONES: 2 → 32 núcleos -->
+                        <option value="32">32 NÚCLEOS</option>
+                        <option value="24">24 NÚCLEOS</option>
+                        <option value="20">20 NÚCLEOS</option>
+                        <option value="16">16 NÚCLEOS</option>
+                        <option value="14">14 NÚCLEOS</option>
+                        <option value="12">12 NÚCLEOS</option>
+                        <option value="10">10 NÚCLEOS</option>
+                        <option value="8">8 NÚCLEOS</option>
+                        <option value="6">6 NÚCLEOS</option>
+                        <option value="4">4 NÚCLEOS</option>
+                        <option value="2">2 NÚCLEOS</option>
+                    </select>
+
                     @error('procesador_nucleos')
                         <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                     @enderror
@@ -336,21 +385,40 @@
 
             </div>
 
+            {{-- RAM PRINCIPAL --}}
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {{-- RAM total --}}
                 <div>
                     <label class="block text-sm font-medium mb-1">
-                        RAM total
+                        RAM total <span class="text-red-500">*</span>
                     </label>
-                    <input
-                        type="text"
+
+                    <select
                         wire:model.defer="ram_total"
-                        placeholder="Ej. 8 GB"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
+                        <option value="">Selecciona</option>
+
+                        {{-- 2 GB a 256 GB --}}
+                        <option value="2 GB">2 GB</option>
+                        <option value="4 GB">4 GB</option>
+                        <option value="6 GB">6 GB</option>
+                        <option value="8 GB">8 GB</option>
+                        <option value="12 GB">12 GB</option>
+                        <option value="16 GB">16 GB</option>
+                        <option value="24 GB">24 GB</option>
+                        <option value="32 GB">32 GB</option>
+                        <option value="48 GB">48 GB</option>
+                        <option value="64 GB">64 GB</option>
+                        <option value="96 GB">96 GB</option>
+                        <option value="128 GB">128 GB</option>
+                        <option value="192 GB">192 GB</option>
+                        <option value="256 GB">256 GB</option>
+                    </select>
+
                     @error('ram_total')
                         <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                     @enderror
@@ -359,68 +427,302 @@
                 {{-- Tipo RAM --}}
                 <div>
                     <label class="block text-sm font-medium mb-1">
-                        Tipo de RAM
+                        Tipo de RAM <span class="text-red-500">*</span>
                     </label>
-                    <input
-                        type="text"
+
+                    <select
                         wire:model.defer="ram_tipo"
-                        placeholder="Ej. DDR4"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
+                        <option value="">Selecciona</option>
+
+                        <option value="DDR2">DDR2</option>
+                        <option value="DDR3">DDR3</option>
+                        <option value="DDR3L">DDR3L</option>
+                        <option value="LPDDR3">LPDDR3</option>
+                        <option value="DDR4">DDR4</option>
+                        <option value="DDR5">DDR5</option>
+                        <option value="LPDDR5X">LPDDR5X</option>
+                        <option value="PC2">PC2</option>
+                        <option value="PC3">PC3</option>
+                        <option value="PC3L">PC3L</option>
+                        <option value="PC4">PC4</option>
+                    </select>
+
                     @error('ram_tipo')
                         <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                     @enderror
                 </div>
 
-                {{-- RAM soldada --}}
-                <div class="flex items-center gap-2">
+                {{-- RAM máxima expansión --}}
+                <div>
+                    <label class="block text-sm font-medium mb-1">
+                        RAM máxima expansión
+                    </label>
+
+                    <select
+                        wire:model.defer="ram_expansion_max"
+                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                            bg-slate-50 dark:bg-slate-900
+                            text-sm px-3 py-2
+                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        @disabled($ram_sin_slots)
+                    >
+                        <option value="">Selecciona</option>
+
+                        <option value="0 GB">0 GB (SIN EXPANSIÓN)</option>
+
+                        @foreach ([8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 512] as $ram)
+                            <option value="{{ $ram }} GB">{{ $ram }} GB</option>
+                        @endforeach
+                    </select>
+
+
+                    @error('ram_expansion_max')
+                        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- Slots RAM totales --}}
+                <div>
+                    <label class="block text-sm font-medium mb-1">
+                        Slots RAM totales
+                    </label>
+
+                    <select
+                        wire:model.defer="ram_slots_totales"
+                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                            bg-slate-50 dark:bg-slate-900
+                            text-sm px-3 py-2
+                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        @disabled($ram_sin_slots)
+                    >
+                        <option value="">Selecciona</option>
+
+                        <option value="0">0 SLOTS (SIN EXPANSIÓN)</option>
+
+                        @foreach (range(1, 8) as $slots)
+                            <option value="{{ $slots }}">{{ $slots }} SLOTS</option>
+                        @endforeach
+                    </select>
+
+
+                    @error('ram_slots_totales')
+                        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
+            {{-- RAM soldada / avanzada --}}
+            <div class="mt-3">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                    {{-- Checkbox RAM soldada --}}
                     <div>
                         <label class="block text-sm font-medium mb-1">
                             RAM soldada
                         </label>
-                        <div class="flex items-center gap-2 mt-1">
-                            <input
-                                type="checkbox"
-                                wire:model="ram_es_soldada"
-                                class="rounded border-slate-300 text-indigo-600 shadow-sm 
-                                       focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
-                            >
-                            <span class="text-xs text-slate-600 dark:text-slate-300">
-                                Sí, trae parte de la RAM en placa
-                            </span>
+                        <div class="flex items-start gap-2 mt-1">
+                        <input
+                            type="checkbox"
+                            wire:click="toggleRamSoldada"
+                            @checked($ram_es_soldada)
+                            class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
+                                focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
+                        />
+
+
+                            <p class="text-xs text-slate-600 dark:text-slate-300">
+                                Marca esta opción si el equipo trae parte de la RAM soldada en placa.
+                            </p>
                         </div>
                     </div>
-                </div>
 
-                {{-- Slots / expansión --}}
-                <div>
-                    <label class="block text-sm font-medium mb-1">
-                        Slots / expansión
-                    </label>
-                    <input
-                        type="text"
-                        wire:model.defer="ram_slots_totales"
-                        placeholder="Ej. 1/2 slots"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 mb-1"
-                    >
-                    <input
-                        type="text"
-                        wire:model.defer="ram_expansion_max"
-                        placeholder="Ej. Máx. 32 GB"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-xs px-3 py-1.5 mt-1
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
+                    {{-- Cantidad de RAM soldada --}}
+                    @if($ram_es_soldada)
+                        <div>
+                            <label class="block text-sm font-medium mb-1">
+                                Cantidad de RAM soldada
+                            </label>
+                            <select
+                                wire:model.defer="ram_cantidad_soldada"
+                                class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                                       bg-slate-50 dark:bg-slate-900
+                                       text-sm px-3 py-2
+                                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            >
+                                <option value="">Selecciona</option>
+                                <option value="2 GB">2 GB</option>
+                                <option value="4 GB">4 GB</option>
+                                <option value="6 GB">6 GB</option>
+                                <option value="8 GB">8 GB</option>
+                                <option value="12 GB">12 GB</option>
+                                <option value="16 GB">16 GB</option>
+                                <option value="24 GB">24 GB</option>
+                                <option value="32 GB">32 GB</option>
+                                <option value="48 GB">48 GB</option>
+                                <option value="64 GB">64 GB</option>
+                            </select>
+                            @error('ram_cantidad_soldada')
+                                <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        {{-- RAM totalmente soldada --}}
+                        <div>
+                            <label class="block text-sm font-medium mb-1">
+                                RAM totalmente soldada
+                            </label>
+                            <div class="flex items-start gap-2 mt-1">
+                                <input
+                                    type="checkbox"
+                                    wire:click="toggleRamSinSlots"
+                                    @checked($ram_sin_slots)
+                                    class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
+                                        focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
+                                />
+
+                                <p class="text-xs text-slate-600 dark:text-slate-300">
+                                    Marca esta opción si el equipo no tiene slots físicos de expansión
+                                    (toda la RAM viene integrada en placa).
+                                </p>
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
+
         </div>
+
+
+
+                {{-- ================== --}}
+        {{--  4. ALMACENAMIENTO --}}
+        {{-- ================== --}}
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            
+    {{-- Principal (capacidad) --}}
+    <div>
+        <label class="block text-sm font-medium mb-1">
+            Principal (capacidad)
+        </label>
+        <select
+            wire:model.defer="almacenamiento_principal_capacidad"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                   bg-slate-50 dark:bg-slate-900
+                   text-sm px-3 py-2
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+        >
+            <option value="">Selecciona</option>
+            <option value="N/A">N/A</option>
+            <option value="64 GB">64 GB</option>
+            <option value="120 GB">120 GB</option>
+            <option value="128 GB">128 GB</option>
+            <option value="240 GB">240 GB</option>
+            <option value="250 GB">250 GB</option>
+            <option value="256 GB">256 GB</option>
+            <option value="320 GB">320 GB</option>
+            <option value="480 GB">480 GB</option>
+            <option value="500 GB">500 GB</option>
+            <option value="512 GB">512 GB</option>
+            <option value="750 GB">750 GB</option>
+            <option value="960 GB">960 GB</option>
+            <option value="1 TB">1 TB</option>
+            <option value="2 TB">2 TB</option>
+        </select>
+        @error('almacenamiento_principal_capacidad')
+            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+        @enderror
+    </div>
+
+    {{-- Principal (tipo de disco) --}}
+    <div>
+        <label class="block text-sm font-medium mb-1">
+            Principal (tipo de disco)
+        </label>
+        <select
+            wire:model.defer="almacenamiento_principal_tipo"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                   bg-slate-50 dark:bg-slate-900
+                   text-sm px-3 py-2
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+        >
+            <option value="">Selecciona</option>
+            <option value="N/A">N/A</option>
+            <option value="SSD">SSD</option>
+            <option value="M.2">M.2</option>
+            <option value="M.2 MICRO">M.2 MICRO</option>
+            <option value="HDD">HDD</option>
+            <option value="MSATA">MSATA</option>
+        </select>
+        @error('almacenamiento_principal_tipo')
+            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+        @enderror
+    </div>
+
+    {{-- Secundario (capacidad) --}}
+    <div>
+        <label class="block text-sm font-medium mb-1">
+            Secundario (capacidad)
+        </label>
+        <select
+            wire:model.defer="almacenamiento_secundario_capacidad"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                   bg-slate-50 dark:bg-slate-900
+                   text-sm px-3 py-2
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+        >
+            <option value="">Selecciona</option>
+            <option value="N/A">N/A</option>
+            <option value="64 GB">64 GB</option>
+            <option value="120 GB">120 GB</option>
+            <option value="128 GB">128 GB</option>
+            <option value="240 GB">240 GB</option>
+            <option value="250 GB">250 GB</option>
+            <option value="256 GB">256 GB</option>
+            <option value="320 GB">320 GB</option>
+            <option value="480 GB">480 GB</option>
+            <option value="500 GB">500 GB</option>
+            <option value="512 GB">512 GB</option>
+            <option value="750 GB">750 GB</option>
+            <option value="960 GB">960 GB</option>
+            <option value="1 TB">1 TB</option>
+            <option value="2 TB">2 TB</option>
+        </select>
+        @error('almacenamiento_secundario_capacidad')
+            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+        @enderror
+    </div>
+
+    {{-- Secundario (tipo de disco) --}}
+    <div>
+        <label class="block text-sm font-medium mb-1">
+            Secundario (tipo de disco)
+        </label>
+        <select
+            wire:model.defer="almacenamiento_secundario_tipo"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                   bg-slate-50 dark:bg-slate-900
+                   text-sm px-3 py-2
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+        >
+            <option value="">Selecciona</option>
+            <option value="N/A">N/A</option>
+            <option value="SSD">SSD</option>
+            <option value="M.2">M.2</option>
+            <option value="M.2 MICRO">M.2 MICRO</option>
+            <option value="HDD">HDD</option>
+            <option value="MSATA">MSATA</option>
+        </select>
+        @error('almacenamiento_secundario_tipo')
+            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+        @enderror
+    </div>
+</div>
+
+
 
         {{-- ================== --}}
         {{--  3. PANTALLA       --}}
@@ -500,79 +802,8 @@
             </div>
         </div>
 
-        {{-- ================== --}}
-        {{--  4. ALMACENAMIENTO --}}
-        {{-- ================== --}}
-        <div class="space-y-3">
-            <div class="flex items-center gap-2">
-                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Almacenamiento
-                </span>
-                <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
-            </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {{-- Principal --}}
-                <div>
-                    <label class="block text-sm font-medium mb-1">
-                        Principal (capacidad)
-                    </label>
-                    <input
-                        type="text"
-                        wire:model.defer="almacenamiento_principal_capacidad"
-                        placeholder="Ej. 256 GB"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">
-                        Principal (tipo)
-                    </label>
-                    <input
-                        type="text"
-                        wire:model.defer="almacenamiento_principal_tipo"
-                        placeholder="Ej. SSD NVMe"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                </div>
 
-                {{-- Secundario --}}
-                <div>
-                    <label class="block text-sm font-medium mb-1">
-                        Secundario (capacidad)
-                    </label>
-                    <input
-                        type="text"
-                        wire:model.defer="almacenamiento_secundario_capacidad"
-                        placeholder="Ej. 1 TB / N/A"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">
-                        Secundario (tipo)
-                    </label>
-                    <input
-                        type="text"
-                        wire:model.defer="almacenamiento_secundario_tipo"
-                        placeholder="Ej. HDD, SSD, N/A"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                </div>
-            </div>
-        </div>
 
         {{-- ================== --}}
         {{--  5. GRÁFICOS       --}}
@@ -631,91 +862,142 @@
             </div>
         </div>
 
+
+
+
+                    
         {{-- ================== --}}
-        {{--  6. BATERÍA / OTROS --}}
+        {{--  6. BATERÍA        --}}
         {{-- ================== --}}
         <div class="space-y-3">
             <div class="flex items-center gap-2">
                 <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Batería y otros
+                    Batería
                 </span>
                 <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
             </div>
 
+            {{-- FILA 1: ¿Tiene batería? + Batería 1 --}}
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {{-- Salud batería --}}
+                {{-- Tiene batería --}}
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium mb-1">
+                        ¿El equipo tiene batería?
+                    </label>
+                    <div class="flex items-start gap-2 mt-1">
+                        <input
+                            type="checkbox"
+                            wire:click="toggleBateriaTiene"
+                            @checked($bateria_tiene)
+                            class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
+                                focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
+                        >
+                        <p class="text-xs text-slate-600 dark:text-slate-300">
+                            Desmarca esta opción si el equipo no tiene batería
+                            (escritorio o laptop sin batería instalada).
+                        </p>
+                    </div>
+                </div>
+
+                {{-- Batería 1 - tipo --}}
                 <div>
                     <label class="block text-sm font-medium mb-1">
-                        Salud batería (%)
+                        Batería 1 – tipo
+                    </label>
+                    <select
+                        wire:model.defer="bateria1_tipo"
+                        @disabled(!$bateria_tiene)
+                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                            bg-slate-50 dark:bg-slate-900
+                            text-sm px-3 py-2
+                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                        <option value="">Selecciona</option>
+                        <option value="Interna">Interna</option>
+                        <option value="Externa">Externa</option>
+                    </select>
+                    @error('bateria1_tipo')
+                        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- Batería 1 - salud --}}
+                <div>
+                    <label class="block text-sm font-medium mb-1">
+                        Batería 1 – salud (%)
                     </label>
                     <input
                         type="number"
-                        min="30"
+                        min="0"
                         max="100"
-                        wire:model.defer="bateria_salud_percent"
+                        wire:model.defer="bateria1_salud"
+                        @disabled(!$bateria_tiene)
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            bg-slate-50 dark:bg-slate-900
+                            text-sm px-3 py-2
+                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
-                </div>
-
-                {{-- Cantidad de baterías --}}
-                <div>
-                    <label class="block text-sm font-medium mb-1">
-                        Batería (tipo/cantidad)
-                    </label>
-                    <input
-                        type="text"
-                        wire:model.defer="bateria_cantidad"
-                        placeholder="Ej. interna, 3 celdas"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                </div>
-
-                {{-- Teclado idioma --}}
-                <div>
-                    <label class="block text-sm font-medium mb-1">
-                        Idioma teclado
-                    </label>
-                    <input
-                        type="text"
-                        wire:model.defer="teclado_idioma"
-                        placeholder="Ej. Español, US, N/A"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                </div>
-
-                {{-- Estatus general --}}
-                <div>
-                    <label class="block text-sm font-medium mb-1">
-                        Estatus general
-                    </label>
-                    <select
-                        wire:model.defer="estatus_general"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                        <option value="En Revisión">En Revisión</option>
-                        <option value="Aprobado">Aprobado</option>
-                        <option value="Pendiente Pieza">Pendiente Pieza</option>
-                        <option value="Pendiente Garantía">Pendiente Garantía</option>
-                        <option value="Pendiente Deshueso">Pendiente Deshueso</option>
-                        <option value="Finalizado">Finalizado</option>
-                    </select>
-                    @error('estatus_general')
+                    @error('bateria1_salud')
                         <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                     @enderror
                 </div>
             </div>
+
+            {{-- FILA 2: Batería 2 opcional --}}
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {{-- Espacio (alinear con el checkbox de arriba) --}}
+                <div class="md:col-span-2">
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                        Si el equipo tiene una segunda batería (dock, slice, extra), puedes capturarla aquí.
+                    </p>
+                </div>
+
+                {{-- Batería 2 – tipo --}}
+                <div>
+                    <label class="block text-sm font-medium mb-1">
+                        Batería 2 – tipo
+                    </label>
+                    <select
+                        wire:model.defer="bateria2_tipo"
+                        @disabled(!$bateria_tiene)
+                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                            bg-slate-50 dark:bg-slate-900
+                            text-sm px-3 py-2
+                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                        <option value="">Sin segunda batería</option>
+                        <option value="Interna">Interna</option>
+                        <option value="Externa">Externa</option>
+                    </select>
+                    @error('bateria2_tipo')
+                        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- Batería 2 – salud --}}
+                <div>
+                    <label class="block text-sm font-medium mb-1">
+                        Batería 2 – salud (%)
+                    </label>
+                    <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        wire:model.defer="bateria2_salud"
+                        @disabled(!$bateria_tiene || !$bateria2_tipo)
+                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                            bg-slate-50 dark:bg-slate-900
+                            text-sm px-3 py-2
+                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                    @error('bateria2_salud')
+                        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+        </div>
+
+
 
             {{-- Notas generales --}}
             <div>
@@ -734,7 +1016,7 @@
                     <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                 @enderror
             </div>
-        </div>
+        
 
         {{-- ================== --}}
         {{--  PUERTOS USB       --}}
@@ -748,12 +1030,12 @@
                     type="button"
                     wire:click="addPuertoUsb"
                     class="inline-flex items-center px-2.5 py-1 rounded-full text-[0.7rem] font-medium
-                        bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                        text-white
-                        shadow-sm shadow-blue-800/40
-                        backdrop-blur-md
-                        transition-all duration-200
-                        hover:shadow-blue-500/70 hover:-translate-y-0.5"
+                           bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                           text-white
+                           shadow-sm shadow-blue-800/40
+                           backdrop-blur-md
+                           transition-all duration-200
+                           hover:shadow-blue-500/70 hover:-translate-y-0.5"
                 >
                     + Añadir puerto USB
                 </button>
@@ -766,7 +1048,7 @@
             @endif
 
             <div class="space-y-2">
-                @foreach(($puertos_usb ?? []) as $index => $puerto)
+                @foreach($puertos_usb as $index => $puerto)
                     <div class="grid grid-cols-12 gap-2 items-center">
                         <div class="col-span-7 sm:col-span-6">
                             <select
@@ -827,16 +1109,15 @@
                     type="button"
                     wire:click="addPuertoVideo"
                     class="inline-flex items-center px-2.5 py-1 rounded-full text-[0.7rem] font-medium
-                        bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                        text-white
-                        shadow-sm shadow-blue-800/40
-                        backdrop-blur-md
-                        transition-all duration-200
-                        hover:shadow-blue-500/70 hover:-translate-y-0.5"
+                           bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                           text-white
+                           shadow-sm shadow-blue-800/40
+                           backdrop-blur-md
+                           transition-all duration-200
+                           hover:shadow-blue-500/70 hover:-translate-y-0.5"
                 >
                     + Añadir puerto de video
                 </button>
-
             </div>
 
             @if(empty($puertos_video))
@@ -846,7 +1127,7 @@
             @endif
 
             <div class="space-y-2">
-                @foreach(($puertos_video ?? []) as $index => $puerto)
+                @foreach($puertos_video as $index => $puerto)
                     <div class="grid grid-cols-12 gap-2 items-center">
                         <div class="col-span-7 sm:col-span-6">
                             <select
@@ -908,16 +1189,15 @@
                     type="button"
                     wire:click="addLector"
                     class="inline-flex items-center px-2.5 py-1 rounded-full text-[0.7rem] font-medium
-                        bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                        text-white
-                        shadow-sm shadow-blue-800/40
-                        backdrop-blur-md
-                        transition-all duration-200
-                        hover:shadow-blue-500/70 hover:-translate-y-0.5"
+                           bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                           text-white
+                           shadow-sm shadow-blue-800/40
+                           backdrop-blur-md
+                           transition-all duration-200
+                           hover:shadow-blue-500/70 hover:-translate-y-0.5"
                 >
                     + Añadir lector / ranura
                 </button>
-
             </div>
 
             @if(empty($lectores))
@@ -927,7 +1207,7 @@
             @endif
 
             <div class="space-y-2">
-                @foreach(($lectores ?? []) as $index => $lector)
+                @foreach($lectores as $index => $lector)
                     <div class="grid grid-cols-12 gap-2 items-center">
                         <div class="col-span-4 sm:col-span-3">
                             <select
@@ -975,37 +1255,22 @@
             </div>
         </div>
 
-       {{-- BOTONES FINALES --}}
-<div class="flex items-center justify-end gap-3 pt-4">
-
-    {{-- BOTÓN CANCELAR --}}
-    <a
-        href="{{ route('inventario.listo') }}"
-        class="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium
-               border border-slate-300 dark:border-slate-700
-               text-slate-700 dark:text-slate-200
-               bg-white/70 dark:bg-slate-900/70
-               shadow-sm hover:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800
-               transition-all duration-200 hover:-translate-y-0.5 backdrop-blur-md">
-        Cancelar
-    </a>
-
-    {{-- BOTÓN GUARDAR --}}
-    <button
-        type="submit"
-        class="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium
-            bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-            text-white
-            shadow-md shadow-blue-800/60 hover:shadow-lg hover:shadow-blue-500/80
-            backdrop-blur-md
-            transition-all duration-200
-            hover:-translate-y-0.5"
-        wire:loading.attr="disabled">
-        <span wire:loading.remove>Guardar Cambios</span>
-        <span wire:loading>Guardando...</span>
-    </button>
-</div>
-
+        {{-- BOTÓN FINAL --}}
+        <div class="flex items-center justify-end pt-2">
+            <button
+                type="submit"
+                class="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium
+                       bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                       text-white
+                       shadow-md shadow-blue-800/60 hover:shadow-lg hover:shadow-blue-500/80
+                       backdrop-blur-md
+                       transition-all duration-200
+                       hover:-translate-y-0.5"
+                wire:loading.attr="disabled">
+                <span wire:loading.remove>Guardar cambios</span>
+                <span wire:loading>Guardando cambios...</span>
+            </button>
+        </div>
 
     </form>
 </div>
