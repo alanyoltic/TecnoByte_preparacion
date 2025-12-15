@@ -105,14 +105,7 @@
                             <span>{{ __('Recordarme') }}</span>
                         </label>
 
-                        @if (Route::has('password.request'))
-                            <a
-                                class="text-xs md:text-sm text-orange-300 hover:text-orange-200 hover:underline"
-                                href="{{ route('password.request') }}"
-                            >
-                                {{ __('¿Olvidaste tu contraseña?') }}
-                            </a>
-                        @endif
+            
                     </div>
 
                     {{-- Botón --}}
