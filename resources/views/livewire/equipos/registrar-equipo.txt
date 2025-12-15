@@ -867,105 +867,120 @@
 
                     
         {{-- ================== --}}
-        {{--  6. BATERÍA        --}}
-        {{-- ================== --}}
-        <div class="space-y-3">
-            <div class="flex items-center gap-2">
-                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Batería
-                </span>
-                <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
+{{--  6. BATERÍA        --}}
+{{-- ================== --}}
+<div class="space-y-3">
+    <div class="flex items-center gap-2">
+        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Batería
+        </span>
+        <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
+    </div>
+
+    {{-- 1) Solo el checkbox principal --}}
+    <div class="md:col-span-2">
+        <label class="block text-sm font-medium mb-1">
+            ¿El equipo tiene batería?
+        </label>
+        <div class="flex items-start gap-2 mt-1">
+            <input
+                type="checkbox"
+                wire:click="toggleBateriaTiene"
+                @checked($bateria_tiene)
+                class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
+                       focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
+            >
+            <p class="text-xs text-slate-600 dark:text-slate-300">
+                Desmarca esta opción si el equipo no tiene batería (escritorio o laptop sin batería instalada).
+            </p>
+        </div>
+        @error('bateria_tiene')
+            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+        @enderror
+    </div>
+
+    {{-- 2) Si tiene batería -> Batería 1 + checkbox de segunda --}}
+    @if($bateria_tiene)
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-3">
+            {{-- Batería 1 - tipo --}}
+            <div>
+                <label class="block text-sm font-medium mb-1">
+                    Batería 1 – tipo
+                </label>
+                <select
+                    wire:model.defer="bateria1_tipo"
+                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                           bg-slate-50 dark:bg-slate-900
+                           text-sm px-3 py-2
+                           focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                    <option value="">Selecciona</option>
+                    <option value="Interna">Interna</option>
+                    <option value="Externa">Externa</option>
+                </select>
+                @error('bateria1_tipo')
+                    <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                @enderror
             </div>
 
-            {{-- FILA 1: ¿Tiene batería? + Batería 1 --}}
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {{-- Tiene batería --}}
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium mb-1">
-                        ¿El equipo tiene batería?
-                    </label>
-                    <div class="flex items-start gap-2 mt-1">
-                        <input
-                            type="checkbox"
-                            wire:click="toggleBateriaTiene"
-                            @checked($bateria_tiene)
-                            class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
-                                focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
-                        >
-                        <p class="text-xs text-slate-600 dark:text-slate-300">
-                            Desmarca esta opción si el equipo no tiene batería
-                            (escritorio o laptop sin batería instalada).
-                        </p>
-                    </div>
-                </div>
+            {{-- Batería 1 - salud --}}
+            <div>
+                <label class="block text-sm font-medium mb-1">
+                    Batería 1 – salud (%)
+                </label>
+                <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    wire:model.defer="bateria1_salud"
+                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                           bg-slate-50 dark:bg-slate-900
+                           text-sm px-3 py-2
+                           focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                @error('bateria1_salud')
+                    <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                @enderror
+            </div>
 
-                {{-- Batería 1 - tipo --}}
-                <div>
-                    <label class="block text-sm font-medium mb-1">
-                        Batería 1 – tipo
-                    </label>
-                    <select
-                        wire:model.defer="bateria1_tipo"
-                        @disabled(!$bateria_tiene)
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                            bg-slate-50 dark:bg-slate-900
-                            text-sm px-3 py-2
-                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                        <option value="">Selecciona</option>
-                        <option value="Interna">Interna</option>
-                        <option value="Externa">Externa</option>
-                    </select>
-                    @error('bateria1_tipo')
-                        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                {{-- Batería 1 - salud --}}
-                <div>
-                    <label class="block text-sm font-medium mb-1">
-                        Batería 1 – salud (%)
-                    </label>
+            {{-- Checkbox segunda batería --}}
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium mb-1">
+                    ¿Tiene segunda batería?
+                </label>
+                <div class="flex items-start gap-2 mt-1">
                     <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        wire:model.defer="bateria1_salud"
-                        @disabled(!$bateria_tiene)
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                            bg-slate-50 dark:bg-slate-900
-                            text-sm px-3 py-2
-                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        type="checkbox"
+                        wire:click="toggleBateria2Tiene"
+                        @checked($bateria2_tiene)
+                        class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
+                               focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
                     >
-                    @error('bateria1_salud')
-                        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-
-            {{-- FILA 2: Batería 2 opcional --}}
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {{-- Espacio (alinear con el checkbox de arriba) --}}
-                <div class="md:col-span-2">
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                        Si el equipo tiene una segunda batería (dock, slice, extra), puedes capturarla aquí.
+                    <p class="text-xs text-slate-600 dark:text-slate-300">
+                        Actívalo si trae batería extra (dock, slice, removible adicional, etc.).
                     </p>
                 </div>
+            </div>
+        </div>
 
-                {{-- Batería 2 – tipo --}}
+        {{-- 3) Si tiene segunda batería -> Batería 2 --}}
+        @if($bateria2_tiene)
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-3">
+                <div class="md:col-span-2"></div>
+
+                {{-- Batería 2 - tipo --}}
                 <div>
                     <label class="block text-sm font-medium mb-1">
                         Batería 2 – tipo
                     </label>
                     <select
                         wire:model.defer="bateria2_tipo"
-                        @disabled(!$bateria_tiene)
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                            bg-slate-50 dark:bg-slate-900
-                            text-sm px-3 py-2
-                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               bg-slate-50 dark:bg-slate-900
+                               text-sm px-3 py-2
+                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
-                        <option value="">Sin segunda batería</option>
+                        <option value="">Selecciona</option>
                         <option value="Interna">Interna</option>
                         <option value="Externa">Externa</option>
                     </select>
@@ -974,7 +989,7 @@
                     @enderror
                 </div>
 
-                {{-- Batería 2 – salud --}}
+                {{-- Batería 2 - salud --}}
                 <div>
                     <label class="block text-sm font-medium mb-1">
                         Batería 2 – salud (%)
@@ -984,18 +999,25 @@
                         min="0"
                         max="100"
                         wire:model.defer="bateria2_salud"
-                        @disabled(!$bateria_tiene || !$bateria2_tipo)
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                            bg-slate-50 dark:bg-slate-900
-                            text-sm px-3 py-2
-                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               bg-slate-50 dark:bg-slate-900
+                               text-sm px-3 py-2
+                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                     @error('bateria2_salud')
                         <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                     @enderror
                 </div>
             </div>
-        </div>
+        @endif
+    @endif
+</div>
+
+
+
+
+        
+
 
 
 
