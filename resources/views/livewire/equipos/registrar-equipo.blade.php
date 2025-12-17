@@ -12,12 +12,7 @@
            dark:hover:shadow-2xl dark:hover:shadow-indigo-500/25"
 >
 
-    {{-- Mensaje de éxito --}}
-    @if (session('success'))
-        <div class="mb-4 rounded-xl border border-green-200 bg-green-50/90 px-4 py-2 text-sm text-green-700">
-            {{ session('success') }}
-        </div>
-    @endif
+
 
     {{-- Título principal --}}
     <div class="mb-5">
@@ -49,7 +44,7 @@
                         Lote
                     </label>
                     <select
-                        wire:model="lote_id"
+                        wire:model.live="lote_id"
                         wire:change="actualizarLote($event.target.value)"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
@@ -156,7 +151,8 @@
                         Modelo *
                     </label>
                     <select
-                        wire:model="lote_modelo_id"
+                        wire:model.live="lote_modelo_id"
+
                         wire:change="actualizarModelo($event.target.value)"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
@@ -867,197 +863,663 @@
 
                     
         {{-- ================== --}}
-{{--  6. BATERÍA        --}}
-{{-- ================== --}}
-<div class="space-y-3">
-    <div class="flex items-center gap-2">
-        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Batería
-        </span>
-        <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
-    </div>
-
-    {{-- 1) Solo el checkbox principal --}}
-    <div class="md:col-span-2">
-        <label class="block text-sm font-medium mb-1">
-            ¿El equipo tiene batería?
-        </label>
-        <div class="flex items-start gap-2 mt-1">
-            <input
-                type="checkbox"
-                wire:click="toggleBateriaTiene"
-                @checked($bateria_tiene)
-                class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
-                       focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
-            >
-            <p class="text-xs text-slate-600 dark:text-slate-300">
-                Desmarca esta opción si el equipo no tiene batería (escritorio o laptop sin batería instalada).
-            </p>
-        </div>
-        @error('bateria_tiene')
-            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-        @enderror
-    </div>
-
-    {{-- 2) Si tiene batería -> Batería 1 + checkbox de segunda --}}
-    @if($bateria_tiene)
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-3">
-            {{-- Batería 1 - tipo --}}
-            <div>
-                <label class="block text-sm font-medium mb-1">
-                    Batería 1 – tipo
-                </label>
-                <select
-                    wire:model.defer="bateria1_tipo"
-                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                           bg-slate-50 dark:bg-slate-900
-                           text-sm px-3 py-2
-                           focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                    <option value="">Selecciona</option>
-                    <option value="Interna">Interna</option>
-                    <option value="Externa">Externa</option>
-                </select>
-                @error('bateria1_tipo')
-                    <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-                @enderror
+        {{--  6. BATERÍA        --}}
+        {{-- ================== --}}
+        <div class="space-y-3">
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Batería
+                </span>
+                <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
             </div>
 
-            {{-- Batería 1 - salud --}}
-            <div>
-                <label class="block text-sm font-medium mb-1">
-                    Batería 1 – salud (%)
-                </label>
-                <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    wire:model.defer="bateria1_salud"
-                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                           bg-slate-50 dark:bg-slate-900
-                           text-sm px-3 py-2
-                           focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                @error('bateria1_salud')
-                    <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-                @enderror
-            </div>
-
-            {{-- Checkbox segunda batería --}}
+            {{-- 1) Solo el checkbox principal --}}
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium mb-1">
-                    ¿Tiene segunda batería?
+                    ¿El equipo tiene batería?
                 </label>
                 <div class="flex items-start gap-2 mt-1">
                     <input
                         type="checkbox"
-                        wire:click="toggleBateria2Tiene"
-                        @checked($bateria2_tiene)
+                        wire:click="toggleBateriaTiene"
+                        @checked($bateria_tiene)
                         class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
-                               focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
+                            focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
                     >
                     <p class="text-xs text-slate-600 dark:text-slate-300">
-                        Actívalo si trae batería extra (dock, slice, removible adicional, etc.).
+                        Desmarca esta opción si el equipo no tiene batería (escritorio o laptop sin batería instalada).
                     </p>
                 </div>
+                @error('bateria_tiene')
+                    <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                @enderror
             </div>
+
+            {{-- 2) Si tiene batería -> Batería 1 + checkbox de segunda --}}
+            @if($bateria_tiene)
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-3">
+                    {{-- Batería 1 - tipo --}}
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Batería 1 – tipo
+                        </label>
+                        <select
+                            wire:model.defer="bateria1_tipo"
+                            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                                bg-slate-50 dark:bg-slate-900
+                                text-sm px-3 py-2
+                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        >
+                            <option value="">Selecciona</option>
+                            <option value="Interna">Interna</option>
+                            <option value="Externa">Externa</option>
+                        </select>
+                        @error('bateria1_tipo')
+                            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Batería 1 - salud --}}
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Batería 1 – salud (%)
+                        </label>
+                        <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            wire:model.defer="bateria1_salud"
+                            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                                bg-slate-50 dark:bg-slate-900
+                                text-sm px-3 py-2
+                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        >
+                        @error('bateria1_salud')
+                            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Checkbox segunda batería --}}
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium mb-1">
+                            ¿Tiene segunda batería?
+                        </label>
+                        <div class="flex items-start gap-2 mt-1">
+                            <input
+                                type="checkbox"
+                                wire:click="toggleBateria2Tiene"
+                                @checked($bateria2_tiene)
+                                class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
+                                    focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
+                            >
+                            <p class="text-xs text-slate-600 dark:text-slate-300">
+                                Actívalo si trae batería extra (dock, slice, removible adicional, etc.).
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- 3) Si tiene segunda batería -> Batería 2 --}}
+                @if($bateria2_tiene)
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-3">
+                        <div class="md:col-span-2"></div>
+
+                        {{-- Batería 2 - tipo --}}
+                        <div>
+                            <label class="block text-sm font-medium mb-1">
+                                Batería 2 – tipo
+                            </label>
+                            <select
+                                wire:model.defer="bateria2_tipo"
+                                class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                                    bg-slate-50 dark:bg-slate-900
+                                    text-sm px-3 py-2
+                                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            >
+                                <option value="">Selecciona</option>
+                                <option value="Interna">Interna</option>
+                                <option value="Externa">Externa</option>
+                            </select>
+                            @error('bateria2_tipo')
+                                <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        {{-- Batería 2 - salud --}}
+                        <div>
+                            <label class="block text-sm font-medium mb-1">
+                                Batería 2 – salud (%)
+                            </label>
+                            <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                wire:model.defer="bateria2_salud"
+                                class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                                    bg-slate-50 dark:bg-slate-900
+                                    text-sm px-3 py-2
+                                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            >
+                            @error('bateria2_salud')
+                                <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+                @endif
+            @endif
         </div>
-
-        {{-- 3) Si tiene segunda batería -> Batería 2 --}}
-        @if($bateria2_tiene)
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-3">
-                <div class="md:col-span-2"></div>
-
-                {{-- Batería 2 - tipo --}}
-                <div>
-                    <label class="block text-sm font-medium mb-1">
-                        Batería 2 – tipo
-                    </label>
-                    <select
-                        wire:model.defer="bateria2_tipo"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                        <option value="">Selecciona</option>
-                        <option value="Interna">Interna</option>
-                        <option value="Externa">Externa</option>
-                    </select>
-                    @error('bateria2_tipo')
-                        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                {{-- Batería 2 - salud --}}
-                <div>
-                    <label class="block text-sm font-medium mb-1">
-                        Batería 2 – salud (%)
-                    </label>
-                    <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        wire:model.defer="bateria2_salud"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                    @error('bateria2_salud')
-                        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-        @endif
-    @endif
-</div>
-
 
 
 
             {{-- ================== --}}
-{{--  ESTATUS EQUIPO   --}}
-{{-- ================== --}}
-<div class="space-y-3">
+            {{--  DETALLES ESTÉTICOS --}}
+            {{-- ================== --}}
+        
+            @php
+                $detallesEsteticosCatalogo = [
+                    'FALTA DE ANCLAJE DE TORNILLO',
+                    'PUNTOS DE LUZ LEVE',
+                    'RAYONES PANTALLA LEVES',
+                    'MARCAS DE TECLADO EN PANTALLA',
+                    'TECLADO DESGASTADO LEVE',
+                    'RAYONES CARCASA SUPERIOR',
+                    'RAYONES CARCASA INFERIOR',
+                    'GRIETAS LEVES CARCASA SUPERIOR',
+                    'GRIETAS LEVES CARCASA INFERIOR',
+                    'ABOLLADURA GRADO A',
+                    'ABOLLADURA GRADO B',
+                    'ABOLLADURA GRADO C',
+                    'FALTA UNA PARTE A LA CARCASA',
+                    'MOUSE PAD DESGASTE LEVE',
+                    'REGILLA DE VENTILADOR ROTA',
+                    'CARCASA CON PINTURA',
+                    'SIN PROTECTOR DE CAMARA',
+                    'RAYONES MARCO DE DISPLAY',
+                    'MARCO DE DISPLAY AGRIETADO',
+                    'DESGASTE MARCO DISPLAY',
+                    'DESGASTE DE CARCASA TECLADO',
+                    'DESGASTE DE CARCASA SUPERIOR E INFERIOR',
+                    'FALTAN GOMAS ANTIDERRAPANTE',
+                    'FALTAN PEDAZOS DE GOMA ANTIDERRAPANTE',
+                ];
+            @endphp
+
+            <div class="space-y-3"
+                x-data="{
+                open:false,
+                q:'',
+                scrollY: 0,
+                selected: @entangle('detalles_esteticos_checks'),
+                hasNA(){ return (this.selected || []).includes('N/A'); },
+                isOn(item){ return (this.selected || []).includes(item); },
+                toggle(item){
+                    if(!this.selected) this.selected = [];
+                    if(item === 'N/A'){
+                        this.selected = this.hasNA() ? [] : ['N/A'];
+                        return;
+                    }
+                    if(this.hasNA()) return;
+                    const i = this.selected.indexOf(item);
+                    if(i === -1) this.selected.push(item);
+                    else this.selected.splice(i, 1);
+                },
+                clearAll(){ this.selected = []; this.q=''; },
+
+                openModal(){
+                    this.scrollY = window.scrollY || 0;
+
+                    document.body.style.position = 'fixed';
+                    document.body.style.top = `-${this.scrollY}px`;
+                    document.body.style.left = '0';
+                    document.body.style.right = '0';
+                    document.body.style.width = '100%';
+
+                    this.open = true;
+                    this.q = '';
+                },
+                closeModal(){
+                    this.open = false;
+
+                    const y = this.scrollY || 0;
+
+                    document.body.style.position = '';
+                    document.body.style.top = '';
+                    document.body.style.left = '';
+                    document.body.style.right = '';
+                    document.body.style.width = '';
+
+                    window.scrollTo(0, y);
+                }
+                }"
+
+            >
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Detalles estéticos <span class="text-red-500">*</span>
+                    </span>
+                    <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
+                </div>
+
+                {{-- Resumen (chips) --}}
+                <div class="flex flex-wrap gap-2">
+                    <template x-if="!selected || selected.length === 0">
+                        <span class="text-xs text-slate-500 dark:text-slate-400">Sin selección (requerido)</span>
+                    </template>
+
+                    <template x-for="chip in (selected || [])" :key="chip">
+                        <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs
+                                    border border-slate-200/70 dark:border-white/10
+                                    bg-white/60 dark:bg-slate-900/40 backdrop-blur-md">
+                            <span class="text-slate-700 dark:text-slate-200" x-text="chip"></span>
+                            <button type="button"
+                                    class="w-5 h-5 rounded-full bg-rose-500/90 text-white text-[10px]
+                                        hover:bg-rose-600 flex items-center justify-center"
+                                    @click="toggle(chip)">
+                                ✕
+                            </button>
+                        </span>
+                    </template>
+                </div>
+
+                {{-- Botón abrir modal --}}
+                <div class="flex items-center justify-between pt-1">
+                    <button type="button"
+                            @click="openModal()"
+
+                            class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium
+                                bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                                text-white shadow-sm shadow-blue-800/40 backdrop-blur-md
+                                transition-all duration-200 hover:shadow-blue-500/70 hover:-translate-y-0.5"
+                    >
+                        Seleccionar detalles
+                    </button>
+
+                    <button type="button"
+                            x-show="selected && selected.length"
+                            @click="clearAll()"
+                            class="text-xs text-slate-500 dark:text-slate-400 hover:text-rose-500 transition"
+                    >
+                        Limpiar
+                    </button>
+                </div>
+
+                {{-- MODAL --}}
+                
+                <div x-show="open" x-transition.opacity
+                    class="fixed inset-0 z-50 flex items-center justify-center"
+                    @keydown.escape.window="closeModal()"
+
+                    x-cloak
+                >
+                    {{-- overlay --}}
+                    <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+                        @click="closeModal()"></div>
+
+                    {{-- caja modal --}}
+                    <div class="relative w-[92%] max-w-3xl max-h-[85vh] overflow-hidden
+                                rounded-2xl border border-white/10
+                                bg-slate-950/70 backdrop-blur-2xl
+                                shadow-2xl shadow-slate-950/60">
+
+                        {{-- header --}}
+                        <div class="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+                            <div>
+                                <h4 class="text-base font-semibold text-slate-50">Detalles estéticos</h4>
+                                <p class="text-xs text-slate-400 mt-0.5">
+                                    Marca los detalles aplicables. Puedes buscar para hacerlo rápido.
+                                </p>
+                            </div>
+
+                            <button type="button"
+                                    @click="closeModal()"
+
+                                    class="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10
+                                        border border-white/10 text-slate-200 flex items-center justify-center">
+                                ✕
+                            </button>
+                        </div>
+
+                        {{-- body --}}
+                        <div class="p-5 space-y-3">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
+                                <div class="md:col-span-2">
+                                    <input type="text"
+                                        x-model="q"
+                                        placeholder="Buscar… (pantalla, carcasa, goma, abolladura)"
+                                        class="w-full rounded-lg border border-slate-700
+                                                bg-slate-900 text-sm px-3 py-2 text-slate-100
+                                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                </div>
+
+                                <button type="button"
+                                        @click="toggle('N/A')"
+                                        class="inline-flex items-center justify-between w-full rounded-lg px-3 py-2 text-sm
+                                            border border-slate-700 bg-slate-900
+                                            hover:bg-slate-800/60 transition"
+                                >
+                                    <span class="text-slate-200">N/A</span>
+                                    <span class="text-xs"
+                                        :class="isOn('N/A') ? 'text-emerald-400' : 'text-slate-400'"
+                                        x-text="isOn('N/A') ? 'Seleccionado' : '—'"></span>
+                                </button>
+                            </div>
+
+                            {{-- lista scroll --}}
+                            <div class="max-h-[44vh] overflow-auto pr-1 rounded-xl border border-white/10">
+                                <div class="p-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    <template
+                                        x-for="item in {{ json_encode($detallesEsteticosCatalogo) }}
+                                            .filter(i => !q || i.toLowerCase().includes(q.toLowerCase()))"
+                                        :key="item"
+                                    >
+                                        <button type="button"
+                                                class="w-full text-left rounded-xl px-3 py-2 text-sm
+                                                    border border-slate-800 bg-slate-900/70
+                                                    hover:bg-slate-800/60 transition"
+                                                :class="isOn(item) ? 'ring-2 ring-indigo-500' : ''"
+                                                @click="toggle(item)"
+                                                :disabled="hasNA()"
+                                        >
+                                            <div class="flex items-center justify-between gap-3">
+                                                <span class="text-slate-200" x-text="item"></span>
+                                                <span class="text-xs"
+                                                    :class="isOn(item) ? 'text-emerald-400' : 'text-slate-400'"
+                                                    x-text="isOn(item) ? 'OK' : ''"></span>
+                                            </div>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+
+                            {{-- otro --}}
+                            <div>
+                                <label class="block text-sm font-medium mb-1 text-slate-200">Otro (opcional)</label>
+                                <input type="text"
+                                    wire:model.defer="detalles_esteticos_otro"
+                                    :disabled="hasNA()"
+                                    class="w-full rounded-lg border border-slate-700
+                                            bg-slate-900 text-sm px-3 py-2 text-slate-100
+                                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    placeholder="Describe el detalle…">
+                            </div>
+                        </div>
+
+                        {{-- footer --}}
+                        <div class="px-5 py-4 border-t border-white/10 flex items-center justify-between">
+                            <span class="text-xs text-slate-400"
+                                x-text="(selected?.length || 0) + ' seleccionados'"></span>
+
+                            <div class="flex items-center gap-2">
+                                <button type="button"
+                                        @click="closeModal()"
+
+                                        class="rounded-full px-4 py-2 text-sm font-medium
+                                            bg-white/5 hover:bg-white/10 border border-white/10
+                                            text-slate-200 transition">
+                                    Cancelar
+                                </button>
+
+                                <button type="button"
+                                        @click="closeModal()"
+
+                                        class="rounded-full px-4 py-2 text-sm font-medium
+                                            bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                                            text-white shadow-md shadow-blue-800/60 hover:shadow-blue-500/80
+                                            transition">
+                                    Listo
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                @error('detalles_esteticos_checks')
+                    <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                @enderror
+            </div>
+
+
+
+
+
+            {{-- ========================== --}}
+{{--  DETALLES DE FUNCIONAMIENTO --}}
+{{-- ========================== --}}
+@php
+    $detallesFuncionamientoCatalogo = [
+        'CAMARA NO FUNCIONA',
+        'NO FUNCIONA ENTRADA DE ETHERNET',
+        'NO FUNCIONA 1 PUERTO USB',
+        'NO FUNCIONAN 2 PUERTOS USB',
+        'NO FUNCIONA HDMI',
+        'NO FUNCIONA DISPLAY PORT',
+        'NO FUNCIONA MINI DISPLAY PORT',
+        'NO FUNCIONA MINI HDMI',
+        'NO FUNCIONA VGA',
+        'NO FUNCIONA DVI',
+        'FALLA ENTRADA TIPO-C',
+        'FALLA PLUG DE AUDIO',
+        'RETROILUMINADO DE TECLADO NO FUNCIONA',
+        'TRACKPOINT NO FUNCIONA',
+        'NO FUNCIONA BARRA DE DESPLAZAMIENTO',
+        'NO FUNCIONA LECTOR DE DISCO',
+        'NO FUNCIONA SD',
+        'LIGERA DISTORCION BOCINA DERECHA',
+        'LIGERA DISTORCION BOCINA IZQUIERDA',
+        'NO FUNCIONA MICROFONO',
+        'NO FUNCIONA CLICS SUPERIORES',
+        'NO CUENTA CON PLUMA TOUCH ORIGINAL',
+        'CONTRASEÑA EN BIOS',
+    ];
+@endphp
+
+<div class="space-y-3"
+     x-data="{
+        open:false,
+        q:'',
+        selected: @entangle('detalles_funcionamiento_checks'),
+        hasNA(){ return (this.selected || []).includes('N/A'); },
+        isOn(item){ return (this.selected || []).includes(item); },
+        toggle(item){
+            if(!this.selected) this.selected = [];
+            if(item === 'N/A'){
+                this.selected = this.hasNA() ? [] : ['N/A'];
+                return;
+            }
+            if(this.hasNA()) return;
+            const i = this.selected.indexOf(item);
+            if(i === -1) this.selected.push(item);
+            else this.selected.splice(i, 1);
+        },
+        clearAll(){ this.selected = []; this.q=''; }
+     }"
+>
     <div class="flex items-center gap-2">
         <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Estatus del equipo
+            Detalles de funcionamiento <span class="text-red-500">*</span>
         </span>
         <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-            <label class="block text-sm font-medium mb-1">
-                Estatus general <span class="text-red-500">*</span>
-            </label>
+    {{-- Resumen (chips) --}}
+    <div class="flex flex-wrap gap-2">
+        <template x-if="!selected || selected.length === 0">
+            <span class="text-xs text-slate-500 dark:text-slate-400">Sin selección (requerido)</span>
+        </template>
 
-            <select
-                wire:model.defer="estatus_general"
-                class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                       bg-slate-50 dark:bg-slate-900
-                       text-sm px-3 py-2
-                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-                <option value="En Revisión">En Revisión</option>
-                <option value="Pendiente Pieza">Pendiente Pieza</option>
-                <option value="Pendiente Garantía">Pendiente Garantía</option>
-                <option value="Pendiente Deshueso">Pendiente Deshueso</option>
-                <option value="Finalizado">Finalizado</option>
-            </select>
+        <template x-for="chip in (selected || [])" :key="chip">
+            <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs
+                         border border-slate-200/70 dark:border-white/10
+                         bg-white/60 dark:bg-slate-900/40 backdrop-blur-md">
+                <span class="text-slate-700 dark:text-slate-200" x-text="chip"></span>
+                <button type="button"
+                        class="w-5 h-5 rounded-full bg-rose-500/90 text-white text-[10px]
+                               hover:bg-rose-600 flex items-center justify-center"
+                        @click="toggle(chip)">
+                    ✕
+                </button>
+            </span>
+        </template>
+    </div>
 
-            @error('estatus_general')
-                <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-            @enderror
+    {{-- Botón abrir modal --}}
+    <div class="flex items-center justify-between pt-1">
+        <button type="button"
+                @click="open=true; q='';"
+                class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium
+                       bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                       text-white shadow-sm shadow-blue-800/40 backdrop-blur-md
+                       transition-all duration-200 hover:shadow-blue-500/70 hover:-translate-y-0.5"
+        >
+            Seleccionar detalles
+        </button>
+
+        <button type="button"
+                x-show="selected && selected.length"
+                @click="clearAll()"
+                class="text-xs text-slate-500 dark:text-slate-400 hover:text-rose-500 transition"
+        >
+            Limpiar
+        </button>
+    </div>
+
+    {{-- MODAL --}}
+    <div x-show="open" x-transition.opacity
+         class="fixed inset-0 z-50 flex items-center justify-center"
+         @keydown.escape.window="open=false"
+         x-cloak
+    >
+        {{-- overlay --}}
+        <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+             @click="open=false"></div>
+
+        {{-- caja modal --}}
+        <div class="relative w-[92%] max-w-3xl max-h-[85vh] overflow-hidden
+                    rounded-2xl border border-white/10
+                    bg-slate-950/70 backdrop-blur-2xl
+                    shadow-2xl shadow-slate-950/60">
+
+            {{-- header --}}
+            <div class="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+                <div>
+                    <h4 class="text-base font-semibold text-slate-50">Detalles de funcionamiento</h4>
+                    <p class="text-xs text-slate-400 mt-0.5">
+                        Marca los detalles aplicables. Puedes buscar para hacerlo rápido.
+                    </p>
+                </div>
+
+                <button type="button"
+                        @click="open=false"
+                        class="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10
+                               border border-white/10 text-slate-200 flex items-center justify-center">
+                    ✕
+                </button>
+            </div>
+
+            {{-- body --}}
+            <div class="p-5 space-y-3">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
+                    <div class="md:col-span-2">
+                        <input type="text"
+                               x-model="q"
+                               placeholder="Buscar… (usb, hdmi, audio, cámara, bios)"
+                               class="w-full rounded-lg border border-slate-700
+                                      bg-slate-900 text-sm px-3 py-2 text-slate-100
+                                      focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+
+                    <button type="button"
+                            @click="toggle('N/A')"
+                            class="inline-flex items-center justify-between w-full rounded-lg px-3 py-2 text-sm
+                                   border border-slate-700 bg-slate-900
+                                   hover:bg-slate-800/60 transition"
+                    >
+                        <span class="text-slate-200">N/A</span>
+                        <span class="text-xs"
+                              :class="isOn('N/A') ? 'text-emerald-400' : 'text-slate-400'"
+                              x-text="isOn('N/A') ? 'Seleccionado' : '—'"></span>
+                    </button>
+                </div>
+
+                {{-- lista scroll --}}
+                <div class="max-h-[44vh] overflow-auto pr-1 rounded-xl border border-white/10">
+                    <div class="p-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <template
+                            x-for="item in {{ json_encode($detallesFuncionamientoCatalogo) }}
+                                .filter(i => !q || i.toLowerCase().includes(q.toLowerCase()))"
+                            :key="item"
+                        >
+                            <button type="button"
+                                    class="w-full text-left rounded-xl px-3 py-2 text-sm
+                                           border border-slate-800 bg-slate-900/70
+                                           hover:bg-slate-800/60 transition"
+                                    :class="isOn(item) ? 'ring-2 ring-indigo-500' : ''"
+                                    @click="toggle(item)"
+                                    :disabled="hasNA()"
+                            >
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="text-slate-200" x-text="item"></span>
+                                    <span class="text-xs"
+                                          :class="isOn(item) ? 'text-emerald-400' : 'text-slate-400'"
+                                          x-text="isOn(item) ? 'OK' : ''"></span>
+                                </div>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- otro --}}
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-slate-200">Otro (opcional)</label>
+                    <input type="text"
+                           wire:model.defer="detalles_funcionamiento_otro"
+                           :disabled="hasNA()"
+                           class="w-full rounded-lg border border-slate-700
+                                  bg-slate-900 text-sm px-3 py-2 text-slate-100
+                                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                           placeholder="Describe el detalle…">
+                </div>
+            </div>
+
+            {{-- footer --}}
+            <div class="px-5 py-4 border-t border-white/10 flex items-center justify-between">
+                <span class="text-xs text-slate-400"
+                      x-text="(selected?.length || 0) + ' seleccionados'"></span>
+
+                <div class="flex items-center gap-2">
+                    <button type="button"
+                            @click="open=false"
+                            class="rounded-full px-4 py-2 text-sm font-medium
+                                   bg-white/5 hover:bg-white/10 border border-white/10
+                                   text-slate-200 transition">
+                        Cancelar
+                    </button>
+
+                    <button type="button"
+                            @click="open=false"
+                            class="rounded-full px-4 py-2 text-sm font-medium
+                                   bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                                   text-white shadow-md shadow-blue-800/60 hover:shadow-blue-500/80
+                                   transition">
+                        Listo
+                    </button>
+                </div>
+            </div>
+
         </div>
     </div>
+
+    @error('detalles_funcionamiento_checks')
+        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+    @enderror
 </div>
 
 
 
 
-            {{-- Notas generales --}}
+
+                    {{-- Notas generales --}}
             <div>
                 <label class="block text-sm font-medium mb-1">
                     Notas generales
@@ -1074,6 +1536,129 @@
                     <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                 @enderror
             </div>
+
+
+
+
+        <div class="space-y-3">
+    <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Puertos de conectividad <span class="text-red-500">*</span>
+        </span>
+    </div>
+
+    <div class="grid grid-cols-12 gap-2 items-center">
+        <div class="col-span-10">
+            <select wire:model="conectividad_pick"
+                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                           bg-slate-50 dark:bg-slate-900
+                           text-xs sm:text-sm px-3 py-2
+                           focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">Selecciona una opción</option>
+                <option value="WIFI">WIFI</option>
+                <option value="BLUETOOTH">BLUETOOTH</option>
+                <option value="N/A">N/A</option>
+            </select>
+        </div>
+
+        <div class="col-span-2 flex justify-end">
+            <button type="button" wire:click="addConectividad"
+                    class="inline-flex items-center justify-center rounded-full
+                           w-9 h-9 text-sm
+                           bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                           text-white shadow-sm shadow-blue-800/40 hover:shadow-blue-500/70 transition">
+                +
+            </button>
+        </div>
+    </div>
+
+    <div class="flex flex-wrap gap-2">
+        @foreach($conectividad_checks as $item)
+            <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs
+                         border border-slate-200/70 dark:border-white/10
+                         bg-white/60 dark:bg-slate-900/40 backdrop-blur-md">
+                <span class="text-slate-700 dark:text-slate-200">{{ $item }}</span>
+                <button type="button"
+                        wire:click="removeConectividad('{{ $item }}')"
+                        class="w-5 h-5 rounded-full bg-rose-500/90 text-white text-[10px]
+                               hover:bg-rose-600 flex items-center justify-center">
+                    ✕
+                </button>
+            </span>
+        @endforeach
+
+        @if(empty($conectividad_checks))
+            <span class="text-xs text-slate-500 dark:text-slate-400">Sin selección</span>
+        @endif
+    </div>
+
+    @error('conectividad_checks')
+        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+    @enderror
+</div>
+
+
+
+<div class="space-y-3">
+    <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Dispositivos de entrada <span class="text-red-500">*</span>
+        </span>
+    </div>
+
+    <div class="grid grid-cols-12 gap-2 items-center">
+        <div class="col-span-10">
+            <select wire:model="entrada_pick"
+                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                           bg-slate-50 dark:bg-slate-900
+                           text-xs sm:text-sm px-3 py-2
+                           focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">Selecciona una opción</option>
+                <option value="CAMARA WEB">CAMARA WEB</option>
+                <option value="LECTOR CD/DVD">LECTOR CD/DVD</option>
+                <option value="TECLADO EXTENDIDO">TECLADO EXTENDIDO</option>
+                <option value="TECLADO RETROILUMINADO">TECLADO RETROILUMINADO</option>
+                <option value="N/A">N/A</option>
+            </select>
+        </div>
+
+        <div class="col-span-2 flex justify-end">
+            <button type="button" wire:click="addEntrada"
+                    class="inline-flex items-center justify-center rounded-full
+                           w-9 h-9 text-sm
+                           bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                           text-white shadow-sm shadow-blue-800/40 hover:shadow-blue-500/70 transition">
+                +
+            </button>
+        </div>
+    </div>
+
+    <div class="flex flex-wrap gap-2">
+        @foreach($entrada_checks as $item)
+            <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs
+                         border border-slate-200/70 dark:border-white/10
+                         bg-white/60 dark:bg-slate-900/40 backdrop-blur-md">
+                <span class="text-slate-700 dark:text-slate-200">{{ $item }}</span>
+                <button type="button"
+                        wire:click="removeEntrada('{{ $item }}')"
+                        class="w-5 h-5 rounded-full bg-rose-500/90 text-white text-[10px]
+                               hover:bg-rose-600 flex items-center justify-center">
+                    ✕
+                </button>
+            </span>
+        @endforeach
+
+        @if(empty($entrada_checks))
+            <span class="text-xs text-slate-500 dark:text-slate-400">Sin selección</span>
+        @endif
+    </div>
+
+    @error('entrada_checks')
+        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+    @enderror
+</div>
+
+
         
 
         {{-- ================== --}}
@@ -1155,6 +1740,8 @@
             </div>
         </div>
 
+        
+
         {{-- ================== --}}
         {{--  PUERTOS DE VIDEO  --}}
         {{-- ================== --}}
@@ -1235,6 +1822,10 @@
             </div>
         </div>
 
+
+        
+
+
         {{-- ================== --}}
         {{--  LECTORES / RANURAS --}}
         {{-- ================== --}}
@@ -1312,6 +1903,48 @@
                 @endforeach
             </div>
         </div>
+
+
+
+                    {{-- ================== --}}
+            {{--  ESTATUS EQUIPO   --}}
+            {{-- ================== --}}
+            <div class="space-y-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Estatus del equipo
+                    </span>
+                    <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">
+                            Estatus general <span class="text-red-500">*</span>
+                        </label>
+
+                        <select
+                            wire:model.defer="estatus_general"
+                            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                                bg-slate-50 dark:bg-slate-900
+                                text-sm px-3 py-2
+                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        >
+                            <option value="En Revisión">En Revisión</option>
+                            <option value="Pendiente Pieza">Pendiente Pieza</option>
+                            <option value="Pendiente Garantía">Pendiente Garantía</option>
+                            <option value="Pendiente Deshueso">Pendiente Deshueso</option>
+                            <option value="Finalizado">Finalizado</option>
+                        </select>
+
+                        @error('estatus_general')
+                            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+
+
 
         {{-- BOTÓN FINAL --}}
         <div class="flex items-center justify-end pt-2">

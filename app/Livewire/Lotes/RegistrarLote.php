@@ -88,7 +88,8 @@ class RegistrarLote extends Component
             DB::table('lote_modelos_recibidos')->insert($rows);
         });
 
-        session()->flash('success', 'Lote y modelos registrados correctamente.');
+        $this->dispatch('toast', type: 'success', message: 'Lote y modelos registrados correctamente.');
+
 
         // Reset
         $this->reset(['nombre_lote', 'proveedor_id', 'modelos']);
@@ -110,4 +111,22 @@ class RegistrarLote extends Component
             'proveedores' => $proveedores,
         ]);
     }
+
+
+
+    public function probarNotificaciones()
+{
+    $tipos = ['success','error','warning','info'];
+    $type = $tipos[array_rand($tipos)];
+
+    $msg = match ($type) {
+        'success' => '✅ Toast de éxito (prueba).',
+        'error'   => '❌ Toast de error (prueba).',
+        'warning' => '⚠️ Toast de aviso (prueba).',
+        default   => 'ℹ️ Toast de info (prueba).',
+    };
+
+    $this->dispatch('toast', type: $type, message: $msg);
+}
+
 }
