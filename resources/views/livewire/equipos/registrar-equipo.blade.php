@@ -1540,124 +1540,181 @@
 
 
 
-        <div class="space-y-3">
-    <div class="flex items-center justify-between">
-        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+       {{-- ========================= --}}
+{{--  CONECTIVIDAD + ENTRADA   --}}
+{{-- ========================= --}}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    {{-- PUERTOS DE CONECTIVIDAD --}}
+    <div class="space-y-2"
+        x-data="{
+            field: 'puertos_conectividad',
+            options: ['WIFI','BLUETOOTH','N/A'],
+            pick: '',
+            selected: [],
+            init(){
+                const v = $wire.get(this.field);
+                if(v){
+                    this.selected = v.split(',').map(s => s.trim()).filter(Boolean);
+                }
+            },
+            sync(){
+                $wire.set(this.field, (this.selected || []).join(', '), true);
+            },
+            add(){
+                const v = this.pick;
+                if(!v) return;
+
+                if(v === 'N/A'){
+                    this.selected = ['N/A'];
+                    this.pick = '';
+                    this.sync();
+                    return;
+                }
+
+                // si estaba N/A, lo quitamos
+                this.selected = (this.selected || []).filter(x => x !== 'N/A');
+
+                if(!this.selected.includes(v)) this.selected.push(v);
+
+                this.pick = '';
+                this.sync();
+            },
+            remove(v){
+                this.selected = (this.selected || []).filter(x => x !== v);
+                this.sync();
+            }
+        }"
+    >
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Puertos de conectividad <span class="text-red-500">*</span>
-        </span>
-    </div>
+        </label>
 
-    <div class="grid grid-cols-12 gap-2 items-center">
-        <div class="col-span-10">
-            <select wire:model="conectividad_pick"
-                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                           bg-slate-50 dark:bg-slate-900
-                           text-xs sm:text-sm px-3 py-2
-                           focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                <option value="">Selecciona una opción</option>
-                <option value="WIFI">WIFI</option>
-                <option value="BLUETOOTH">BLUETOOTH</option>
-                <option value="N/A">N/A</option>
-            </select>
+        <select
+            x-model="pick"
+            @change="add()"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                   bg-slate-50 dark:bg-slate-900
+                   text-xs sm:text-sm px-3 py-2
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+        >
+            <option value="">Selecciona una opción</option>
+            <template x-for="opt in options" :key="opt">
+                <option :value="opt" x-text="opt"></option>
+            </template>
+        </select>
+
+        {{-- Chips en una sola “línea” (wrap si se llena) --}}
+        <div class="flex flex-wrap gap-2">
+            <template x-if="!selected || selected.length === 0">
+                <span class="text-xs text-slate-500 dark:text-slate-400">Sin selección</span>
+            </template>
+
+            <template x-for="chip in (selected || [])" :key="chip">
+                <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs
+                             border border-slate-200/70 dark:border-white/10
+                             bg-white/60 dark:bg-slate-900/40 backdrop-blur-md">
+                    <span class="text-slate-700 dark:text-slate-200" x-text="chip"></span>
+                    <button type="button"
+                            class="w-5 h-5 rounded-full bg-rose-500/90 text-white text-[10px]
+                                   hover:bg-rose-600 flex items-center justify-center"
+                            @click="remove(chip)">
+                        ✕
+                    </button>
+                </span>
+            </template>
         </div>
 
-        <div class="col-span-2 flex justify-end">
-            <button type="button" wire:click="addConectividad"
-                    class="inline-flex items-center justify-center rounded-full
-                           w-9 h-9 text-sm
-                           bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                           text-white shadow-sm shadow-blue-800/40 hover:shadow-blue-500/70 transition">
-                +
-            </button>
-        </div>
+        @error('puertos_conectividad')
+            <p class="text-xs text-red-500">{{ $message }}</p>
+        @enderror
     </div>
 
-    <div class="flex flex-wrap gap-2">
-        @foreach($conectividad_checks as $item)
-            <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs
-                         border border-slate-200/70 dark:border-white/10
-                         bg-white/60 dark:bg-slate-900/40 backdrop-blur-md">
-                <span class="text-slate-700 dark:text-slate-200">{{ $item }}</span>
-                <button type="button"
-                        wire:click="removeConectividad('{{ $item }}')"
-                        class="w-5 h-5 rounded-full bg-rose-500/90 text-white text-[10px]
-                               hover:bg-rose-600 flex items-center justify-center">
-                    ✕
-                </button>
-            </span>
-        @endforeach
 
-        @if(empty($conectividad_checks))
-            <span class="text-xs text-slate-500 dark:text-slate-400">Sin selección</span>
-        @endif
-    </div>
+    {{-- DISPOSITIVOS DE ENTRADA --}}
+    <div class="space-y-2"
+        x-data="{
+            field: 'dispositivos_entrada',
+            options: ['CAMARA WEB','LECTOR CD/DVD','TECLADO EXTENDIDO','TECLADO RETROILUMINADO','N/A'],
+            pick: '',
+            selected: [],
+            init(){
+                const v = $wire.get(this.field);
+                if(v){
+                    this.selected = v.split(',').map(s => s.trim()).filter(Boolean);
+                }
+            },
+            sync(){
+                $wire.set(this.field, (this.selected || []).join(', '), true);
+            },
+            add(){
+                const v = this.pick;
+                if(!v) return;
 
-    @error('conectividad_checks')
-        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-    @enderror
-</div>
+                if(v === 'N/A'){
+                    this.selected = ['N/A'];
+                    this.pick = '';
+                    this.sync();
+                    return;
+                }
 
+                this.selected = (this.selected || []).filter(x => x !== 'N/A');
 
+                if(!this.selected.includes(v)) this.selected.push(v);
 
-<div class="space-y-3">
-    <div class="flex items-center justify-between">
-        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                this.pick = '';
+                this.sync();
+            },
+            remove(v){
+                this.selected = (this.selected || []).filter(x => x !== v);
+                this.sync();
+            }
+        }"
+    >
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Dispositivos de entrada <span class="text-red-500">*</span>
-        </span>
-    </div>
+        </label>
 
-    <div class="grid grid-cols-12 gap-2 items-center">
-        <div class="col-span-10">
-            <select wire:model="entrada_pick"
-                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                           bg-slate-50 dark:bg-slate-900
-                           text-xs sm:text-sm px-3 py-2
-                           focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                <option value="">Selecciona una opción</option>
-                <option value="CAMARA WEB">CAMARA WEB</option>
-                <option value="LECTOR CD/DVD">LECTOR CD/DVD</option>
-                <option value="TECLADO EXTENDIDO">TECLADO EXTENDIDO</option>
-                <option value="TECLADO RETROILUMINADO">TECLADO RETROILUMINADO</option>
-                <option value="N/A">N/A</option>
-            </select>
+        <select
+            x-model="pick"
+            @change="add()"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                   bg-slate-50 dark:bg-slate-900
+                   text-xs sm:text-sm px-3 py-2
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+        >
+            <option value="">Selecciona una opción</option>
+            <template x-for="opt in options" :key="opt">
+                <option :value="opt" x-text="opt"></option>
+            </template>
+        </select>
+
+        <div class="flex flex-wrap gap-2">
+            <template x-if="!selected || selected.length === 0">
+                <span class="text-xs text-slate-500 dark:text-slate-400">Sin selección</span>
+            </template>
+
+            <template x-for="chip in (selected || [])" :key="chip">
+                <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs
+                             border border-slate-200/70 dark:border-white/10
+                             bg-white/60 dark:bg-slate-900/40 backdrop-blur-md">
+                    <span class="text-slate-700 dark:text-slate-200" x-text="chip"></span>
+                    <button type="button"
+                            class="w-5 h-5 rounded-full bg-rose-500/90 text-white text-[10px]
+                                   hover:bg-rose-600 flex items-center justify-center"
+                            @click="remove(chip)">
+                        ✕
+                    </button>
+                </span>
+            </template>
         </div>
 
-        <div class="col-span-2 flex justify-end">
-            <button type="button" wire:click="addEntrada"
-                    class="inline-flex items-center justify-center rounded-full
-                           w-9 h-9 text-sm
-                           bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                           text-white shadow-sm shadow-blue-800/40 hover:shadow-blue-500/70 transition">
-                +
-            </button>
-        </div>
+        @error('dispositivos_entrada')
+            <p class="text-xs text-red-500">{{ $message }}</p>
+        @enderror
     </div>
 
-    <div class="flex flex-wrap gap-2">
-        @foreach($entrada_checks as $item)
-            <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs
-                         border border-slate-200/70 dark:border-white/10
-                         bg-white/60 dark:bg-slate-900/40 backdrop-blur-md">
-                <span class="text-slate-700 dark:text-slate-200">{{ $item }}</span>
-                <button type="button"
-                        wire:click="removeEntrada('{{ $item }}')"
-                        class="w-5 h-5 rounded-full bg-rose-500/90 text-white text-[10px]
-                               hover:bg-rose-600 flex items-center justify-center">
-                    ✕
-                </button>
-            </span>
-        @endforeach
-
-        @if(empty($entrada_checks))
-            <span class="text-xs text-slate-500 dark:text-slate-400">Sin selección</span>
-        @endif
-    </div>
-
-    @error('entrada_checks')
-        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-    @enderror
 </div>
-
 
         
 

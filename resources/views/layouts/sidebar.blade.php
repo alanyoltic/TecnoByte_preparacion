@@ -369,7 +369,7 @@
             </x-dropdown-link>
 
             <x-dropdown-link
-                :href="route('users.index')"
+                :href="route('lotes.editar')"
                 class="flex items-center gap-2 px-4 py-2 text-[0.80rem]
                        text-slate-700 dark:text-slate-200
                        hover:bg-slate-100/90 dark:hover:bg-slate-800/80

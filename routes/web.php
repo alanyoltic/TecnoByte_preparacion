@@ -7,6 +7,8 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LoteController;
 use App\Livewire\Equipos\RegistrarEquipo;
+use App\Livewire\Lotes\ListaLotes;
+use App\Models\Lote;
 use App\Livewire\Inventario\GestionEquipos;
 use App\Livewire\Inventario\EditarEquipo;
 use App\Livewire\Inventario\EditarInventario;
@@ -175,9 +177,24 @@ Route::middleware(['auth', 'onlyAdminCeo'])->group(function ()  {
             return view('inventario.gestion-inventario');
         })->name('inventario.gestion');
 
-Route::get('/lotes/registrar', [LoteController::class, 'registrar'])
-    ->middleware(['auth', 'role:ceo,admin'])
-    ->name('lotes.registrar');
+    Route::get('/lotes/registrar', [LoteController::class, 'registrar'])
+        ->middleware(['auth', 'role:ceo,admin'])
+        ->name('lotes.registrar');
+
+
+    Route::get('/lotes/editar', function () {
+        return view('lotes.listalotes');
+    })->name('lotes.editar');
+
+
+
+
+    
+Route::get('/lotes/{lote}/editar', function (\App\Models\Lote $lote) {
+    return view('lotes.editarlote', compact('lote'));
+})->name('lotes.edit');
+
+
 
 
 

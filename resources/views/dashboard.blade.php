@@ -1,4 +1,5 @@
 <x-app-layout>
+    
 
 @php
     $isAdminOrCeo = in_array(optional(auth()->user()->role)->slug, ['admin', 'ceo']);
