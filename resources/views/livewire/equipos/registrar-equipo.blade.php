@@ -1046,51 +1046,34 @@
 
             <div class="space-y-3"
                 x-data="{
-                open:false,
-                q:'',
-                scrollY: 0,
-                selected: @entangle('detalles_esteticos_checks'),
-                hasNA(){ return (this.selected || []).includes('N/A'); },
-                isOn(item){ return (this.selected || []).includes(item); },
-                toggle(item){
-                    if(!this.selected) this.selected = [];
-                    if(item === 'N/A'){
-                        this.selected = this.hasNA() ? [] : ['N/A'];
-                        return;
-                    }
-                    if(this.hasNA()) return;
-                    const i = this.selected.indexOf(item);
-                    if(i === -1) this.selected.push(item);
-                    else this.selected.splice(i, 1);
-                },
-                clearAll(){ this.selected = []; this.q=''; },
+                        open:false,
+                        q:'',
+                        selected: @entangle('detalles_esteticos_checks'),
+                        hasNA(){ return (this.selected || []).includes('N/A'); },
+                        isOn(item){ return (this.selected || []).includes(item); },
+                        toggle(item){
+                            if(!this.selected) this.selected = [];
+                            if(item === 'N/A'){
+                                this.selected = this.hasNA() ? [] : ['N/A'];
+                                return;
+                            }
+                            if(this.hasNA()) return;
+                            const i = this.selected.indexOf(item);
+                            if(i === -1) this.selected.push(item);
+                            else this.selected.splice(i, 1);
+                        },
+                        clearAll(){ this.selected = []; this.q=''; },
 
-                openModal(){
-                    this.scrollY = window.scrollY || 0;
+                        
+                        openModal(){
+                            this.open = true;
+                            this.q = '';
+                        },
+                        closeModal(){
+                            this.open = false;
+                        }
+                        }"
 
-                    document.body.style.position = 'fixed';
-                    document.body.style.top = `-${this.scrollY}px`;
-                    document.body.style.left = '0';
-                    document.body.style.right = '0';
-                    document.body.style.width = '100%';
-
-                    this.open = true;
-                    this.q = '';
-                },
-                closeModal(){
-                    this.open = false;
-
-                    const y = this.scrollY || 0;
-
-                    document.body.style.position = '';
-                    document.body.style.top = '';
-                    document.body.style.left = '';
-                    document.body.style.right = '';
-                    document.body.style.width = '';
-
-                    window.scrollTo(0, y);
-                }
-                }"
 
             >
                 <div class="flex items-center gap-2">
@@ -1540,181 +1523,203 @@
 
 
 
-       {{-- ========================= --}}
-{{--  CONECTIVIDAD + ENTRADA   --}}
-{{-- ========================= --}}
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {{-- ========================= --}}
+        {{--  CONECTIVIDAD + ENTRADA   --}}
+        {{-- ========================= --}}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-    {{-- PUERTOS DE CONECTIVIDAD --}}
-    <div class="space-y-2"
-        x-data="{
-            field: 'puertos_conectividad',
-            options: ['WIFI','BLUETOOTH','N/A'],
-            pick: '',
-            selected: [],
-            init(){
-                const v = $wire.get(this.field);
-                if(v){
-                    this.selected = v.split(',').map(s => s.trim()).filter(Boolean);
-                }
-            },
-            sync(){
-                $wire.set(this.field, (this.selected || []).join(', '), true);
-            },
-            add(){
-                const v = this.pick;
-                if(!v) return;
 
-                if(v === 'N/A'){
-                    this.selected = ['N/A'];
-                    this.pick = '';
-                    this.sync();
-                    return;
-                }
+            {{-- PUERTOS DE CONECTIVIDAD --}}
+            <div class="space-y-2"
+                x-data="{
+                    field: 'puertos_conectividad',
+                    options: ['WIFI','BLUETOOTH','N/A'],
+                    pick: '',
+                    selected: [],
+                    init(){
+                        // cargar valor inicial si existe
+                        const v = $wire.get(this.field);
+                        if(v){
+                            this.selected = v.split(',').map(s => s.trim()).filter(Boolean);
+                        }
 
-                // si estaba N/A, lo quitamos
-                this.selected = (this.selected || []).filter(x => x !== 'N/A');
+                        // (opcional) blindaje: si Livewire limpia el valor, limpia chips también
+                        this.$watch('selected', () => { /* no-op, solo asegura reactividad */ });
+                    },
+                    sync(){
+                        $wire.set(this.field, (this.selected || []).join(', '), true);
+                    },
+                    add(){
+                        const v = this.pick;
+                        if(!v) return;
 
-                if(!this.selected.includes(v)) this.selected.push(v);
+                        if(v === 'N/A'){
+                            this.selected = ['N/A'];
+                            this.pick = '';
+                            this.sync();
+                            return;
+                        }
 
-                this.pick = '';
-                this.sync();
-            },
-            remove(v){
-                this.selected = (this.selected || []).filter(x => x !== v);
-                this.sync();
-            }
-        }"
-    >
-        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Puertos de conectividad <span class="text-red-500">*</span>
-        </label>
+                        // si estaba N/A, lo quitamos
+                        this.selected = (this.selected || []).filter(x => x !== 'N/A');
 
-        <select
-            x-model="pick"
-            @change="add()"
-            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                   bg-slate-50 dark:bg-slate-900
-                   text-xs sm:text-sm px-3 py-2
-                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-        >
-            <option value="">Selecciona una opción</option>
-            <template x-for="opt in options" :key="opt">
-                <option :value="opt" x-text="opt"></option>
-            </template>
-        </select>
+                        if(!this.selected.includes(v)) this.selected.push(v);
 
-        {{-- Chips en una sola “línea” (wrap si se llena) --}}
-        <div class="flex flex-wrap gap-2">
-            <template x-if="!selected || selected.length === 0">
-                <span class="text-xs text-slate-500 dark:text-slate-400">Sin selección</span>
-            </template>
+                        this.pick = '';
+                        this.sync();
+                    },
+                    remove(v){
+                        this.selected = (this.selected || []).filter(x => x !== v);
+                        this.sync();
+                    },
+                    resetAll(){
+                        this.pick = '';
+                        this.selected = [];
+                        $wire.set(this.field, '', true);
+                    }
+                }"
+                x-on:reiniciar-ui-selects.window="resetAll()"
+            >
+                <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Puertos de conectividad <span class="text-red-500">*</span>
+                </label>
 
-            <template x-for="chip in (selected || [])" :key="chip">
-                <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs
-                             border border-slate-200/70 dark:border-white/10
-                             bg-white/60 dark:bg-slate-900/40 backdrop-blur-md">
-                    <span class="text-slate-700 dark:text-slate-200" x-text="chip"></span>
-                    <button type="button"
-                            class="w-5 h-5 rounded-full bg-rose-500/90 text-white text-[10px]
-                                   hover:bg-rose-600 flex items-center justify-center"
-                            @click="remove(chip)">
-                        ✕
-                    </button>
-                </span>
-            </template>
+                <select
+                    x-model="pick"
+                    @change="add()"
+                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                        bg-slate-50 dark:bg-slate-900
+                        text-xs sm:text-sm px-3 py-2
+                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                    <option value="">Selecciona una opción</option>
+                    <template x-for="opt in options" :key="opt">
+                        <option :value="opt" x-text="opt"></option>
+                    </template>
+                </select>
+
+                <div class="flex flex-wrap gap-2">
+                    <template x-if="!selected || selected.length === 0">
+                        <span class="text-xs text-slate-500 dark:text-slate-400">Sin selección</span>
+                    </template>
+
+                    <template x-for="chip in (selected || [])" :key="chip">
+                        <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs
+                                    border border-slate-200/70 dark:border-white/10
+                                    bg-white/60 dark:bg-slate-900/40 backdrop-blur-md">
+                            <span class="text-slate-700 dark:text-slate-200" x-text="chip"></span>
+                            <button type="button"
+                                    class="w-5 h-5 rounded-full bg-rose-500/90 text-white text-[10px]
+                                        hover:bg-rose-600 flex items-center justify-center"
+                                    @click="remove(chip)">
+                                ✕
+                            </button>
+                        </span>
+                    </template>
+                </div>
+
+                @error('puertos_conectividad')
+                    <p class="text-xs text-red-500">{{ $message }}</p>
+                @enderror
+            </div>
+
+
+
+
+           {{-- DISPOSITIVOS DE ENTRADA --}}
+            <div class="space-y-2"
+                x-data="{
+                    field: 'dispositivos_entrada',
+                    options: ['CAMARA WEB','LECTOR CD/DVD','TECLADO EXTENDIDO','TECLADO RETROILUMINADO','N/A'],
+                    pick: '',
+                    selected: [],
+                    init(){
+                        const v = $wire.get(this.field);
+                        if(v){
+                            this.selected = v.split(',').map(s => s.trim()).filter(Boolean);
+                        }
+
+                        // (opcional) blindaje
+                        this.$watch('selected', () => { /* no-op */ });
+                    },
+                    sync(){
+                        $wire.set(this.field, (this.selected || []).join(', '), true);
+                    },
+                    add(){
+                        const v = this.pick;
+                        if(!v) return;
+
+                        if(v === 'N/A'){
+                            this.selected = ['N/A'];
+                            this.pick = '';
+                            this.sync();
+                            return;
+                        }
+
+                        this.selected = (this.selected || []).filter(x => x !== 'N/A');
+
+                        if(!this.selected.includes(v)) this.selected.push(v);
+
+                        this.pick = '';
+                        this.sync();
+                    },
+                    remove(v){
+                        this.selected = (this.selected || []).filter(x => x !== v);
+                        this.sync();
+                    },
+                    resetAll(){
+                        this.pick = '';
+                        this.selected = [];
+                        $wire.set(this.field, '', true);
+                    }
+                }"
+                x-on:reiniciar-ui-selects.window="resetAll()"
+            >
+                <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Dispositivos de entrada <span class="text-red-500">*</span>
+                </label>
+
+                <select
+                    x-model="pick"
+                    @change="add()"
+                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                        bg-slate-50 dark:bg-slate-900
+                        text-xs sm:text-sm px-3 py-2
+                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                    <option value="">Selecciona una opción</option>
+                    <template x-for="opt in options" :key="opt">
+                        <option :value="opt" x-text="opt"></option>
+                    </template>
+                </select>
+
+                <div class="flex flex-wrap gap-2">
+                    <template x-if="!selected || selected.length === 0">
+                        <span class="text-xs text-slate-500 dark:text-slate-400">Sin selección</span>
+                    </template>
+
+                    <template x-for="chip in (selected || [])" :key="chip">
+                        <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs
+                                    border border-slate-200/70 dark:border-white/10
+                                    bg-white/60 dark:bg-slate-900/40 backdrop-blur-md">
+                            <span class="text-slate-700 dark:text-slate-200" x-text="chip"></span>
+                            <button type="button"
+                                    class="w-5 h-5 rounded-full bg-rose-500/90 text-white text-[10px]
+                                        hover:bg-rose-600 flex items-center justify-center"
+                                    @click="remove(chip)">
+                                ✕
+                            </button>
+                        </span>
+                    </template>
+                </div>
+
+                @error('dispositivos_entrada')
+                    <p class="text-xs text-red-500">{{ $message }}</p>
+                @enderror
+            </div>
+
+
         </div>
-
-        @error('puertos_conectividad')
-            <p class="text-xs text-red-500">{{ $message }}</p>
-        @enderror
-    </div>
-
-
-    {{-- DISPOSITIVOS DE ENTRADA --}}
-    <div class="space-y-2"
-        x-data="{
-            field: 'dispositivos_entrada',
-            options: ['CAMARA WEB','LECTOR CD/DVD','TECLADO EXTENDIDO','TECLADO RETROILUMINADO','N/A'],
-            pick: '',
-            selected: [],
-            init(){
-                const v = $wire.get(this.field);
-                if(v){
-                    this.selected = v.split(',').map(s => s.trim()).filter(Boolean);
-                }
-            },
-            sync(){
-                $wire.set(this.field, (this.selected || []).join(', '), true);
-            },
-            add(){
-                const v = this.pick;
-                if(!v) return;
-
-                if(v === 'N/A'){
-                    this.selected = ['N/A'];
-                    this.pick = '';
-                    this.sync();
-                    return;
-                }
-
-                this.selected = (this.selected || []).filter(x => x !== 'N/A');
-
-                if(!this.selected.includes(v)) this.selected.push(v);
-
-                this.pick = '';
-                this.sync();
-            },
-            remove(v){
-                this.selected = (this.selected || []).filter(x => x !== v);
-                this.sync();
-            }
-        }"
-    >
-        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Dispositivos de entrada <span class="text-red-500">*</span>
-        </label>
-
-        <select
-            x-model="pick"
-            @change="add()"
-            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                   bg-slate-50 dark:bg-slate-900
-                   text-xs sm:text-sm px-3 py-2
-                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-        >
-            <option value="">Selecciona una opción</option>
-            <template x-for="opt in options" :key="opt">
-                <option :value="opt" x-text="opt"></option>
-            </template>
-        </select>
-
-        <div class="flex flex-wrap gap-2">
-            <template x-if="!selected || selected.length === 0">
-                <span class="text-xs text-slate-500 dark:text-slate-400">Sin selección</span>
-            </template>
-
-            <template x-for="chip in (selected || [])" :key="chip">
-                <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs
-                             border border-slate-200/70 dark:border-white/10
-                             bg-white/60 dark:bg-slate-900/40 backdrop-blur-md">
-                    <span class="text-slate-700 dark:text-slate-200" x-text="chip"></span>
-                    <button type="button"
-                            class="w-5 h-5 rounded-full bg-rose-500/90 text-white text-[10px]
-                                   hover:bg-rose-600 flex items-center justify-center"
-                            @click="remove(chip)">
-                        ✕
-                    </button>
-                </span>
-            </template>
-        </div>
-
-        @error('dispositivos_entrada')
-            <p class="text-xs text-red-500">{{ $message }}</p>
-        @enderror
-    </div>
-
-</div>
 
         
 
@@ -1726,16 +1731,17 @@
                 <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Puertos USB
                 </span>
+
                 <button
                     type="button"
                     wire:click="addPuertoUsb"
                     class="inline-flex items-center px-2.5 py-1 rounded-full text-[0.7rem] font-medium
-                           bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                           text-white
-                           shadow-sm shadow-blue-800/40
-                           backdrop-blur-md
-                           transition-all duration-200
-                           hover:shadow-blue-500/70 hover:-translate-y-0.5"
+                        bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                        text-white
+                        shadow-sm shadow-blue-800/40
+                        backdrop-blur-md
+                        transition-all duration-200
+                        hover:shadow-blue-500/70 hover:-translate-y-0.5"
                 >
                     + Añadir puerto USB
                 </button>
@@ -1747,26 +1753,55 @@
                 </p>
             @endif
 
+            @php
+                // Tipos USB ya seleccionados (lowercase, sin espacios extra)
+                $selectedTiposUsb = collect($puertos_usb ?? [])
+                    ->pluck('tipo')
+                    ->filter()
+                    ->map(fn($t) => mb_strtolower(trim($t)))
+                    ->values()
+                    ->all();
+
+                $usbOptions = [
+                    'USB 2.0',
+                    'USB 3.0',
+                    'USB 3.1',
+                    'USB 3.2',
+                    'USB-C',
+                ];
+            @endphp
+
             <div class="space-y-2">
                 @foreach($puertos_usb as $index => $puerto)
+                    @php
+                        $current = mb_strtolower(trim($puertos_usb[$index]['tipo'] ?? ''));
+                    @endphp
+
                     <div class="grid grid-cols-12 gap-2 items-center">
+                        {{-- SELECT tipo --}}
                         <div class="col-span-7 sm:col-span-6">
                             <select
                                 wire:model="puertos_usb.{{ $index }}.tipo"
                                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                                       bg-slate-50 dark:bg-slate-900
-                                       text-xs sm:text-sm px-3 py-2
-                                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    bg-slate-50 dark:bg-slate-900
+                                    text-xs sm:text-sm px-3 py-2
+                                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             >
                                 <option value="">Tipo de puerto</option>
-                                <option value="USB 2.0">USB 2.0</option>
-                                <option value="USB 3.0">USB 3.0</option>
-                                <option value="USB 3.1">USB 3.1</option>
-                                <option value="USB 3.2">USB 3.2</option>
-                                <option value="USB-C">USB tipo C</option>
+
+                                @foreach($usbOptions as $opt)
+                                    @php $optKey = mb_strtolower(trim($opt)); @endphp
+                                    <option
+                                        value="{{ $opt }}"
+                                        @disabled(in_array($optKey, $selectedTiposUsb, true) && $current !== $optKey)
+                                    >
+                                        {{ $opt }}
+                                    </option>
+                                @endforeach
                             </select>
                         </div>
 
+                        {{-- INPUT cantidad --}}
                         <div class="col-span-4 sm:col-span-4">
                             <input
                                 type="number"
@@ -1774,20 +1809,21 @@
                                 max="10"
                                 wire:model="puertos_usb.{{ $index }}.cantidad"
                                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                                       bg-slate-50 dark:bg-slate-900
-                                       text-xs sm:text-sm px-3 py-2
-                                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    bg-slate-50 dark:bg-slate-900
+                                    text-xs sm:text-sm px-3 py-2
+                                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="Cant."
                             >
                         </div>
 
+                        {{-- BOTÓN eliminar --}}
                         <div class="col-span-1 flex justify-end">
                             <button
                                 type="button"
                                 wire:click="removePuertoUsb({{ $index }})"
                                 class="inline-flex items-center justify-center rounded-full
-                                       w-7 h-7 text-xs bg-rose-500/90 text-white hover:bg-rose-600
-                                       shadow-sm shadow-rose-500/40"
+                                    w-7 h-7 text-xs bg-rose-500/90 text-white hover:bg-rose-600
+                                    shadow-sm shadow-rose-500/40"
                             >
                                 ✕
                             </button>
@@ -1797,9 +1833,10 @@
             </div>
         </div>
 
-        
 
-        {{-- ================== --}}
+                
+
+                {{-- ================== --}}
         {{--  PUERTOS DE VIDEO  --}}
         {{-- ================== --}}
         <div class="space-y-3">
@@ -1807,16 +1844,17 @@
                 <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Puertos de video
                 </span>
+
                 <button
                     type="button"
                     wire:click="addPuertoVideo"
                     class="inline-flex items-center px-2.5 py-1 rounded-full text-[0.7rem] font-medium
-                           bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                           text-white
-                           shadow-sm shadow-blue-800/40
-                           backdrop-blur-md
-                           transition-all duration-200
-                           hover:shadow-blue-500/70 hover:-translate-y-0.5"
+                        bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                        text-white
+                        shadow-sm shadow-blue-800/40
+                        backdrop-blur-md
+                        transition-all duration-200
+                        hover:shadow-blue-500/70 hover:-translate-y-0.5"
                 >
                     + Añadir puerto de video
                 </button>
@@ -1828,27 +1866,56 @@
                 </p>
             @endif
 
+            @php
+                // lista de tipos ya seleccionados (en minúsculas)
+                $selectedTiposVideo = collect($puertos_video ?? [])
+                    ->pluck('tipo')
+                    ->filter()
+                    ->map(fn($t) => mb_strtolower(trim($t)))
+                    ->values()
+                    ->all();
+
+                $videoOptions = [
+                    'HDMI',
+                    'Mini HDMI',
+                    'VGA',
+                    'DVI',
+                    'DisplayPort',
+                    'Mini DisplayPort',
+                ];
+            @endphp
+
             <div class="space-y-2">
                 @foreach($puertos_video as $index => $puerto)
+                    @php
+                        $current = mb_strtolower(trim($puertos_video[$index]['tipo'] ?? ''));
+                    @endphp
+
                     <div class="grid grid-cols-12 gap-2 items-center">
+                        {{-- SELECT tipo --}}
                         <div class="col-span-7 sm:col-span-6">
                             <select
                                 wire:model="puertos_video.{{ $index }}.tipo"
                                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                                       bg-slate-50 dark:bg-slate-900
-                                       text-xs sm:text-sm px-3 py-2
-                                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    bg-slate-50 dark:bg-slate-900
+                                    text-xs sm:text-sm px-3 py-2
+                                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             >
                                 <option value="">Tipo de puerto</option>
-                                <option value="HDMI">HDMI</option>
-                                <option value="Mini HDMI">Mini HDMI</option>
-                                <option value="VGA">VGA</option>
-                                <option value="DVI">DVI</option>
-                                <option value="DisplayPort">DisplayPort</option>
-                                <option value="Mini DisplayPort">Mini DisplayPort</option>
+
+                                @foreach($videoOptions as $opt)
+                                    @php $optKey = mb_strtolower(trim($opt)); @endphp
+                                    <option
+                                        value="{{ $opt }}"
+                                        @disabled(in_array($optKey, $selectedTiposVideo, true) && $current !== $optKey)
+                                    >
+                                        {{ $opt }}
+                                    </option>
+                                @endforeach
                             </select>
                         </div>
 
+                        {{-- INPUT cantidad (en línea, como tu imagen buena) --}}
                         <div class="col-span-4 sm:col-span-4">
                             <input
                                 type="number"
@@ -1856,20 +1923,21 @@
                                 max="10"
                                 wire:model="puertos_video.{{ $index }}.cantidad"
                                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                                       bg-slate-50 dark:bg-slate-900
-                                       text-xs sm:text-sm px-3 py-2
-                                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    bg-slate-50 dark:bg-slate-900
+                                    text-xs sm:text-sm px-3 py-2
+                                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="Cant."
                             >
                         </div>
 
+                        {{-- BOTÓN eliminar (alineado por fila) --}}
                         <div class="col-span-1 flex justify-end">
                             <button
                                 type="button"
                                 wire:click="removePuertoVideo({{ $index }})"
                                 class="inline-flex items-center justify-center rounded-full
-                                       w-7 h-7 text-xs bg-rose-500/90 text-white hover:bg-rose-600
-                                       shadow-sm shadow-rose-500/40"
+                                    w-7 h-7 text-xs bg-rose-500/90 text-white hover:bg-rose-600
+                                    shadow-sm shadow-rose-500/40"
                             >
                                 ✕
                             </button>
@@ -1880,8 +1948,110 @@
         </div>
 
 
-        
 
+
+
+                {{-- ====================== --}}
+        {{--  SLOTS ALMACENAMIENTO  --}}
+        {{-- ====================== --}}
+        <div class="space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Slots almacenamiento
+                </span>
+                <button
+                    type="button"
+                    wire:click="addSlotAlmacenamiento"
+                    class="inline-flex items-center px-2.5 py-1 rounded-full text-[0.7rem] font-medium
+                        bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                        text-white shadow-sm shadow-blue-800/40 backdrop-blur-md
+                        transition-all duration-200 hover:shadow-blue-500/70 hover:-translate-y-0.5"
+                >
+                    + Añadir slot almacenamiento
+                </button>
+            </div>
+
+            @if(empty($slots_almacenamiento))
+                <p class="text-xs text-slate-500 dark:text-slate-400">
+                    No hay slots de almacenamiento registrados.
+                </p>
+            @endif
+
+            @php
+                $selectedTiposSlots = collect($slots_almacenamiento ?? [])
+                    ->pluck('tipo')
+                    ->filter()
+                    ->map(fn($t) => mb_strtolower(trim($t)))
+                    ->values()
+                    ->all();
+
+                $slotsOptions = ['SSD','M.2','M.2 MICRO','HDD','MSATA'];
+            @endphp
+
+            <div class="space-y-2">
+                @foreach($slots_almacenamiento as $index => $slot)
+                    @php
+                        $current = mb_strtolower(trim($slots_almacenamiento[$index]['tipo'] ?? ''));
+                    @endphp
+
+                    <div class="grid grid-cols-12 gap-2 items-center">
+                        <div class="col-span-7 sm:col-span-6">
+                            <select
+                                wire:model="slots_almacenamiento.{{ $index }}.tipo"
+                                class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                                    bg-slate-50 dark:bg-slate-900
+                                    text-xs sm:text-sm px-3 py-2
+                                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            >
+                                <option value="">Tipo de slot</option>
+
+                                @foreach($slotsOptions as $opt)
+                                    @php $optKey = mb_strtolower(trim($opt)); @endphp
+                                    <option
+                                        value="{{ $opt }}"
+                                        @disabled(in_array($optKey, $selectedTiposSlots, true) && $current !== $optKey)
+                                    >
+                                        {{ $opt }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-span-4 sm:col-span-4">
+                            <input
+                                type="number"
+                                min="1"
+                                max="10"
+                                placeholder="Cant."
+                                wire:model="slots_almacenamiento.{{ $index }}.cantidad"
+                                class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                                    bg-slate-50 dark:bg-slate-900
+                                    text-xs sm:text-sm px-3 py-2
+                                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            >
+                        </div>
+
+                        <div class="col-span-1 flex justify-end">
+                            <button
+                                type="button"
+                                wire:click="removeSlotAlmacenamiento({{ $index }})"
+                                class="inline-flex items-center justify-center rounded-full
+                                    w-7 h-7 text-xs bg-rose-500/90 text-white hover:bg-rose-600
+                                    shadow-sm shadow-rose-500/40"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+
+
+
+
+                
 
         {{-- ================== --}}
         {{--  LECTORES / RANURAS --}}
@@ -1895,12 +2065,12 @@
                     type="button"
                     wire:click="addLector"
                     class="inline-flex items-center px-2.5 py-1 rounded-full text-[0.7rem] font-medium
-                           bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                           text-white
-                           shadow-sm shadow-blue-800/40
-                           backdrop-blur-md
-                           transition-all duration-200
-                           hover:shadow-blue-500/70 hover:-translate-y-0.5"
+                        bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                        text-white
+                        shadow-sm shadow-blue-800/40
+                        backdrop-blur-md
+                        transition-all duration-200
+                        hover:shadow-blue-500/70 hover:-translate-y-0.5"
                 >
                     + Añadir lector / ranura
                 </button>
@@ -1912,24 +2082,43 @@
                 </p>
             @endif
 
+            @php
+                $selectedTiposLectores = collect($lectores ?? [])
+                    ->pluck('tipo')
+                    ->filter()
+                    ->map(fn($t) => mb_strtolower(trim($t)))
+                    ->values()
+                    ->all();
+
+                $lectoresOptions = ['SD','microSD','SIM','eSATA','SmartCard','Otro'];
+            @endphp
+
             <div class="space-y-2">
                 @foreach($lectores as $index => $lector)
+                    @php
+                        $current = mb_strtolower(trim($lectores[$index]['tipo'] ?? ''));
+                    @endphp
+
                     <div class="grid grid-cols-12 gap-2 items-center">
                         <div class="col-span-4 sm:col-span-3">
                             <select
                                 wire:model="lectores.{{ $index }}.tipo"
                                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                                       bg-slate-50 dark:bg-slate-900
-                                       text-xs sm:text-sm px-3 py-2
-                                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    bg-slate-50 dark:bg-slate-900
+                                    text-xs sm:text-sm px-3 py-2
+                                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             >
                                 <option value="">Tipo</option>
-                                <option value="SD">SD</option>
-                                <option value="microSD">microSD</option>
-                                <option value="SIM">SIM</option>
-                                <option value="eSATA">eSATA</option>
-                                <option value="SmartCard">SmartCard</option>
-                                <option value="Otro">Otro</option>
+
+                                @foreach($lectoresOptions as $opt)
+                                    @php $optKey = mb_strtolower(trim($opt)); @endphp
+                                    <option
+                                        value="{{ $opt }}"
+                                        @disabled(in_array($optKey, $selectedTiposLectores, true) && $current !== $optKey)
+                                    >
+                                        {{ $opt }}
+                                    </option>
+                                @endforeach
                             </select>
                         </div>
 
@@ -1938,9 +2127,9 @@
                                 type="text"
                                 wire:model="lectores.{{ $index }}.detalle"
                                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                                       bg-slate-50 dark:bg-slate-900
-                                       text-xs sm:text-sm px-3 py-2
-                                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    bg-slate-50 dark:bg-slate-900
+                                    text-xs sm:text-sm px-3 py-2
+                                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="Ej. 1 lector SD frontal, combo SIM + microSD, etc."
                             >
                         </div>
@@ -1950,8 +2139,8 @@
                                 type="button"
                                 wire:click="removeLector({{ $index }})"
                                 class="inline-flex items-center justify-center rounded-full
-                                       w-7 h-7 text-xs bg-rose-500/90 text-white hover:bg-rose-600
-                                       shadow-sm shadow-rose-500/40"
+                                    w-7 h-7 text-xs bg-rose-500/90 text-white hover:bg-rose-600
+                                    shadow-sm shadow-rose-500/40"
                             >
                                 ✕
                             </button>
@@ -1960,6 +2149,7 @@
                 @endforeach
             </div>
         </div>
+
 
 
 

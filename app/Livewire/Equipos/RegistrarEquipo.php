@@ -113,6 +113,8 @@ class RegistrarEquipo extends Component
     public $detalles_esteticos;
     public $detalles_funcionamiento;
 
+
+
     // Detalles estéticos 
     public array $detalles_esteticos_checks = [];
     public ?string $detalles_esteticos_otro = null;
@@ -131,7 +133,8 @@ class RegistrarEquipo extends Component
 
 
     public array $puertos_conectividad_checks = [];
-public array $dispositivos_entrada_checks = [];
+    public array $dispositivos_entrada_checks = [];
+
 
 
 
@@ -320,21 +323,18 @@ public array $dispositivos_entrada_checks = [];
 
             //conectividad y entrada
             'conectividad_checks',
-            'conectividad_otro',
             'entrada_checks',
-            'entrada_otro',
-
-
+            
             // checks
             'detalles_esteticos_checks',
-            'detalles_esteticos_otro',
             'detalles_funcionamiento_checks',
-            'detalles_funcionamiento_otro',
-
+           
             // arrays UI
             'puertos_usb',
             'puertos_video',
             'lectores',
+            'slots_almacenamiento',
+
         ]);
 
         // defaults (siempre)
@@ -365,6 +365,10 @@ public array $dispositivos_entrada_checks = [];
         // recargar catálogos (sin recargar página)
         $this->cargarCatalogos();
         $this->modelosLote = [];
+
+
+        $this->dispatch('reiniciar-ui-selects');
+
     }
 
     // =======================
@@ -565,6 +569,20 @@ public array $dispositivos_entrada_checks = [];
     }
 
 
+    public $slots_almacenamiento = [];
+
+    public function addSlotAlmacenamiento(): void
+    {
+        $this->slots_almacenamiento[] = ['tipo' => '', 'cantidad' => 'N/A'];
+    }
+
+    public function removeSlotAlmacenamiento(int $index): void
+    {
+        unset($this->slots_almacenamiento[$index]);
+        $this->slots_almacenamiento = array_values($this->slots_almacenamiento);
+    }
+
+
 
 
     // =======================
@@ -663,8 +681,16 @@ public array $dispositivos_entrada_checks = [];
                 'detalles_funcionamiento' => 'nullable|string',
 
                 //conectividad y entrada
-                'conectividad_checks' => 'required|array',
-                'entrada_checks'      => 'required|array',
+                'puertos_conectividad' => 'required|string',
+                'dispositivos_entrada' => 'required|string',
+
+
+                // slots almacenamiento
+                'slots_almacenamiento' => 'array',
+                'slots_almacenamiento.*.tipo' => 'nullable|in:SSD,M.2,M.2 MICRO,HDD,MSATA',
+                'slots_almacenamiento.*.cantidad' => 'nullable|integer|min:1|max:10',
+
+
 
 
                 // puertos y lectores
@@ -686,8 +712,8 @@ public array $dispositivos_entrada_checks = [];
                 'numero_serie.required'   => 'El número de serie es obligatorio.',
                 'numero_serie.unique'     => 'Este número de serie ya está registrado.',
                 'modelo.required'         => 'El modelo es obligatorio.',
-                'conectividad_checks.required' => 'Selecciona al menos un puerto de conectividad.',
-                'entrada_checks.required'      => 'Selecciona al menos un dispositivo de entrada.',
+                'puertos_conectividad.required' => 'Selecciona al menos un puerto de conectividad.',
+                'dispositivos_entrada.required' => 'Selecciona al menos un dispositivo de entrada.',
 
             ]);
             
@@ -813,33 +839,6 @@ public array $dispositivos_entrada_checks = [];
         $this->detalles_funcionamiento = $texto;
 
 
-        // =========================
-        // conectividada y dispositivos de entrada
-        // =========================
-
-        $this->puertos_conectividad = $this->conectividad_checks
-            ? implode(', ', $this->conectividad_checks)
-            : null;
-
-        $this->dispositivos_entrada = $this->entrada_checks
-            ? implode(', ', $this->entrada_checks)
-            : null;
-
-
-        // ==============================
-        // Entrada -> texto
-        // ==============================
-        $checks = $this->entrada_checks ?? [];
-        if (in_array('N/A', $checks, true)) {
-            $checks = ['N/A'];
-            $this->entrada_otro = null;
-        }
-        $texto = implode(', ', $checks);
-        if (!empty($this->entrada_otro)) {
-            $texto .= ($texto ? ' | ' : '') . 'Otro: ' . $this->entrada_otro;
-        }
-        $this->dispositivos_entrada = $texto ?: null;
-
 
 
 
@@ -855,6 +854,41 @@ public array $dispositivos_entrada_checks = [];
                 'lote_modelo_id' => 'Ya se registraron todos los equipos disponibles de este modelo en este lote.',
             ]);
         }
+
+        // ==============================
+        //  Slots almacenamiento (UI -> BD)
+        // ==============================
+        $this->slots_alm_ssd = null;
+        $this->slots_alm_m2 = null;
+        $this->slots_alm_m2_micro = null;
+        $this->slots_alm_hdd = null;
+        $this->slots_alm_msata = null;
+
+        $mapSlots = [
+            'SSD'       => 'slots_alm_ssd',
+            'M.2'       => 'slots_alm_m2',
+            'M.2 MICRO' => 'slots_alm_m2_micro',
+            'HDD'       => 'slots_alm_hdd',
+            'MSATA'     => 'slots_alm_msata',
+        ];
+
+        foreach (($this->slots_almacenamiento ?? []) as $row) {
+            $tipo = trim($row['tipo'] ?? '');
+            if ($tipo === '' || !isset($mapSlots[$tipo])) continue;
+
+            $cant = $row['cantidad'] ?? null;
+
+            // si está vacío / 0 / no numérico => null
+            if (!is_numeric($cant) || (int)$cant <= 0) {
+                $valor = null;
+            } else {
+                $valor = (string) ((int) $cant); // lo guardas como string igual que otros puertos
+            }
+
+            $this->{$mapSlots[$tipo]} = $valor;
+        }
+
+
 
         // =========================
         // CREAR REGISTRO EN DB
