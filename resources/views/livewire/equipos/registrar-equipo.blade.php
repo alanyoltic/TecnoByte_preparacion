@@ -1523,6 +1523,24 @@
 
 
 
+            {{-- ================== --}}
+            {{--  CONECTIVIDAD     --}}
+            {{-- ================== --}}
+            <div class="relative my-6">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Conectividad
+                    </span>
+                    <div class="flex-1 h-px bg-gradient-to-r
+                        from-slate-300/70 via-slate-300/30 to-transparent
+                        dark:from-white/20 dark:via-white/10 dark:to-transparent">
+                    </div>
+                </div>
+            </div>
+
+
+
+
         {{-- ========================= --}}
         {{--  CONECTIVIDAD + ENTRADA   --}}
         {{-- ========================= --}}
@@ -1720,6 +1738,23 @@
 
 
         </div>
+
+
+
+            {{-- ================== --}}
+            {{--  PUERTOS Y EXPANSIONES     --}}
+            {{-- ================== --}}
+            <div class="relative my-6">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Puertos y Expansiones
+                    </span>
+                    <div class="flex-1 h-px bg-gradient-to-r
+                        from-slate-300/70 via-slate-300/30 to-transparent
+                        dark:from-white/20 dark:via-white/10 dark:to-transparent">
+                    </div>
+                </div>
+            </div>
 
         
 
