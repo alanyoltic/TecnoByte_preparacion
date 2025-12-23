@@ -180,7 +180,7 @@
                     </label>
 
                     <select
-                        wire:model.defer="tipo_equipo"
+                        wire:model.live="tipo_equipo"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
@@ -189,7 +189,7 @@
                         <option value="">Selecciona</option>
 
                         <option value="LAPTOP">LAPTOP</option>
-                        <option value="ESCRITORORIO">ESCRITORIO</option>
+                        <option value="ESCRITORIO">ESCRITORIO</option>
                         <option value="ALL IN ONE">ALL IN ONE</option>
                         <option value="TABLET">TABLET</option>
                         <option value="2 EN 1">2 EN 1</option>
@@ -720,83 +720,281 @@
 
 
 
-        {{-- ================== --}}
-        {{--  3. PANTALLA       --}}
-        {{-- ================== --}}
-        <div class="space-y-3">
-            <div class="flex items-center gap-2">
-                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Pantalla
-                </span>
-                <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
-            </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">
-                        Tamaño (pulgadas)
-                    </label>
-                    <input
-                        type="text"
-                        wire:model.defer="pantalla_pulgadas"
-                        placeholder="Ej. 14”"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
+
+            {{-- =========================
+                PANTALLA
+            ========================= --}}
+            <div class="mt-8">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-semibold tracking-wide text-slate-800 dark:text-slate-100">
+                        PANTALLA
+                    </h3>
+
+                    <span class="text-[11px] px-2 py-1 rounded-full
+                        bg-slate-100/70 dark:bg-white/10
+                        text-slate-600 dark:text-slate-300">
+                        {{ $this->pantallaIntegrada ? 'Integrada' : ($this->pantallaExterna ? 'Externa' : 'Sin detectar') }}
+                    </span>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium mb-1">
-                        Resolución
-                    </label>
-                    <input
-                        type="text"
-                        wire:model.defer="pantalla_resolucion"
-                        placeholder="Ej. 1920x1080"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                </div>
+                <div class="mt-3 p-4 sm:p-5">
 
-                <div>
-                    <label class="block text-sm font-medium mb-1">
-                        Tipo de panel
-                    </label>
-                    <input
-                        type="text"
-                        wire:model.defer="pantalla_tipo"
-                        placeholder="Ej. IPS, TN"
-                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                               bg-slate-50 dark:bg-slate-900
-                               text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                </div>
 
-                <div class="flex items-center">
-                    <div>
-                        <label class="block text-sm font-medium mb-1">
-                            Pantalla touch
-                        </label>
-                        <div class="flex items-center gap-2 mt-1">
-                            <input
-                                type="checkbox"
-                                wire:model="pantalla_es_touch"
-                                class="rounded border-slate-300 text-indigo-600 shadow-sm 
-                                       focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
-                            >
-                            <span class="text-xs text-slate-600 dark:text-slate-300">
-                                Sí es táctil
-                            </span>
+                    {{-- Mensaje si aún no hay tipo --}}
+                    @if(!$this->pantallaIntegrada && !$this->pantallaExterna)
+                        <p class="text-xs text-slate-500 dark:text-slate-400">
+                            Selecciona un <span class="font-semibold">Tipo de equipo</span> para mostrar las opciones de pantalla.
+                        </p>
+                    @endif
+
+                    {{-- =====================
+                        PANTALLA INTEGRADA
+                    ====================== --}}
+                    @if($this->pantallaIntegrada)
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                            Tipo detectado:
+                            <span class="font-semibold text-slate-700 dark:text-slate-200">Pantalla integrada</span>
+                        </p>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {{-- Tamaño --}}
+                            <div>
+                                <label class="text-xs text-slate-600 dark:text-slate-300">Tamaño (pulgadas)</label>
+                                <select
+                                    wire:model.live="pantalla_pulgadas"
+                                    class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700
+                                        bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
+                                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                >
+                                    <option value="">Selecciona</option>
+                                    <option value="11.6">11.6"</option>
+                                    <option value="12.5">12.5"</option>
+                                    <option value="13.3">13.3"</option>
+                                    <option value="14">14"</option>
+                                    <option value="15.6">15.6"</option>
+                                    <option value="16">16"</option>
+                                    <option value="17.3">17.3"</option>
+                                </select>
+                                @error('pantalla_pulgadas') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+                            </div>
+
+                            {{-- Resolución --}}
+                            <div>
+                                <label class="text-xs text-slate-600 dark:text-slate-300">Resolución</label>
+                                <select
+                                    wire:model.live="pantalla_resolucion"
+                                    class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700
+                                        bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
+                                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                >
+                                    <option value="">Selecciona</option>
+                                    <option value="HD">HD (1366x768)</option>
+                                    <option value="FHD">Full HD (1920x1080)</option>
+                                    <option value="QHD">QHD (2560x1440)</option>
+                                    <option value="UHD">4K (3840x2160)</option>
+                                </select>
+                                @error('pantalla_resolucion') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+                            </div>
+
+                            {{-- Touch --}}
+                            <div class="flex items-end">
+                                <label class="inline-flex items-center gap-2 mt-6 text-sm text-slate-700 dark:text-slate-200">
+                                    <input type="checkbox"
+                                        wire:model.live="pantalla_es_touch"
+                                        class="rounded border-slate-300 dark:border-slate-700">
+                                    Touch
+                                </label>
+                            </div>
                         </div>
-                    </div>
+                    @endif
+
+                    {{-- =====================
+                        PANTALLA EXTERNA
+                    ====================== --}}
+                    @if($this->pantallaExterna)
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                            Tipo detectado:
+                            <span class="font-semibold text-slate-700 dark:text-slate-200">Pantalla externa</span>
+                        </p>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {{-- Incluye monitor --}}
+                            <div class="sm:col-span-3">
+                                <label class="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                                    <input type="checkbox"
+                                        wire:model.live="incluye_monitor"
+                                        class="rounded border-slate-300 dark:border-slate-700">
+                                    Incluye monitor
+                                </label>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    Marca esta opción si el equipo viene con monitor físico incluido.
+                                </p>
+                            </div>
+
+                            {{-- Solo si incluye monitor --}}
+                            @if($this->incluye_monitor)
+                                <div>
+                                    <label class="text-xs text-slate-600 dark:text-slate-300">Tamaño monitor (pulgadas)</label>
+                                    <select
+                                        wire:model.live="monitor_pulgadas"
+                                        class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700
+                                            bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
+                                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    >
+                                        <option value="">Selecciona</option>
+                                        <option value="19">19"</option>
+                                        <option value="21.5">21.5"</option>
+                                        <option value="23.8">23.8"</option>
+                                        <option value="24">24"</option>
+                                        <option value="27">27"</option>
+                                        <option value="32">32"</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="text-xs text-slate-600 dark:text-slate-300">Resolución monitor</label>
+                                    <select
+                                        wire:model.live="monitor_resolucion"
+                                        class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700
+                                            bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
+                                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    >
+                                        <option value="">Selecciona</option>
+                                        <option value="HD">HD</option>
+                                        <option value="FHD">Full HD</option>
+                                        <option value="QHD">QHD</option>
+                                        <option value="UHD">4K</option>
+                                    </select>
+                                </div>
+
+                                {{-- Entradas / conectores (chips) --}}
+                                <div class="sm:col-span-3">
+                                    <label class="text-xs text-slate-600 dark:text-slate-300">Entradas del monitor</label>
+
+                                    <div class="mt-2 flex flex-wrap gap-2">
+                                        @foreach(($monitor_entradas ?? []) as $i => $e)
+                                            <span class="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full
+                                                bg-slate-100/70 dark:bg-white/10
+                                                text-slate-700 dark:text-slate-200">
+                                                {{ $e }}
+                                                <button type="button"
+                                                        wire:click="removeMonitorEntrada({{ $i }})"
+                                                        class="text-slate-500 hover:text-red-400">
+                                                    ✕
+                                                </button>
+                                            </span>
+                                        @endforeach
+                                    </div>
+
+                                    <div class="mt-2 grid grid-cols-1 sm:grid-cols-4 gap-2">
+                                        <select
+                                            wire:model.defer="monitor_entrada_nueva"
+                                            class="sm:col-span-3 w-full rounded-lg border border-slate-300 dark:border-slate-700
+                                                bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
+                                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        >
+                                            <option value="">Selecciona una entrada</option>
+                                            <option value="HDMI">HDMI</option>
+                                            <option value="DisplayPort">DisplayPort</option>
+                                            <option value="VGA">VGA</option>
+                                            <option value="DVI">DVI</option>
+                                            <option value="USB-C">USB-C</option>
+                                        </select>
+
+                                        <button type="button"
+                                                wire:click="addMonitorEntrada"
+                                                class="w-full rounded-lg px-3 py-2 text-sm font-semibold
+                                                    bg-indigo-600 hover:bg-indigo-500 text-white">
+                                            Agregar
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {{-- Detalles estéticos (chips) --}}
+                                <div class="sm:col-span-3 mt-2">
+                                    <label class="text-xs text-slate-600 dark:text-slate-300">Detalles estéticos (monitor)</label>
+
+                                    <div class="mt-2 flex flex-wrap gap-2">
+                                        @foreach(($monitor_detalles_esteticos ?? []) as $i => $e)
+                                            <span class="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full
+                                                bg-slate-100/70 dark:bg-white/10
+                                                text-slate-700 dark:text-slate-200">
+                                                {{ $e }}
+                                                <button type="button"
+                                                        wire:click="removeMonitorEstetico({{ $i }})"
+                                                        class="text-slate-500 hover:text-red-400">
+                                                    ✕
+                                                </button>
+                                            </span>
+                                        @endforeach
+                                    </div>
+
+                                    <div class="mt-2 grid grid-cols-1 sm:grid-cols-4 gap-2">
+                                        <input
+                                            type="text"
+                                            wire:model.defer="monitor_estetico_nuevo"
+                                            placeholder="Ej. Rayón en marco"
+                                            class="sm:col-span-3 w-full rounded-lg border border-slate-300 dark:border-slate-700
+                                                bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
+                                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        />
+
+                                        <button type="button"
+                                                wire:click="addMonitorEstetico"
+                                                class="w-full rounded-lg px-3 py-2 text-sm font-semibold
+                                                    bg-indigo-600 hover:bg-indigo-500 text-white">
+                                            Agregar
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {{-- Funcionamiento (chips) --}}
+                                <div class="sm:col-span-3 mt-2">
+                                    <label class="text-xs text-slate-600 dark:text-slate-300">Detalles de funcionamiento (monitor)</label>
+
+                                    <div class="mt-2 flex flex-wrap gap-2">
+                                        @foreach(($monitor_detalles_funcionamiento ?? []) as $i => $e)
+                                            <span class="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full
+                                                bg-slate-100/70 dark:bg-white/10
+                                                text-slate-700 dark:text-slate-200">
+                                                {{ $e }}
+                                                <button type="button"
+                                                        wire:click="removeMonitorFuncionamiento({{ $i }})"
+                                                        class="text-slate-500 hover:text-red-400">
+                                                    ✕
+                                                </button>
+                                            </span>
+                                        @endforeach
+                                    </div>
+
+                                    <div class="mt-2 grid grid-cols-1 sm:grid-cols-4 gap-2">
+                                        <input
+                                            type="text"
+                                            wire:model.defer="monitor_funcionamiento_nuevo"
+                                            placeholder="Ej. Líneas en pantalla"
+                                            class="sm:col-span-3 w-full rounded-lg border border-slate-300 dark:border-slate-700
+                                                bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
+                                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        />
+
+                                        <button type="button"
+                                                wire:click="addMonitorFuncionamiento"
+                                                class="w-full rounded-lg px-3 py-2 text-sm font-semibold
+                                                    bg-indigo-600 hover:bg-indigo-500 text-white">
+                                            Agregar
+                                        </button>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+
                 </div>
             </div>
-        </div>
+
+
+
 
 
 

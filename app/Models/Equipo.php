@@ -44,10 +44,17 @@ class Equipo extends Model
         return $this->belongsTo(LoteModeloRecibido::class, 'lote_modelo_id');
     }
 
-    public function baterias()
-{
-    return $this->hasMany(\App\Models\EquipoBateria::class, 'equipo_id');
-}
+        public function baterias()
+    {
+        return $this->hasMany(\App\Models\EquipoBateria::class, 'equipo_id');
+    }
+
+
+    public function monitor()
+    {
+        return $this->hasOne(\App\Models\EquipoMonitor::class);
+    }
+
 
 
     protected $casts = [
