@@ -82,13 +82,15 @@
                     <div class="grid grid-cols-1 md:grid-cols-[260px_minmax(0,1fr)] gap-6 md:gap-8 items-stretch">
 
                         {{-- COLUMNA IZQUIERDA: AVATAR + NOMBRE --}}
-                        <div
-                            class="flex flex-col items-center justify-center
-                                   rounded-3xl
-                                   bg-slate-900/90 dark:bg-slate-950/95
-                                   border border-slate-800/80
-                                   py-8 px-4 space-y-4"
-                        >
+                            <div
+                                class="flex flex-col items-center justify-center
+                                    rounded-3xl
+                                    bg-white/70 dark:bg-slate-950/95
+                                    border border-slate-200/80 dark:border-slate-800/80
+                                    py-8 px-4 space-y-4
+                                    backdrop-blur-xl"
+                            >
+
                             {{-- Avatar / Foto --}}
                             <div
                                 class="w-28 h-28 sm:w-32 sm:h-32 rounded-full
@@ -114,36 +116,40 @@
 
                             {{-- Nombre completo --}}
                             <div class="text-center space-y-1">
-                                <p class="text-xs font-medium tracking-[0.18em] uppercase text-slate-400">
+                                <p class="text-xs font-medium tracking-[0.18em] uppercase text-slate-600 dark:text-slate-400">
                                     Nombre(s) y apellidos
                                 </p>
-                                <p class="text-sm sm:text-base font-semibold text-slate-50">
+                                <p class="text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-50">
                                     {{ trim($user->nombre.' '.$user->segundo_nombre.' '.$user->apellido_paterno.' '.$user->apellido_materno) ?: 'Sin nombre' }}
                                 </p>
                             </div>
                         </div>
 
                         {{-- COLUMNA DERECHA: DATOS + BOTÓN EDITAR --}}
-                        <div
-                            class="relative rounded-3xl
-                                   bg-slate-950/85
-                                   border border-slate-800/80
-                                   px-5 sm:px-7 py-6 sm:py-7
-                                   flex flex-col justify-between"
-                        >
+                            <div
+                                class="relative rounded-3xl
+                                    bg-white/70 dark:bg-slate-950/85
+                                    border border-slate-200/80 dark:border-slate-800/80
+                                    px-5 sm:px-7 py-6 sm:py-7
+                                    flex flex-col justify-between
+                                    backdrop-blur-xl"
+                            >
+
                             {{-- Botón EDITAR arriba a la derecha --}}
                             <div class="flex justify-end mb-4">
                                 <a href="{{ route('profile.edit') }}"
-                                   class="text-[0.70rem] sm:text-xs font-semibold tracking-[0.16em]
-                                          uppercase
-                                          px-3 py-1.5 rounded-full
-                                          bg-slate-900/80 hover:bg-slate-800/90
-                                          text-slate-200 hover:text-white
-                                          border border-slate-600/80
-                                          shadow-sm shadow-slate-900/60
-                                          transition-colors duration-150">
+                                class="text-[0.70rem] sm:text-xs font-semibold tracking-[0.16em] uppercase
+                                        px-3 py-1.5 rounded-full
+                                        bg-slate-100/80 hover:bg-slate-200/80
+                                        dark:bg-slate-900/80 dark:hover:bg-slate-800/90
+                                        text-slate-700 hover:text-slate-900
+                                        dark:text-slate-200 dark:hover:text-white
+                                        border border-slate-200/80 dark:border-slate-600/80
+                                        shadow-sm shadow-slate-900/10 dark:shadow-slate-900/60
+                                        transition-colors duration-150">
                                     Editar
                                 </a>
+
                             </div>
 
                             <div class="space-y-4 sm:space-y-5">
@@ -151,8 +157,8 @@
                                 <div class="flex items-center gap-3">
                                     <span class="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.9)]"></span>
                                     <div class="flex flex-col">
-                                        <span class="text-xs uppercase tracking-wide text-slate-500">Cargo / Puesto</span>
-                                        <span class="text-sm sm:text-base font-medium text-slate-50">
+                                        <span class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Cargo / Puesto</span>
+                                        <span class="text-sm sm:text-base font-medium text-slate-900 dark:text-slate-50">
                                             {{ $user->role->nombre ?? 'Sin asignar' }}
                                         </span>
                                     </div>
@@ -163,7 +169,7 @@
                                     <span class="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.9)]"></span>
                                     <div class="flex flex-col">
                                         <span class="text-xs uppercase tracking-wide text-slate-500">Fecha de nacimiento</span>
-                                        <span class="text-sm sm:text-base font-medium text-slate-50">
+                                        <span class="text-sm sm:text-base font-medium text-slate-900 dark:text-slate-50">
                                             {{-- Ajusta el campo según tu tabla (ej: fecha_nacimiento) --}}
                                             {{ $user->fecha_nacimiento
                                                 ? \Carbon\Carbon::parse($user->fecha_nacimiento)->format('d/m/Y')
@@ -177,7 +183,7 @@
                                     <span class="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.9)]"></span>
                                     <div class="flex flex-col">
                                         <span class="text-xs uppercase tracking-wide text-slate-500">Correo</span>
-                                        <span class="text-sm sm:text-base font-medium text-slate-50 break-all">
+                                        <span class="text-sm sm:text-base font-medium text-slate-900 dark:text-slate-50 break-all">
                                             {{ $user->email }}
                                         </span>
                                     </div>

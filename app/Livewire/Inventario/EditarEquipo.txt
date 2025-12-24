@@ -5,6 +5,8 @@ namespace App\Livewire\Inventario;
 use Livewire\Component;
 use App\Models\Equipo;
 use App\Models\Lote;
+use App\Models\EquipoBateria;
+use Illuminate\Support\Facades\DB;
 use App\Models\Proveedor;
 use App\Models\LoteModeloRecibido;
 
@@ -19,7 +21,7 @@ class EditarEquipo extends Component
     public $modelosLote = [];
 
     // ===== CAMPOS BÁSICOS =====
-    public $lote_id;          // solo para que la vista no truene (aunque BD usa lote_modelo_id)
+    public $lote_id;         
     public $proveedor_id;
     public $numero_serie;
     public $marca;
@@ -40,6 +42,8 @@ class EditarEquipo extends Component
     public $ram_es_soldada = false;
     public $ram_slots_totales;
     public $ram_expansion_max;
+    public $ram_sin_slots = false;
+
 
     // ===== PANTALLA =====
     public $pantalla_pulgadas;
@@ -61,6 +65,21 @@ class EditarEquipo extends Component
     // ===== BATERÍA / OTROS =====
     public $bateria_salud_percent;
     public $bateria_cantidad;
+
+    public $bateria_tiene = false;
+    public $bateria2_tiene = false;
+
+    public $bateria1_tipo;
+    public $bateria1_salud;
+
+    public $bateria2_tipo;
+    public $bateria2_salud;
+
+
+
+
+
+
     public $teclado_idioma;
     public $estatus_general;
     public $notas_generales;
@@ -104,6 +123,8 @@ class EditarEquipo extends Component
         $this->ram_es_soldada    = (bool) $equipo->ram_es_soldada;
         $this->ram_slots_totales = $equipo->ram_slots_totales;
         $this->ram_expansion_max = $equipo->ram_expansion_max;
+        $this->ram_sin_slots = ($this->ram_slots_totales == 0);
+
 
         // Pantalla
         $this->pantalla_pulgadas   = $equipo->pantalla_pulgadas;
@@ -125,6 +146,28 @@ class EditarEquipo extends Component
         // Batería / otros
         $this->bateria_salud_percent = $equipo->bateria_salud_percent;
         $this->bateria_cantidad      = $equipo->bateria_cantidad;
+
+        $bats = $this->equipo->baterias()->orderBy('id')->get()->values();
+        $this->bateria_tiene = $bats->count() > 0;
+
+        $this->bateria1_tipo  = $bats[0]->tipo  ?? null;
+        $this->bateria1_salud = $bats[0]->salud ?? null;
+
+        $this->bateria2_tiene = $bats->count() > 1;
+
+        $this->bateria2_tipo  = $bats[1]->tipo  ?? null;
+        $this->bateria2_salud = $bats[1]->salud ?? null;
+
+
+
+
+
+
+
+
+
+
+
         $this->teclado_idioma        = $equipo->teclado_idioma;
         $this->estatus_general       = $equipo->estatus_general;
         $this->notas_generales       = $equipo->notas_generales;
@@ -269,6 +312,21 @@ class EditarEquipo extends Component
 
             'bateria_salud_percent' => 'nullable|integer|min:0|max:100',
             'bateria_cantidad'      => 'nullable|string|max:100',
+            'bateria_tiene'  => 'boolean',
+            'bateria2_tiene' => 'boolean',
+
+            'bateria1_tipo'  => $this->bateria_tiene ? 'required|string|max:50' : 'nullable',
+            'bateria1_salud' => $this->bateria_tiene ? 'required|integer|min:0|max:100' : 'nullable',
+
+            'bateria2_tipo'  => ($this->bateria_tiene && $this->bateria2_tiene) ? 'required|string|max:50' : 'nullable',
+            'bateria2_salud' => ($this->bateria_tiene && $this->bateria2_tiene) ? 'required|integer|min:0|max:100' : 'nullable',
+
+
+
+
+
+
+
             'teclado_idioma'        => 'nullable|string|max:50',
             'estatus_general'       => 'nullable|string|max:100',
             'notas_generales'       => 'nullable|string',
@@ -493,6 +551,32 @@ class EditarEquipo extends Component
     public function render()
     {
         return view('livewire.inventario.editar-equipo');
+    }
+    
+
+
+        public function toggleBateriaTiene()
+    {
+        $this->bateria_tiene = !$this->bateria_tiene;
+
+        if (!$this->bateria_tiene) {
+            $this->bateria1_tipo = null;
+            $this->bateria1_salud = null;
+
+            $this->bateria2_tiene = false;
+            $this->bateria2_tipo = null;
+            $this->bateria2_salud = null;
+        }
+    }
+
+    public function toggleBateria2Tiene()
+    {
+        $this->bateria2_tiene = !$this->bateria2_tiene;
+
+        if (!$this->bateria2_tiene) {
+            $this->bateria2_tipo = null;
+            $this->bateria2_salud = null;
+        }
     }
 
     

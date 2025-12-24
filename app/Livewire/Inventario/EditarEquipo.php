@@ -3,559 +3,705 @@
 namespace App\Livewire\Inventario;
 
 use Livewire\Component;
-use App\Models\Equipo;
 use App\Models\Lote;
-use App\Models\EquipoBateria;
-use Illuminate\Support\Facades\DB;
 use App\Models\Proveedor;
 use App\Models\LoteModeloRecibido;
+use App\Models\Equipo;
+use App\Models\EquipoBateria;
+use App\Models\EquipoMonitor;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class EditarEquipo extends Component
 {
     public Equipo $equipo;
 
-    // Catálogos (por si los sigues usando en la vista)
-    public $lotes = [];
-    public $proveedores = [];
-    public $lotesTerminadosIds = [];
-    public $modelosLote = [];
 
-    // ===== CAMPOS BÁSICOS =====
-    public $lote_id;         
+    // =======================
+    // LOTES
+    // =======================
+        public $lotes = [];
+        public $proveedores = [];
+        public $modelosLote = [];
+        public $lotesTerminadosIds = [];
+
+    // =======================
+    // Campos base (equipos)
+    // =======================
+    public $lote_id;
+    public $lote_modelo_id;
     public $proveedor_id;
+
     public $numero_serie;
+    public $estatus_general = 'En Revisión';
+
     public $marca;
     public $modelo;
-    public $lote_modelo_id;
     public $tipo_equipo;
     public $sistema_operativo;
     public $area_tienda;
 
-    // ===== PROCESADOR / RAM =====
     public $procesador_modelo;
-    public $procesador_frecuencia;
     public $procesador_generacion;
     public $procesador_nucleos;
+    public $procesador_frecuencia;
 
-    public $ram_total;
+    public $ram_capacidad;
     public $ram_tipo;
     public $ram_es_soldada = false;
-    public $ram_slots_totales;
-    public $ram_expansion_max;
+    public $ram_cantidad_soldada;
     public $ram_sin_slots = false;
+    public $ram_expansion_max;
+    public $ram_slots_totales;
 
-
-    // ===== PANTALLA =====
-    public $pantalla_pulgadas;
-    public $pantalla_resolucion;
-    public $pantalla_tipo;
-    public $pantalla_es_touch = false;
-
-    // ===== ALMACENAMIENTO =====
     public $almacenamiento_principal_capacidad;
     public $almacenamiento_principal_tipo;
-    public $almacenamiento_secundario_capacidad;
-    public $almacenamiento_secundario_tipo;
 
-    // ===== GRÁFICOS =====
-    public $grafica_integrada_modelo;
-    public $grafica_dedicada_modelo;
-    public $grafica_dedicada_vram;
+    public $almacenamiento_secundario_capacidad = 'N/A';
+    public $almacenamiento_secundario_tipo = 'N/A';
 
-    // ===== BATERÍA / OTROS =====
-    public $bateria_salud_percent;
-    public $bateria_cantidad;
+    // Slots de almacenamiento (UI -> columnas slots_alm_*)
+    public array $slots_almacenamiento = [];
+    public $slots_alm_ssd;
+    public $slots_alm_m2;
+    public $slots_alm_m2_micro;
+    public $slots_alm_hdd;
+    public $slots_alm_msata;
 
-    public $bateria_tiene = false;
+    // Red
+    public $ethernet_tiene = false;
+    public $ethernet_es_gigabit = false;
+
+    // Chips (final string)
+    public array $conectividad_checks = [];
+    public string $conectividad_pick = '';
+    public array $entrada_checks = [];
+    public string $entrada_pick = '';
+
+    public $puertos_conectividad; // requerido
+    public $dispositivos_entrada; // requerido
+
+
+    
+
+    // Puertos/lectores columnas DB
+    public $puertos_hdmi;
+    public $puertos_mini_hdmi;
+    public $puertos_vga;
+    public $puertos_dvi;
+    public $puertos_displayport;
+    public $puertos_mini_dp;
+
+    public $puertos_usb_2;
+    public $puertos_usb_30;
+    public $puertos_usb_31;
+    public $puertos_usb_32;
+    public $puertos_usb_c;
+
+    public $lectores_sd;
+    public $lectores_sc;
+    public $lectores_esata;
+    public $lectores_sim;
+
+    // UI dinámicas
+    public array $puertos_usb = [];
+    public array $puertos_video = [];
+    public array $lectores = [];
+
+    // Baterías (equipo_baterias)
+    public $bateria_tiene = true;
+    public $bateria1_tipo = null;
+    public $bateria1_salud = null;
+
     public $bateria2_tiene = false;
+    public $bateria2_tipo = null;
+    public $bateria2_salud = null;
 
-    public $bateria1_tipo;
-    public $bateria1_salud;
-
-    public $bateria2_tipo;
-    public $bateria2_salud;
-
-
-
-
-
-
-    public $teclado_idioma;
-    public $estatus_general;
+    // Teclado / notas
+    public $teclado_idioma = 'N/A';
     public $notas_generales;
 
-    // ===== ARRAYS UI: PUERTOS / LECTORES (LOS QUE USAS EN LA VISTA) =====
-    public $puertos_usb = [];   // mapeado a puertos_usb_2, puertos_usb_30, etc
-    public $puertos_video = []; // mapeado a puertos_hdmi, vga, etc
-    public $lectores = [];      // mapeado a lectores_sd, sc, esata, sim
+    // Detalles (checklist -> texto final)
+    public $detalles_esteticos;
+    public $detalles_funcionamiento;
+    public array $detalles_esteticos_checks = [];
+    public ?string $detalles_esteticos_otro = null;
+    public array $detalles_funcionamiento_checks = [];
+    public ?string $detalles_funcionamiento_otro = null;
 
-    public function mount(Equipo $equipo)
+    // =======================
+    // Pantalla/Monitores (equipo_monitores)
+    // =======================
+    public $pantalla_pulgadas;
+    public $pantalla_resolucion;
+    public $pantalla_tipo;      // tipo_panel para integrada
+    public $pantalla_es_touch = false;
+
+    // Externa
+    public $monitor_incluido = 'NO'; // SI/NO
+    public $monitor_pulgadas = null;
+    public $monitor_resolucion = null;
+    public $monitor_tipo_panel = null;
+    public $monitor_es_touch = false;
+
+    // Entradas del monitor (rows)
+    public array $monitor_entradas_rows = [];
+
+    // Detalles monitor (en tu BD son strings, no arrays)
+    public $monitor_detalles_esteticos_checks = '';
+    public $monitor_detalles_esteticos_otro = '';
+    public $monitor_detalles_funcionamiento_checks = '';
+    public $monitor_detalles_funcionamiento_otro = '';
+
+    public array $monitorEntradasOptions = [
+        'HDMI','Mini HDMI','VGA','DVI','DisplayPort','Mini DisplayPort',
+        'USB 2.0','USB 3.0','USB 3.1','USB 3.2','USB-C',
+    ];
+
+    // =======================
+    // Maps (USB/Video/Lectores/Slots/Monitor IN)
+    // =======================
+    private const MAP_USB = [
+        'USB 2.0'    => 'puertos_usb_2',
+        'USB 3.0'    => 'puertos_usb_30',
+        'USB 3.1'    => 'puertos_usb_31',
+        'USB 3.2'    => 'puertos_usb_32',
+        'USB-C'      => 'puertos_usb_c',
+        'USB tipo C' => 'puertos_usb_c',
+    ];
+
+    private const MAP_VIDEO = [
+        'HDMI'             => 'puertos_hdmi',
+        'Mini HDMI'        => 'puertos_mini_hdmi',
+        'VGA'              => 'puertos_vga',
+        'DVI'              => 'puertos_dvi',
+        'DisplayPort'      => 'puertos_displayport',
+        'Mini DisplayPort' => 'puertos_mini_dp',
+    ];
+
+    private const MAP_LECTORES = [
+        'SD'        => 'lectores_sd',
+        'microSD'   => 'lectores_sd',
+        'SmartCard' => 'lectores_sc',
+        'eSATA'     => 'lectores_esata',
+        'SIM'       => 'lectores_sim',
+    ];
+
+    private const MAP_SLOTS = [
+        'SSD'       => 'slots_alm_ssd',
+        'M.2'       => 'slots_alm_m2',
+        'M.2 MICRO' => 'slots_alm_m2_micro',
+        'HDD'       => 'slots_alm_hdd',
+        'MSATA'     => 'slots_alm_msata',
+    ];
+
+    private const MAP_MONITOR_IN = [
+        'HDMI'             => 'in_hdmi',
+        'Mini HDMI'        => 'in_mini_hdmi',
+        'VGA'              => 'in_vga',
+        'DVI'              => 'in_dvi',
+        'DisplayPort'      => 'in_displayport',
+        'Mini DisplayPort' => 'in_mini_displayport',
+        'USB 2.0'          => 'in_usb_2',
+        'USB 3.0'          => 'in_usb_3',
+        'USB 3.1'          => 'in_usb_31',
+        'USB 3.2'          => 'in_usb_32',
+        'USB-C'            => 'in_usb_c', // si tu tabla NO tiene esta col, quítala
+    ];
+
+    // =======================
+    // Mount
+    // =======================
+    public function mount(Equipo $equipo): void
+
     {
         $this->equipo = $equipo;
 
-        // Catálogos básicos (aunque solo uses parte en la vista)
-        $this->lotes       = Lote::orderBy('fecha_llegada', 'desc')->get();
-        $this->proveedores = Proveedor::orderBy('nombre_empresa')->get();
-        $this->lotesTerminadosIds = [];
-        $this->modelosLote = [];
+        // IDs / readonly (pero los mostramos)
+        $this->lote_id        = $this->equipo->lote_id ?? null;
+        $this->lote_modelo_id = $this->equipo->lote_modelo_id ?? null;
+        $this->proveedor_id   = $this->equipo->proveedor_id ?? null;
 
-        // ====== CARGAR DATOS DEL EQUIPO ======
-
-        // Básicos
-        $this->lote_id        = null; // tu tabla no tiene lote_id, solo lote_modelo_id
-        $this->proveedor_id   = $equipo->proveedor_id ?? null;
-        $this->numero_serie   = $equipo->numero_serie;
-        $this->marca          = $equipo->marca;
-        $this->modelo         = $equipo->modelo;
-        $this->lote_modelo_id = $equipo->lote_modelo_id ?? null;
-        $this->tipo_equipo    = $equipo->tipo_equipo;
-        $this->sistema_operativo = $equipo->sistema_operativo;
-        $this->area_tienda    = $equipo->area_tienda;
-
-        // Procesador / RAM
-        $this->procesador_modelo     = $equipo->procesador_modelo;
-        $this->procesador_frecuencia = $equipo->procesador_frecuencia;
-        $this->procesador_generacion = $equipo->procesador_generacion;
-        $this->procesador_nucleos    = $equipo->procesador_nucleos;
-
-        $this->ram_total         = $equipo->ram_total;
-        $this->ram_tipo          = $equipo->ram_tipo;
-        $this->ram_es_soldada    = (bool) $equipo->ram_es_soldada;
-        $this->ram_slots_totales = $equipo->ram_slots_totales;
-        $this->ram_expansion_max = $equipo->ram_expansion_max;
-        $this->ram_sin_slots = ($this->ram_slots_totales == 0);
-
-
-        // Pantalla
-        $this->pantalla_pulgadas   = $equipo->pantalla_pulgadas;
-        $this->pantalla_resolucion = $equipo->pantalla_resolucion;
-        $this->pantalla_tipo       = $equipo->pantalla_tipo;
-        $this->pantalla_es_touch   = (bool) $equipo->pantalla_es_touch;
-
-        // Almacenamiento
-        $this->almacenamiento_principal_capacidad  = $equipo->almacenamiento_principal_capacidad;
-        $this->almacenamiento_principal_tipo       = $equipo->almacenamiento_principal_tipo;
-        $this->almacenamiento_secundario_capacidad = $equipo->almacenamiento_secundario_capacidad;
-        $this->almacenamiento_secundario_tipo      = $equipo->almacenamiento_secundario_tipo;
-
-        // Gráficos
-        $this->grafica_integrada_modelo = $equipo->grafica_integrada_modelo;
-        $this->grafica_dedicada_modelo  = $equipo->grafica_dedicada_modelo;
-        $this->grafica_dedicada_vram    = $equipo->grafica_dedicada_vram;
-
-        // Batería / otros
-        $this->bateria_salud_percent = $equipo->bateria_salud_percent;
-        $this->bateria_cantidad      = $equipo->bateria_cantidad;
-
-        $bats = $this->equipo->baterias()->orderBy('id')->get()->values();
-        $this->bateria_tiene = $bats->count() > 0;
-
-        $this->bateria1_tipo  = $bats[0]->tipo  ?? null;
-        $this->bateria1_salud = $bats[0]->salud ?? null;
-
-        $this->bateria2_tiene = $bats->count() > 1;
-
-        $this->bateria2_tipo  = $bats[1]->tipo  ?? null;
-        $this->bateria2_salud = $bats[1]->salud ?? null;
-
-
-
-
-
-
-
-
-
-
-
-        $this->teclado_idioma        = $equipo->teclado_idioma;
-        $this->estatus_general       = $equipo->estatus_general;
-        $this->notas_generales       = $equipo->notas_generales;
-
-        // ====== MAPEAR BD → ARRAYS PARA LA UI (USB / VIDEO / LECTORES) ======
-
-        // --- Puertos USB ---
-        $this->puertos_usb = [];
-
-        if ($equipo->puertos_usb_2) {
-            $this->puertos_usb[] = [
-                'tipo'     => 'USB 2.0',
-                'cantidad' => (int) $equipo->puertos_usb_2,
-            ];
-        }
-        if ($equipo->puertos_usb_30) {
-            $this->puertos_usb[] = [
-                'tipo'     => 'USB 3.0',
-                'cantidad' => (int) $equipo->puertos_usb_30,
-            ];
-        }
-        if ($equipo->puertos_usb_31) {
-            $this->puertos_usb[] = [
-                'tipo'     => 'USB 3.1',
-                'cantidad' => (int) $equipo->puertos_usb_31,
-            ];
-        }
-        if ($equipo->puertos_usb_32) {
-            $this->puertos_usb[] = [
-                'tipo'     => 'USB 3.2',
-                'cantidad' => (int) $equipo->puertos_usb_32,
-            ];
-        }
-        if ($equipo->puertos_usb_c) {
-            $this->puertos_usb[] = [
-                'tipo'     => 'USB-C',
-                'cantidad' => (int) $equipo->puertos_usb_c,
-            ];
+        // Copia simple de campos (equipos)
+        foreach ($this->equipo->getAttributes() as $k => $v) {
+            if (property_exists($this, $k)) {
+                $this->{$k} = $v;
+            }
         }
 
-        // --- Puertos de video ---
-        $this->puertos_video = [];
+        // Defaults seguros
+        $this->almacenamiento_secundario_capacidad = $this->almacenamiento_secundario_capacidad ?: 'N/A';
+        $this->almacenamiento_secundario_tipo      = $this->almacenamiento_secundario_tipo ?: 'N/A';
+        $this->teclado_idioma                      = $this->teclado_idioma ?: 'N/A';
 
-        if ($equipo->puertos_hdmi) {
-            $this->puertos_video[] = [
-                'tipo'     => 'HDMI',
-                'cantidad' => (int) $equipo->puertos_hdmi,
-            ];
-        }
-        if ($equipo->puertos_mini_hdmi) {
-            $this->puertos_video[] = [
-                'tipo'     => 'Mini HDMI',
-                'cantidad' => (int) $equipo->puertos_mini_hdmi,
-            ];
-        }
-        if ($equipo->puertos_vga) {
-            $this->puertos_video[] = [
-                'tipo'     => 'VGA',
-                'cantidad' => (int) $equipo->puertos_vga,
-            ];
-        }
-        if ($equipo->puertos_dvi) {
-            $this->puertos_video[] = [
-                'tipo'     => 'DVI',
-                'cantidad' => (int) $equipo->puertos_dvi,
-            ];
-        }
-        if ($equipo->puertos_displayport) {
-            $this->puertos_video[] = [
-                'tipo'     => 'DisplayPort',
-                'cantidad' => (int) $equipo->puertos_displayport,
-            ];
-        }
-        if ($equipo->puertos_mini_dp) {
-            $this->puertos_video[] = [
-                'tipo'     => 'Mini DisplayPort',
-                'cantidad' => (int) $equipo->puertos_mini_dp,
-            ];
-        }
+        // Hidrata arrays UI desde columnas (USB/Video/Lectores/Slots)
+        $this->hydratePuertosFromColumns();
+        $this->hydrateSlotsFromColumns();
 
-        // --- Lectores / ranuras ---
-        $this->lectores = [];
+        // Detalles (parse del texto guardado: "A, B | Otro: X")
+        [$this->detalles_esteticos_checks, $this->detalles_esteticos_otro] =
+            $this->parseChecksText((string) ($this->detalles_esteticos ?? ''));
 
-        if ($equipo->lectores_sd) {
-            $this->lectores[] = [
-                'tipo'    => 'SD',
-                'detalle' => $equipo->lectores_sd,
-            ];
-        }
-        if ($equipo->lectores_sc) {
-            $this->lectores[] = [
-                'tipo'    => 'SmartCard',
-                'detalle' => $equipo->lectores_sc,
-            ];
-        }
-        if ($equipo->lectores_esata) {
-            $this->lectores[] = [
-                'tipo'    => 'eSATA',
-                'detalle' => $equipo->lectores_esata,
-            ];
-        }
-        if ($equipo->lectores_sim) {
-            $this->lectores[] = [
-                'tipo'    => 'SIM',
-                'detalle' => $equipo->lectores_sim,
-            ];
-        }
+        [$this->detalles_funcionamiento_checks, $this->detalles_funcionamiento_otro] =
+            $this->parseChecksText((string) ($this->detalles_funcionamiento ?? ''));
+
+        // Baterías (equipo_baterias)
+        $this->hydrateBaterias();
+
+        // Pantalla/Monitores (equipo_monitores)
+        $this->hydrateMonitor();
     }
 
-    protected function rules()
+    // =======================
+    // Validación
+    // =======================
+    protected function rules(): array
     {
         return [
-            'numero_serie' => 'nullable|string|max:255',
-            'marca'        => 'nullable|string|max:100',
-            'modelo'       => 'nullable|string|max:255',
-            'tipo_equipo'  => 'nullable|string|max:100',
+            'numero_serie' => [
+                'required','string','max:255',
+                Rule::unique('equipos', 'numero_serie')->ignore($this->equipo->id),
+            ],
 
-            'procesador_modelo'     => 'nullable|string|max:255',
-            'procesador_frecuencia' => 'nullable|string|max:20',
-            'procesador_generacion' => 'nullable|string|max:100',
-            'procesador_nucleos'    => 'nullable|integer',
+            'puertos_conectividad' => 'required|string|max:255',
+            'dispositivos_entrada' => 'required|string|max:255',
 
-            'ram_total'         => 'nullable|string|max:50',
-            'ram_tipo'          => 'nullable|string|max:50',
-            'ram_es_soldada'    => 'boolean',
-            'ram_slots_totales' => 'nullable|string|max:100',
-            'ram_expansion_max' => 'nullable|string|max:100',
+            'monitor_incluido' => 'nullable|in:SI,NO',
 
-            'pantalla_pulgadas'   => 'nullable|string|max:20',
-            'pantalla_resolucion' => 'nullable|string|max:50',
-            'pantalla_tipo'       => 'nullable|string|max:100',
-            'pantalla_es_touch'   => 'boolean',
+            'monitor_entradas_rows' => 'array',
+            'monitor_entradas_rows.*.tipo' => 'nullable|in:' . implode(',', $this->monitorEntradasOptions),
+            'monitor_entradas_rows.*.cantidad' => 'nullable|integer|min:1|max:10',
 
-            'almacenamiento_principal_capacidad'  => 'nullable|string|max:50',
-            'almacenamiento_principal_tipo'       => 'nullable|string|max:50',
-            'almacenamiento_secundario_capacidad' => 'nullable|string|max:50',
-            'almacenamiento_secundario_tipo'      => 'nullable|string|max:50',
+            'slots_almacenamiento' => 'array',
+            'slots_almacenamiento.*.tipo' => 'nullable|in:SSD,M.2,M.2 MICRO,HDD,MSATA',
+            'slots_almacenamiento.*.cantidad' => 'nullable|integer|min:1|max:10',
 
-            'grafica_integrada_modelo' => 'nullable|string|max:255',
-            'grafica_dedicada_modelo'  => 'nullable|string|max:255',
-            'grafica_dedicada_vram'    => 'nullable|string|max:50',
+            'puertos_usb' => 'array',
+            'puertos_usb.*.tipo' => 'nullable|string|max:50',
+            'puertos_usb.*.cantidad' => 'nullable|integer|min:1|max:10',
 
-            'bateria_salud_percent' => 'nullable|integer|min:0|max:100',
-            'bateria_cantidad'      => 'nullable|string|max:100',
-            'bateria_tiene'  => 'boolean',
-            'bateria2_tiene' => 'boolean',
-
-            'bateria1_tipo'  => $this->bateria_tiene ? 'required|string|max:50' : 'nullable',
-            'bateria1_salud' => $this->bateria_tiene ? 'required|integer|min:0|max:100' : 'nullable',
-
-            'bateria2_tipo'  => ($this->bateria_tiene && $this->bateria2_tiene) ? 'required|string|max:50' : 'nullable',
-            'bateria2_salud' => ($this->bateria_tiene && $this->bateria2_tiene) ? 'required|integer|min:0|max:100' : 'nullable',
-
-
-
-
-
-
-
-            'teclado_idioma'        => 'nullable|string|max:50',
-            'estatus_general'       => 'nullable|string|max:100',
-            'notas_generales'       => 'nullable|string',
-
-            // arrays de la UI (no obligatorios)
-            'puertos_usb'   => 'array',
             'puertos_video' => 'array',
-            'lectores'      => 'array',
+            'puertos_video.*.tipo' => 'nullable|string|max:50',
+            'puertos_video.*.cantidad' => 'nullable|integer|min:1|max:10',
+
+            'lectores' => 'array',
+            'lectores.*.tipo' => 'nullable|string|max:50',
+            'lectores.*.detalle' => 'nullable|string|max:100',
+
+            'detalles_esteticos_checks' => 'array|min:1',
+            'detalles_funcionamiento_checks' => 'array|min:1',
         ];
     }
 
-    public function actualizarEquipo()
+    protected function messages(): array
     {
-        $this->validate();
+        return [
+            'numero_serie.unique' => 'Este número de serie ya está registrado.',
+            'puertos_conectividad.required' => 'Selecciona al menos un puerto de conectividad.',
+            'dispositivos_entrada.required' => 'Selecciona al menos un dispositivo de entrada.',
+            'detalles_esteticos_checks.min' => 'Selecciona al menos un detalle estético (o N/A).',
+            'detalles_funcionamiento_checks.min' => 'Selecciona al menos un detalle de funcionamiento (o N/A).',
+        ];
+    }
 
-        // ====== MAPEAR ARRAYS DE LA UI → CAMPOS REALES DE BD ======
-
-        // --- USB ---
-        $usb2 = $usb30 = $usb31 = $usb32 = $usbC = null;
-
-        foreach ($this->puertos_usb ?? [] as $puerto) {
-            $tipo = $puerto['tipo'] ?? null;
-            $cant = isset($puerto['cantidad']) ? (int) $puerto['cantidad'] : 0;
-
-            if (!$tipo || $cant <= 0) {
-                continue;
-            }
-
-            switch ($tipo) {
-                case 'USB 2.0':
-                    $usb2 = ($usb2 ?? 0) + $cant;
-                    break;
-                case 'USB 3.0':
-                    $usb30 = ($usb30 ?? 0) + $cant;
-                    break;
-                case 'USB 3.1':
-                    $usb31 = ($usb31 ?? 0) + $cant;
-                    break;
-                case 'USB 3.2':
-                    $usb32 = ($usb32 ?? 0) + $cant;
-                    break;
-                case 'USB-C':
-                    $usbC = ($usbC ?? 0) + $cant;
-                    break;
-            }
+    // =======================
+    // Guardar (actualizar)
+    // =======================
+    public function actualizar(): void
+    {
+        try {
+            $this->validate();
+        } catch (ValidationException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->validator->errors()->first());
+            throw $e;
         }
 
-        // --- Video ---
-        $hdmi = $miniHdmi = $vga = $dvi = $dp = $miniDp = null;
+        // Defaults
+        $this->almacenamiento_secundario_capacidad = $this->almacenamiento_secundario_capacidad ?: 'N/A';
+        $this->almacenamiento_secundario_tipo      = $this->almacenamiento_secundario_tipo ?: 'N/A';
+        $this->teclado_idioma                      = $this->teclado_idioma ?: 'N/A';
 
-        foreach ($this->puertos_video ?? [] as $p) {
-            $tipo = $p['tipo'] ?? null;
-            $cant = isset($p['cantidad']) ? (int) $p['cantidad'] : 0;
+        // Detalles texto
+        $this->detalles_esteticos = $this->buildChecksText($this->detalles_esteticos_checks, $this->detalles_esteticos_otro);
+        $this->detalles_funcionamiento = $this->buildChecksText($this->detalles_funcionamiento_checks, $this->detalles_funcionamiento_otro);
 
-            if (!$tipo || $cant <= 0) {
-                continue;
-            }
+        // Blindaje
+        $this->puertos_conectividad = $this->truncate($this->puertos_conectividad, 255);
+        $this->dispositivos_entrada = $this->truncate($this->dispositivos_entrada, 255);
 
-            switch ($tipo) {
-                case 'HDMI':
-                    $hdmi = ($hdmi ?? 0) + $cant;
-                    break;
-                case 'Mini HDMI':
-                    $miniHdmi = ($miniHdmi ?? 0) + $cant;
-                    break;
-                case 'VGA':
-                    $vga = ($vga ?? 0) + $cant;
-                    break;
-                case 'DVI':
-                    $dvi = ($dvi ?? 0) + $cant;
-                    break;
-                case 'DisplayPort':
-                    $dp = ($dp ?? 0) + $cant;
-                    break;
-                case 'Mini DisplayPort':
-                    $miniDp = ($miniDp ?? 0) + $cant;
-                    break;
-            }
-        }
+        // Mappers a columnas
+        $this->mapSlotsToDbColumns();
+        $this->applyAggregatesToEquipoColumns();
 
-        // --- Lectores ---
-        $lecSd = $lecSc = $lecEsata = $lecSim = null;
+        DB::transaction(function () {
+            // Payload de update (solo campos que existan en equipos)
+            $payload = $this->equipoPayloadForUpdate();
 
-        foreach ($this->lectores ?? [] as $lec) {
-            $tipo    = $lec['tipo'] ?? null;
-            $detalle = trim($lec['detalle'] ?? '');
+            // Mantén quién editó (si tienes columna, ajusta)
+            // $payload['actualizado_por_user_id'] = Auth::id();
 
-            if (!$tipo || $detalle === '') {
-                continue;
-            }
+            $this->equipo->update($payload);
 
-            switch ($tipo) {
-                case 'SD':
-                    $lecSd = $detalle;
-                    break;
-                case 'microSD':
-                    $lecSd = $lecSd ? ($lecSd . ' | ' . $detalle) : $detalle;
-                    break;
-                case 'SmartCard':
-                    $lecSc = $detalle;
-                    break;
-                case 'eSATA':
-                    $lecEsata = $detalle;
-                    break;
-                case 'SIM':
-                    $lecSim = $detalle;
-                    break;
-                case 'Otro':
-                    // lo acumulamos en SD por no tener otro campo
-                    $lecSd = $lecSd ? ($lecSd . ' | ' . $detalle) : $detalle;
-                    break;
-            }
-        }
+            $this->guardarBaterias($this->equipo->id);
+            $this->guardarMonitor($this->equipo->id);
+        });
 
-        // ====== UPDATE A LA BD (SOLO CAMPOS QUE EXISTEN) ======
+        $this->dispatch('toast', type: 'success', message: 'Equipo actualizado correctamente.');
+        $this->dispatch('equipo-editado'); // por si quieres escuchar en la lista
+    }
 
-        $this->equipo->update([
-            'numero_serie'   => $this->numero_serie,
-            'marca'          => $this->marca,
-            'modelo'         => $this->modelo,
-            'lote_modelo_id' => $this->lote_modelo_id, // no lo editas desde la vista, pero lo dejamos por si acaso
-            'proveedor_id'   => $this->proveedor_id,
-            'tipo_equipo'    => $this->tipo_equipo,
+    private function equipoPayloadForUpdate(): array
+    {
+        // IMPORTANTE: NO tocamos lote/modelo/proveedor aquí (read-only)
+        return [
+            'numero_serie' => $this->numero_serie,
+            'estatus_general' => $this->estatus_general,
+
+            'marca' => $this->marca,
+            'modelo' => $this->modelo,
+            'tipo_equipo' => $this->tipo_equipo,
             'sistema_operativo' => $this->sistema_operativo,
-            'area_tienda'    => $this->area_tienda,
+            'area_tienda' => $this->area_tienda,
 
-            'procesador_modelo'     => $this->procesador_modelo,
-            'procesador_frecuencia' => $this->procesador_frecuencia,
+            'procesador_modelo' => $this->procesador_modelo,
             'procesador_generacion' => $this->procesador_generacion,
-            'procesador_nucleos'    => $this->procesador_nucleos,
+            'procesador_nucleos' => $this->procesador_nucleos,
+            'procesador_frecuencia' => $this->procesador_frecuencia,
 
-            'ram_total'         => $this->ram_total,
-            'ram_tipo'          => $this->ram_tipo,
-            'ram_es_soldada'    => $this->ram_es_soldada ? 1 : 0,
-            'ram_slots_totales' => $this->ram_slots_totales,
+            'ram_capacidad' => $this->ram_capacidad,
+            'ram_tipo' => $this->ram_tipo,
+            'ram_es_soldada' => (int) ((bool) $this->ram_es_soldada),
+            'ram_cantidad_soldada' => $this->ram_cantidad_soldada,
+            'ram_sin_slots' => (int) ((bool) $this->ram_sin_slots),
             'ram_expansion_max' => $this->ram_expansion_max,
+            'ram_slots_totales' => $this->ram_slots_totales,
 
-            'pantalla_pulgadas'   => $this->pantalla_pulgadas,
-            'pantalla_resolucion' => $this->pantalla_resolucion,
-            'pantalla_tipo'       => $this->pantalla_tipo,
-            'pantalla_es_touch'   => $this->pantalla_es_touch ? 1 : 0,
+            'almacenamiento_principal_capacidad' => $this->almacenamiento_principal_capacidad,
+            'almacenamiento_principal_tipo' => $this->almacenamiento_principal_tipo,
 
-            'almacenamiento_principal_capacidad'  => $this->almacenamiento_principal_capacidad,
-            'almacenamiento_principal_tipo'       => $this->almacenamiento_principal_tipo,
             'almacenamiento_secundario_capacidad' => $this->almacenamiento_secundario_capacidad,
-            'almacenamiento_secundario_tipo'      => $this->almacenamiento_secundario_tipo,
+            'almacenamiento_secundario_tipo' => $this->almacenamiento_secundario_tipo,
 
-            'grafica_integrada_modelo' => $this->grafica_integrada_modelo,
-            'grafica_dedicada_modelo'  => $this->grafica_dedicada_modelo,
-            'grafica_dedicada_vram'    => $this->grafica_dedicada_vram,
+            // slots_alm_* ya mapeados
+            'slots_alm_ssd' => $this->slots_alm_ssd,
+            'slots_alm_m2' => $this->slots_alm_m2,
+            'slots_alm_m2_micro' => $this->slots_alm_m2_micro,
+            'slots_alm_hdd' => $this->slots_alm_hdd,
+            'slots_alm_msata' => $this->slots_alm_msata,
 
-            'bateria_salud_percent' => $this->bateria_salud_percent,
-            'bateria_cantidad'      => $this->bateria_cantidad,
-            'teclado_idioma'        => $this->teclado_idioma,
-            'estatus_general'       => $this->estatus_general,
-            'notas_generales'       => $this->notas_generales,
+            // red
+            'ethernet_tiene' => (int) ((bool) $this->ethernet_tiene),
+            'ethernet_es_gigabit' => (int) ((bool) $this->ethernet_es_gigabit),
 
-            // Mapeo puertos USB
-            'puertos_usb_2'   => $usb2,
-            'puertos_usb_30'  => $usb30,
-            'puertos_usb_31'  => $usb31,
-            'puertos_usb_32'  => $usb32,
-            'puertos_usb_c'   => $usbC,
+            // conectividad / entrada finales
+            'puertos_conectividad' => $this->puertos_conectividad,
+            'dispositivos_entrada' => $this->dispositivos_entrada,
 
-            // Mapeo video
-            'puertos_hdmi'        => $hdmi,
-            'puertos_mini_hdmi'   => $miniHdmi,
-            'puertos_vga'         => $vga,
-            'puertos_dvi'         => $dvi,
-            'puertos_displayport' => $dp,
-            'puertos_mini_dp'     => $miniDp,
+            // puertos/lectores (ya agregados por map)
+            'puertos_hdmi' => $this->puertos_hdmi,
+            'puertos_mini_hdmi' => $this->puertos_mini_hdmi,
+            'puertos_vga' => $this->puertos_vga,
+            'puertos_dvi' => $this->puertos_dvi,
+            'puertos_displayport' => $this->puertos_displayport,
+            'puertos_mini_dp' => $this->puertos_mini_dp,
 
-            // Mapeo lectores
-            'lectores_sd'    => $lecSd,
-            'lectores_sc'    => $lecSc,
-            'lectores_esata' => $lecEsata,
-            'lectores_sim'   => $lecSim,
-        ]);
+            'puertos_usb_2' => $this->puertos_usb_2,
+            'puertos_usb_30' => $this->puertos_usb_30,
+            'puertos_usb_31' => $this->puertos_usb_31,
+            'puertos_usb_32' => $this->puertos_usb_32,
+            'puertos_usb_c' => $this->puertos_usb_c,
 
-    session()->flash('toast', [
-        'title'   => 'Equipo actualizado correctamente',
-        'message' => 'Los cambios del equipo se guardaron ',
-    ]);
+            'lectores_sd' => $this->lectores_sd,
+            'lectores_sc' => $this->lectores_sc,
+            'lectores_esata' => $this->lectores_esata,
+            'lectores_sim' => $this->lectores_sim,
 
-    return redirect()->route('inventario.listo');
+            // detalles
+            'detalles_esteticos' => $this->truncate($this->detalles_esteticos, 255),
+            'detalles_funcionamiento' => $this->truncate($this->detalles_funcionamiento, 255),
+
+            'teclado_idioma' => $this->teclado_idioma,
+            'notas_generales' => $this->notas_generales,
+        ];
     }
 
-    // Botones + / ✕ de tu vista
-    public function addPuertoUsb()
+    // =======================
+    // Baterías
+    // =======================
+    private function hydrateBaterias(): void
     {
-        $this->puertos_usb[] = ['tipo' => '', 'cantidad' => 1];
+        $bats = EquipoBateria::query()
+            ->where('equipo_id', $this->equipo->id)
+            ->orderBy('id')
+            ->get();
+
+        if ($bats->isEmpty()) {
+            $this->bateria_tiene = false;
+            $this->bateria2_tiene = false;
+            return;
+        }
+
+        $this->bateria_tiene = true;
+
+        $b1 = $bats->get(0);
+        $b2 = $bats->get(1);
+
+        if ($b1) {
+            $this->bateria1_tipo = $b1->tipo;
+            $this->bateria1_salud = $b1->salud;
+        }
+
+        if ($b2) {
+            $this->bateria2_tiene = true;
+            $this->bateria2_tipo = $b2->tipo;
+            $this->bateria2_salud = $b2->salud;
+        } else {
+            $this->bateria2_tiene = false;
+        }
     }
 
-    public function removePuertoUsb($index)
+    private function guardarBaterias(int $equipoId): void
     {
-        unset($this->puertos_usb[$index]);
-        $this->puertos_usb = array_values($this->puertos_usb);
+        // estrategia simple y segura
+        EquipoBateria::where('equipo_id', $equipoId)->delete();
+
+        if (!$this->bateria_tiene) {
+            return;
+        }
+
+        if ($this->bateria1_tipo || $this->bateria1_salud) {
+            EquipoBateria::create([
+                'equipo_id' => $equipoId,
+                'tipo'      => $this->bateria1_tipo,
+                'salud'     => $this->bateria1_salud,
+            ]);
+        }
+
+        if ($this->bateria2_tiene && ($this->bateria2_tipo || $this->bateria2_salud)) {
+            EquipoBateria::create([
+                'equipo_id' => $equipoId,
+                'tipo'      => $this->bateria2_tipo,
+                'salud'     => $this->bateria2_salud,
+            ]);
+        }
     }
 
-    public function addPuertoVideo()
+    // =======================
+    // Monitor
+    // =======================
+    private function hydrateMonitor(): void
     {
-        $this->puertos_video[] = ['tipo' => '', 'cantidad' => 1];
+        $m = EquipoMonitor::query()->where('equipo_id', $this->equipo->id)->first();
+
+        // Si no hay registro, dejamos todo como “no incluido”
+        if (!$m) {
+            $this->monitor_incluido = 'NO';
+            return;
+        }
+
+        if ($m->origen_pantalla === 'INTEGRADA') {
+            $this->pantalla_pulgadas  = $m->pulgadas;
+            $this->pantalla_resolucion = $m->resolucion;
+            $this->pantalla_tipo = $m->tipo_panel;
+            $this->pantalla_es_touch = (bool) $m->es_touch;
+
+            $this->monitor_incluido = 'NO';
+            return;
+        }
+
+        // EXTERNA
+        $this->monitor_incluido = 'SI';
+        $this->monitor_pulgadas = $m->pulgadas;
+        $this->monitor_resolucion = $m->resolucion;
+        $this->monitor_tipo_panel = $m->tipo_panel;
+        $this->monitor_es_touch = (bool) $m->es_touch;
+
+        $this->monitor_detalles_esteticos_checks = (string) ($m->detalles_esteticos_checks ?? '');
+        $this->monitor_detalles_esteticos_otro = (string) ($m->detalles_esteticos_otro ?? '');
+        $this->monitor_detalles_funcionamiento_checks = (string) ($m->detalles_funcionamiento_checks ?? '');
+        $this->monitor_detalles_funcionamiento_otro = (string) ($m->detalles_funcionamiento_otro ?? '');
+
+        // Entradas (in_*)
+        $rows = [];
+        foreach (self::MAP_MONITOR_IN as $label => $col) {
+            $qty = (int) ($m->{$col} ?? 0);
+            if ($qty > 0) {
+                $rows[] = ['tipo' => $label, 'cantidad' => $qty];
+            }
+        }
+        $this->monitor_entradas_rows = $rows;
     }
 
-    public function removePuertoVideo($index)
+    private function guardarMonitor(int $equipoId): void
     {
-        unset($this->puertos_video[$index]);
-        $this->puertos_video = array_values($this->puertos_video);
+        // INTEGRADA
+        if ($this->pantallaIntegrada) {
+            EquipoMonitor::updateOrCreate(
+                ['equipo_id' => $equipoId],
+                [
+                    'origen_pantalla' => 'INTEGRADA',
+                    'incluido'        => 1,
+                    'pulgadas'        => $this->pantalla_pulgadas ?: null,
+                    'resolucion'      => $this->pantalla_resolucion ?: null,
+                    'tipo_panel'      => $this->pantalla_tipo ?: null,
+                    'es_touch'        => (int) ((bool) $this->pantalla_es_touch),
+                ] + $this->monitorInputsPayload([]) // limpia entradas
+            );
+            return;
+        }
+
+        // EXTERNA
+        if (!$this->pantallaExterna) {
+            return;
+        }
+
+        if ($this->monitor_incluido !== 'SI') {
+            EquipoMonitor::where('equipo_id', $equipoId)->delete();
+            return;
+        }
+
+        $counts = $this->aggregateCounters($this->monitor_entradas_rows, 'tipo', 'cantidad');
+        $inputsPayload = $this->monitorInputsPayload($counts);
+
+        EquipoMonitor::updateOrCreate(
+            ['equipo_id' => $equipoId],
+            [
+                'origen_pantalla' => 'EXTERNA',
+                'incluido'        => 1,
+                'pulgadas'        => $this->monitor_pulgadas ?: null,
+                'resolucion'      => $this->monitor_resolucion ?: null,
+                'tipo_panel'      => $this->monitor_tipo_panel ?: null,
+                'es_touch'        => (int) ((bool) $this->monitor_es_touch),
+
+                'detalles_esteticos_checks'      => $this->truncate($this->monitor_detalles_esteticos_checks ?: null, 255),
+                'detalles_esteticos_otro'        => $this->truncate($this->monitor_detalles_esteticos_otro ?: null, 255),
+                'detalles_funcionamiento_checks' => $this->truncate($this->monitor_detalles_funcionamiento_checks ?: null, 255),
+                'detalles_funcionamiento_otro'   => $this->truncate($this->monitor_detalles_funcionamiento_otro ?: null, 255),
+            ] + $inputsPayload
+        );
     }
 
-    public function addLector()
+    private function monitorInputsPayload(array $countsByLabel): array
     {
-        $this->lectores[] = ['tipo' => '', 'detalle' => ''];
+        $payload = [];
+        foreach (self::MAP_MONITOR_IN as $label => $col) {
+            $qty = (int) ($countsByLabel[$label] ?? 0);
+            $payload[$col] = $qty > 0 ? $qty : null;
+        }
+        return $payload;
     }
 
-    public function removeLector($index)
+    // =======================
+    // Pantalla integrada vs externa (misma lógica que registrar)
+    // =======================
+    private function tipoKey(?string $v): string
     {
-        unset($this->lectores[$index]);
-        $this->lectores = array_values($this->lectores);
+        $v = mb_strtolower(trim((string) $v));
+        $v = preg_replace('/\s+/', ' ', $v);
+        return $v;
     }
 
-    public function render()
+    public function getPantallaIntegradaProperty(): bool
     {
-        return view('livewire.inventario.editar-equipo');
+        return in_array($this->tipoKey($this->tipo_equipo), ['laptop','all in one','tablet','2 en 1'], true);
     }
-    
 
+    public function getPantallaExternaProperty(): bool
+    {
+        return in_array($this->tipoKey($this->tipo_equipo), ['escritorio','micro pc','gamer'], true);
+    }
 
-        public function toggleBateriaTiene()
+    public function updatedTipoEquipo(): void
+    {
+        if ($this->pantallaIntegrada) {
+            $this->monitor_incluido = 'NO';
+            $this->resetMonitorExternoFields();
+            return;
+        }
+
+        if ($this->pantallaExterna && $this->monitor_incluido !== 'SI') {
+            $this->resetMonitorAllFields();
+        }
+    }
+
+    public function updatedMonitorIncluido(): void
+    {
+        if ($this->pantallaExterna && $this->monitor_incluido !== 'SI') {
+            $this->resetMonitorAllFields();
+        }
+    }
+
+    private function resetMonitorExternoFields(): void
+    {
+        $this->monitor_entradas_rows = [];
+        $this->monitor_detalles_esteticos_checks = '';
+        $this->monitor_detalles_esteticos_otro = '';
+        $this->monitor_detalles_funcionamiento_checks = '';
+        $this->monitor_detalles_funcionamiento_otro = '';
+    }
+
+    private function resetMonitorAllFields(): void
+    {
+        $this->monitor_pulgadas = null;
+        $this->monitor_resolucion = null;
+        $this->monitor_tipo_panel = null;
+        $this->monitor_es_touch = false;
+        $this->resetMonitorExternoFields();
+    }
+
+    // =======================
+    // Acciones UI (igual que registrar)
+    // =======================
+    public function addPuertoUsb(): void { $this->puertos_usb[] = ['tipo' => '', 'cantidad' => 1]; }
+    public function removePuertoUsb($i): void { $this->unsetIndex($this->puertos_usb, $i); }
+
+    public function addPuertoVideo(): void { $this->puertos_video[] = ['tipo' => '', 'cantidad' => 1]; }
+    public function removePuertoVideo($i): void { $this->unsetIndex($this->puertos_video, $i); }
+
+    public function addLector(): void { $this->lectores[] = ['tipo' => '', 'detalle' => '']; }
+    public function removeLector($i): void { $this->unsetIndex($this->lectores, $i); }
+
+    public function addSlotAlmacenamiento(): void { $this->slots_almacenamiento[] = ['tipo' => '', 'cantidad' => null]; }
+    public function removeSlotAlmacenamiento($i): void { $this->unsetIndex($this->slots_almacenamiento, $i); }
+
+    public function addMonitorEntrada(): void { $this->monitor_entradas_rows[] = ['tipo' => '', 'cantidad' => 1]; }
+    public function removeMonitorEntrada($i): void { $this->unsetIndex($this->monitor_entradas_rows, $i); }
+
+    private function unsetIndex(array &$arr, $i): void
+    {
+        if (!isset($arr[$i])) return;
+        unset($arr[$i]);
+        $arr = array_values($arr);
+    }
+
+    public function toggleRamSoldada(): void
+    {
+        $this->ram_es_soldada = !$this->ram_es_soldada;
+
+        if (!$this->ram_es_soldada) {
+            $this->ram_sin_slots = false;
+            $this->ram_cantidad_soldada = null;
+            $this->ram_expansion_max = null;
+            $this->ram_slots_totales = null;
+        }
+    }
+
+    public function toggleRamSinSlots(): void
+    {
+        $this->ram_sin_slots = !$this->ram_sin_slots;
+
+        if ($this->ram_sin_slots) {
+            $this->ram_expansion_max = '0 GB';
+            $this->ram_slots_totales = '0';
+        } else {
+            $this->ram_expansion_max = null;
+            $this->ram_slots_totales = null;
+        }
+    }
+
+    public function toggleBateriaTiene(): void
     {
         $this->bateria_tiene = !$this->bateria_tiene;
 
@@ -569,7 +715,7 @@ class EditarEquipo extends Component
         }
     }
 
-    public function toggleBateria2Tiene()
+    public function toggleBateria2Tiene(): void
     {
         $this->bateria2_tiene = !$this->bateria2_tiene;
 
@@ -579,5 +725,172 @@ class EditarEquipo extends Component
         }
     }
 
-    
+    // =======================
+    // Hydrates (DB -> arrays UI)
+    // =======================
+    private function hydratePuertosFromColumns(): void
+    {
+        // USB
+        $usb = [];
+        foreach (self::MAP_USB as $label => $col) {
+            $qty = (int) ($this->{$col} ?? 0);
+            if ($qty > 0) $usb[] = ['tipo' => $label, 'cantidad' => $qty];
+        }
+        $this->puertos_usb = $usb;
+
+        // Video
+        $vid = [];
+        foreach (self::MAP_VIDEO as $label => $col) {
+            $qty = (int) ($this->{$col} ?? 0);
+            if ($qty > 0) $vid[] = ['tipo' => $label, 'cantidad' => $qty];
+        }
+        $this->puertos_video = $vid;
+
+        // Lectores (son counts en tu modelo actual)
+        $lec = [];
+        foreach (self::MAP_LECTORES as $label => $col) {
+            $qty = (int) ($this->{$col} ?? 0);
+            if ($qty > 0) $lec[] = ['tipo' => $label, 'detalle' => ''];
+        }
+        $this->lectores = $lec;
+
+        // chips finales ya vienen como string en equipos
+        $this->puertos_conectividad = $this->puertos_conectividad ?: '';
+        $this->dispositivos_entrada = $this->dispositivos_entrada ?: '';
+    }
+
+    private function hydrateSlotsFromColumns(): void
+    {
+        $rows = [];
+        foreach (self::MAP_SLOTS as $label => $col) {
+            $qty = (int) ($this->{$col} ?? 0);
+            if ($qty > 0) $rows[] = ['tipo' => $label, 'cantidad' => $qty];
+        }
+        $this->slots_almacenamiento = $rows;
+    }
+
+    // =======================
+    // Agregadores / Mappers
+    // =======================
+    private function applyAggregatesToEquipoColumns(): void
+    {
+        // limpia primero (para que si quitan un puerto se refleje)
+        foreach (self::MAP_USB as $col) $this->{$col} = null;
+        foreach (self::MAP_VIDEO as $col) $this->{$col} = null;
+        foreach (self::MAP_LECTORES as $col) $this->{$col} = null;
+
+        $usbCounts = $this->aggregateCounters($this->puertos_usb, 'tipo', 'cantidad');
+        $this->applyMapCountsToEquipo($usbCounts, self::MAP_USB);
+
+        $videoCounts = $this->aggregateCounters($this->puertos_video, 'tipo', 'cantidad');
+        $this->applyMapCountsToEquipo($videoCounts, self::MAP_VIDEO);
+
+        $lectorCounts = $this->aggregateCounters($this->lectores, 'tipo', null);
+        $this->applyMapCountsToEquipo($lectorCounts, self::MAP_LECTORES);
+    }
+
+    private function aggregateCounters(array $rows, string $keyField, ?string $qtyField): array
+    {
+        $counts = [];
+        foreach ($rows as $row) {
+            $k = trim((string) ($row[$keyField] ?? ''));
+            if ($k === '') continue;
+
+            $qty = 1;
+            if ($qtyField) {
+                $qty = (int) ($row[$qtyField] ?? 1);
+                $qty = $qty > 0 ? $qty : 1;
+            }
+
+            $counts[$k] = ($counts[$k] ?? 0) + $qty;
+        }
+        return $counts;
+    }
+
+    private function applyMapCountsToEquipo(array $countsByLabel, array $mapLabelToEquipoColumn): void
+    {
+        foreach ($countsByLabel as $label => $count) {
+            if (!isset($mapLabelToEquipoColumn[$label])) continue;
+            $col = $mapLabelToEquipoColumn[$label];
+            $this->{$col} = (string) $count;
+        }
+    }
+
+    private function mapSlotsToDbColumns(): void
+    {
+        $this->slots_alm_ssd = null;
+        $this->slots_alm_m2 = null;
+        $this->slots_alm_m2_micro = null;
+        $this->slots_alm_hdd = null;
+        $this->slots_alm_msata = null;
+
+        foreach (($this->slots_almacenamiento ?? []) as $row) {
+            $tipo = trim((string) ($row['tipo'] ?? ''));
+            if ($tipo === '' || !isset(self::MAP_SLOTS[$tipo])) continue;
+
+            $cant = $row['cantidad'] ?? null;
+            $valor = (is_numeric($cant) && (int) $cant > 0) ? (string) ((int) $cant) : null;
+
+            $col = self::MAP_SLOTS[$tipo];
+            $this->{$col} = $valor;
+        }
+    }
+
+    // =======================
+    // Helpers texto checklist
+    // =======================
+    private function buildChecksText(array $checks, ?string $otro): string
+    {
+        $checks = $checks ?? [];
+
+        if (in_array('N/A', $checks, true)) {
+            $checks = ['N/A'];
+            $otro = null;
+        }
+
+        $txt = implode(', ', $checks);
+
+        if (!empty($otro)) {
+            $txt .= ($txt ? ' | ' : '') . 'Otro: ' . $otro;
+        }
+
+        return $txt;
+    }
+
+    private function parseChecksText(string $txt): array
+    {
+        $txt = trim($txt);
+        if ($txt === '') return [[], null];
+
+        $otro = null;
+
+        // separa " | Otro: "
+        $parts = explode('|', $txt, 2);
+        $checksPart = trim($parts[0] ?? '');
+        $otroPart   = trim($parts[1] ?? '');
+
+        if ($otroPart !== '') {
+            $otroPart = preg_replace('/^Otro:\s*/i', '', $otroPart);
+            $otro = trim($otroPart) !== '' ? trim($otroPart) : null;
+        }
+
+        $checks = [];
+        if ($checksPart !== '') {
+            $checks = array_values(array_filter(array_map('trim', explode(',', $checksPart))));
+        }
+
+        return [$checks, $otro];
+    }
+
+    private function truncate($value, int $max)
+    {
+        if ($value === null) return null;
+        $value = (string) $value;
+        return mb_strlen($value) > $max ? mb_substr($value, 0, $max) : $value;
+    }
+
+    public function render()
+    {
+        return view('livewire.inventario.editar-equipo');
+    }
 }
