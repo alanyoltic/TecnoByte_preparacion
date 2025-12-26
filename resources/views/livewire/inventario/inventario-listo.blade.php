@@ -864,7 +864,8 @@ function ajustarTextoBarcodeAlAncho(svg, minFontSize = 7, step = 0.5) {
     textEl.setAttribute('x', String(barcodeCenterX));
 
     // Tomar font-size actual del <text> generado por JsBarcode
-    let currentSize = parseFloat(textEl.getAttribute('font-size')) || 11;
+    let currentSize = parseFloat(textEl.getAttribute('font-size')) || 9.5;
+    
 
     // Reducir hasta que el texto quepa dentro del ancho del barcode
     while (currentSize > minFontSize) {
