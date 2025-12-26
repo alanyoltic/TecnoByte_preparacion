@@ -756,172 +756,235 @@
 
 <style>
 @media print {
-    @page { margin: 0; }
+  @page { margin: 0; }
 
-    #area-impresion-final {
-        margin: 0 !important;
-        padding: 0 !important;
-        background: white !important;
-    }
+  #area-impresion-final {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
 
-    .titulo-equipo {
-        white-space: nowrap !important;
-        display: block !important;
-        text-align: center !important;
-        line-height: 1 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        letter-spacing: 0.06em; /* mejora legibilidad */
-    }
+  .titulo-equipo {
+    white-space: nowrap !important;
+    display: block !important;
+    text-align: center !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    letter-spacing: 0.06em; /* mejora legibilidad */
+  }
 }
 </style>
 
-
 <script>
 /**
- * Ajusta el título para que:
- * 1) Intente caber completo
- * 2) Reduzca font-size si hace falta
- * 3) Trunque SOLO si ya no cabe
+ * Convierte el ID a un código óptimo para barcode.
+ * - IDs pequeños: numérico
+ * - IDs grandes: Base36 (más corto)
+ */
+function encodeIdForBarcode(id) {
+  const num = Number(id);
+  if (!Number.isInteger(num) || num <= 0) return String(id);
+  if (num < 100000) return String(num);
+  return num.toString(36).toUpperCase();
+}
+
+/**
+ * Ajusta el título para que quepa en una sola línea
  */
 function ajustarTituloParaEtiqueta(tituloEl) {
-    if (!tituloEl) return;
+  if (!tituloEl) return;
 
-    const textoOriginal = tituloEl.textContent.trim();
-    const contenedor = tituloEl.parentElement;
+  const textoOriginal = (tituloEl.textContent || '').toString().trim();
+  const contenedor = tituloEl.parentElement;
+  if (!contenedor) return;
 
-    // Configuración base
-    let fontSize = 11;      // tamaño inicial (pt)
-    const minFontSize = 8;  // tamaño mínimo legible
+  let fontSize = 11;      // pt
+  const minFontSize = 8;  // pt
 
-    tituloEl.style.whiteSpace = 'nowrap';
-    tituloEl.style.display = 'block';
-    tituloEl.style.textAlign = 'center';
-    tituloEl.style.lineHeight = '1';       // ✅ NUEVO: evita saltos raros
-    tituloEl.style.margin = '0';            // ✅ NUEVO
-    tituloEl.style.padding = '0';           // ✅ NUEVO
+  tituloEl.style.whiteSpace = 'nowrap';
+  tituloEl.style.display = 'block';
+  tituloEl.style.textAlign = 'center';
+  tituloEl.style.lineHeight = '1';
+  tituloEl.style.margin = '0';
+  tituloEl.style.padding = '0';
+  tituloEl.style.fontSize = fontSize + 'pt';
+  tituloEl.textContent = textoOriginal;
+
+  void contenedor.offsetWidth;
+
+  const maxWidth = contenedor.clientWidth;
+
+  while (tituloEl.scrollWidth > maxWidth && fontSize > minFontSize) {
+    fontSize -= 0.3;
     tituloEl.style.fontSize = fontSize + 'pt';
-    tituloEl.textContent = textoOriginal;
+  }
 
-    // 🔹 NUEVO: forzar reflow para medidas correctas
-    void contenedor.offsetWidth;
+  if (tituloEl.scrollWidth > maxWidth) {
+    let texto = textoOriginal;
+    while (texto.length > 4 && tituloEl.scrollWidth > maxWidth) {
+      texto = texto.slice(0, -1);
+      tituloEl.textContent = texto + '...';
+    }
+  }
+}
 
-    const maxWidth = contenedor.clientWidth;
+/**
+ * Ajusta el texto del barcode (la serie visible) para que NO sea más ancho que el barcode.
+ * Se ejecuta DESPUÉS de JsBarcode.
+ */
+function ajustarTextoBarcodeAlAncho(svg, minFontSize = 7, step = 0.5) {
+    if (!svg) return;
 
-    // 1️⃣ Reducir tamaño SOLO si no cabe
-    while (tituloEl.scrollWidth > maxWidth && fontSize > minFontSize) {
-        fontSize -= 0.3;
-        tituloEl.style.fontSize = fontSize + 'pt';
+    // ✅ Evitar que el SVG recorte el texto
+    svg.style.overflow = 'visible';
+    svg.setAttribute('overflow', 'visible');
+    svg.style.display = 'block';
+    svg.style.margin = '0 auto';
+
+    const textEl = svg.querySelector('text');
+    if (!textEl) return;
+
+    // Forzar layout
+    void svg.getBoundingClientRect();
+
+    // Tomamos bbox del SVG (barcode completo)
+    let bbox;
+    try {
+        bbox = svg.getBBox();
+    } catch (e) {
+        // si fallara getBBox (raro), salimos sin romper
+        return;
     }
 
-    // 2️⃣ Si aun así no cabe → truncar (último recurso)
-    if (tituloEl.scrollWidth > maxWidth) {
-        let texto = textoOriginal;
+    const barcodeCenterX = bbox.x + (bbox.width / 2);
 
-        while (texto.length > 4 && tituloEl.scrollWidth > maxWidth) {
-            texto = texto.slice(0, -1);
-            tituloEl.textContent = texto + '...';
+    // ✅ Centrar el texto respecto al barcode
+    textEl.setAttribute('text-anchor', 'middle');
+    textEl.setAttribute('x', String(barcodeCenterX));
+
+    // Tomar font-size actual del <text> generado por JsBarcode
+    let currentSize = parseFloat(textEl.getAttribute('font-size')) || 11;
+
+    // Reducir hasta que el texto quepa dentro del ancho del barcode
+    while (currentSize > minFontSize) {
+        textEl.setAttribute('font-size', String(currentSize));
+
+        let textWidth = 0;
+        try {
+            textWidth = textEl.getBBox().width;
+        } catch (e) {
+            break;
         }
+
+        if (textWidth <= bbox.width) break;
+        currentSize -= step;
     }
 }
+
 
 /**
  * Auto-ajuste de líneas de especificaciones
  */
 function autoResizeSpecLines(container) {
-    if (!container) return;
+  if (!container) return;
 
-    const lines = container.querySelectorAll('.spec-line');
+  const lines = container.querySelectorAll('.spec-line');
+  lines.forEach(line => {
+    let size = 9;
+    line.style.fontSize = size + "pt";
 
-    lines.forEach(line => {
-        let size = 9;
-        line.style.fontSize = size + "pt";
-
-        while (line.scrollWidth > container.clientWidth && size > 7) {
-            size -= 0.3;
-            line.style.fontSize = size + "pt";
-        }
-    });
+    while (line.scrollWidth > container.clientWidth && size > 7) {
+      size -= 0.3;
+      line.style.fontSize = size + "pt";
+    }
+  });
 }
 
 /**
  * FUNCIÓN PRINCIPAL DE IMPRESIÓN
  */
 function imprimirEtiquetaFinal(id) {
-    const fuente = document.getElementById('etiqueta-source-' + id);
-    if (!fuente) {
-        alert('Error: No se encuentra la etiqueta');
-        return;
-    }
+  const fuente = document.getElementById('etiqueta-source-' + id);
+  if (!fuente) {
+    alert('Error: No se encuentra la etiqueta');
+    return;
+  }
 
-    // Crear / reutilizar área de impresión
-    let area = document.getElementById('area-impresion-final');
-    if (!area) {
-        area = document.createElement('div');
-        area.id = 'area-impresion-final';
-        document.body.appendChild(area);
-    }
+  let area = document.getElementById('area-impresion-final');
+  if (!area) {
+    area = document.createElement('div');
+    area.id = 'area-impresion-final';
+    document.body.appendChild(area);
+  }
 
-    // Configurar overlay
+  area.innerHTML = '';
+  area.style.position = 'fixed';
+  area.style.inset = '0';
+  area.style.margin = '0';
+  area.style.padding = '0';
+  area.style.background = 'white';
+  area.style.display = 'flex';
+  area.style.alignItems = 'center';
+  area.style.justifyContent = 'center';
+  area.style.zIndex = '9999';
+
+  const etiqueta = fuente.firstElementChild.cloneNode(true);
+  area.appendChild(etiqueta);
+
+  // Título
+  const tituloEl = area.querySelector('.titulo-equipo');
+  ajustarTituloParaEtiqueta(tituloEl);
+
+  // Specs
+  const specBlock = area.querySelector('.spec-block');
+  if (specBlock) {
+    autoResizeSpecLines(specBlock);
+  }
+
+  // Barcode
+  const svg = area.querySelector('.barcode-target');
+  if (svg) {
+    try {
+      // Lo que se ESCANEA (compacto)
+      const codigoScan = encodeIdForBarcode(id);
+
+      // Lo que se VE debajo (humano)
+      const serieHumana = svg.dataset.serie || '';
+
+      JsBarcode(svg, codigoScan, {
+        format: "CODE128",
+        width: 0.8,
+        height: 13,
+
+        displayValue: true,
+        text: '*' + serieHumana + '*',  // 👈 visible (serie)
+        fontSize: 11,
+        fontOptions: "bold",
+        textAlign: "center",
+        textMargin: 2,
+        margin: 6
+      });
+
+      // 🔥 Ajuste dinámico del texto visible al ancho del barcode
+      ajustarTextoBarcodeAlAncho(svg, 7, 0.5);
+
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  window.onafterprint = function () {
+    area.style.display = 'none';
     area.innerHTML = '';
-    area.style.position = 'fixed';
-    area.style.inset = '0';
-    area.style.margin = '0';
-    area.style.padding = '0';
-    area.style.background = 'white';
-    area.style.display = 'flex';
-    area.style.alignItems = 'center';
-    area.style.justifyContent = 'center';
-    area.style.zIndex = '9999';
+    window.onafterprint = null;
+  };
 
-    // Clonar SOLO la etiqueta
-    const etiqueta = fuente.firstElementChild.cloneNode(true);
-    area.appendChild(etiqueta);
-
-    // 🔥 AJUSTE DEL TÍTULO
-    const tituloEl = area.querySelector('.titulo-equipo');
-    ajustarTituloParaEtiqueta(tituloEl);
-
-    // Ajustar specs
-    const specBlock = area.querySelector('.spec-block');
-    if (specBlock) {
-        autoResizeSpecLines(specBlock);
-    }
-
-    // Generar código de barras
-    const svg = area.querySelector('.barcode-target');
-    if (svg) {
-        try {
-            const serie = svg.dataset.serie || '';
-
-            JsBarcode(svg, serie, {
-                format: "CODE128",
-                width: 0.8,
-                height: 15,
-                displayValue: true,
-                text: '*' + serie + '*',
-                fontSize: 10,
-                fontOptions: "bold",
-                textAlign: "center",
-                textMargin: 1,
-                margin: 0
-            });
-        } catch (e) {
-            console.error(e);
-        }
-    }
-
-    // Limpiar después de imprimir
-    window.onafterprint = function () {
-        area.style.display = 'none';
-        area.innerHTML = '';
-        window.onafterprint = null;
-    };
-
-    // Imprimir
-    window.print();
+  window.print();
 }
 </script>
+
+
 
 
 
