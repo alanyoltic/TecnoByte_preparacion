@@ -503,7 +503,7 @@
                                 width: 29mm;
                                 margin-top: 10mm;   /* ↓ Bajar un poquito más el logo */
                             ">
-                            <img src="{{ asset('images/logo-tecnobyte.png') }}"
+                            <img src="{{ asset('images/logo-bk.png') }}"
                                 style="
                                     width: 25mm;       /* ← Más grande (antes 20mm) */
                                     object-fit: contain;
@@ -750,115 +750,93 @@
 {{-- Librería de códigos de barras --}}
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
-<script>
-    function imprimirEtiquetaFinal(id) {
-        const fuente = document.getElementById('etiqueta-source-' + id);
-        if (!fuente) {
-            alert('Error: No se encuentra la etiqueta');
-            return;
-        }
-
-        // Crear / reutilizar el área de impresión
-        let area = document.getElementById('area-impresion-final');
-        if (!area) {
-            area = document.createElement('div');
-            area.id = 'area-impresion-final';
-            document.body.appendChild(area);
-        }
-
-        // Limpiar y configurar el contenedor (overlay blanco centrado)
-        area.innerHTML = '';
-        area.style.position = 'fixed';
-        area.style.inset = '0';
-        area.style.margin = '0';
-        area.style.padding = '0';
-        area.style.background = 'white';
-        area.style.display = 'flex';
-        area.style.alignItems = 'center';
-        area.style.justifyContent = 'center';
-        area.style.zIndex = '9999';
-
-        // Clonar SOLO el contenido de la etiqueta (74x50mm)
-        const etiqueta = fuente.firstElementChild.cloneNode(true);
-        area.appendChild(etiqueta);
-
-        // Auto-resize de especificaciones
-        const specBlock = area.querySelector('.spec-block');
-        if (specBlock) {
-            autoResizeSpecLines(specBlock);
-        }
-
-
-        // Generar el código de barras
-        const svg = area.querySelector('.barcode-target');
-        if (svg) {
-            try {
-                const serie = svg.dataset.serie || '';
-
-                // 1) Generar el código igual que antes pero con barras un poco más finas
-        JsBarcode(svg, serie, {
-            format: "CODE128",
-
-            width: 0.6,          
-            height: 15,
-
-            displayValue: true,
-            text: '*' + serie + '*',
-            fontSize: 9,         
-            fontOptions: "bold",
-            textAlign: "center",
-            textMargin: 1,
-            margin: 0
-        });
 
 
 
 
+<style>
+@media print {
+    @page { margin: 0; }
 
-            } catch (e) {
-                console.error(e);
-            }
-        }
-
-
-
-        // Cuando termine de imprimir, ocultamos el overlay y limpiamos
-        window.onafterprint = function () {
-            area.style.display = 'none';
-            area.innerHTML = '';
-            window.onafterprint = null; // limpiar handler
-        };
-
-        // Lanzar impresión
-        window.print();
+    #area-impresion-final {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
     }
-</script>
+
+    .titulo-equipo {
+        white-space: nowrap !important;
+        display: block !important;
+        text-align: center !important;
+        line-height: 1 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        letter-spacing: 0.06em; /* mejora legibilidad */
+    }
+}
+</style>
 
 
 <script>
-    // Auto-ajustar tamaño del título para que siempre quepa en una sola línea
-    document.querySelectorAll('.titulo-equipo').forEach(function (el) {
-        const parentWidth = el.parentElement.clientWidth;
-        let size = parseFloat(window.getComputedStyle(el).fontSize);
-        const minSize = 8; // tamaño mínimo en pt para no verse ridículo
+/**
+ * Ajusta el título para que:
+ * 1) Intente caber completo
+ * 2) Reduzca font-size si hace falta
+ * 3) Trunque SOLO si ya no cabe
+ */
+function ajustarTituloParaEtiqueta(tituloEl) {
+    if (!tituloEl) return;
 
-        while (el.scrollWidth > parentWidth && size > minSize) {
-            size -= 0.5;                    // bajar de medio punto en medio punto
-            el.style.fontSize = size + 'pt';
+    const textoOriginal = tituloEl.textContent.trim();
+    const contenedor = tituloEl.parentElement;
+
+    // Configuración base
+    let fontSize = 11;      // tamaño inicial (pt)
+    const minFontSize = 8;  // tamaño mínimo legible
+
+    tituloEl.style.whiteSpace = 'nowrap';
+    tituloEl.style.display = 'block';
+    tituloEl.style.textAlign = 'center';
+    tituloEl.style.lineHeight = '1';       // ✅ NUEVO: evita saltos raros
+    tituloEl.style.margin = '0';            // ✅ NUEVO
+    tituloEl.style.padding = '0';           // ✅ NUEVO
+    tituloEl.style.fontSize = fontSize + 'pt';
+    tituloEl.textContent = textoOriginal;
+
+    // 🔹 NUEVO: forzar reflow para medidas correctas
+    void contenedor.offsetWidth;
+
+    const maxWidth = contenedor.clientWidth;
+
+    // 1️⃣ Reducir tamaño SOLO si no cabe
+    while (tituloEl.scrollWidth > maxWidth && fontSize > minFontSize) {
+        fontSize -= 0.3;
+        tituloEl.style.fontSize = fontSize + 'pt';
+    }
+
+    // 2️⃣ Si aun así no cabe → truncar (último recurso)
+    if (tituloEl.scrollWidth > maxWidth) {
+        let texto = textoOriginal;
+
+        while (texto.length > 4 && tituloEl.scrollWidth > maxWidth) {
+            texto = texto.slice(0, -1);
+            tituloEl.textContent = texto + '...';
         }
-    });
+    }
+}
 
+/**
+ * Auto-ajuste de líneas de especificaciones
+ */
+function autoResizeSpecLines(container) {
+    if (!container) return;
 
-
-
-    function autoResizeSpecLines(container) {
     const lines = container.querySelectorAll('.spec-line');
 
     lines.forEach(line => {
-        let size = 9;  // tamaño base que usas
+        let size = 9;
         line.style.fontSize = size + "pt";
 
-        // Si el texto está muy largo, reduce font-size poco a poco
         while (line.scrollWidth > container.clientWidth && size > 7) {
             size -= 0.3;
             line.style.fontSize = size + "pt";
@@ -866,7 +844,86 @@
     });
 }
 
+/**
+ * FUNCIÓN PRINCIPAL DE IMPRESIÓN
+ */
+function imprimirEtiquetaFinal(id) {
+    const fuente = document.getElementById('etiqueta-source-' + id);
+    if (!fuente) {
+        alert('Error: No se encuentra la etiqueta');
+        return;
+    }
+
+    // Crear / reutilizar área de impresión
+    let area = document.getElementById('area-impresion-final');
+    if (!area) {
+        area = document.createElement('div');
+        area.id = 'area-impresion-final';
+        document.body.appendChild(area);
+    }
+
+    // Configurar overlay
+    area.innerHTML = '';
+    area.style.position = 'fixed';
+    area.style.inset = '0';
+    area.style.margin = '0';
+    area.style.padding = '0';
+    area.style.background = 'white';
+    area.style.display = 'flex';
+    area.style.alignItems = 'center';
+    area.style.justifyContent = 'center';
+    area.style.zIndex = '9999';
+
+    // Clonar SOLO la etiqueta
+    const etiqueta = fuente.firstElementChild.cloneNode(true);
+    area.appendChild(etiqueta);
+
+    // 🔥 AJUSTE DEL TÍTULO
+    const tituloEl = area.querySelector('.titulo-equipo');
+    ajustarTituloParaEtiqueta(tituloEl);
+
+    // Ajustar specs
+    const specBlock = area.querySelector('.spec-block');
+    if (specBlock) {
+        autoResizeSpecLines(specBlock);
+    }
+
+    // Generar código de barras
+    const svg = area.querySelector('.barcode-target');
+    if (svg) {
+        try {
+            const serie = svg.dataset.serie || '';
+
+            JsBarcode(svg, serie, {
+                format: "CODE128",
+                width: 0.8,
+                height: 15,
+                displayValue: true,
+                text: '*' + serie + '*',
+                fontSize: 10,
+                fontOptions: "bold",
+                textAlign: "center",
+                textMargin: 1,
+                margin: 0
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    // Limpiar después de imprimir
+    window.onafterprint = function () {
+        area.style.display = 'none';
+        area.innerHTML = '';
+        window.onafterprint = null;
+    };
+
+    // Imprimir
+    window.print();
+}
 </script>
+
+
 
 
 

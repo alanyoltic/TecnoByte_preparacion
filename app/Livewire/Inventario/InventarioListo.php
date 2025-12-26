@@ -38,7 +38,7 @@ class InventarioListo extends Component
         'filtroEstado'   => ['except' => 'todos'],
         'filtroLote'     => ['except' => 'todos'],
         'filtroProveedor'=> ['except' => 'todos'],
-        'page'           => ['except' => 1],
+        
     ];
 
     public function mount()
