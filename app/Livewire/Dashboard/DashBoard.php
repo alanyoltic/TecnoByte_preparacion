@@ -320,6 +320,8 @@ class Dashboard extends Component
             radialPercent: $this->radialPercent,
             isTecnico: $this->isTecnico,
         );
+        
+
 
     }
 
@@ -327,4 +329,7 @@ class Dashboard extends Component
     {
         return view('livewire.dashboard.dash-board');
     }
+
+   
+
 }
