@@ -7,6 +7,7 @@ use Livewire\WithPagination;
 use App\Models\Equipo;
 use App\Models\Lote;
 use App\Models\Proveedor;
+use App\Models\User;
 
 class InventarioListo extends Component
 {
@@ -19,6 +20,9 @@ class InventarioListo extends Component
     public $filtroEstado = 'todos';
     public $filtroLote = 'todos';
     public $filtroProveedor = 'todos';
+    public $filtroRegistradoPor = 'todos';
+    public $colaboradores = []; 
+
 
     // Catálogos
     public $lotes = [];
@@ -48,6 +52,17 @@ class InventarioListo extends Component
         $this->proveedores = Proveedor::orderBy('nombre_empresa', 'asc')->get();
 
         $this->calcularStats();
+
+        $this->colaboradores = User::query()
+            ->select('id', 'nombre') // si usas "name" cambia aquí
+            ->orderBy('nombre')
+            ->get()
+            ->map(fn ($u) => ['id' => $u->id, 'nombre' => $u->nombre])
+            ->toArray();
+
+
+
+
     }
 
     /** Cuando cambia cualquiera de estos campos, regresamos a la página 1 */
@@ -70,6 +85,12 @@ class InventarioListo extends Component
     {
         $this->resetPage();
     }
+
+    public function updatedFiltroRegistradoPor()
+    {
+        $this->resetPage();
+    }
+
 
     protected function calcularStats(): void
     {
@@ -120,6 +141,11 @@ class InventarioListo extends Component
             $proveedorId = (int) $this->filtroProveedor;
             $query->where('proveedor_id', $proveedorId);
         }
+
+        $query->when($this->filtroRegistradoPor !== 'todos', function ($q) {
+            $q->where('registrado_por_user_id', $this->filtroRegistradoPor);
+        });
+
 
         // Paginación final
         $equipos = $query->paginate(15);

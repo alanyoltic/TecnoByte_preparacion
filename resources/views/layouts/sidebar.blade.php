@@ -9,7 +9,7 @@
            dark:from-slate-950/95 dark:via-slate-950/90 dark:to-slate-900/80
 
            backdrop-blur-xl
-           overflow-visible"
+           overflow-hidden"
     :class="sidebarOpen ? 'w-64' : 'w-20'"
 >
     {{-- Glows del sidebar --}}
@@ -85,7 +85,7 @@
         @endphp
 
        {{-- NAV --}}
-<nav class="mt-3 flex-1 space-y-1 overflow-y-auto overflow-x-visible"
+<nav class="mt-3 flex-1 space-y-1 overflow-y-auto overflow-x-hidden"
     x-data="{
         activeMenu: null,
         setMenu(id){ this.activeMenu = (this.activeMenu === id) ? null : id; },
@@ -93,6 +93,12 @@
     }"
     @click.outside="if(sidebarOpen) closeMenu()"
     @keydown.escape.window="closeMenu()"
+     {{-- ✅ NUEVO: si el mouse sale de la ventana, cierra todo --}}
+    @mouseleave.window="closeAll()"
+    @blur.window="closeAll()"
+
+    @resize.window="closeAll()"
+    @scroll.window="window.dispatchEvent(new CustomEvent('tb-close-popovers'))"
 >
 
     {{-- ===================== DASHBOARD ===================== --}}
@@ -240,7 +246,7 @@
             <div class="rounded-2xl border
                         bg-white/60 dark:bg-slate-950/40
                         border-slate-200/70 dark:border-white/10
-                        backdrop-blur-xl overflow-hidden">
+                        backdrop-blur-xl overflow-x-hidden">
                 @foreach($equiposItems as $it)
                     <a href="{{ $it['href'] }}"
                     class="block px-4 py-2.5 text-[0.80rem]
@@ -256,13 +262,15 @@
 
         {{-- POPOVER TELEPORT (SIDEBAR CERRADO) --}}
         <template x-teleport="body">
-            <div
-                x-show="popoverOpen && !sidebarOpen"
-                x-transition.opacity.duration.150ms
-                @click.outside="popoverOpen=false"
-                class="fixed z-[999999] pointer-events-auto"
-                :style="popoverStyle"
-            >
+                <div
+                    x-cloak
+                    x-show="popoverOpen && !sidebarOpen"
+                    x-transition.opacity.duration.150ms
+                    @click.outside="popoverOpen=false"
+                    class="fixed z-[999999] pointer-events-auto"
+                    :style="popoverStyle"
+                >
+
                 <div class="rounded-2xl border
                             bg-white/90 dark:bg-slate-900/95
                             border-slate-200/70 dark:border-slate-700/70
@@ -421,13 +429,15 @@
     </div>
 
     <template x-teleport="body">
-        <div
-            x-show="popoverOpen && !sidebarOpen"
-            x-transition.opacity.duration.150ms
-            @click.outside="popoverOpen=false"
-            class="fixed z-[999999] pointer-events-auto"
-            :style="popoverStyle"
-        >
+            <div
+                x-cloak
+                x-show="popoverOpen && !sidebarOpen"
+                x-transition.opacity.duration.150ms
+                @click.outside="popoverOpen=false"
+                class="fixed z-[999999] pointer-events-auto"
+                :style="popoverStyle"
+            >
+
             <div class="rounded-2xl border
                         bg-white/90 dark:bg-slate-900/95
                         border-slate-200/70 dark:border-slate-700/70
@@ -579,13 +589,15 @@
         </div>
 
         <template x-teleport="body">
-            <div
-                x-show="popoverOpen && !sidebarOpen"
-                x-transition.opacity.duration.150ms
-                @click.outside="popoverOpen=false"
-                class="fixed z-[999999] pointer-events-auto"
-                :style="popoverStyle"
-            >
+                <div
+                    x-cloak
+                    x-show="popoverOpen && !sidebarOpen"
+                    x-transition.opacity.duration.150ms
+                    @click.outside="popoverOpen=false"
+                    class="fixed z-[999999] pointer-events-auto"
+                    :style="popoverStyle"
+                >
+
                 <div class="rounded-2xl border
                             bg-white/90 dark:bg-slate-900/95
                             border-slate-200/70 dark:border-slate-700/70
@@ -735,13 +747,15 @@
         </div>
 
         <template x-teleport="body">
-            <div
-                x-show="popoverOpen && !sidebarOpen"
-                x-transition.opacity.duration.150ms
-                @click.outside="popoverOpen=false"
-                class="fixed z-[999999] pointer-events-auto"
-                :style="popoverStyle"
-            >
+                <div
+                    x-cloak
+                    x-show="popoverOpen && !sidebarOpen"
+                    x-transition.opacity.duration.150ms
+                    @click.outside="popoverOpen=false"
+                    class="fixed z-[999999] pointer-events-auto"
+                    :style="popoverStyle"
+                >
+
                 <div class="rounded-2xl border
                             bg-white/90 dark:bg-slate-900/95
                             border-slate-200/70 dark:border-slate-700/70
@@ -762,6 +776,9 @@
         </template>
     </div>
 @endif
+
+
+
 
 
 </nav>
@@ -871,6 +888,14 @@
                                       transition-colors duration-150">
                                 Perfil
                             </a>
+                                @if($esAdminCeo)
+                            <a href="{{ route('avisos.index') }}"
+                            class="group flex items-center gap-3 px-3 py-2 rounded-xl
+                                    text-slate-200/90 hover:text-white
+                                    hover:bg-white/5 transition-all">
+                                <span class="text-sm font-medium">Anuncios</span>
+                            </a>
+                        @endif
 
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf

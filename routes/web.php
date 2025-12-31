@@ -150,6 +150,12 @@ Route::middleware(['auth', 'onlyAdminCeo'])->group(function () {
     Route::get('/lotes/{lote}/editar', function (\App\Models\Lote $lote) {
         return view('lotes.editarlote', compact('lote'));
     })->name('lotes.edit');
+
+    Route::middleware(['auth', 'role:ceo,admin'])->group(function () {
+    Route::get('/avisos', \App\Livewire\Avisos\Index::class)->name('avisos.index');
+});
+
+
 });
 
 require __DIR__ . '/auth.php';

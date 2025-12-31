@@ -57,72 +57,42 @@
         <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10">
 
             {{-- HEADER GLASS PARA EDICIÓN --}}
-            <div
-                class="relative overflow-hidden mb-6
-                       rounded-3xl
-                       bg-white/80 dark:bg-slate-950/70
-                       border border-slate-200/80 dark:border-white/10
-                       shadow-lg shadow-slate-900/10 dark:shadow-2xl dark:shadow-slate-950/70
-                       backdrop-blur-xl dark:backdrop-blur-2xl
-                       px-6 sm:px-8 lg:px-10 py-4 sm:py-5"
+            <x-topbar
+                title="Editar equipo #{{ $equipo->id }}"
+                chip="Inventario · Edición"
             >
-<div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                <x-slot:desc>
+                    <div>
+                        {{ $equipo->marca }} {{ $equipo->modelo }}
+                        @if($equipo->numero_serie)
+                            · N. de Serie: {{ $equipo->numero_serie }}
+                        @endif
+                        <br>
+                        Registrado por:
+                        <span class="font-semibold">
+                            {{ optional($equipo->registradoPor)->nombre_inicial ?? 'Sin asignar' }}
+                        </span>
+                        @if($equipo->created_at)
+                            el {{ $equipo->created_at->format('d/m/Y H:i') }}
+                        @endif
+                    </div>
+                </x-slot:desc>
 
-    {{-- IZQUIERDA: título + info de técnico --}}
-    <div class="space-y-1.5">
-        <div class="flex items-center gap-3">
-            <h2 class="font-semibold text-xl text-slate-900 dark:text-slate-50 leading-tight">
-                Editar equipo #{{ $equipo->id }}
-            </h2>
-
-            {{-- Chip sección --}}
-            <span
-                class="inline-flex items-center px-2.5 py-0.5 rounded-full
-                       text-[0.7rem] font-semibold tracking-wide
-                       bg-[#FF9521]/10 text-[#FF9521]
-                       border border-[#FF9521]/40"
-            >
-                Inventario · Edición
-            </span>
-        </div>
-
-        {{-- Línea con marca, modelo y técnico que lo registró --}}
-        <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-            {{ $equipo->marca }} {{ $equipo->modelo }}
-            @if($equipo->numero_serie)
-                ·   N. de Serie: {{ $equipo->numero_serie }}
-            @endif
-            <br>
-            Registrado por:
-            <span class="font-semibold">
-                {{ optional($equipo->registradoPor)->nombre_inicial ?? 'Sin asignar' }}
-            </span>
-            @if($equipo->created_at)
-                el {{ $equipo->created_at->format('d/m/Y H:i') }}
-            @endif
-        </p>
-    </div>
-
-    {{-- DERECHA: badge de estatus --}}
-    <div class="flex items-center gap-2 text-xs">
-
-        @if($equipo->estatus_general)
-            <span
-                class="inline-flex items-center px-2.5 py-1 rounded-full
-                       text-[0.7rem] font-semibold tracking-wide
-                       bg-emerald-500/10 text-emerald-400
-                       border border-emerald-500/40"
-            >
-                Estado: {{ $equipo->estatus_general }}
-            </span>
-        @endif
-
-        {{-- Si quieres, más tarde aquí puedes añadir otro chip, como fecha de última edición --}}
-        {{-- <span class="text-slate-500 dark:text-slate-400">
-            Última edición: {{ $equipo->updated_at?->format('d/m/Y H:i') }}
-        </span> --}}
-    </div>
-</div>
+                <x-slot:right>
+                    <div class="flex items-center gap-2 text-xs">
+                        @if($equipo->estatus_general)
+                            <span
+                                class="inline-flex items-center px-2.5 py-1 rounded-full
+                                    text-[0.7rem] font-semibold tracking-wide
+                                    bg-emerald-500/10 text-emerald-400
+                                    border border-emerald-500/40"
+                            >
+                                Estado: {{ $equipo->estatus_general }}
+                            </span>
+                        @endif
+                    </div>
+                </x-slot:right>
+            </x-topbar>
 
             {{-- NOTIFICACIÓN FLOTANTE DE ÉXITO --}}
 @if (session('success'))

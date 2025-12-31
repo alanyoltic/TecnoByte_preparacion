@@ -1,101 +1,20 @@
 <x-app-layout>
 
-    {{-- FONDO ESTILO LOGIN / DASHBOARD --}}
-    <div
-        class="relative min-h-screen overflow-hidden
-               bg-gradient-to-br
-               from-slate-100 via-slate-100 to-slate-200
-               dark:from-slate-950 dark:via-[#020617] dark:to-slate-950"
-    >
-
-        {{-- Luces estilo glow con posiciones aleatorias --}}
-        @php
-            // Azul superior izq
-            $glow1Top  = rand(-420, -260);
-            $glow1Left = rand(-340, -120);
-
-            // Azul inferior der
-            $glow2Bottom = rand(-420, -260);
-            $glow2Right  = rand(-340, -120);
-
-            // Naranja central
-            $glow3Bottom      = rand(-360, -220);
-            $glow3LeftPercent = rand(20, 80);
-        @endphp
-
-        <div class="pointer-events-none absolute inset-0">
-            {{-- Glow azul grande superior izquierdo --}}
-            <div
-                class="absolute w-[1100px] h-[1100px]
-                       bg-[#1E3A8A] rounded-full blur-[240px]
-                       opacity-70 md:opacity-90 mix-blend-screen"
-                style="top: {{ $glow1Top }}px; left: {{ $glow1Left }}px;"
-            ></div>
-
-            {{-- Glow azul grande inferior derecho --}}
-            <div
-                class="absolute w-[1000px] h-[1000px]
-                       bg-[#0F172A] rounded-full blur-[240px]
-                       opacity-70 md:opacity-95 mix-blend-screen"
-                style="bottom: {{ $glow2Bottom }}px; right: {{ $glow2Right }}px;"
-            ></div>
-
-            {{-- Glow naranja suave central --}}
-            <div
-                class="absolute w-[850px] h-[850px]
-                       bg-[#FF9521]/40 md:bg-[#FF9521]/50
-                       rounded-full blur-[260px]
-                       opacity-80 md:opacity-90 mix-blend-screen"
-                style="bottom: {{ $glow3Bottom }}px; left: {{ $glow3LeftPercent }}%;"
-            ></div>
-        </div>
-
-        {{-- Capa glass suave global --}}
-        <div class="absolute inset-0 bg-white/40 dark:bg-slate-950/30 backdrop-blur-2xl"></div>
-
+   
+    
+    <x-tb-background>
         {{-- CONTENIDO: HEADER + FORMULARIO --}}
         <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10">
             <div class="space-y-6">
             
 
-                {{-- HEADER GLASS DE LA VISTA --}}
-                <div
-                    class="relative overflow-hidden
-                           rounded-3xl
-                           bg-white/80 dark:bg-slate-950/70
-                           border border-slate-200/80 dark:border-white/10
-                           shadow-lg shadow-slate-900/10 dark:shadow-2xl dark:shadow-slate-950/70
-                           backdrop-blur-xl dark:backdrop-blur-2xl
-                           px-5 sm:px-8 lg:px-10 py-4 sm:py-5"
-                >
-                    <div class="flex items-start justify-between gap-4 flex-col sm:flex-row">
-
-                        <div class="flex items-start gap-3">
-                            {{-- Icono redondo --}}
-
-
-                            <div>
-                                <h2 class="font-semibold text-lg sm:text-xl text-slate-900 dark:text-slate-50 leading-tight">
-                                    Registrar Nuevo Usuario
-                                </h2>
-                                <p class="mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-                                    Completa la información para agregar un nuevo colaborador al sistema.
-                                </p>
-                            </div>
-                        </div>
-
-                        {{-- Etiqueta de contexto --}}
-                        <span
-                            class="inline-flex items-center px-3 py-1 rounded-full
-                                   text-[0.7rem] font-medium tracking-wide
-                                   bg-indigo-500/10 text-indigo-600
-                                   dark:bg-indigo-400/15 dark:text-indigo-200
-                                   border border-indigo-500/30"
-                        >
-                            Módulo: Administración de usuarios
-                        </span>
-                    </div>
-                </div>
+               
+                    {{-- TARJETA HEADER --}}
+                                            <x-topbar
+                        title="Registrar Nuevo Usuario"
+                        chip="Usuarios · Registrar"
+                        description="Completa la información para agregar un nuevo colaborador al sistema."
+                    />
 
             <div class="max-w-5xl mx-auto space-y-6">
 
@@ -370,6 +289,6 @@
             
             </div>
         </div>
-    </div>
+    </x-tb-background>
 
 </x-app-layout>
