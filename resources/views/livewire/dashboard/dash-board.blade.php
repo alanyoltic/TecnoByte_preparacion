@@ -596,12 +596,11 @@
                                                 {{-- placeholder --}}
 @if(!empty($empleadoMes['foto_perfil']))
     <img
-        src="{{ $empleadoMes['foto_perfil'] }}"
+        src="{{ asset('storage/' . $empleadoMes['foto_perfil']) }}"
         alt="Foto empleado del mes"
         class="w-full h-full object-cover"
         loading="lazy"
-        referrerpolicy="no-referrer"
-    />
+    >
 @else
     {{-- placeholder --}}
     <svg class="w-20 h-20 text-slate-400/70 dark:text-slate-300/30" viewBox="0 0 24 24" fill="none">
@@ -624,23 +623,23 @@
 
 
                                     </div>
-{{-- (Opcional) Botón dentro de la tarjeta --}}
-<div class="mt-8 flex justify-center">
-    @if($esAdminCeo)
-        <button
-            type="button"
-            wire:click="openEmpleadoModal"
-            class="inline-flex items-center gap-2
-                px-4 py-2 rounded-full text-sm font-semibold
-                bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                text-white shadow-lg shadow-blue-800/60
-                backdrop-blur-xl transition-all duration-200
-                hover:shadow-blue-500/80 hover:-translate-y-0.5"
-        >
-            Configurar empleado del mes
-        </button>
-    @endif
-</div>
+                                        {{-- (Opcional) Botón dentro de la tarjeta --}}
+                                        <div class="mt-8 flex justify-center">
+                                            @if($esAdminCeo)
+                                                <button
+                                                    type="button"
+                                                    wire:click="openEmpleadoModal"
+                                                    class="inline-flex items-center gap-2
+                                                        px-4 py-2 rounded-full text-sm font-semibold
+                                                        bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                                                        text-white shadow-lg shadow-blue-800/60
+                                                        backdrop-blur-xl transition-all duration-200
+                                                        hover:shadow-blue-500/80 hover:-translate-y-0.5"
+                                                >
+                                                    Configurar empleado del mes
+                                                </button>
+                                            @endif
+                                        </div>
 
 
                                     </div>

@@ -155,29 +155,38 @@ class Dashboard extends Component
     }
 
 
-    private function cargarEmpleadoDelMes(): void
-    {
-        $record = EmpleadoDelMes::query()
-            ->where('month', $this->selectedMonthValue)   // YYYY-MM
-            ->where('is_active', true)
-            ->with(['user:id,nombre,apellido_paterno,apellido_materno,foto_perfil']) // ajusta campos reales
-            ->first();
+private function cargarEmpleadoDelMes(): void
+{
+    $record = EmpleadoDelMes::query()
+        ->where('month', $this->selectedMonthValue)   // YYYY-MM
+        ->where('is_active', true)
+        ->with(['user:id,nombre,apellido_paterno,apellido_materno,foto_perfil'])
+        ->first();
 
-        if (!$record) {
-            $this->empleadoMes = null;
-            return;
-        }
-
-        $u = $record->user;
-
-        $this->empleadoMes = [
-            'id' => $u->id,
-            'nombre' => trim(($u->nombre ?? '').' '.($u->apellido_paterno ?? '')),
-            'mensaje' => $record->mensaje,
-            'month' => $record->month,
-            'foto' => $u->foto_perfil ?? null, // si no tienes foto, déjalo null
-        ];
+    if (!$record) {
+        $this->empleadoMes = null;
+        return;
     }
+
+    $u = $record->user;
+
+    // ✅ Normalizar foto_perfil a "path" (ej: fotos_perfil/archivo.jpg)
+    $foto = $u->foto_perfil ?? null;
+
+    // Si por alguna razón viene como URL completa (http://.../storage/...), lo convertimos a path
+    if ($foto && str_contains($foto, '/storage/')) {
+        $foto = ltrim(explode('/storage/', $foto, 2)[1], '/');
+    }
+
+    $this->empleadoMes = [
+        'id'          => $u->id,
+        'nombre'      => trim(($u->nombre ?? '') . ' ' . ($u->apellido_paterno ?? '')),
+        'mensaje'     => $record->mensaje,
+        'month'       => $record->month,
+        'foto_perfil' => $foto, // ✅ MISMO NOMBRE que en users/sidebar
+    ];
+}
+
 
 
 public function openEmpleadoModal(): void
@@ -195,7 +204,13 @@ public function openEmpleadoModal(): void
     }
 }
 
-public function saveEmpleadoDelMes(): void
+    public function closeEmpleadoModal(): void
+    {
+        $this->showEmpleadoModal = false;
+    }
+
+
+    public function saveEmpleadoDelMes(): void
 {
     if (! $this->esAdminCeo) return;
 
@@ -218,7 +233,6 @@ public function saveEmpleadoDelMes(): void
     $this->cargarEmpleadoDelMes();
     $this->dispatch('notify', type:'success', message:'Empleado del mes guardado.');
 }
-
 
     
 
