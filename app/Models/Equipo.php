@@ -61,6 +61,8 @@ class Equipo extends Model
     'puertos_usb'   => 'array',
     'puertos_video' => 'array',
     'lectores'      => 'array',
+    'ram_es_soldada' => 'boolean',
+    'ram_sin_slots' => 'boolean',
 ];
 
 }

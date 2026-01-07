@@ -1240,7 +1240,7 @@
                             bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
                             focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">Selecciona</option>
-                        @foreach(['10','11','12','13.3','14','15.6','16','17.3'] as $p)
+                        @foreach(['10','11','11.6','12','12.3','12.5','13.3','14','15.4','15.6','16','17.3','21','22','23','23.8','24','25',] as $p)
                             <option value="{{ $p }}">{{ $p }}"</option>
                         @endforeach
                     </select>

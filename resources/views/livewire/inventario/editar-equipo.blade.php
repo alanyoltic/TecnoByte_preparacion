@@ -23,6 +23,23 @@
         </p>
     </div>
 
+    {{-- Mensajes --}}
+    @if (session()->has('success'))
+        <div class="mb-4 rounded-xl border border-emerald-200/60 dark:border-emerald-400/20
+                    bg-emerald-50/70 dark:bg-emerald-900/20
+                    px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if (session()->has('error'))
+        <div class="mb-4 rounded-xl border border-rose-200/60 dark:border-rose-400/20
+                    bg-rose-50/70 dark:bg-rose-900/20
+                    px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
+            {{ session('error') }}
+        </div>
+    @endif
+
     <form wire:submit.prevent="actualizar" class="space-y-8 text-slate-900 dark:text-slate-100">
 
         {{-- =================== --}}
@@ -43,24 +60,31 @@
                         Lote
                     </label>
                     <select
-                        wire:model="lote_id"
+                        wire:model.live="form.lote_id"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-100 dark:bg-slate-800
                                text-sm px-3 py-2
                                focus:outline-none focus:ring-0 focus:border-slate-300"
-                        disabled
+                        
                     >
+                        
                         <option value="">—</option>
+
                         @foreach(($lotes ?? []) as $lote)
                             @php
-                                $fecha = $lote->fecha_llegada
-                                    ? \Carbon\Carbon::parse($lote->fecha_llegada)->format('d/m/Y')
+                                $fechaRaw = $lote['fecha_llegada'] ?? null;
+                                $fecha = $fechaRaw
+                                    ? \Carbon\Carbon::parse($fechaRaw)->format('d/m/Y')
                                     : 'Sin fecha';
+
+                                $nombre = $lote['nombre_lote'] ?? ($lote['nombre'] ?? ('Lote #' . ($lote['id'] ?? '')));
                             @endphp
-                            <option value="{{ $lote->id }}">
-                                Lote {{ $lote->nombre_lote }} — {{ $fecha }}
+
+                            <option value="{{ $lote['id'] }}">
+                                Lote {{ $nombre }} — {{ $fecha }}
                             </option>
                         @endforeach
+
                     </select>
                 </div>
 
@@ -70,19 +94,22 @@
                         Proveedor *
                     </label>
                     <select
-                        wire:model="proveedor_id"
+                        wire:model.live="form.proveedor_id"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-100 dark:bg-slate-800
                                text-sm px-3 py-2
                                focus:outline-none focus:ring-0 focus:border-slate-300"
-                        disabled
+                        
                     >
                         <option value="">—</option>
-                        @foreach(($proveedores ?? []) as $prov)
-                            <option value="{{ $prov->id }}">
-                                {{ $prov->abreviacion }} — {{ $prov->nombre_empresa }}
-                            </option>
-                        @endforeach
+                        
+
+                            @foreach(($proveedores ?? []) as $prov)
+                                <option value="{{ $prov['id'] }}">
+                                    {{ ($prov['abreviacion'] ?? '') ? ($prov['abreviacion'] . ' — ') : '' }}{{ $prov['nombre_empresa'] ?? ($prov['nombre'] ?? ('Proveedor #' . $prov['id'])) }}
+                                </option>
+                            @endforeach
+
                     </select>
                 </div>
             </div>
@@ -95,7 +122,7 @@
                     </label>
                     <input
                         type="text"
-                        wire:model.defer="numero_serie"
+                        wire:model.defer="form.numero_serie"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
@@ -113,7 +140,7 @@
                     </label>
                     <input
                         type="text"
-                        wire:model.defer="marca"
+                        wire:model.defer="form.marca"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-100 dark:bg-slate-800
                                text-sm px-3 py-2
@@ -128,12 +155,12 @@
                         Modelo *
                     </label>
                     <select
-                        wire:model="lote_modelo_id"
+                        wire:model.live="form.lote_modelo_id"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-100 dark:bg-slate-800
                                text-sm px-3 py-2
                                focus:outline-none focus:ring-0 focus:border-slate-300"
-                        disabled
+                        
                     >
                         <option value="">—</option>
                         @foreach(($modelosLote ?? []) as $m)
@@ -149,7 +176,7 @@
                     </label>
 
                     <select
-                        wire:model.live="tipo_equipo"
+                        wire:model.live="form.tipo_equipo"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
@@ -177,7 +204,7 @@
                     </label>
 
                     <select
-                        wire:model.defer="sistema_operativo"
+                        wire:model.defer="form.sistema_operativo"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
@@ -217,7 +244,7 @@
                     </label>
                     <input
                         type="text"
-                        wire:model.defer="area_tienda"
+                        wire:model.defer="form.area_tienda"
                         placeholder="Ej. Sucursal Querétaro"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
@@ -243,7 +270,7 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div class="md:col-span-1">
                     <label class="block text-sm font-medium mb-1">Procesador (modelo)</label>
-                    <input type="text" wire:model.defer="procesador_modelo" placeholder="Ej. i5-8250U"
+                    <input type="text" wire:model.defer="form.procesador_modelo" placeholder="Ej. i5-8250U"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
@@ -252,7 +279,7 @@
 
                 <div class="md:col-span-1">
                     <label class="block text-sm font-medium mb-1">Frecuencia (GHz)</label>
-                    <input type="text" wire:model.defer="procesador_frecuencia" placeholder="Ej. 1.90 GHz"
+                    <input type="text" wire:model.defer="form.procesador_frecuencia" placeholder="Ej. 1.90 GHz"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
@@ -261,7 +288,7 @@
 
                 <div>
                     <label class="block text-sm font-medium mb-1">Generación <span class="text-red-500">*</span></label>
-                    <select wire:model.defer="procesador_generacion"
+                    <select wire:model.defer="form.procesador_generacion"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
@@ -275,7 +302,7 @@
 
                 <div>
                     <label class="block text-sm font-medium mb-1">Núcleos <span class="text-red-500">*</span></label>
-                    <select wire:model.defer="procesador_nucleos"
+                    <select wire:model.defer="form.procesador_nucleos"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
@@ -300,7 +327,7 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label class="block text-sm font-medium mb-1">RAM total <span class="text-red-500">*</span></label>
-                    <select wire:model.defer="ram_total"
+                    <select wire:model.defer="form.ram_total"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
@@ -325,7 +352,7 @@
 
                 <div>
                     <label class="block text-sm font-medium mb-1">Tipo de RAM <span class="text-red-500">*</span></label>
-                    <select wire:model.defer="ram_tipo"
+                    <select wire:model.defer="form.ram_tipo"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
@@ -347,12 +374,12 @@
 
                 <div>
                     <label class="block text-sm font-medium mb-1">RAM máxima expansión</label>
-                    <select wire:model.defer="ram_expansion_max"
+                    <select wire:model.defer="form.ram_expansion_max"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        @disabled($ram_sin_slots ?? false)
+                        @disabled($form->ram_sin_slots ?? false)
                     >
                         <option value="">Selecciona</option>
                         <option value="0 GB">0 GB (SIN EXPANSIÓN)</option>
@@ -364,12 +391,12 @@
 
                 <div>
                     <label class="block text-sm font-medium mb-1">Slots RAM totales</label>
-                    <select wire:model.defer="ram_slots_totales"
+                    <select wire:model.defer="form.ram_slots_totales"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        @disabled($ram_sin_slots ?? false)
+                        @disabled($form->ram_sin_slots ?? false)
                     >
                         <option value="">Selecciona</option>
                         <option value="0">0 SLOTS (SIN EXPANSIÓN)</option>
@@ -385,22 +412,26 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                     <div>
                         <label class="block text-sm font-medium mb-1">RAM soldada</label>
+
                         <div class="flex items-start gap-2 mt-1">
-                            <input type="checkbox"
-                                   wire:click="toggleRamSoldada"
-                                   @checked($ram_es_soldada ?? false)
-                                   class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
-                                          focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700" />
+                            <input
+                            type="checkbox"
+                            wire:model.live="form.ram_es_soldada"
+                            class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
+                                    focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
+                            />
+
                             <p class="text-xs text-slate-600 dark:text-slate-300">
-                                Marca esta opción si el equipo trae parte de la RAM soldada en placa.
+                            Marca esta opción si el equipo trae parte de la RAM soldada en placa.
                             </p>
                         </div>
                     </div>
 
-                    @if($ram_es_soldada ?? false)
+
+                    @if($form->ram_es_soldada ?? false)
                         <div>
                             <label class="block text-sm font-medium mb-1">Cantidad de RAM soldada</label>
-                            <select wire:model.defer="ram_cantidad_soldada"
+                            <select wire:model.defer="form.ram_cantidad_soldada"
                                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                        bg-slate-50 dark:bg-slate-900
                                        text-sm px-3 py-2
@@ -421,17 +452,19 @@
 
                         <div>
                             <label class="block text-sm font-medium mb-1">RAM totalmente soldada</label>
-                            <div class="flex items-start gap-2 mt-1">
-                                <input type="checkbox"
-                                       wire:click="toggleRamSinSlots"
-                                       @checked($ram_sin_slots ?? false)
-                                       class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
-                                              focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700" />
-                                <p class="text-xs text-slate-600 dark:text-slate-300">
-                                    Marca esta opción si el equipo no tiene slots físicos de expansión.
-                                </p>
-                            </div>
+                        <div class="flex items-start gap-2 mt-1">
+                            <input
+                                type="checkbox"
+                                wire:model.live="form.ram_sin_slots"
+                                class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
+                                    focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
+                            />
+
+                            <p class="text-xs text-slate-600 dark:text-slate-300">
+                                Marca esta opción si el equipo no tiene slots físicos de expansión.
+                            </p>
                         </div>
+
                     @endif
                 </div>
             </div>
@@ -451,7 +484,7 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label class="block text-sm font-medium mb-1">Principal (capacidad)</label>
-                    <select wire:model.defer="almacenamiento_principal_capacidad"
+                    <select wire:model.defer="form.almacenamiento_principal_capacidad"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
@@ -477,7 +510,7 @@
 
                 <div>
                     <label class="block text-sm font-medium mb-1">Principal (tipo de disco)</label>
-                    <select wire:model.defer="almacenamiento_principal_tipo"
+                    <select wire:model.defer="form.almacenamiento_principal_tipo"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
@@ -494,7 +527,7 @@
 
                 <div>
                     <label class="block text-sm font-medium mb-1">Secundario (capacidad)</label>
-                    <select wire:model.defer="almacenamiento_secundario_capacidad"
+                    <select wire:model.defer="form.almacenamiento_secundario_capacidad"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
@@ -520,7 +553,7 @@
 
                 <div>
                     <label class="block text-sm font-medium mb-1">Secundario (tipo de disco)</label>
-                    <select wire:model.defer="almacenamiento_secundario_tipo"
+                    <select wire:model.defer="form.almacenamiento_secundario_tipo"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
@@ -551,7 +584,7 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <label class="block text-sm font-medium mb-1">Gráfica integrada</label>
-                    <input type="text" wire:model.defer="grafica_integrada_modelo" placeholder="Ej. Intel UHD"
+                    <input type="text" wire:model.defer="form.grafica_integrada_modelo" placeholder="Ej. Intel UHD"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
@@ -559,7 +592,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Gráfica dedicada</label>
-                    <input type="text" wire:model.defer="grafica_dedicada_modelo" placeholder="Ej. GTX 1650"
+                    <input type="text" wire:model.defer="form.grafica_dedicada_modelo" placeholder="Ej. GTX 1650"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
@@ -567,7 +600,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">VRAM dedicada</label>
-                    <input type="text" wire:model.defer="grafica_dedicada_vram" placeholder="Ej. 4 GB"
+                    <input type="text" wire:model.defer="form.grafica_dedicada_vram" placeholder="Ej. 4 GB"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
@@ -596,7 +629,7 @@
             {{-- PUERTOS DE CONECTIVIDAD (chips string) --}}
             <div class="space-y-2"
                 x-data="{
-                    field: 'puertos_conectividad',
+                    field: 'form.puertos_conectividad',
                     options: ['WIFI','BLUETOOTH','N/A'],
                     pick: '',
                     selected: [],
@@ -658,7 +691,7 @@
             {{-- DISPOSITIVOS DE ENTRADA (chips string) --}}
             <div class="space-y-2"
                 x-data="{
-                    field: 'dispositivos_entrada',
+                    field: 'form.dispositivos_entrada',
                     options: ['CAMARA WEB','LECTOR CD/DVD','TECLADO EXTENDIDO','TECLADO RETROILUMINADO','N/A'],
                     pick: '',
                     selected: [],
@@ -733,8 +766,7 @@
                 <label class="block text-sm font-medium mb-1">¿El equipo tiene batería?</label>
                 <div class="flex items-start gap-2 mt-1">
                     <input type="checkbox"
-                           wire:click="toggleBateriaTiene"
-                           @checked($bateria_tiene ?? false)
+                           wire:model.live="form.bateria_tiene"
                            class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
                                   focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700">
                     <p class="text-xs text-slate-600 dark:text-slate-300">
@@ -743,11 +775,11 @@
                 </div>
             </div>
 
-            @if($bateria_tiene ?? false)
+            @if($form->bateria_tiene ?? false)
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-3">
                     <div>
                         <label class="block text-sm font-medium mb-1">Batería 1 – tipo</label>
-                        <select wire:model.defer="bateria1_tipo"
+                        <select wire:model.defer="form.bateria1_tipo"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                    bg-slate-50 dark:bg-slate-900
                                    text-sm px-3 py-2
@@ -760,7 +792,7 @@
 
                     <div>
                         <label class="block text-sm font-medium mb-1">Batería 1 – salud (%)</label>
-                        <input type="number" min="0" max="100" wire:model.defer="bateria1_salud"
+                        <input type="number" min="0" max="100" wire:model.defer="form.bateria1_salud"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                    bg-slate-50 dark:bg-slate-900
                                    text-sm px-3 py-2
@@ -771,8 +803,7 @@
                         <label class="block text-sm font-medium mb-1">¿Tiene segunda batería?</label>
                         <div class="flex items-start gap-2 mt-1">
                             <input type="checkbox"
-                                   wire:click="toggleBateria2Tiene"
-                                   @checked($bateria2_tiene ?? false)
+                                   wire:model.live="form.bateria2_tiene"
                                    class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
                                           focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700">
                             <p class="text-xs text-slate-600 dark:text-slate-300">
@@ -782,13 +813,13 @@
                     </div>
                 </div>
 
-                @if($bateria2_tiene ?? false)
+                @if($form->bateria2_tiene ?? false)
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-3">
                         <div class="md:col-span-2"></div>
 
                         <div>
                             <label class="block text-sm font-medium mb-1">Batería 2 – tipo</label>
-                            <select wire:model.defer="bateria2_tipo"
+                            <select wire:model.defer="form.bateria2_tipo"
                                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                        bg-slate-50 dark:bg-slate-900
                                        text-sm px-3 py-2
@@ -801,7 +832,7 @@
 
                         <div>
                             <label class="block text-sm font-medium mb-1">Batería 2 – salud (%)</label>
-                            <input type="number" min="0" max="100" wire:model.defer="bateria2_salud"
+                            <input type="number" min="0" max="100" wire:model.defer="form.bateria2_salud"
                                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                        bg-slate-50 dark:bg-slate-900
                                        text-sm px-3 py-2
@@ -816,7 +847,7 @@
         {{--  3. PANTALLA       --}}
         {{-- ================== --}}
         @php
-            $tipo = trim((string) ($tipo_equipo ?? ''));
+            $tipo = trim((string) ($form->tipo_equipo ?? ''));
 
             $pantallaIntegrada = in_array($tipo, ['LAPTOP','2 EN 1','ALL IN ONE','TABLET'], true);
             $pantallaExterna   = in_array($tipo, ['ESCRITORIO','MICRO PC','GAMER'], true);
@@ -835,7 +866,7 @@
             ];
         @endphp
 
-        <div class="space-y-4" wire:key="pantalla-{{ $tipo_equipo ?? 'none' }}">
+        <div class="space-y-4" wire:key="pantalla-{{ $form->tipo_equipo ?? 'none' }}">
             <div class="flex items-center gap-2">
                 <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Pantalla
@@ -867,20 +898,20 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="block text-xs font-medium mb-1">Tamaño (pulgadas)</label>
-                        <select wire:model.live="pantalla_pulgadas"
+                        <select wire:model.live="form.pantalla_pulgadas"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                    bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
                                    focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             <option value="">Selecciona</option>
                             @foreach(['10','11','12','13.3','14','15.6','16','17.3'] as $p)
-                                <option value="{{ $p }}">{{ $p }}"</option>
+                                <option value="{{ $p }}">{{ $p }}</option>
                             @endforeach
                         </select>
                     </div>
 
                     <div>
                         <label class="block text-xs font-medium mb-1">Resolución</label>
-                        <select wire:model.live="pantalla_resolucion"
+                        <select wire:model.live="form.pantalla_resolucion"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                    bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
                                    focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -893,7 +924,7 @@
 
                     <div class="flex items-center pt-5">
                         <label class="inline-flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
-                            <input type="checkbox" wire:model.live="pantalla_es_touch"
+                            <input type="checkbox" wire:model.live="form.pantalla_es_touch"
                                 class="rounded border-slate-300 text-indigo-600
                                        focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700">
                             Touch
@@ -906,7 +937,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="block text-xs font-medium mb-1">¿Incluye monitor?</label>
-                        <select wire:model.live="monitor_incluido"
+                        <select wire:model.live="form.monitor_incluido"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                    bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
                                    focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -916,10 +947,10 @@
                         </select>
                     </div>
 
-                    @if(($monitor_incluido ?? '') === 'SI')
+                    @if(($form->monitor_incluido ?? '') === 'SI')
                         <div>
                             <label class="block text-xs font-medium mb-1">Tamaño (pulgadas)</label>
-                            <input type="text" wire:model.live="monitor_pulgadas" placeholder='Ej. 24"'
+                            <input type="text" wire:model.live="form.monitor_pulgadas" placeholder='Ej. 24"'
                                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                        bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
                                        focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -927,7 +958,7 @@
 
                         <div>
                             <label class="block text-xs font-medium mb-1">Resolución</label>
-                            <input type="text" wire:model.live="monitor_resolucion" placeholder="Ej. 1920x1080"
+                            <input type="text" wire:model.live="form.monitor_resolucion" placeholder="Ej. 1920x1080"
                                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                        bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
                                        focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -935,7 +966,7 @@
                     @endif
                 </div>
 
-                @if(($monitor_incluido ?? '') === 'SI')
+                @if(($form->monitor_incluido ?? '') === 'SI')
                     {{-- Entradas del monitor (rows) --}}
                     <div class="space-y-3">
                         <div class="flex items-center justify-between">
@@ -952,7 +983,7 @@
                             </button>
                         </div>
 
-                        @if(empty($monitor_entradas_rows ?? []))
+                        @if(empty($form->monitor_entradas_rows ?? []))
                             <div class="rounded-xl border border-dashed border-slate-300/70 dark:border-slate-700/70
                                         bg-white/30 dark:bg-slate-900/30
                                         px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
@@ -961,10 +992,10 @@
                         @endif
 
                         <div class="space-y-2">
-                            @foreach(($monitor_entradas_rows ?? []) as $index => $row)
+                            @foreach(($form->monitor_entradas_rows ?? []) as $index => $row)
                                 <div class="grid grid-cols-12 gap-3 items-center">
                                     <div class="col-span-8">
-                                        <select wire:model.live="monitor_entradas_rows.{{ $index }}.tipo"
+                                        <select wire:model.live="form.monitor_entradas_rows.{{ $index }}.tipo"
                                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                                    bg-slate-50 dark:bg-slate-900
                                                    text-xs sm:text-sm px-3 py-2
@@ -977,7 +1008,7 @@
                                     </div>
 
                                     <div class="col-span-3">
-                                        <input type="number" min="1" wire:model.live="monitor_entradas_rows.{{ $index }}.cantidad" placeholder="1"
+                                        <input type="number" min="1" wire:model.live="form.monitor_entradas_rows.{{ $index }}.cantidad" placeholder="1"
                                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                                    bg-slate-50 dark:bg-slate-900
                                                    text-xs sm:text-sm px-3 py-2
@@ -1000,7 +1031,7 @@
                         x-data="{
                             open:false,
                             q:'',
-                            selectedStr: @entangle('monitor_detalles_esteticos_checks').live,
+                            selectedStr: @entangle('form.monitor_detalles_esteticos_checks').live,
                             get selected(){ return (this.selectedStr || '').split(',').map(s=>s.trim()).filter(Boolean); },
                             set selected(v){ this.selectedStr = (v || []).join(', '); },
                             hasNA(){ return this.selected.includes('N/A'); },
@@ -1122,7 +1153,7 @@
 
                                     <div>
                                         <label class="block text-sm font-medium mb-1 text-slate-200">Otro (opcional)</label>
-                                        <input type="text" wire:model.defer="monitor_detalles_esteticos_otro"
+                                        <input type="text" wire:model.defer="form.monitor_detalles_esteticos_otro"
                                             class="w-full rounded-lg border border-slate-700
                                                    bg-slate-900 text-sm px-3 py-2 text-slate-100
                                                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -1148,7 +1179,7 @@
                         x-data="{
                             open:false,
                             q:'',
-                            selectedStr: @entangle('monitor_detalles_funcionamiento_checks').live,
+                            selectedStr: @entangle('form.monitor_detalles_funcionamiento_checks').live,
                             get selected(){ return (this.selectedStr || '').split(',').map(s=>s.trim()).filter(Boolean); },
                             set selected(v){ this.selectedStr = (v || []).join(', '); },
                             hasNA(){ return this.selected.includes('N/A'); },
@@ -1270,7 +1301,8 @@
 
                                     <div>
                                         <label class="block text-sm font-medium mb-1 text-slate-200">Otro (opcional)</label>
-                                        <input type="text" wire:model.defer="monitor_detalles_funcionamiento_otro"
+                                        <input type="text" wire:model.defer="form.monitor_detalles_funcionamiento_otro"
+
                                             class="w-full rounded-lg border border-slate-700
                                                    bg-slate-900 text-sm px-3 py-2 text-slate-100
                                                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -1299,7 +1331,7 @@
         {{-- ================== --}}
         <div>
             <label class="block text-sm font-medium mb-1">Notas generales</label>
-            <textarea wire:model.defer="notas_generales" rows="3"
+            <textarea wire:model.defer="form.notas_generales" rows="3"
                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                        bg-slate-50 dark:bg-slate-900
                        text-sm px-3 py-2
@@ -1599,7 +1631,7 @@
             x-data="{
                 open:false,
                 q:'',
-                selected: @entangle('detalles_esteticos_checks'),
+                selected: @entangle('detalles_esteticos_checks').live,
                 hasNA(){ return (this.selected || []).includes('N/A'); },
                 isOn(item){ return (this.selected || []).includes(item); },
                 toggle(item){
@@ -1772,7 +1804,7 @@
             x-data="{
                 open:false,
                 q:'',
-                selected: @entangle('detalles_funcionamiento_checks'),
+                selected: @entangle('detalles_funcionamiento_checks').live,
                 hasNA(){ return (this.selected || []).includes('N/A'); },
                 isOn(item){ return (this.selected || []).includes(item); },
                 toggle(item){
@@ -1940,7 +1972,7 @@
                         Estatus general <span class="text-red-500">*</span>
                     </label>
 
-                    <select wire:model.defer="estatus_general"
+                    <select wire:model.defer="form.estatus_general"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                bg-slate-50 dark:bg-slate-900
                                text-sm px-3 py-2
@@ -1953,6 +1985,42 @@
                     </select>
                 </div>
             </div>
+        </div>
+
+        {{-- ================== --}}
+        {{--  MOTIVO DEL CAMBIO --}}
+        {{-- ================== --}}
+        <div class="space-y-2">
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Motivo del cambio
+                </span>
+                <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
+
+                <span class="text-[11px] px-2 py-1 rounded-full border
+                    border-slate-200/70 dark:border-white/10
+                    bg-white/60 dark:bg-slate-900/40 text-slate-600 dark:text-slate-300">
+                    Auditoría
+                </span>
+            </div>
+
+            <textarea
+                wire:model.defer="form.motivo_cambio"
+                rows="2"
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                       bg-slate-50 dark:bg-slate-900
+                       text-sm px-3 py-2
+                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Ej. Se corrigió RAM tras revisión física..."
+            ></textarea>
+
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+                * Solo se exige si realmente cambiaste algo. Si no cambias nada, no se guarda auditoría.
+            </p>
+
+            @error('motivo_cambio')
+                <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+            @enderror
         </div>
 
         {{-- BOTÓN FINAL --}}

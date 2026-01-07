@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Models\Aviso;
+use App\Models\EmpleadoDelMes;
 
 class Dashboard extends Component
 {
@@ -36,8 +37,19 @@ class Dashboard extends Component
     public $avisos =[];
 
 
-    // ✅ Glows persistentes (para que no cambien a cada refresh)
+    // Glows persistentes 
     public array $glows = [];
+
+
+    //Empleado del mes
+    public ?array $empleadoMes = null;
+    public bool $showEmpleadoModal = false;
+    public ?string $empleadoMesUserId = null;
+    public ?string $empleadoMesMensaje = null;
+
+
+
+    
 
 
 
@@ -100,6 +112,9 @@ class Dashboard extends Component
 
         $this->buildMonthsOptions();
         $this->loadData();
+
+        $this->loadData();
+        $this->cargarEmpleadoDelMes();
     }
 
     public function updatedSelectedMonthValue(): void
@@ -135,6 +150,82 @@ class Dashboard extends Component
         }
         $this->monthsOptions = $monthsOptions;
     }
+
+
+    private function cargarEmpleadoDelMes(): void
+    {
+        $record = EmpleadoDelMes::query()
+            ->where('month', $this->selectedMonthValue)   // YYYY-MM
+            ->where('is_active', true)
+            ->with(['user:id,nombre,apellido_paterno,apellido_materno,foto_perfil']) // ajusta campos reales
+            ->first();
+
+        if (!$record) {
+            $this->empleadoMes = null;
+            return;
+        }
+
+        $u = $record->user;
+
+        $this->empleadoMes = [
+            'id' => $u->id,
+            'nombre' => trim(($u->nombre ?? '').' '.($u->apellido_paterno ?? '')),
+            'mensaje' => $record->mensaje,
+            'month' => $record->month,
+            'foto' => $u->foto_perfil ?? null, // si no tienes foto, déjalo null
+        ];
+    }
+
+
+    public function openEmpleadoModal(): void
+    {
+        if ($this->isTecnico) return; // o valida roles admin/ceo como tú lo manejas
+        $this->showEmpleadoModal = true;
+
+        // precargar si ya existe
+        if ($this->empleadoMes) {
+            $this->empleadoMesUserId = (string)$this->empleadoMes['id'];
+            $this->empleadoMesMensaje = $this->empleadoMes['mensaje'];
+        } else {
+            $this->empleadoMesUserId = null;
+            $this->empleadoMesMensaje = null;
+        }
+    }
+
+    public function closeEmpleadoModal(): void
+    {
+        $this->showEmpleadoModal = false;
+    }
+
+
+    public function saveEmpleadoDelMes(): void
+    {
+        if ($this->isTecnico) return;
+
+        $this->validate([
+            'empleadoMesUserId' => 'required|exists:users,id',
+            'empleadoMesMensaje' => 'nullable|string|max:400',
+        ]);
+
+        EmpleadoDelMes::updateOrCreate(
+            ['month' => $this->selectedMonthValue],
+            [
+                'user_id' => $this->empleadoMesUserId,
+                'mensaje' => $this->empleadoMesMensaje,
+                'is_active' => true,
+            ]
+        );
+
+        $this->showEmpleadoModal = false;
+        $this->cargarEmpleadoDelMes();
+
+        // opcional: toast
+        $this->dispatch('notify', type:'success', message:'Empleado del mes guardado.');
+    }
+
+
+
+
 
     private function loadData(): void
     {
@@ -320,7 +411,9 @@ class Dashboard extends Component
             radialPercent: $this->radialPercent,
             isTecnico: $this->isTecnico,
         );
+       
         
+        $this->cargarEmpleadoDelMes();
 
 
     }
