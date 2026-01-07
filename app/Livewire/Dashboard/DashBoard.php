@@ -188,6 +188,27 @@ private function cargarEmpleadoDelMes(): void
 }
 
 
+public function quitarEmpleadoDelMes(): void
+{
+    if (! $this->esAdminCeo) return; // o abort_unless($this->esAdminCeo, 403);
+
+    EmpleadoDelMes::query()
+        ->where('month', $this->selectedMonthValue)
+        ->where('is_active', true)
+        ->update([
+            'is_active' => false,
+        ]);
+
+    $this->empleadoMes = null;
+
+    $this->dispatch('notify',
+        type: 'success',
+        message: 'Empleado del mes retirado correctamente.'
+    );
+}
+
+
+
 
 public function openEmpleadoModal(): void
 {
