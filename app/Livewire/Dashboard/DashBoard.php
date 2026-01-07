@@ -12,6 +12,9 @@ use App\Models\EmpleadoDelMes;
 
 class Dashboard extends Component
 {
+
+    public bool $esAdminCeo = false;
+
     // ===== Roles =====
     public bool $isTecnico = false;
 
@@ -177,51 +180,47 @@ class Dashboard extends Component
     }
 
 
-    public function openEmpleadoModal(): void
-    {
-        if ($this->isTecnico) return; // o valida roles admin/ceo como tú lo manejas
-        $this->showEmpleadoModal = true;
+public function openEmpleadoModal(): void
+{
+    if (! $this->esAdminCeo) return;
 
-        // precargar si ya existe
-        if ($this->empleadoMes) {
-            $this->empleadoMesUserId = (string)$this->empleadoMes['id'];
-            $this->empleadoMesMensaje = $this->empleadoMes['mensaje'];
-        } else {
-            $this->empleadoMesUserId = null;
-            $this->empleadoMesMensaje = null;
-        }
+    $this->showEmpleadoModal = true;
+
+    if ($this->empleadoMes) {
+        $this->empleadoMesUserId = (string) $this->empleadoMes['id'];
+        $this->empleadoMesMensaje = $this->empleadoMes['mensaje'];
+    } else {
+        $this->empleadoMesUserId = null;
+        $this->empleadoMesMensaje = null;
     }
+}
 
-    public function closeEmpleadoModal(): void
-    {
-        $this->showEmpleadoModal = false;
-    }
+public function saveEmpleadoDelMes(): void
+{
+    if (! $this->esAdminCeo) return;
+
+    $this->validate([
+        'empleadoMesUserId' => 'required|exists:users,id',
+        'empleadoMesMensaje' => 'nullable|string|max:400',
+        // cuando agreguemos "hasta qué fecha", aquí va su regla
+    ]);
+
+    EmpleadoDelMes::updateOrCreate(
+        ['month' => $this->selectedMonthValue],
+        [
+            'user_id' => $this->empleadoMesUserId,
+            'mensaje' => $this->empleadoMesMensaje,
+            'is_active' => true,
+        ]
+    );
+
+    $this->showEmpleadoModal = false;
+    $this->cargarEmpleadoDelMes();
+    $this->dispatch('notify', type:'success', message:'Empleado del mes guardado.');
+}
 
 
-    public function saveEmpleadoDelMes(): void
-    {
-        if ($this->isTecnico) return;
-
-        $this->validate([
-            'empleadoMesUserId' => 'required|exists:users,id',
-            'empleadoMesMensaje' => 'nullable|string|max:400',
-        ]);
-
-        EmpleadoDelMes::updateOrCreate(
-            ['month' => $this->selectedMonthValue],
-            [
-                'user_id' => $this->empleadoMesUserId,
-                'mensaje' => $this->empleadoMesMensaje,
-                'is_active' => true,
-            ]
-        );
-
-        $this->showEmpleadoModal = false;
-        $this->cargarEmpleadoDelMes();
-
-        // opcional: toast
-        $this->dispatch('notify', type:'success', message:'Empleado del mes guardado.');
-    }
+    
 
 
 
@@ -414,9 +413,12 @@ class Dashboard extends Component
        
         
         $this->cargarEmpleadoDelMes();
+        $this->esAdminCeo = ! $this->isTecnico;
+
 
 
     }
+    
 
     public function render()
     {
