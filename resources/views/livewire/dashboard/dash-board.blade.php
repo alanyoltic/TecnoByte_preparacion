@@ -644,18 +644,19 @@
                                         @if($esAdminCeo && !empty($empleadoMes))
     <button
         type="button"
-        wire:click="quitarEmpleadoDelMes"
-        wire:confirm="¿Seguro que deseas quitar el empleado del mes?"
+        x-data
+        @click.prevent="if (confirm('¿Seguro que deseas quitar el empleado del mes?')) { $wire.quitarEmpleadoDelMes() }"
         class="inline-flex items-center gap-2
-            px-4 py-2 rounded-full text-sm font-semibold
-            bg-rose-600/90 text-white
-            shadow-lg shadow-rose-900/40
-            transition-all duration-200
-            hover:bg-rose-500 hover:shadow-rose-700/60"
+               px-4 py-2 rounded-full text-sm font-semibold
+               bg-rose-600/90 text-white
+               shadow-lg shadow-rose-900/40
+               transition-all duration-200
+               hover:bg-rose-500 hover:shadow-rose-700/60"
     >
         Quitar empleado
     </button>
 @endif
+
 
 
 
