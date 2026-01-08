@@ -4,6 +4,7 @@ namespace App\Livewire\Inventario;
 
 use Livewire\Component;
 use App\Livewire\Forms\EquipoForm;
+use Illuminate\Support\Facades\Schema;
 use App\Models\{Equipo, Lote, Proveedor, LoteModeloRecibido, EquipoBateria, EquipoMonitor, EquipoAuditoria};
 use Illuminate\Support\Facades\{Auth, DB};
 
@@ -11,6 +12,12 @@ class EditarEquipo extends Component
 {
     public Equipo $equipo;
     public EquipoForm $form; 
+
+
+
+    public array $baseline = [];
+    public bool $hasChanges = false;
+
 
     // Catalogos
     public array $lotes = [];
@@ -57,24 +64,100 @@ class EditarEquipo extends Component
     'USB-C'            => 'in_usb_c',
 ];
 
+
+
+    private function guardarBaterias(): void
+{
+    // Si el usuario indica que NO tiene batería, eliminamos cualquier registro
+    if (!($this->form->bateria_tiene ?? false)) {
+        EquipoBateria::where('equipo_id', $this->equipo->id)->delete();
+        return;
+    }
+
+    // Armar filas a guardar (1 o 2)
+    $rows = [];
+
+    // Batería 1
+    if (!empty($this->form->bateria1_tipo)) {
+        $rows[] = [
+            'tipo' => $this->form->bateria1_tipo,
+            'salud_percent' => $this->form->bateria1_salud !== null && $this->form->bateria1_salud !== ''
+                ? (int)$this->form->bateria1_salud
+                : null,
+        ];
+    }
+
+    // Batería 2 (solo si está activada)
+    if (($this->form->bateria2_tiene ?? false) && !empty($this->form->bateria2_tipo)) {
+        $rows[] = [
+            'tipo' => $this->form->bateria2_tipo,
+            'salud_percent' => $this->form->bateria2_salud !== null && $this->form->bateria2_salud !== ''
+                ? (int)$this->form->bateria2_salud
+                : null,
+        ];
+    }
+
+    // Reemplazo total (estable y sin edge-cases)
+    EquipoBateria::where('equipo_id', $this->equipo->id)->delete();
+
+    foreach ($rows as $r) {
+        EquipoBateria::create([
+            'equipo_id' => $this->equipo->id,
+            'tipo' => $r['tipo'],
+            'salud_percent' => $r['salud_percent'],
+        ]);
+    }
+}
+
+
+public function updatedFormRamEsSoldada($value): void
+{
+    $value = (bool) $value;
+
+    if (!$value) {
+        // Si ya no es soldada, limpiamos todo lo relacionado
+        $this->form->ram_cantidad_soldada = null;
+        $this->form->ram_sin_slots = false;
+
+        // Si tienes estos campos en tu tabla:
+        $this->form->ram_slots_totales = $this->form->ram_slots_totales; // no tocar
+        $this->form->ram_expansion_max = $this->form->ram_expansion_max; // no tocar
+
+        
+    }
+}
+
+
+
     
 
 
-    public function mount(Equipo $equipo)
-    {
-        $this->equipo = $equipo;
-        $this->form->setEquipo($equipo);
-        $this->cargarCatalogos();
-        
-        // Importante: Hidratar UI carga los datos de las tablas relacionadas (Monitor/Batería)
-        $this->hidratarUI();
-        
-        // Cargar detalles estéticos/funcionales
-        $this->detalles_esteticos_checks = array_filter(explode(', ', $equipo->detalles_esteticos ?? ''));
-        $this->detalles_funcionamiento_checks = array_filter(explode(', ', $equipo->detalles_funcionamiento ?? ''));
-        
-        $this->originalSnapshot = $this->form->all();
-    }
+public function mount(Equipo $equipo)
+{
+    $this->equipo = $equipo;
+
+    $this->form->setEquipo($equipo);   // <- aquí ya se llena el form
+    $this->cargarCatalogos();
+
+    $this->hidratarUI();
+
+    $this->detalles_esteticos_checks = array_filter(explode(', ', $equipo->detalles_esteticos ?? ''));
+    $this->detalles_funcionamiento_checks = array_filter(explode(', ', $equipo->detalles_funcionamiento ?? ''));
+
+    $this->originalSnapshot = $this->form->all();
+
+    $this->baseline = $this->form->snapshotPersistible();
+    $this->hasChanges = false;
+}
+
+
+
+    public function recalcChanges(): void
+{
+    $current = $this->form->snapshotPersistible();
+    $this->hasChanges = $current !== $this->baseline;
+}
+
 
     private function hidratarUI()
 {
@@ -123,7 +206,8 @@ class EditarEquipo extends Component
             $this->form->monitor_detalles_funcionamiento_checks = '';
             $this->form->monitor_detalles_funcionamiento_otro = '';
         } else { // EXTERNA
-            $this->form->monitor_incluido = 'SI';
+            $this->form->monitor_incluido = ((int)($m->incluido ?? 1) === 1) ? 'SI' : 'NO';
+
 
             $this->form->monitor_pulgadas   = $m->pulgadas;
             $this->form->monitor_resolucion = $m->resolucion;
@@ -193,6 +277,12 @@ private function tipoKey(?string $v): string
     return $v;
 }
 
+public function updated($name, $value): void
+{
+    $this->recalcChanges();
+}
+
+
 public function getPantallaIntegradaProperty(): bool
 {
     // 1) Si ya existe registro en equipo_monitores, manda eso
@@ -233,28 +323,37 @@ public function getPantallaExternaProperty(): bool
 
 public function actualizar()
 {
+
+
+        $this->recalcChanges();
+
+    if (!$this->hasChanges) {
+        $this->dispatch('toast', type: 'info', message: 'No hay cambios por guardar.');
+        return;
+    }
+
+    $this->form->validate();
+
+
     $this->form->validate();
 
     // 1) sincroniza UI arrays -> columnas del FORM
     $this->sincronizarUAlForm();
 
-    // 2) Payload SOLO para tabla equipos (sin arrays ni tablas relacionadas)
-    $equiposPayload = $this->form->except([
-        // UI/monitor related
-        'monitor_entradas_rows',
-        'monitor_detalles_esteticos_checks',
-        'monitor_detalles_esteticos_otro',
-        'monitor_detalles_funcionamiento_checks',
-        'monitor_detalles_funcionamiento_otro',
+    // 2) Payload SOLO con columnas reales de la tabla equipos
+    $all = $this->form->all();
 
-        // baterías (tabla relacionada)
-        'bateria_tiene',
-        'bateria1_tipo',
-        'bateria1_salud',
-        'bateria2_tiene',
-        'bateria2_tipo',
-        'bateria2_salud',
-    ]);
+    $columns = Schema::getColumnListing('equipos');
+    $equiposPayload = array_intersect_key($all, array_flip($columns));
+
+    // Nunca actualices estas columnas por seguridad
+    unset(
+        $equiposPayload['id'],
+        $equiposPayload['created_at'],
+        $equiposPayload['updated_at'],
+        $equiposPayload['deleted_at']
+    );
+
 
     // 3) Diff seguro (excluye arrays/relaciones)
     $now = $this->form->except(['monitor_entradas_rows']);
@@ -274,18 +373,58 @@ public function actualizar()
         $this->guardarMonitor();
 
         // Auditoría
-        if (!empty($cambios)) {
-            $this->registrarAuditoria($cambios);
-        }
+        // if (!empty($cambios)) {
+           // $this->registrarAuditoria($cambios);
+        //}
     });
 
     $this->originalSnapshot = $this->form->all();
+
+    $this->baseline = $this->form->snapshotPersistible();
+    $this->hasChanges = false;
+
 
     $this->dispatch('toast', type: 'success', message: 'Actualizado correctamente');
 }
 
 
 
+    public function removePuertoUsb(int $index): void
+{
+    if (!isset($this->puertos_usb[$index])) return;
+
+    unset($this->puertos_usb[$index]);
+    $this->puertos_usb = array_values($this->puertos_usb);
+
+    // opcional: si quieres que se refleje al instante en el form
+    $this->sincronizarUAlForm();
+    $this->recalcChanges();
+
+}
+
+public function removePuertoVideo(int $index): void
+{
+    if (!isset($this->puertos_video[$index])) return;
+
+    unset($this->puertos_video[$index]);
+    $this->puertos_video = array_values($this->puertos_video);
+
+    $this->sincronizarUAlForm();
+    $this->recalcChanges();
+
+}
+
+public function removeSlotAlmacenamiento(int $index): void
+{
+    if (!isset($this->slots_almacenamiento[$index])) return;
+
+    unset($this->slots_almacenamiento[$index]);
+    $this->slots_almacenamiento = array_values($this->slots_almacenamiento);
+
+    $this->sincronizarUAlForm();
+    $this->recalcChanges();
+
+}
 
 
 
@@ -310,15 +449,42 @@ public function actualizar()
 
 
 
-    
+    private function pantallaIntegradaPorTipo(): bool
+{
+    $tipo = strtoupper((string) ($this->form->tipo_equipo ?? ''));
+    return in_array($tipo, ['LAPTOP', '2 EN 1', 'ALL IN ONE', 'TABLET'], true);
+}
+
+private function pantallaExternaPorTipo(): bool
+{
+    $tipo = strtoupper((string) ($this->form->tipo_equipo ?? ''));
+    return in_array($tipo, ['ESCRITORIO', 'MICRO PC', 'GAMER'], true);
+}
+
+private function pantallaDefinidaPorTipo(): bool
+{
+    return $this->pantallaIntegradaPorTipo() || $this->pantallaExternaPorTipo();
+}
+
 
 private function guardarMonitor(): void
 {
-    // INTEGRADA
-    if ($this->pantallaIntegrada) {
-        // si tu tabla equipo_monitores tiene in_* y detalles, los “reseteamos”
+    // Si el tipo no define pantalla, no tocamos nada (o podrías borrar si prefieres)
+    if (!$this->pantallaDefinidaPorTipo()) {
+        return;
+    }
+
+    // =========================
+    // INTEGRADA (por tipo)
+    // =========================
+    if ($this->pantallaIntegradaPorTipo()) {
+
+        // Reset in_*
         $resetIn = [];
         foreach (self::MAP_MONITOR_IN as $label => $col) $resetIn[$col] = 0;
+
+        // En integrada, no aplica "monitor incluido"
+        $this->form->monitor_incluido = 'NO';
 
         EquipoMonitor::updateOrCreate(
             ['equipo_id' => $this->equipo->id],
@@ -329,23 +495,54 @@ private function guardarMonitor(): void
                 'resolucion'      => $this->form->pantalla_resolucion ?: null,
                 'es_touch'        => (int)((bool)$this->form->pantalla_es_touch),
 
-                // limpiar campos externos
+                // 🔥 limpiar todo lo externo
                 'detalles_esteticos_checks'      => null,
                 'detalles_esteticos_otro'        => null,
                 'detalles_funcionamiento_checks' => null,
                 'detalles_funcionamiento_otro'   => null,
             ], $resetIn)
         );
+
         return;
     }
 
-    // EXTERNA: si no aplica o no incluye monitor => borrar registro
-    if (!$this->pantallaExterna || ($this->form->monitor_incluido ?? 'NO') !== 'SI') {
-        EquipoMonitor::where('equipo_id', $this->equipo->id)->delete();
+    // =========================
+    // EXTERNA (por tipo)
+    // =========================
+    // Si es externa pero NO incluye monitor => borramos el registro
+    // EXTERNA (por tipo)
+    $incluido = (($this->form->monitor_incluido ?? 'NO') === 'SI');
+
+    // Reset in_*
+    $resetIn = [];
+    foreach (self::MAP_MONITOR_IN as $label => $col) $resetIn[$col] = 0;
+
+    if (!$incluido) {
+        // ✅ Mantener registro pero “vacío”
+        EquipoMonitor::updateOrCreate(
+            ['equipo_id' => $this->equipo->id],
+            array_merge([
+                'origen_pantalla' => 'EXTERNA',
+                'incluido'        => 0,
+
+                // datos externos en NULL
+                'pulgadas'   => null,
+                'resolucion' => null,
+                'es_touch'   => 0,
+
+                // detalles en NULL
+                'detalles_esteticos_checks'      => null,
+                'detalles_esteticos_otro'        => null,
+                'detalles_funcionamiento_checks' => null,
+                'detalles_funcionamiento_otro'   => null,
+            ], $resetIn)
+        );
+
         return;
     }
 
-    // EXTERNA + incluido: rows -> columnas in_*
+
+    // rows -> in_*
     $inPayload = [];
     foreach (self::MAP_MONITOR_IN as $label => $col) $inPayload[$col] = 0;
 
@@ -367,7 +564,6 @@ private function guardarMonitor(): void
             'resolucion'      => $this->form->monitor_resolucion ?: null,
             'es_touch'        => (int)((bool)$this->form->monitor_es_touch),
 
-            // ✅ detalles externos
             'detalles_esteticos_checks'      => $this->form->monitor_detalles_esteticos_checks ?: null,
             'detalles_esteticos_otro'        => $this->form->monitor_detalles_esteticos_otro ?: null,
             'detalles_funcionamiento_checks' => $this->form->monitor_detalles_funcionamiento_checks ?: null,
@@ -375,6 +571,84 @@ private function guardarMonitor(): void
         ], $inPayload)
     );
 }
+
+public function updatedFormTipoEquipo($value): void
+{
+    // Si ahora es integrada, limpia campos externos del FORM
+    if ($this->pantallaIntegradaPorTipo()) {
+        $this->form->monitor_incluido = 'NO';
+        $this->form->monitor_pulgadas = null;
+        $this->form->monitor_resolucion = null;
+        $this->form->monitor_es_touch = false;
+        $this->form->monitor_entradas_rows = [];
+
+        $this->form->monitor_detalles_esteticos_checks = '';
+        $this->form->monitor_detalles_esteticos_otro = '';
+        $this->form->monitor_detalles_funcionamiento_checks = '';
+        $this->form->monitor_detalles_funcionamiento_otro = '';
+    }
+
+    // Si ahora es externa, limpia pantalla integrada del FORM (opcional)
+    if ($this->pantallaExternaPorTipo()) {
+        $this->form->pantalla_pulgadas = null;
+        $this->form->pantalla_resolucion = null;
+        $this->form->pantalla_es_touch = false;
+    }
+}
+
+
+
+public function updatedFormRamSinSlots($value): void
+{
+    $value = (bool) $value;
+
+    if ($value) {
+        // ✅ Si NO tiene slots => “totalmente soldada” por lógica
+        $this->form->ram_es_soldada = true;
+        $this->form->ram_slots_totales = '0';
+        $this->form->ram_expansion_max = '0 GB';
+
+        // opcional: si manejas número de slots usados, etc., ponlos en 0 también
+        // $this->form->ram_slots_usados = '0';
+    } else {
+        // ✅ Si vuelve a tener slots, NO forzamos nada duro,
+        // solo evitamos inconsistencias obvias.
+        if (($this->form->ram_slots_totales ?? null) === '0') {
+            $this->form->ram_slots_totales = null; // o '1' si prefieres default
+        }
+        if (($this->form->ram_expansion_max ?? null) === '0 GB') {
+            $this->form->ram_expansion_max = null;
+        }
+        // Nota: NO apagamos ram_es_soldada automáticamente, porque puede seguir siendo parcialmente soldada.
+    }
+}
+
+
+
+public function addMonitorEntrada(): void
+{
+    $this->form->monitor_entradas_rows ??= [];
+
+    $this->form->monitor_entradas_rows[] = [
+        'tipo' => '',
+        'cantidad' => 1,
+    ];
+
+    $this->recalcChanges();
+
+}
+
+public function removeMonitorEntrada(int $index): void
+{
+    if (!isset($this->form->monitor_entradas_rows[$index])) return;
+
+    unset($this->form->monitor_entradas_rows[$index]);
+    $this->form->monitor_entradas_rows = array_values($this->form->monitor_entradas_rows);
+
+    $this->recalcChanges();
+
+}
+
 
 
 public array $monitorEntradasOptions = [];

@@ -524,6 +524,29 @@
                         @endforeach
                     </select>
                 </div>
+                                {{-- Técnico --}}
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        Técnico
+                    </label>
+
+                    <select
+                        wire:model.live="tecnico_id"
+                        class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
+                                            border border-white/60 dark:border-slate-600/70
+                                            text-sm text-slate-900 dark:text-slate-100
+                                            focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+                    >
+                        <option value="">Todos</option>
+
+                        @foreach($tecnicos as $tecnico)
+                            <option value="{{ $tecnico['id'] }}">
+                                {{ $tecnico['nombre'] }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
             </div>
         </div>
     </div>

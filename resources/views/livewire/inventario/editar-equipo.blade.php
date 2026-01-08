@@ -237,6 +237,10 @@
                     @enderror
                 </div>
 
+
+
+                
+
                 {{-- Área / Tienda --}}
                 <div>
                     <label class="block text-sm font-medium mb-1">
@@ -453,12 +457,13 @@
                         <div>
                             <label class="block text-sm font-medium mb-1">RAM totalmente soldada</label>
                         <div class="flex items-start gap-2 mt-1">
-                            <input
-                                type="checkbox"
-                                wire:model.live="form.ram_sin_slots"
-                                class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
-                                    focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
-                            />
+<input
+    type="checkbox"
+    wire:model.live="form.ram_sin_slots"
+    class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
+           focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
+/>
+
 
                             <p class="text-xs text-slate-600 dark:text-slate-300">
                                 Marca esta opción si el equipo no tiene slots físicos de expansión.

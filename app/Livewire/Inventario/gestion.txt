@@ -8,7 +8,6 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Models\Equipo;
 use App\Models\Lote;
 use App\Models\User;
-use App\Models\Roles;
 use App\Models\Proveedor;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -92,17 +91,15 @@ class GestionInventario extends Component
             ->orderBy('sistema_operativo')
             ->pluck('sistema_operativo')
             ->toArray();
-        $rolTecnicoId = Roles::where('slug', 'tecnico')->value('id');
-
         $this->tecnicos = User::query()
-            ->select('id', 'nombre')
-            ->whereNull('deleted_at')
-            ->where('role_id', $rolTecnicoId)
-            ->orderBy('nombre')
-            ->get()
-            ->map(fn($u) => ['id' => $u->id, 'nombre' => $u->nombre])
-            ->toArray();
-
+        ->select('id', 'name') // o nombre/apellidos si los tienes
+        ->whereNull('deleted_at')
+        // ajusta esto a tu sistema de roles:
+        ->whereHas('roles', fn($q) => $q->whereIn('name', ['tecnico','técnico']))
+        ->orderBy('name')
+        ->get()
+        ->map(fn($u) => ['id' => $u->id, 'name' => $u->name])
+        ->toArray();
 
 
 
@@ -115,7 +112,6 @@ class GestionInventario extends Component
     {
         if (in_array($name, [
             'search',
-            'tecnico_id',
             'filtroEstado',
             'filtroLote',
             'filtroProveedor',
@@ -148,7 +144,7 @@ class GestionInventario extends Component
         $this->filtroEstado    = 'todos';
         $this->filtroLote      = 'todos';
         $this->filtroProveedor = 'todos';
-        $this->tecnico_id      = null;
+
         $this->fechaDesde      = null;
         $this->fechaHasta      = null;
         $this->filtroTipoEquipo = 'todos';
@@ -195,7 +191,6 @@ class GestionInventario extends Component
                         ->orWhere('marca', 'like', "%{$s}%")
                         ->orWhere('modelo', 'like', "%{$s}%")
                         ->orWhere('tipo_equipo', 'like', "%{$s}%");
-                        
                 });
             })
             ->when($this->filtroEstado !== 'todos', function ($q) {
@@ -210,13 +205,7 @@ class GestionInventario extends Component
                 $q->whereHas('loteModelo.lote.proveedor', function ($q2) {
                     $q2->where('id', $this->filtroProveedor);
                 });
-            })
-
-            ->when($this->tecnico_id, function ($q) {
-            $q->where('registrado_por_user_id', $this->tecnico_id);
             });
-
-            
 
         // Filtros por fecha
         if ($this->fechaDesde) {
