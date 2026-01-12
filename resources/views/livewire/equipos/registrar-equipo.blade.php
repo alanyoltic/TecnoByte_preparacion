@@ -595,10 +595,12 @@
 
 
 
-                    {{-- ================== --}}
+            {{-- ================== --}}
             {{--  4. ALMACENAMIENTO --}}
             {{-- ================== --}}
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+                
                 
         {{-- Principal (capacidad) --}}
         <div>
@@ -724,62 +726,236 @@
 
 
 
-    {{-- ================== --}}
-            {{--  5. GRÁFICOS       --}}
-            {{-- ================== --}}
-            <div class="space-y-3">
-                <div class="flex items-center gap-2">
-                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                        Gráficos
-                    </span>
-                    <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
+@php
+    $tipo = $tipo_equipo ?? null;
+    $isLaptopLike = in_array($tipo, ['LAPTOP','2 EN 1','ALL IN ONE','TABLET'], true);
+    $isPcLike     = in_array($tipo, ['ESCRITORIO','MICRO PC','GAMER'], true);
+@endphp
+
+<div class="space-y-4">
+
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Datos básicos
+            </span>
+            <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
+        </div>
+
+        @if($isPcLike)
+            <span class="text-[0.7rem] px-2.5 py-1 rounded-full
+                bg-slate-900/5 dark:bg-white/5
+                border border-slate-200/60 dark:border-white/10
+                text-slate-600 dark:text-slate-300">
+                PC: puede no tener GPU
+            </span>
+        @endif
+    </div>
+
+    {{-- ===== GPU INTEGRADA (4 campos) ===== --}}
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+        {{-- (1) Switch --}}
+        <div>
+            <label class="block text-sm font-medium mb-1">GPU integrada</label>
+
+            <div class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                bg-slate-50 dark:bg-slate-900
+                px-3 py-2 flex items-center justify-between gap-3 min-h-[42px]">
+
+                <div class="leading-tight">
+                    <p class="text-xs text-slate-600 dark:text-slate-300">
+                        {{ $isLaptopLike ? 'Obligatoria en laptop' : 'Opcional en PC' }}
+                    </p>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-1">
-                            Gráfica integrada
-                        </label>
-                        <input
-                            type="text"
-                            wire:model.defer="grafica_integrada_modelo"
-                            placeholder="Ej. Intel UHD"
-                            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                                bg-slate-50 dark:bg-slate-900
-                                text-sm px-3 py-2
-                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        >
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">
-                            Gráfica dedicada
-                        </label>
-                        <input
-                            type="text"
-                            wire:model.defer="grafica_dedicada_modelo"
-                            placeholder="Ej. GTX 1650"
-                            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                                bg-slate-50 dark:bg-slate-900
-                                text-sm px-3 py-2
-                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        >
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">
-                            VRAM dedicada
-                        </label>
-                        <input
-                            type="text"
-                            wire:model.defer="grafica_dedicada_vram"
-                            placeholder="Ej. 4 GB"
-                            class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-                                bg-slate-50 dark:bg-slate-900
-                                text-sm px-3 py-2
-                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        >
-                    </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-slate-500 dark:text-slate-400">
+                        {{ ($isLaptopLike || $gpu_integrada_tiene) ? 'Sí' : 'No' }}
+                    </span>
+
+                    <label class="relative inline-flex items-center cursor-pointer select-none">
+                        <input type="checkbox" class="sr-only peer" wire:model.live="gpu_integrada_tiene" @disabled($isLaptopLike)>
+                        <div class="w-11 h-6 rounded-full bg-slate-300/70 dark:bg-white/15 peer-checked:bg-indigo-500/80 transition"></div>
+                        <div class="absolute left-0.5 top-0.5 w-5 h-5 rounded-full bg-white/95 dark:bg-white shadow transition peer-checked:translate-x-5"></div>
+                    </label>
                 </div>
             </div>
+
+            @error('gpu_integrada_tiene') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+        </div>
+
+        {{-- (2) Marca --}}
+        <div class="@if(!($isLaptopLike || $gpu_integrada_tiene)) opacity-60 @endif transition">
+            <label class="block text-sm font-medium mb-1">Integrada (marca)</label>
+
+            <select wire:model.live="gpu_integrada_marca_mode" @disabled(!($isLaptopLike || $gpu_integrada_tiene))
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
+                    text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+                    disabled:cursor-not-allowed disabled:opacity-60">
+                <option value="LISTA">Seleccionar de lista</option>
+                <option value="MANUAL">Escribir manual…</option>
+            </select>
+
+            @if(($isLaptopLike || $gpu_integrada_tiene) && $gpu_integrada_marca_mode === 'LISTA')
+                <select wire:model.live="gpu_integrada_marca"
+                    class="mt-2 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
+                        text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="">Selecciona</option>
+                    <option value="INTEL">Intel</option>
+                    <option value="AMD">AMD</option>
+                    <option value="NVIDIA">NVIDIA</option>
+                </select>
+            @endif
+
+            @if(($isLaptopLike || $gpu_integrada_tiene) && $gpu_integrada_marca_mode === 'MANUAL')
+                <input type="text" wire:model.live="gpu_integrada_marca"
+                    placeholder="Escribe la marca (ej. Qualcomm, Apple, ATI...)"
+                    class="mt-2 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
+                        text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            @endif
+
+            @error('gpu_integrada_marca') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+        </div>
+
+        {{-- (3) Modelo --}}
+        <div class="@if(!($isLaptopLike || $gpu_integrada_tiene)) opacity-60 @endif transition">
+            <label class="block text-sm font-medium mb-1">Integrada (modelo)</label>
+
+            <input type="text" wire:model.live="gpu_integrada_modelo" @disabled(!($isLaptopLike || $gpu_integrada_tiene))
+                placeholder="Iris Xe / Radeon Vega / etc."
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
+                    text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+                    disabled:cursor-not-allowed disabled:opacity-60">
+
+            @error('gpu_integrada_modelo') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+        </div>
+
+        {{-- (4) VRAM --}}
+        <div class="@if(!($isLaptopLike || $gpu_integrada_tiene)) opacity-60 @endif transition">
+            <label class="block text-sm font-medium mb-1">Integrada (VRAM)</label>
+
+            <div class="grid grid-cols-3 gap-2">
+                <input type="number" min="0" wire:model.live="gpu_integrada_vram" @disabled(!($isLaptopLike || $gpu_integrada_tiene))
+                    class="col-span-2 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
+                        text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+                        disabled:cursor-not-allowed disabled:opacity-60"
+                    placeholder="0">
+
+                <select wire:model.live="gpu_integrada_vram_unidad" @disabled(!($isLaptopLike || $gpu_integrada_tiene))
+                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
+                        text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+                        disabled:cursor-not-allowed disabled:opacity-60">
+                    <option value="MB">MB</option>
+                    <option value="GB">GB</option>
+                </select>
+            </div>
+        </div>
+
+    </div> {{-- ✅ CIERRA GRID INTEGRADA --}}
+
+    {{-- ===== GPU DEDICADA (4 campos) ===== --}}
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+        {{-- (1) Switch --}}
+        <div>
+            <label class="block text-sm font-medium mb-1">GPU dedicada</label>
+
+            <div class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+                bg-slate-50 dark:bg-slate-900
+                px-3 py-2 flex items-center justify-between gap-3 min-h-[42px]">
+
+                <p class="text-xs text-slate-600 dark:text-slate-300">Opcional</p>
+
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-slate-500 dark:text-slate-400">
+                        {{ $gpu_dedicada_tiene ? 'Sí' : 'No' }}
+                    </span>
+
+                    <label class="relative inline-flex items-center cursor-pointer select-none">
+                        <input type="checkbox" class="sr-only peer" wire:model.live="gpu_dedicada_tiene">
+                        <div class="w-11 h-6 rounded-full bg-slate-300/70 dark:bg-white/15 peer-checked:bg-indigo-500/80 transition"></div>
+                        <div class="absolute left-0.5 top-0.5 w-5 h-5 rounded-full bg-white/95 dark:bg-white shadow transition peer-checked:translate-x-5"></div>
+                    </label>
+                </div>
+            </div>
+
+            @error('gpu_dedicada_tiene') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+        </div>
+
+        {{-- (2) Marca --}}
+        <div class="@if(!$gpu_dedicada_tiene) opacity-60 @endif transition">
+            <label class="block text-sm font-medium mb-1">Dedicada (marca)</label>
+
+            <select wire:model.live="gpu_dedicada_marca_mode" @disabled(! $gpu_dedicada_tiene)
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
+                    text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+                    disabled:cursor-not-allowed disabled:opacity-60">
+                <option value="LISTA">Seleccionar de lista</option>
+                <option value="MANUAL">Escribir manual…</option>
+            </select>
+
+            @if($gpu_dedicada_tiene && $gpu_dedicada_marca_mode === 'LISTA')
+                <select wire:model.live="gpu_dedicada_marca"
+                    class="mt-2 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
+                        text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="">Selecciona</option>
+                    <option value="NVIDIA">NVIDIA</option>
+                    <option value="AMD">AMD</option>
+                    <option value="INTEL">Intel</option>
+                </select>
+            @endif
+
+            @if($gpu_dedicada_tiene && $gpu_dedicada_marca_mode === 'MANUAL')
+                <input type="text" wire:model.live="gpu_dedicada_marca"
+                    placeholder="Escribe la marca"
+                    class="mt-2 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
+                        text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            @endif
+
+            @error('gpu_dedicada_marca') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+        </div>
+
+        {{-- (3) Modelo --}}
+        <div class="@if(!$gpu_dedicada_tiene) opacity-60 @endif transition">
+            <label class="block text-sm font-medium mb-1">Dedicada (modelo)</label>
+
+            <input type="text" wire:model.live="gpu_dedicada_modelo" @disabled(! $gpu_dedicada_tiene)
+                placeholder="RTX 3050 / RX 6600..."
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
+                    text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+                    disabled:cursor-not-allowed disabled:opacity-60">
+
+            @error('gpu_dedicada_modelo') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+        </div>
+
+        {{-- (4) VRAM --}}
+        <div class="@if(!$gpu_dedicada_tiene) opacity-60 @endif transition">
+            <label class="block text-sm font-medium mb-1">Dedicada (VRAM)</label>
+
+            <div class="grid grid-cols-3 gap-2">
+                <input type="number" min="0" wire:model.live="gpu_dedicada_vram" @disabled(! $gpu_dedicada_tiene)
+                    class="col-span-2 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
+                        text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+                        disabled:cursor-not-allowed disabled:opacity-60"
+                    placeholder="4">
+
+                <select wire:model.live="gpu_dedicada_vram_unidad" @disabled(! $gpu_dedicada_tiene)
+                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
+                        text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+                        disabled:cursor-not-allowed disabled:opacity-60">
+                    <option value="MB">MB</option>
+                    <option value="GB">GB</option>
+                </select>
+            </div>
+        </div>
+
+    </div> {{-- ✅ CIERRA GRID DEDICADA --}}
+
+</div>
+
+
+
 
             
                     {{-- ================== --}}
@@ -2743,6 +2919,101 @@
             <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
         @enderror
     </div>
+
+
+
+
+
+    {{-- ================== --}}
+{{--  EXTRAS            --}}
+{{-- ================== --}}
+<div class="mt-6">
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-semibold text-slate-200/90">Extras</h3>
+        <span class="text-[0.72rem] text-slate-400">Opcionales</span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {{-- Ethernet --}}
+        <div class="rounded-2xl border border-white/10 bg-white/5 dark:bg-slate-900/40 backdrop-blur-xl p-4">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Puerto Ethernet
+                </span>
+
+                <label class="inline-flex items-center cursor-pointer gap-2">
+                    <input type="checkbox" class="sr-only"
+                           wire:model.live="ethernet_tiene">
+
+                    <span class="w-10 h-5 rounded-full bg-white/10 relative transition">
+                        <span class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white/70 transition"
+                              x-data
+                              x-bind:class="$wire.ethernet_tiene ? 'translate-x-5 bg-white' : 'translate-x-0 bg-white/70'">
+                        </span>
+                    </span>
+
+                    <span class="text-xs text-slate-300/80">
+                        {{ $ethernet_tiene ? 'Sí' : 'No' }}
+                    </span>
+                </label>
+            </div>
+
+            @if($ethernet_tiene)
+                <div class="mt-3 flex items-center justify-between">
+                    <span class="text-xs text-slate-300/80">¿Es Gigabit?</span>
+
+                    <label class="inline-flex items-center cursor-pointer gap-2">
+                        <input type="checkbox" class="sr-only"
+                               wire:model.live="ethernet_es_gigabit">
+
+                        <span class="w-10 h-5 rounded-full bg-white/10 relative transition">
+                            <span class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white/70 transition"
+                                  x-data
+                                  x-bind:class="$wire.ethernet_es_gigabit ? 'translate-x-5 bg-white' : 'translate-x-0 bg-white/70'">
+                            </span>
+                        </span>
+
+                        <span class="text-xs text-slate-300/80">
+                            {{ $ethernet_es_gigabit ? 'Sí' : 'No' }}
+                        </span>
+                    </label>
+                </div>
+            @endif
+        </div>
+
+        {{-- Idioma teclado --}}
+        <div class="rounded-2xl border border-white/10 bg-white/5 dark:bg-slate-900/40 backdrop-blur-xl p-4 md:col-span-2">
+            <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Idioma del teclado
+            </label>
+
+            <select
+                wire:model.live="teclado_idioma"
+                class="mt-2 w-full rounded-xl px-4 py-2.5 text-sm
+                       bg-white/5 dark:bg-slate-900/40
+                       border border-white/10
+                       text-slate-100
+                       focus:outline-none focus:ring-2 focus:ring-blue-500/50
+                       backdrop-blur-xl"
+            >
+                <option value="N/A">N/A</option>
+                <option value="ES (Latino)">ES (Latino)</option>
+                <option value="ES (España)">ES (España)</option>
+                <option value="EN (US)">EN (US)</option>
+                <option value="EN (UK)">EN (UK)</option>
+                <option value="FR">FR</option>
+                <option value="DE">DE</option>
+                <option value="IT">IT</option>
+                <option value="PT">PT</option>
+            </select>
+
+            @error('teclado_idioma')
+                <p class="mt-1 text-xs text-red-300">{{ $message }}</p>
+            @enderror
+        </div>
+    </div>
+</div>
+
 
                         {{-- ================== --}}
                 {{--  ESTATUS EQUIPO   --}}

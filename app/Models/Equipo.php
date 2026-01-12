@@ -13,15 +13,7 @@ class Equipo extends Model
     // Esto permite la importación masiva (como en el Seeder)
     protected $guarded = [];
 
-    /**
-     * ====================================================
-     * ¡AÑADIMOS LAS RELACIONES!
-     * ====================================================
-     */
 
-    /**
-     * Obtiene el Usuario (técnico) que registró este equipo.
-     */
     public function registradoPor()
     {
         // Se conecta con el modelo User en la columna 'registrado_por_user_id'
@@ -54,6 +46,53 @@ class Equipo extends Model
     {
         return $this->hasOne(\App\Models\EquipoMonitor::class);
     }
+
+
+
+
+
+
+
+
+    public function gpus()
+{
+    return $this->hasMany(\App\Models\EquipoGpu::class, 'equipo_id');
+}
+
+public function gpuIntegrada()
+{
+    return $this->hasOne(\App\Models\EquipoGpu::class, 'equipo_id')
+        ->where('tipo', 'integrada')
+        ->where('activo', true);
+}
+
+public function gpuDedicada()
+{
+    return $this->hasOne(\App\Models\EquipoGpu::class, 'equipo_id')
+        ->where('tipo', 'dedicada')
+        ->where('activo', true);
+}
+
+
+
+
+public function getTieneIntegradaAttribute(): bool
+{
+    return $this->gpus()
+        ->where('tipo', 'integrada')
+        ->where('activo', true)
+        ->exists();
+}
+
+public function getTieneDedicadaAttribute(): bool
+{
+    return $this->gpus()
+        ->where('tipo', 'dedicada')
+        ->where('activo', true)
+        ->exists();
+}
+
+
 
 
 

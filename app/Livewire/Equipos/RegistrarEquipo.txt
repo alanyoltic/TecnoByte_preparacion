@@ -109,15 +109,25 @@ class RegistrarEquipo extends Component
     public $slots_alm_hdd;
     public $slots_alm_msata;
 
-    // Gráfica
-    public $grafica_integrada_modelo;
-    public $grafica_dedicada_modelo;
-    public $grafica_dedicada_vram;
-    public $tiene_tarjeta_dedicada = false;
+    public bool $gpu_integrada_tiene = false;
+    public ?string $gpu_integrada_marca = null;
+    public ?string $gpu_integrada_modelo = null;
+    public ?int $gpu_integrada_vram = null;
+    public ?string $grafica_integrada_modelo = null;
+    public bool $tiene_tarjeta_dedicada = false;
+    public ?string $grafica_dedicada_modelo = null;
+
+
+    public bool $gpu_dedicada_tiene = false;
+    public ?string $gpu_dedicada_marca = null;
+    public ?string $gpu_dedicada_modelo = null;
+    public ?int $gpu_dedicada_vram = null;
+
 
     // Red
     public $ethernet_tiene = false;
     public $ethernet_es_gigabit = false;
+    
 
     // Texto final (chips -> string)
     public array $conectividad_checks = [];
@@ -257,6 +267,17 @@ class RegistrarEquipo extends Component
         $this->modelosLote = [];
     }
 
+    public function updatedTieneTarjetaDedicada($value): void
+{
+    $on = (bool) $value;
+
+    if (!$on) {
+        $this->grafica_dedicada_modelo = null;
+        $this->grafica_dedicada_vram   = null;
+    }
+}
+
+
     // =======================
     // Catálogos
     // =======================
@@ -288,6 +309,14 @@ class RegistrarEquipo extends Component
         $this->lotesTerminadosIds = $terminadosTomados->pluck('id')->toArray();
         $this->lotes = $lotesConPendientes->concat($terminadosTomados)->values();
     }
+
+    public function updatedEthernetTiene($value): void
+{
+    if (!$value) {
+        $this->ethernet_es_gigabit = false;
+    }
+}
+
 
     // =======================
     // Lote / Modelo dependiente
@@ -450,7 +479,56 @@ class RegistrarEquipo extends Component
         if ($this->pantallaExterna && $this->monitor_incluido !== 'SI') {
             $this->resetMonitorAllFields();
         }
+
+            $this->syncGpuDefaultsByTipo();
+
+        if (!$this->gpu_dedicada_tiene) {
+        $this->gpu_dedicada_marca = null;
+        $this->gpu_dedicada_modelo = null;
+        $this->gpu_dedicada_vram = null;
     }
+
+        if (!$this->gpuEsLaptopLike($this->tipo_equipo ?? null) && !$this->gpu_integrada_tiene) {
+        $this->gpu_integrada_marca = null;
+        $this->gpu_integrada_modelo = null;
+        $this->gpu_integrada_vram = null;
+    }
+
+
+    $laptops = ['laptop', '2 en 1', 'all in one', 'tablet'];
+    if (in_array(mb_strtolower(trim($value)), $laptops)) {
+        $this->gpu_integrada_tiene = true;
+    }
+
+
+    }
+
+
+
+    public function updatedGpuDedicadaTiene(): void
+{
+    if (!$this->gpu_dedicada_tiene) {
+        $this->gpu_dedicada_marca = null;
+        $this->gpu_dedicada_modelo = null;
+        $this->gpu_dedicada_vram = null;
+    }
+}
+
+public function updatedGpuIntegradaTiene(): void
+{
+    // si es laptop-like, no permitimos apagar
+    if ($this->gpuEsLaptopLike($this->tipo_equipo ?? null)) {
+        $this->gpu_integrada_tiene = true;
+        return;
+    }
+
+    if (!$this->gpu_integrada_tiene) {
+        $this->gpu_integrada_marca = null;
+        $this->gpu_integrada_modelo = null;
+        $this->gpu_integrada_vram = null;
+    }
+}
+
 
     public function updatedMonitorIncluido(): void
     {
@@ -514,6 +592,21 @@ class RegistrarEquipo extends Component
             'lectores' => 'array',
             'lectores.*.tipo' => 'nullable|string|max:50',
             'lectores.*.detalle' => 'nullable|string|max:100',
+
+            'gpu_integrada_tiene' => ['boolean'],
+            'gpu_integrada_marca' => ['nullable','string','max:120'],
+            'gpu_integrada_modelo' => ['nullable','string','max:180'],
+            'gpu_integrada_vram' => ['nullable','integer','min:0','max:64'],
+
+            'gpu_dedicada_tiene' => ['boolean'],
+            'gpu_dedicada_vram' => ['nullable','integer','min:1','max:64'],
+
+            'gpu_dedicada_marca'  => [ $this->gpu_dedicada_tiene ? 'required' : 'nullable', 'string','max:120' ],
+            'gpu_dedicada_modelo' => [ $this->gpu_dedicada_tiene ? 'required' : 'nullable', 'string','max:180' ],
+
+
+
+
         ];
     }
 
@@ -532,70 +625,151 @@ class RegistrarEquipo extends Component
     // =======================
     // Guardar (3 puntos robustos)
     // =======================
-    public function guardar(): void
-    {
-        try {
-            $this->validate();
-        } catch (ValidationException $e) {
-            $this->dispatch('toast', type: 'error', message: $e->validator->errors()->first());
-            throw $e;
+   public function guardar(): void
+{
+    // 1. Validación inicial
+    try {
+        $this->validate();
+    } catch (ValidationException $e) {
+        $this->dispatch('toast', type: 'error', message: $e->validator->errors()->first());
+        throw $e;
+    }
+
+    // 2. Preparación de datos (Pre-procesamiento)
+    $this->almacenamiento_secundario_capacidad = $this->almacenamiento_secundario_capacidad ?: 'N/A';
+    $this->almacenamiento_secundario_tipo      = $this->almacenamiento_secundario_tipo ?: 'N/A';
+    $this->teclado_idioma                       = $this->teclado_idioma ?: 'N/A';
+
+    $this->detalles_esteticos = $this->buildChecksText($this->detalles_esteticos_checks, $this->detalles_esteticos_otro);
+    $this->detalles_funcionamiento = $this->buildChecksText($this->detalles_funcionamiento_checks, $this->detalles_funcionamiento_otro);
+
+    $this->puertos_conectividad = $this->truncate($this->puertos_conectividad, 255);
+    $this->dispositivos_entrada = $this->truncate($this->dispositivos_entrada, 255);
+
+    // Mappers a columnas (importante hacerlo ANTES de crear el payload)
+    $this->mapSlotsToDbColumns();
+    $this->applyAggregatesToEquipoColumns();
+
+    // 3. Transacción Única para asegurar la integridad de los datos
+    DB::transaction(function () {
+        
+        // (A) Validaciones de Seguridad (Lote y Cupo)
+        $belongs = LoteModeloRecibido::query()
+            ->whereKey($this->lote_modelo_id)
+            ->where('lote_id', $this->lote_id)
+            ->exists();
+
+        if (!$belongs) {
+            throw ValidationException::withMessages([
+                'lote_modelo_id' => 'El modelo seleccionado no pertenece al lote seleccionado.',
+            ]);
         }
 
-        // Defaults seguros
-        $this->almacenamiento_secundario_capacidad = $this->almacenamiento_secundario_capacidad ?: 'N/A';
-        $this->almacenamiento_secundario_tipo      = $this->almacenamiento_secundario_tipo ?: 'N/A';
-        $this->teclado_idioma                      = $this->teclado_idioma ?: 'N/A';
+        $lm = LoteModeloRecibido::query()
+            ->whereKey($this->lote_modelo_id)
+            ->lockForUpdate()
+            ->firstOrFail();
 
-        // Detalles texto
-        $this->detalles_esteticos = $this->buildChecksText($this->detalles_esteticos_checks, $this->detalles_esteticos_otro);
-        $this->detalles_funcionamiento = $this->buildChecksText($this->detalles_funcionamiento_checks, $this->detalles_funcionamiento_otro);
+        $registrados = (int) Equipo::query()
+            ->where('lote_modelo_id', $this->lote_modelo_id)
+            ->count();
 
-        // Blindaje longitudes
-        $this->puertos_conectividad = $this->truncate($this->puertos_conectividad, 255);
-        $this->dispositivos_entrada = $this->truncate($this->dispositivos_entrada, 255);
+        if ($registrados >= (int) $lm->cantidad_recibida) {
+            throw ValidationException::withMessages([
+                'lote_modelo_id' => 'Ya se registraron todos los equipos disponibles de este modelo en este lote.',
+            ]);
+        }
 
-        // Mappers a columnas
-        $this->mapSlotsToDbColumns();
-        $this->applyAggregatesToEquipoColumns();
+        // (B) CREACIÓN DEL EQUIPO
+        // Usamos equipoPayload() que ya debe tener todos los datos procesados
+        $equipo = Equipo::create($this->equipoPayload());
 
-        DB::transaction(function () {
-            // (1) Anti-trampa: lote_modelo pertenece al lote
-            $belongs = LoteModeloRecibido::query()
-                ->whereKey($this->lote_modelo_id)
-                ->where('lote_id', $this->lote_id)
-                ->exists();
+        // (C) GUARDADO DE TABLAS RELACIONADAS
+        // Pasamos el ID del equipo recién creado a cada método
+        $this->guardarBaterias($equipo->id);
+        $this->guardarMonitor($equipo->id);
+        $this->guardarGpus($equipo->id); // <--- Aquí es donde se guarda la GPU
+    });
 
-            if (!$belongs) {
-                throw ValidationException::withMessages([
-                    'lote_modelo_id' => 'El modelo seleccionado no pertenece al lote seleccionado.',
-                ]);
-            }
+    // 4. Finalización
+    $this->reiniciarFormulario();
+    $this->dispatch('toast', type: 'success', message: 'Equipo registrado correctamente.');
+}
 
-            // (2) Anti-carrera: lock + cupo dentro de transacción
-            $lm = LoteModeloRecibido::query()
-                ->whereKey($this->lote_modelo_id)
-                ->lockForUpdate()
-                ->firstOrFail();
 
-            $registrados = (int) Equipo::query()
-                ->where('lote_modelo_id', $this->lote_modelo_id)
-                ->count();
 
-            if ($registrados >= (int) $lm->cantidad_recibida) {
-                throw ValidationException::withMessages([
-                    'lote_modelo_id' => 'Ya se registraron todos los equipos disponibles de este modelo en este lote.',
-                ]);
-            }
+    private function gpuEsLaptopLike(?string $tipo): bool
+{
+    return in_array($tipo, ['LAPTOP','2 EN 1','ALL IN ONE','TABLET'], true);
+}
 
-            $equipo = Equipo::create($this->equipoPayload());
+private function gpuEsPcLike(?string $tipo): bool
+{
+    return in_array($tipo, ['ESCRITORIO','MICRO PC','GAMER'], true);
+}
 
-            $this->guardarBaterias($equipo->id);
-            $this->guardarMonitor($equipo->id);
-        });
 
-        $this->reiniciarFormulario();
-        $this->dispatch('toast', type: 'success', message: 'Equipo registrado correctamente.');
+private function guardarGpus($equipoId)
+{
+    // Calculamos si es laptop igual que en la vista
+    $esLaptop = in_array(mb_strtolower(trim($this->tipo_equipo ?? '')), ['laptop', '2 en 1', 'all in one', 'tablet']);
+
+    // 1. GPU INTEGRADA 
+    // Ahora entra si el usuario marcó el check O si es una laptop (obligatorio)
+    if ($this->gpu_integrada_tiene || $esLaptop) {
+        \App\Models\EquipoGpu::create([
+            'equipo_id' => $equipoId,
+            'tipo'      => 'integrada',
+            'activo'    => true,
+            'marca'     => $this->gpu_integrada_marca ?: 'Intel/AMD',
+            'modelo'    => $this->gpu_integrada_modelo ?: 'Integrated Graphics',
+            'vram_gb'   => $this->gpu_integrada_vram ?: 0,
+        ]);
     }
+
+    // 2. GPU DEDICADA (se queda igual)
+    if ($this->gpu_dedicada_tiene) {
+        \App\Models\EquipoGpu::create([
+            'equipo_id' => $equipoId,
+            'tipo'      => 'dedicada',
+            'activo'    => true,
+            'marca'     => $this->gpu_dedicada_marca,
+            'modelo'    => $this->gpu_dedicada_modelo,
+            'vram_gb'   => $this->gpu_dedicada_vram ?: 0,
+        ]);
+    }
+}
+
+
+
+
+private function syncGpuDefaultsByTipo(): void
+{
+    $tipo = $this->tipo_equipo ?? null; // ajusta si tu variable se llama distinto
+
+    if ($this->gpuEsLaptopLike($tipo)) {
+        // Laptop-like: integrada SIEMPRE
+        $this->gpu_integrada_tiene = true;
+
+        // Dedicada queda a decisión del usuario
+        // (no la toco aquí para no borrar si ya la estaba llenando)
+        return;
+    }
+
+    if ($this->gpuEsPcLike($tipo)) {
+        // PC-like: puede no tener nada.
+        // No forzamos nada, pero si alguien venía de laptop,
+        // liberamos integrada para que pueda apagarse.
+        // (No la apagamos automático, solo permitimos)
+        return;
+    }
+
+    // Si tipo no definido, no forzar nada
+}
+
+
+
+
 
     private function equipoPayload(): array
     {
@@ -641,10 +815,6 @@ class RegistrarEquipo extends Component
             'slots_alm_hdd'      => $this->slots_alm_hdd,
             'slots_alm_msata'    => $this->slots_alm_msata,
 
-            'grafica_integrada_modelo' => $this->grafica_integrada_modelo,
-            'grafica_dedicada_modelo'  => $this->grafica_dedicada_modelo,
-            'grafica_dedicada_vram'    => $this->grafica_dedicada_vram,
-            'tiene_tarjeta_dedicada'   => (bool) $this->tiene_tarjeta_dedicada,
 
             'ethernet_tiene'      => (bool) $this->ethernet_tiene,
             'ethernet_es_gigabit' => (bool) $this->ethernet_es_gigabit,
@@ -676,6 +846,11 @@ class RegistrarEquipo extends Component
             'notas_generales'         => $this->notas_generales,
             'detalles_esteticos'      => $this->detalles_esteticos,
             'detalles_funcionamiento' => $this->detalles_funcionamiento,
+
+            'ethernet_tiene' => $this->ethernet_tiene,
+            'ethernet_es_gigabit' => $this->ethernet_es_gigabit,
+            'teclado_idioma' => $this->teclado_idioma,
+
         ];
     }
 
@@ -770,6 +945,22 @@ class RegistrarEquipo extends Component
 
         return $payload;
     }
+
+
+    public function updated($name, $value): void
+{
+    // Si apagan Ethernet, forzamos gigabit a false
+    if ($name === 'form.ethernet_tiene' && !$value) {
+        $this->form->ethernet_es_gigabit = false;
+    }
+
+    
+}
+
+
+
+
+
 
     // =======================
     // Agregadores / Mappers

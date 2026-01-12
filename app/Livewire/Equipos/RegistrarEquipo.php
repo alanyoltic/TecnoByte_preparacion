@@ -3,12 +3,15 @@
 namespace App\Livewire\Equipos;
 
 use Livewire\Component;
-use App\Models\Equipo;
-use App\Models\Lote;
-use App\Models\Proveedor;
-use App\Models\LoteModeloRecibido;
-use App\Models\EquipoBateria;
-use App\Models\EquipoMonitor;
+use App\Models\{
+    Equipo,
+    Lote,
+    Proveedor,
+    LoteModeloRecibido,
+    EquipoBateria,
+    EquipoMonitor,
+    EquipoGpu
+};
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -16,7 +19,7 @@ use Illuminate\Validation\ValidationException;
 class RegistrarEquipo extends Component
 {
     // =======================
-    // Catálogos / Listas
+    // Catálogos / listas
     // =======================
     public $proveedores = [];
     public $lotes = [];
@@ -24,7 +27,7 @@ class RegistrarEquipo extends Component
     public $lotesTerminadosIds = [];
 
     // =======================
-    // Dependientes
+    // Dependientes (Lote -> Modelo -> Marca/Modelo/Proveedor)
     // =======================
     public $lote_id;
     public $lote_modelo_id;
@@ -42,49 +45,49 @@ class RegistrarEquipo extends Component
     public $sistema_operativo;
     public $area_tienda;
 
+    // =======================
     // CPU
+    // =======================
     public $procesador_modelo;
     public $procesador_generacion;
     public $procesador_nucleos;
     public $procesador_frecuencia;
 
-    // Pantalla (integrada)
+    // =======================
+    // Pantalla integrada
+    // =======================
     public $pantalla_pulgadas;
     public $pantalla_resolucion;
     public $pantalla_es_touch = false;
     public $pantalla_tipo;
 
-    // Monitor (externo)
+    // =======================
+    // Monitor externo
+    // =======================
     public $monitor_incluido = null; // 'SI'/'NO'
     public $monitor_pulgadas;
     public $monitor_resolucion;
     public $monitor_tipo_panel;
     public $monitor_es_touch = false;
 
-    // Entradas monitor (tipo USB): [{tipo:'HDMI', cantidad:1}]
+    // Entradas monitor: [{tipo:'HDMI', cantidad:1}]
     public array $monitor_entradas_rows = [];
 
     public array $monitorEntradasOptions = [
-        'HDMI',
-        'Mini HDMI',
-        'VGA',
-        'DVI',
-        'DisplayPort',
-        'Mini DisplayPort',
-        'USB 2.0',
-        'USB 3.0',
-        'USB 3.1',
-        'USB 3.2',
-        'USB-C',
+        'HDMI', 'Mini HDMI', 'VGA', 'DVI',
+        'DisplayPort', 'Mini DisplayPort',
+        'USB 2.0', 'USB 3.0', 'USB 3.1', 'USB 3.2', 'USB-C',
     ];
 
-    // Detalles monitor (chips ya existentes)
+    // Detalles monitor (chips -> strings)
     public $monitor_detalles_esteticos_checks = '';
     public $monitor_detalles_esteticos_otro = '';
     public $monitor_detalles_funcionamiento_checks = '';
     public $monitor_detalles_funcionamiento_otro = '';
 
+    // =======================
     // RAM
+    // =======================
     public $ram_total;
     public $ram_tipo;
     public $ram_es_soldada = false;
@@ -93,42 +96,60 @@ class RegistrarEquipo extends Component
     public $ram_cantidad_soldada;
     public $ram_sin_slots = false;
 
+    // =======================
     // Almacenamiento
+    // =======================
     public $almacenamiento_principal_capacidad;
     public $almacenamiento_principal_tipo;
+
     public $almacenamiento_secundario_capacidad = 'N/A';
     public $almacenamiento_secundario_tipo = 'N/A';
 
-    // Slots almacenamiento (UI)
+    // Slots almacenamiento (UI) + columnas DB
     public array $slots_almacenamiento = [];
-
-    // Columnas slots (DB)
     public $slots_alm_ssd;
     public $slots_alm_m2;
     public $slots_alm_m2_micro;
     public $slots_alm_hdd;
     public $slots_alm_msata;
 
-    // Gráfica
-    public $grafica_integrada_modelo;
-    public $grafica_dedicada_modelo;
-    public $grafica_dedicada_vram;
-    public $tiene_tarjeta_dedicada = false;
+    // =======================
+    // GPU (NUEVO ESQUEMA)
+    // =======================
+    public bool $gpu_integrada_tiene = false;
+    public ?string $gpu_integrada_marca = null;
+    public ?string $gpu_integrada_modelo = null;
+    public ?int $gpu_integrada_vram = null;
 
+    public bool $gpu_dedicada_tiene = false;
+    public ?string $gpu_dedicada_marca = null;
+    public ?string $gpu_dedicada_modelo = null;
+    public ?int $gpu_dedicada_vram = null;
+
+    public string $gpu_integrada_marca_mode = 'LISTA';
+    public string $gpu_dedicada_marca_mode  = 'LISTA';
+
+    public ?string $gpu_integrada_vram_unidad = 'GB';
+    public ?string $gpu_dedicada_vram_unidad  = 'GB';
+
+
+
+    // =======================
     // Red
+    // =======================
     public $ethernet_tiene = false;
     public $ethernet_es_gigabit = false;
 
-    // Texto final (chips -> string)
-    public array $conectividad_checks = [];
-    public string $conectividad_pick = '';
-    public array $entrada_checks = [];
-    public string $entrada_pick = '';
+    // =======================
+    // Puertos / lectores (UI) + columnas DB
+    // =======================
+    public array $puertos_usb = [];
+    public array $puertos_video = [];
+    public array $lectores = [];
 
-    public $puertos_conectividad; // requerido
-    public $dispositivos_entrada; // requerido
+    public $puertos_conectividad; // requerido (texto final)
+    public $dispositivos_entrada; // requerido (texto final)
 
-    // DB columnas puertos/lectores
     public $puertos_hdmi;
     public $puertos_mini_hdmi;
     public $puertos_vga;
@@ -147,12 +168,9 @@ class RegistrarEquipo extends Component
     public $lectores_esata;
     public $lectores_sim;
 
-    // UI dinámicas
-    public array $puertos_usb = [];
-    public array $puertos_video = [];
-    public array $lectores = [];
-
+    // =======================
     // Baterías
+    // =======================
     public $bateria_tiene = true;
     public $bateria1_tipo = null;
     public $bateria1_salud = null;
@@ -161,19 +179,22 @@ class RegistrarEquipo extends Component
     public $bateria2_tipo = null;
     public $bateria2_salud = null;
 
+    // =======================
     // Otros
+    // =======================
     public $teclado_idioma = 'N/A';
     public $notas_generales;
 
-    public $detalles_esteticos;
-    public $detalles_funcionamiento;
     public array $detalles_esteticos_checks = [];
     public ?string $detalles_esteticos_otro = null;
     public array $detalles_funcionamiento_checks = [];
     public ?string $detalles_funcionamiento_otro = null;
 
+    public $detalles_esteticos;
+    public $detalles_funcionamiento;
+
     // =======================
-    // Maps (USB/Video/Lectores)
+    // MAPS (UI -> columnas DB)
     // =======================
     private const MAP_USB = [
         'USB 2.0'    => 'puertos_usb_2',
@@ -209,8 +230,7 @@ class RegistrarEquipo extends Component
         'MSATA'     => 'slots_alm_msata',
     ];
 
-    // Monitor rows -> columnas equipo_monitors
-    // (Si tu tabla NO tiene in_usb_c, elimina esa línea)
+    // Entradas monitor -> columnas equipo_monitores (ajusta si tu tabla no tiene alguna)
     private const MAP_MONITOR_IN = [
         'HDMI'             => 'in_hdmi',
         'Mini HDMI'        => 'in_mini_hdmi',
@@ -226,7 +246,7 @@ class RegistrarEquipo extends Component
     ];
 
     // =======================
-    // Mount
+    // Lifecycle
     // =======================
     public function mount(): void
     {
@@ -237,6 +257,7 @@ class RegistrarEquipo extends Component
     private function setDefaults(): void
     {
         $this->estatus_general = 'En Revisión';
+
         $this->almacenamiento_secundario_capacidad = 'N/A';
         $this->almacenamiento_secundario_tipo = 'N/A';
         $this->teclado_idioma = 'N/A';
@@ -246,15 +267,18 @@ class RegistrarEquipo extends Component
 
         $this->ethernet_tiene = false;
         $this->ethernet_es_gigabit = false;
-        $this->tiene_tarjeta_dedicada = false;
 
         $this->puertos_usb = [];
         $this->puertos_video = [];
         $this->lectores = [];
         $this->slots_almacenamiento = [];
-
         $this->monitor_entradas_rows = [];
         $this->modelosLote = [];
+
+        $this->gpu_integrada_tiene = false;
+        $this->gpu_dedicada_tiene = false;
+
+        
     }
 
     // =======================
@@ -286,6 +310,7 @@ class RegistrarEquipo extends Component
 
         $terminadosTomados = $lotesTerminados->take(2);
         $this->lotesTerminadosIds = $terminadosTomados->pluck('id')->toArray();
+
         $this->lotes = $lotesConPendientes->concat($terminadosTomados)->values();
     }
 
@@ -354,7 +379,6 @@ class RegistrarEquipo extends Component
     public function addSlotAlmacenamiento(): void { $this->slots_almacenamiento[] = ['tipo' => '', 'cantidad' => null]; }
     public function removeSlotAlmacenamiento($i): void { $this->unsetIndex($this->slots_almacenamiento, $i); }
 
-    // Entradas monitor (tipo USB)
     public function addMonitorEntrada(): void { $this->monitor_entradas_rows[] = ['tipo' => '', 'cantidad' => 1]; }
     public function removeMonitorEntrada($i): void { $this->unsetIndex($this->monitor_entradas_rows, $i); }
 
@@ -368,6 +392,11 @@ class RegistrarEquipo extends Component
     // =======================
     // Toggles
     // =======================
+    public function updatedEthernetTiene($value): void
+    {
+        if (!$value) $this->ethernet_es_gigabit = false;
+    }
+
     public function toggleRamSoldada(): void
     {
         $this->ram_es_soldada = !$this->ram_es_soldada;
@@ -427,29 +456,46 @@ class RegistrarEquipo extends Component
         return $v;
     }
 
+    private function isLaptopLikeTipo(?string $tipo): bool
+    {
+        return in_array($this->tipoKey($tipo), ['laptop','2 en 1','all in one','tablet'], true)
+            || in_array(trim((string)$tipo), ['LAPTOP','2 EN 1','ALL IN ONE','TABLET'], true);
+    }
+
+    private function isPcLikeTipo(?string $tipo): bool
+    {
+        return in_array($this->tipoKey($tipo), ['escritorio','micro pc','gamer'], true)
+            || in_array(trim((string)$tipo), ['ESCRITORIO','MICRO PC','GAMER'], true);
+    }
+
     public function getPantallaIntegradaProperty(): bool
     {
-        return in_array($this->tipoKey($this->tipo_equipo), ['laptop','all in one','tablet','2 en 1'], true);
+        return $this->isLaptopLikeTipo($this->tipo_equipo);
     }
 
     public function getPantallaExternaProperty(): bool
     {
-        return in_array($this->tipoKey($this->tipo_equipo), ['escritorio','micro pc','gamer'], true);
+        return $this->isPcLikeTipo($this->tipo_equipo);
     }
 
-    public function updatedTipoEquipo(): void
+    public function updatedTipoEquipo($value = null): void
     {
-        // Si pasa a integrada -> monitor externo NO aplica
+        // 1) Monitor según tipo de equipo
         if ($this->pantallaIntegrada) {
+            // Integrada => monitor externo no aplica
             $this->monitor_incluido = 'NO';
-            $this->resetMonitorExternoFields();
-            return;
+            $this->resetMonitorAllFields();
+        } elseif ($this->pantallaExterna) {
+            // Externa => si no es SI, limpiamos (pero dejamos elegir)
+            if ($this->monitor_incluido !== 'SI') {
+                $this->resetMonitorAllFields();
+            }
+        } else {
+            // Tipo no definido / raro => no forzar
         }
 
-        // Si pasa a externa y no es SI -> limpia
-        if ($this->pantallaExterna && $this->monitor_incluido !== 'SI') {
-            $this->resetMonitorAllFields();
-        }
+        // 2) GPU defaults por tipo
+        $this->syncGpuDefaultsByTipo();
     }
 
     public function updatedMonitorIncluido(): void
@@ -459,8 +505,13 @@ class RegistrarEquipo extends Component
         }
     }
 
-    private function resetMonitorExternoFields(): void
+    private function resetMonitorAllFields(): void
     {
+        $this->monitor_pulgadas = null;
+        $this->monitor_resolucion = null;
+        $this->monitor_tipo_panel = null;
+        $this->monitor_es_touch = false;
+
         $this->monitor_entradas_rows = [];
         $this->monitor_detalles_esteticos_checks = '';
         $this->monitor_detalles_esteticos_otro = '';
@@ -468,17 +519,64 @@ class RegistrarEquipo extends Component
         $this->monitor_detalles_funcionamiento_otro = '';
     }
 
-    private function resetMonitorAllFields(): void
+    // =======================
+    // GPU: reglas
+    // =======================
+    private function syncGpuDefaultsByTipo(): void
     {
-        $this->monitor_pulgadas = null;
-        $this->monitor_resolucion = null;
-        $this->monitor_tipo_panel = null;
-        $this->monitor_es_touch = false;
-        $this->resetMonitorExternoFields();
+        if ($this->isLaptopLikeTipo($this->tipo_equipo)) {
+            // Laptop-like: integrada SIEMPRE (no la borres)
+            $this->gpu_integrada_tiene = true;
+            return;
+        }
+
+        // PC-like o desconocido: no forzamos nada
     }
 
+    public function updatedGpuIntegradaTiene(): void
+    {
+        // Si es laptop-like, no permitimos apagar
+        if ($this->isLaptopLikeTipo($this->tipo_equipo)) {
+            $this->gpu_integrada_tiene = true;
+            return;
+        }
+
+        if (!$this->gpu_integrada_tiene) {
+            $this->gpu_integrada_marca = null;
+            $this->gpu_integrada_modelo = null;
+            $this->gpu_integrada_vram = null;
+        }
+    }
+
+    public function updatedGpuDedicadaTiene(): void
+    {
+        if (!$this->gpu_dedicada_tiene) {
+            $this->gpu_dedicada_marca = null;
+            $this->gpu_dedicada_modelo = null;
+            $this->gpu_dedicada_vram = null;
+            $this->gpu_dedicada_vram_unidad = 'GB';
+
+        }
+    }
+
+
+    public function updatedGpuIntegradaMarcaMode($value): void
+    {
+        if ($value === 'MANUAL' && in_array($this->gpu_integrada_marca, ['INTEL','AMD','NVIDIA'], true)) {
+            $this->gpu_integrada_marca = '';
+        }
+    }
+
+    public function updatedGpuDedicadaMarcaMode($value): void
+    {
+        if ($value === 'MANUAL' && in_array($this->gpu_dedicada_marca, ['INTEL','AMD','NVIDIA'], true)) {
+            $this->gpu_dedicada_marca = '';
+        }
+    }
+
+
     // =======================
-    // Validación (robusta)
+    // Validación
     // =======================
     protected function rules(): array
     {
@@ -514,6 +612,16 @@ class RegistrarEquipo extends Component
             'lectores' => 'array',
             'lectores.*.tipo' => 'nullable|string|max:50',
             'lectores.*.detalle' => 'nullable|string|max:100',
+
+            'gpu_integrada_tiene' => ['boolean'],
+            'gpu_integrada_marca' => ['nullable','string','max:120'],
+            'gpu_integrada_modelo' => ['nullable','string','max:180'],
+            'gpu_integrada_vram' => ['nullable','integer','min:0','max:64'],
+
+            'gpu_dedicada_tiene' => ['boolean'],
+            'gpu_dedicada_vram' => ['nullable','integer','min:0','max:64'],
+            'gpu_dedicada_marca'  => [ $this->gpu_dedicada_tiene ? 'required' : 'nullable', 'string','max:120' ],
+            'gpu_dedicada_modelo' => [ $this->gpu_dedicada_tiene ? 'required' : 'nullable', 'string','max:180' ],
         ];
     }
 
@@ -530,7 +638,7 @@ class RegistrarEquipo extends Component
     }
 
     // =======================
-    // Guardar (3 puntos robustos)
+    // Guardar
     // =======================
     public function guardar(): void
     {
@@ -541,25 +649,23 @@ class RegistrarEquipo extends Component
             throw $e;
         }
 
-        // Defaults seguros
+        // Pre-procesamiento
         $this->almacenamiento_secundario_capacidad = $this->almacenamiento_secundario_capacidad ?: 'N/A';
         $this->almacenamiento_secundario_tipo      = $this->almacenamiento_secundario_tipo ?: 'N/A';
         $this->teclado_idioma                      = $this->teclado_idioma ?: 'N/A';
 
-        // Detalles texto
         $this->detalles_esteticos = $this->buildChecksText($this->detalles_esteticos_checks, $this->detalles_esteticos_otro);
         $this->detalles_funcionamiento = $this->buildChecksText($this->detalles_funcionamiento_checks, $this->detalles_funcionamiento_otro);
 
-        // Blindaje longitudes
         $this->puertos_conectividad = $this->truncate($this->puertos_conectividad, 255);
         $this->dispositivos_entrada = $this->truncate($this->dispositivos_entrada, 255);
 
-        // Mappers a columnas
+        // Mappers a columnas (antes del payload)
         $this->mapSlotsToDbColumns();
         $this->applyAggregatesToEquipoColumns();
 
         DB::transaction(function () {
-            // (1) Anti-trampa: lote_modelo pertenece al lote
+            // Seguridad: el modelo debe pertenecer al lote
             $belongs = LoteModeloRecibido::query()
                 ->whereKey($this->lote_modelo_id)
                 ->where('lote_id', $this->lote_id)
@@ -571,7 +677,7 @@ class RegistrarEquipo extends Component
                 ]);
             }
 
-            // (2) Anti-carrera: lock + cupo dentro de transacción
+            // Cupo
             $lm = LoteModeloRecibido::query()
                 ->whereKey($this->lote_modelo_id)
                 ->lockForUpdate()
@@ -587,16 +693,22 @@ class RegistrarEquipo extends Component
                 ]);
             }
 
+            // Crear equipo
             $equipo = Equipo::create($this->equipoPayload());
 
+            // Relacionadas
             $this->guardarBaterias($equipo->id);
             $this->guardarMonitor($equipo->id);
+            $this->guardarGpus($equipo->id);
         });
 
         $this->reiniciarFormulario();
         $this->dispatch('toast', type: 'success', message: 'Equipo registrado correctamente.');
     }
 
+    // =======================
+    // Payload principal
+    // =======================
     private function equipoPayload(): array
     {
         return [
@@ -641,11 +753,6 @@ class RegistrarEquipo extends Component
             'slots_alm_hdd'      => $this->slots_alm_hdd,
             'slots_alm_msata'    => $this->slots_alm_msata,
 
-            'grafica_integrada_modelo' => $this->grafica_integrada_modelo,
-            'grafica_dedicada_modelo'  => $this->grafica_dedicada_modelo,
-            'grafica_dedicada_vram'    => $this->grafica_dedicada_vram,
-            'tiene_tarjeta_dedicada'   => (bool) $this->tiene_tarjeta_dedicada,
-
             'ethernet_tiene'      => (bool) $this->ethernet_tiene,
             'ethernet_es_gigabit' => (bool) $this->ethernet_es_gigabit,
 
@@ -679,6 +786,9 @@ class RegistrarEquipo extends Component
         ];
     }
 
+    // =======================
+    // Relacionadas: Baterías
+    // =======================
     private function guardarBaterias(int $equipoId): void
     {
         if (!$this->bateria_tiene) return;
@@ -702,6 +812,9 @@ class RegistrarEquipo extends Component
         }
     }
 
+    // =======================
+    // Relacionadas: Monitor/Pantalla
+    // =======================
     private function guardarMonitor(int $equipoId): void
     {
         // INTEGRADA
@@ -722,17 +835,15 @@ class RegistrarEquipo extends Component
 
         // EXTERNA
         if (!$this->pantallaExterna) {
-            // si no cae en ninguna, por seguridad no guardamos monitor
             return;
         }
 
         if ($this->monitor_incluido !== 'SI') {
-            // Si NO incluye monitor: elimina registro si existía
+            // Tu versión actual borra el registro si NO incluye monitor
             EquipoMonitor::where('equipo_id', $equipoId)->delete();
             return;
         }
 
-        // Agrega entradas tipo+cantidad -> columnas in_*
         $counts = $this->aggregateCounters($this->monitor_entradas_rows, 'tipo', 'cantidad');
         $inputsPayload = $this->monitorInputsPayload($counts);
 
@@ -756,23 +867,59 @@ class RegistrarEquipo extends Component
 
     /**
      * Construye payload de columnas in_* para EquipoMonitor.
-     * - Si count es 0, manda NULL (como tu screenshot).
-     * - Si tu tabla NO tiene in_usb_c, quita esa entrada del MAP_MONITOR_IN.
+     * - Si count es 0, manda NULL.
      */
     private function monitorInputsPayload(array $countsByLabel): array
     {
         $payload = [];
-
         foreach (self::MAP_MONITOR_IN as $label => $col) {
             $qty = (int) ($countsByLabel[$label] ?? 0);
             $payload[$col] = $qty > 0 ? $qty : null;
         }
-
         return $payload;
     }
 
     // =======================
-    // Agregadores / Mappers
+    // Relacionadas: GPU (equipo_gpus)
+    // =======================
+    private function guardarGpus(int $equipoId): void
+    {
+        // En registrar: limpiamos por seguridad (evita duplicados si algo reintenta)
+        EquipoGpu::where('equipo_id', $equipoId)->delete();
+
+        $esLaptopLike = $this->isLaptopLikeTipo($this->tipo_equipo);
+
+        // INTEGRADA: obligatoria en laptop-like
+        if ($this->gpu_integrada_tiene || $esLaptopLike) {
+            EquipoGpu::create([
+                'equipo_id' => $equipoId,
+                'tipo'      => 'integrada',
+                'activo'    => true,
+                'marca'     => $this->gpu_integrada_marca ?: 'Intel/AMD',
+                'modelo'    => $this->gpu_integrada_modelo ?: 'Integrated Graphics',
+                'vram'       => filled($this->gpu_integrada_vram) ? $this->gpu_integrada_vram : null,
+                'vram_unidad'=> filled($this->gpu_integrada_vram) ? ($this->gpu_integrada_vram_unidad ?: 'GB') : null,
+
+            ]);
+        }
+
+        // DEDICADA: opcional
+        if ($this->gpu_dedicada_tiene) {
+            EquipoGpu::create([
+                'equipo_id' => $equipoId,
+                'tipo'      => 'dedicada',
+                'activo'    => true,
+                'marca'     => $this->gpu_dedicada_marca,
+                'modelo'    => $this->gpu_dedicada_modelo,
+                'vram'       => filled($this->gpu_dedicada_vram) ? $this->gpu_dedicada_vram : null,
+                'vram_unidad'=> filled($this->gpu_dedicada_vram) ? ($this->gpu_dedicada_vram_unidad ?: 'GB') : null,
+
+            ]);
+        }
+    }
+
+    // =======================
+    // Agregadores / Mappers (UI -> columnas)
     // =======================
     private function applyAggregatesToEquipoColumns(): void
     {
@@ -782,7 +929,7 @@ class RegistrarEquipo extends Component
         $videoCounts = $this->aggregateCounters($this->puertos_video, 'tipo', 'cantidad');
         $this->applyMapCountsToEquipo($videoCounts, self::MAP_VIDEO);
 
-        // lectores sin cantidad -> cuenta 1 cada uno
+        // Lectores sin cantidad: cuenta 1 cada uno
         $lectorCounts = $this->aggregateCounters($this->lectores, 'tipo', null);
         $this->applyMapCountsToEquipo($lectorCounts, self::MAP_LECTORES);
     }
@@ -813,6 +960,7 @@ class RegistrarEquipo extends Component
             if (!isset($mapLabelToEquipoColumn[$label])) continue;
             $col = $mapLabelToEquipoColumn[$label];
 
+            // Solo set si está null (para no pisar si ya venía)
             if ($this->{$col} === null) {
                 $this->{$col} = (string) $count;
             }
@@ -839,6 +987,9 @@ class RegistrarEquipo extends Component
         }
     }
 
+    // =======================
+    // Text helpers
+    // =======================
     private function buildChecksText(array $checks, ?string $otro): string
     {
         $checks = $checks ?? [];

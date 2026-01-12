@@ -266,6 +266,12 @@ protected function normalizeRows(array $rows): array
             'dispositivos_entrada' => 'required|string',
             'lote_id' => 'nullable|exists:lotes,id',
             'lote_modelo_id' => 'nullable|exists:lote_modelos_recibidos,id',
+            'ethernet_tiene' => ['nullable','boolean'],
+            'ethernet_es_gigabit' => ['nullable','boolean'],
+            'teclado_idioma' => ['required','string','max:50'],
+            'ethernet_es_gigabit' => ['nullable','boolean', Rule::requiredIf(fn() => (bool)$this->ethernet_tiene)],
+
+
         ];
     }
 }

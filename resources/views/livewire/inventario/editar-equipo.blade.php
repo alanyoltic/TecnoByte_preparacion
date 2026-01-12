@@ -1960,6 +1960,100 @@
             @enderror
         </div>
 
+
+
+
+        {{-- ================== --}}
+{{--  EXTRAS            --}}
+{{-- ================== --}}
+<div class="mt-6">
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-semibold text-slate-200/90">Extras</h3>
+        <span class="text-[0.72rem] text-slate-400">Opcionales</span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {{-- Ethernet --}}
+        <div class="rounded-2xl border border-white/10 bg-white/5 dark:bg-slate-900/40 backdrop-blur-xl p-4">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Puerto Ethernet
+                </span>
+
+                <label class="inline-flex items-center cursor-pointer gap-2">
+                    <input type="checkbox" class="sr-only"
+                           wire:model.live="form.ethernet_tiene">
+
+                    <span class="w-10 h-5 rounded-full bg-white/10 relative transition">
+                        <span class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white/70 transition"
+                              x-data
+                              x-bind:class="$wire.form.ethernet_tiene ? 'translate-x-5 bg-white' : 'translate-x-0 bg-white/70'">
+                        </span>
+                    </span>
+
+                    <span class="text-xs text-slate-300/80">
+                        {{ $form->ethernet_tiene ? 'Sí' : 'No' }}
+                    </span>
+                </label>
+            </div>
+
+            @if($form->ethernet_tiene)
+                <div class="mt-3 flex items-center justify-between">
+                    <span class="text-xs text-slate-300/80">¿Es Gigabit?</span>
+
+                    <label class="inline-flex items-center cursor-pointer gap-2">
+                        <input type="checkbox" class="sr-only"
+                               wire:model.live="form.ethernet_es_gigabit">
+
+                        <span class="w-10 h-5 rounded-full bg-white/10 relative transition">
+                            <span class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white/70 transition"
+                                  x-data
+                                  x-bind:class="$wire.form.ethernet_es_gigabit ? 'translate-x-5 bg-white' : 'translate-x-0 bg-white/70'">
+                            </span>
+                        </span>
+
+                        <span class="text-xs text-slate-300/80">
+                            {{ $form->ethernet_es_gigabit ? 'Sí' : 'No' }}
+                        </span>
+                    </label>
+                </div>
+            @endif
+        </div>
+
+        {{-- Idioma teclado --}}
+        <div class="rounded-2xl border border-white/10 bg-white/5 dark:bg-slate-900/40 backdrop-blur-xl p-4 md:col-span-2">
+            <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Idioma del teclado
+            </label>
+
+            <select
+                wire:model.live="form.teclado_idioma"
+                class="mt-2 w-full rounded-xl px-4 py-2.5 text-sm
+                       bg-white/5 dark:bg-slate-900/40
+                       border border-white/10
+                       text-slate-100
+                       focus:outline-none focus:ring-2 focus:ring-blue-500/50
+                       backdrop-blur-xl"
+            >
+                <option value="N/A">N/A</option>
+                <option value="ES (Latino)">ES (Latino)</option>
+                <option value="ES (España)">ES (España)</option>
+                <option value="EN (US)">EN (US)</option>
+                <option value="EN (UK)">EN (UK)</option>
+                <option value="FR">FR</option>
+                <option value="DE">DE</option>
+                <option value="IT">IT</option>
+                <option value="PT">PT</option>
+            </select>
+
+            @error('form.teclado_idioma')
+                <p class="mt-1 text-xs text-red-300">{{ $message }}</p>
+            @enderror
+        </div>
+    </div>
+</div>
+
+
         {{-- ================== --}}
         {{--  ESTATUS EQUIPO   --}}
         {{-- ================== --}}
