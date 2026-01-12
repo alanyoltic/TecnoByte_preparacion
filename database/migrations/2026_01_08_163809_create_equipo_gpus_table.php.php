@@ -25,7 +25,7 @@ return new class extends Migration {
             $table->string('modelo')->nullable();
 
             // Memoria (VRAM) opcional. En integrada puedes dejar null.
-            $table->unsignedSmallInteger('vram_gb')->nullable();
+            $table->unsignedSmallInteger('vram')->nullable();
 
             // Si luego quieres: notas/observaciones
             $table->string('notas', 255)->nullable();
