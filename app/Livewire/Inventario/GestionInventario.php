@@ -7,10 +7,12 @@ use App\Exports\EquiposExport;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Models\Equipo;
 use App\Models\Lote;
-use App\Models\User;
-use App\Models\Roles;
 use App\Models\Proveedor;
-use Livewire\Component;
+use App\Models\Roles;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Livewire\Component; 
+use App\Models\EquipoEliminacion;
 use Livewire\WithPagination;
 
 class GestionInventario extends Component
@@ -51,6 +53,10 @@ class GestionInventario extends Component
     public $tiposEquipo = [];
     public $areas = [];
     public $sistemasOperativos = [];
+
+
+
+
 
     public function mount(): void
     {
@@ -133,6 +139,92 @@ class GestionInventario extends Component
         }
     }
 
+
+    public bool $modalEliminarSeleccion = false;
+    public string $motivo_eliminacion = '';
+
+public function abrirEliminarSeleccion()
+{
+    if (count($this->selected) === 0) return;
+
+    $this->motivo_eliminacion = '';
+    $this->modalEliminarSeleccion = true;
+}
+
+
+
+public function confirmarEliminarSeleccion()
+{
+    // 1) Validación de motivo
+    if (empty(trim($this->motivo_eliminacion)) || strlen(trim($this->motivo_eliminacion)) < 8) {
+        $this->addError('motivo_eliminacion', 'Debes proporcionar un motivo detallado (mínimo 8 caracteres).');
+        return;
+    }
+
+    if (empty($this->selected)) {
+        $this->cerrarEliminarSeleccion();
+        return;
+    }
+
+    try {
+        DB::transaction(function () {
+            // Traemos los equipos incluyendo soft-deleted por seguridad
+            $equipos = Equipo::withTrashed()->whereIn('id', $this->selected)->get();
+
+            foreach ($equipos as $equipo) {
+                // 2) Auditoría (Snapshot)
+                \App\Models\EquipoEliminacion::create([
+                    'numero_serie' => $equipo->numero_serie,
+                    'codigo'       => $equipo->codigo,
+                    'tipo_equipo'  => $equipo->tipo_equipo,
+                    'marca'        => $equipo->marca,
+                    'modelo'       => $equipo->modelo,
+                    'user_id'      => auth()->id(),
+                    'motivo'       => $this->motivo_eliminacion,
+                    'snapshot'     => [
+                        'equipo'   => $equipo->toArray(),
+                        'gpus'     => $equipo->gpus->toArray(),
+                        'baterias' => $equipo->baterias->toArray(),
+                    ],
+                    'ip'           => request()->ip(),
+                    'user_agent'   => substr((string) request()->userAgent(), 0, 250),
+                ]);
+
+                // 3) Borrado de Relaciones
+                // Si tus modelos EquipoGpu y EquipoBateria NO usan SoftDeletes, usa delete()
+                // Si los borras así, se eliminan físicamente de la tabla.
+                $equipo->gpus()->delete(); 
+                $equipo->baterias()->delete();
+
+                if ($equipo->monitor) {
+                    $equipo->monitor()->delete();
+                }
+
+                // 4) Borrado DEFINITIVO del Equipo
+                // Como Equipo SÍ tiene SoftDeletes, usamos forceDelete para que desaparezca
+                $equipo->forceDelete();
+            }
+        });
+
+        // 5) Limpieza de interfaz
+        $this->selected = [];
+        $this->motivo_eliminacion = '';
+        $this->modalEliminarSeleccion = false;
+
+        $this->dispatch('toast', type: 'success', message: 'Equipos eliminados definitivamente y auditoría registrada.');
+
+    } catch (\Exception $e) {
+        $this->dispatch('toast', type: 'error', message: 'Error al eliminar: ' . $e->getMessage());
+    }
+}
+
+
+public function cerrarEliminarSeleccion()
+{
+    $this->modalEliminarSeleccion = false;
+}
+
+
     public function resetSelection(): void
     {
         $this->selected = [];
@@ -180,6 +272,10 @@ class GestionInventario extends Component
             $this->selected = [];
         }
     }
+
+
+    
+    
 
     /**
      * Query base con TODOS los filtros (básicos + avanzados)
@@ -304,19 +400,7 @@ class GestionInventario extends Component
     /**
      * Eliminar selección
      */
-    public function eliminarSeleccion(): void
-    {
-        if (empty($this->selected)) {
-            return;
-        }
 
-        Equipo::whereIn('id', $this->selected)->delete();
-
-        $this->resetPage();
-        $this->resetSelection();
-
-        session()->flash('success', 'Los equipos seleccionados fueron eliminados del inventario.');
-    }
 
     /**
      * Exportar a CSV (Excel lo abre sin problema) con prácticamente todos los campos.

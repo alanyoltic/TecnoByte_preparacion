@@ -737,7 +737,7 @@
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
             <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Datos básicos
+                TARJETA GRÁFICA
             </span>
             <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
         </div>
@@ -831,26 +831,6 @@
             @error('gpu_integrada_modelo') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
         </div>
 
-        {{-- (4) VRAM --}}
-        <div class="@if(!($isLaptopLike || $gpu_integrada_tiene)) opacity-60 @endif transition">
-            <label class="block text-sm font-medium mb-1">Integrada (VRAM)</label>
-
-            <div class="grid grid-cols-3 gap-2">
-                <input type="number" min="0" wire:model.live="gpu_integrada_vram" @disabled(!($isLaptopLike || $gpu_integrada_tiene))
-                    class="col-span-2 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
-                        text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-                        disabled:cursor-not-allowed disabled:opacity-60"
-                    placeholder="0">
-
-                <select wire:model.live="gpu_integrada_vram_unidad" @disabled(!($isLaptopLike || $gpu_integrada_tiene))
-                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
-                        text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-                        disabled:cursor-not-allowed disabled:opacity-60">
-                    <option value="MB">MB</option>
-                    <option value="GB">GB</option>
-                </select>
-            </div>
-        </div>
 
     </div> {{-- ✅ CIERRA GRID INTEGRADA --}}
 

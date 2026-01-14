@@ -188,21 +188,41 @@
 
 
 
+    
+
+
+
 
 
     <div class="flex justify-end pt-2">
-        <button
-            type="button"
-            wire:click="guardar"
-            wire:loading.attr="disabled"
-            class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl
-                   bg-[#FF9521] text-white text-sm font-medium
-                   shadow-lg shadow-orange-900/40
-                   hover:bg-orange-500 transition
-                   disabled:opacity-40 disabled:cursor-not-allowed">
-            <span wire:loading.remove>Guardar lote</span>
-            <span wire:loading class="text-xs">Guardando...</span>
-        </button>
-    </div>
+
+
+<div class="flex items-center gap-3">
+    <button type="button"
+        wire:click="addModeloRow"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl
+               bg-white/80 dark:bg-slate-900/60
+               border border-slate-300/70 dark:border-slate-700
+               text-[0.7rem] font-medium text-slate-700 dark:text-slate-100
+               hover:bg-slate-100/90 dark:hover:bg-slate-800/80
+               transition">
+        <span class="text-lg leading-none">+</span>
+        <span>Agregar modelo</span>
+    </button>
+
+    <button
+        type="button"
+        wire:click="guardar"
+        wire:loading.attr="disabled"
+        class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl
+               bg-[#FF9521] text-white text-sm font-medium
+               shadow-lg shadow-orange-900/40
+               hover:bg-orange-500 transition
+               disabled:opacity-40 disabled:cursor-not-allowed">
+        <span wire:loading.remove>Guardar lote</span>
+        <span wire:loading class="text-xs">Guardando...</span>
+    </button>
+</div>
+
 
 </div>

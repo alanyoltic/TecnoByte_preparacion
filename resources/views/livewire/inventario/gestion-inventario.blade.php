@@ -1,4 +1,10 @@
 <div class="space-y-6">
+<div class="text-xs text-white/80">
+    modal: {{ $modalEliminarSeleccion ? 'SI' : 'NO' }}
+</div>
+
+
+
 
     {{-- BARRA DE ACCIONES MASIVAS --}}
     <div
@@ -63,31 +69,33 @@
                 <span class="sm:hidden">Exportar</span>
             </button>
 
-            {{-- Eliminar --}}
-            <button
-                type="button"
-                wire:click="eliminarSeleccion"
-                class="inline-flex items-center gap-2 rounded-xl px-3 py-1.5
-                       bg-red-600 hover:bg-red-500
-                       text-xs sm:text-sm font-semibold text-white
-                       shadow-md shadow-red-500/30
-                       disabled:opacity-60 disabled:cursor-not-allowed
-                       transition"
-                @if (count($selected) === 0) disabled @endif
-                onclick="if(!confirm('¿Seguro que deseas eliminar los equipos seleccionados? Esta acción no se puede deshacer.')) { return false; }"
-            >
-                <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd"
-                          d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0
-                          100 2h.293l.853 10.24A2 2 0 007.14 18h5.72a2 2 0
-                          001.994-1.76L15.707 6H16a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zm1 5a1 1 0
-                          00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1zm-3 1a1 1 0
-                          011 1v6a1 1 0 11-2 0V9a1 1 0 011-1zm7 1a1 1 0
-                          00-1 1v6a1 1 0 102 0V9a1 1 0 00-1-1z"
-                          clip-rule="evenodd" />
-                </svg>
-                <span>Eliminar selección</span>
-            </button>
+<div class="text-xs text-white/80">
+    selected: {{ json_encode($selected) }}
+</div>
+
+
+
+{{-- Eliminar --}}
+{{-- Eliminar --}}
+<button
+    type="button"
+    wire:click="abrirEliminarSeleccion"
+    class="inline-flex items-center gap-2 rounded-xl px-3 py-1.5
+           bg-red-600 hover:bg-red-500
+           text-xs sm:text-sm font-semibold text-white
+           shadow-md shadow-red-500/30
+           disabled:opacity-60 disabled:cursor-not-allowed
+           transition"
+    @if (count($selected) === 0) disabled @endif
+>
+    <span>Eliminar selección</span>
+</button>
+
+
+
+
+
+
         </div>
     </div>
 
@@ -761,5 +769,72 @@
             {{ $equipos->links() }}
         </div>
 
+
+
+
+
+
     </div>
+
+
+
+{{-- MODAL ELIMINAR SELECCION --}}
+{{-- Usamos un div externo siempre presente para que Livewire no pierda el rastro --}}
+<div wire:key="container-modal-eliminar">
+    @if($modalEliminarSeleccion)
+        <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-x-hidden overflow-y-auto outline-none focus:outline-none">
+            
+            {{-- Backdrop (Fondo oscuro) --}}
+            <div class="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"></div>
+
+            {{-- Contenido del Modal --}}
+            <div class="relative w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-700 p-6 shadow-2xl transform transition-all">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center text-red-500">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-white">Motivo de eliminación</h3>
+                </div>
+
+                <p class="text-sm text-slate-300">
+                    Estás a punto de eliminar <strong>{{ count($selected) }}</strong> equipos. Esta acción no se puede deshacer.
+                </p>
+
+                <textarea
+                    wire:model.defer="motivo_eliminacion"
+                    rows="4"
+                    class="mt-4 w-full rounded-xl bg-slate-800 border border-slate-700 text-white p-3 focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                    placeholder="Describe el motivo (mínimo 8 caracteres)..."
+                ></textarea>
+
+                @error('motivo_eliminacion')
+                    <p class="mt-2 text-xs text-red-400 font-medium">{{ $message }}</p>
+                @enderror
+
+                <div class="mt-6 flex justify-end gap-3">
+                    <button
+                        type="button"
+                        class="px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors"
+                        wire:click="cerrarEliminarSeleccion"
+                    >
+                        Cancelar
+                    </button>
+
+                    <button
+                        type="button"
+                        class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-medium shadow-lg shadow-red-900/20 transition-all"
+                        wire:click="confirmarEliminarSeleccion"
+                    >
+                        Eliminar definitivamente
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
+
+    
+</div>
+
