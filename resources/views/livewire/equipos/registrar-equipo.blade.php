@@ -1429,7 +1429,7 @@
                             bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
                             focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">Selecciona</option>
-                        @foreach(['1366x768','1600x900','1920x1080','2560x1440','2880x1800','3840x2160'] as $r)
+                        @foreach(['1366x768','1600x900','1920x1080','1920x1200','2560x1440','2880x1800','3200x1800','3840x2160'] as $r)
                             <option value="{{ $r }}">{{ $r }}</option>
                         @endforeach
                     </select>

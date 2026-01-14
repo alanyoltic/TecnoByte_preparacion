@@ -602,26 +602,48 @@
                         $textoSO = strtoupper($equipo->sistema_operativo ?? 'WINDOWS 10 PRO');
 
                         // ===== TOUCH SOLO SI SÍ ES =====
-                        $mostrarTouch = (bool) ($equipo->pantalla_es_touch ?? false);
+                        // ===== TOUCH (FUENTE DE VERDAD: equipo_monitores) =====
+                        $monitor = \App\Models\EquipoMonitor::query()
+                            ->where('equipo_id', $equipo->id)
+                            ->orderByDesc('id') // por si existen varios registros, toma el más reciente
+                            ->first();
+
+                        $mostrarTouch = (bool) ($monitor?->es_touch ?? false);
 
 
-                        // ===== GPU DEDICADA =====
-                    $gpuModelo = strtoupper(trim($equipo->grafica_dedicada_modelo ?? ''));
-                    $gpuVRAM   = strtoupper(trim($equipo->grafica_dedicada_vram ?? ''));
 
-                    // Solo mostrar si alguno tiene información
-                    $mostrarGPU = ($gpuModelo !== '' || $gpuVRAM !== '');
+                        // ===== GPU DEDICADA (NUEVO: desde equipo_gpus) =====
+                        $gpuDedicada = \App\Models\EquipoGpu::query()
+                            ->where('equipo_id', $equipo->id)
+                            ->where('tipo', 'DEDICADA')
+                            ->where('activo', 1)
+                            ->first();
 
-                    // Construir texto final GPU (ej: "NVIDIA MX130 2GB")
-                    if ($mostrarGPU) {
-                        if ($gpuModelo && $gpuVRAM) {
-                            $textoGPU = $gpuModelo . ' ' . $gpuVRAM;  
-                        } elseif ($gpuModelo) {
-                            $textoGPU = $gpuModelo;
-                        } else {
-                            $textoGPU = $gpuVRAM; // caso raro pero soportado
+                        $mostrarGPU = (bool) $gpuDedicada;
+
+                        if ($mostrarGPU) {
+                            // Modelo final: "NVIDIA RTX 3050" (marca + modelo)
+                            $modelo = trim(($gpuDedicada->marca ?? '') . ' ' . ($gpuDedicada->modelo ?? ''));
+                            $modelo = strtoupper($modelo);
+
+                            // VRAM final: "4GB" / "2048MB"
+                            $vramNum   = $gpuDedicada->vram;
+                            $vramUnit  = strtoupper(trim($gpuDedicada->vram_unidad ?? ''));
+                            $vramTxt   = '';
+
+                            if (!is_null($vramNum) && $vramNum !== '') {
+                                $vramTxt = strtoupper((string)$vramNum) . ($vramUnit ? $vramUnit : '');
+                            }
+
+                            // Texto final: "NVIDIA RTX 3050 4GB"
+                            $textoGPU = trim($modelo . ($vramTxt ? ' ' . $vramTxt : ''));
+
+                            // Fallback si quedó vacío por datos incompletos
+                            if ($textoGPU === '') {
+                                $textoGPU = 'GPU DEDICADA';
+                            }
                         }
-                    }
+
 
                     @endphp
 
