@@ -164,6 +164,7 @@ class RegistrarEquipo extends Component
     public $puertos_usb_c;
 
     public $lectores_sd;
+    public $lectores_microsd;
     public $lectores_sc;
     public $lectores_esata;
     public $lectores_sim;
@@ -216,7 +217,7 @@ class RegistrarEquipo extends Component
 
     private const MAP_LECTORES = [
         'SD'        => 'lectores_sd',
-        'microSD'   => 'lectores_sd',
+        'microSD'   => 'lectores_microsd',
         'SmartCard' => 'lectores_sc',
         'eSATA'     => 'lectores_esata',
         'SIM'       => 'lectores_sim',
@@ -373,7 +374,7 @@ class RegistrarEquipo extends Component
     public function addPuertoVideo(): void { $this->puertos_video[] = ['tipo' => '', 'cantidad' => 1]; }
     public function removePuertoVideo($i): void { $this->unsetIndex($this->puertos_video, $i); }
 
-    public function addLector(): void { $this->lectores[] = ['tipo' => '', 'detalle' => '']; }
+    public function addLector(): void {  $this->lectores[] = ['tipo' => '', 'cantidad' => 1]; }
     public function removeLector($i): void { $this->unsetIndex($this->lectores, $i); }
 
     public function addSlotAlmacenamiento(): void { $this->slots_almacenamiento[] = ['tipo' => '', 'cantidad' => null]; }
@@ -611,15 +612,15 @@ class RegistrarEquipo extends Component
 
             'lectores' => 'array',
             'lectores.*.tipo' => 'nullable|string|max:50',
-            'lectores.*.detalle' => 'nullable|string|max:100',
+            'lectores.*.cantidad' => 'nullable|integer|min:1|max:10',
 
             'gpu_integrada_tiene' => ['boolean'],
             'gpu_integrada_marca' => ['nullable','string','max:120'],
             'gpu_integrada_modelo' => ['nullable','string','max:180'],
-            'gpu_integrada_vram' => ['nullable','integer','min:0','max:64'],
+            
 
             'gpu_dedicada_tiene' => ['boolean'],
-            'gpu_dedicada_vram' => ['nullable','integer','min:0','max:64'],
+            'gpu_dedicada_vram' => ['nullable','integer','min:0','max:1024'],
             'gpu_dedicada_marca'  => [ $this->gpu_dedicada_tiene ? 'required' : 'nullable', 'string','max:120' ],
             'gpu_dedicada_modelo' => [ $this->gpu_dedicada_tiene ? 'required' : 'nullable', 'string','max:180' ],
         ];
@@ -773,6 +774,7 @@ class RegistrarEquipo extends Component
             'puertos_usb_c'  => $this->puertos_usb_c,
 
             'lectores_sd'    => $this->lectores_sd,
+            'lectores_microsd'    => $this->lectores_microsd,
             'lectores_sc'    => $this->lectores_sc,
             'lectores_esata' => $this->lectores_esata,
             'lectores_sim'   => $this->lectores_sim,
@@ -930,7 +932,7 @@ class RegistrarEquipo extends Component
         $this->applyMapCountsToEquipo($videoCounts, self::MAP_VIDEO);
 
         // Lectores sin cantidad: cuenta 1 cada uno
-        $lectorCounts = $this->aggregateCounters($this->lectores, 'tipo', null);
+        $lectorCounts = $this->aggregateCounters($this->lectores, 'tipo', 'cantidad');
         $this->applyMapCountsToEquipo($lectorCounts, self::MAP_LECTORES);
     }
 

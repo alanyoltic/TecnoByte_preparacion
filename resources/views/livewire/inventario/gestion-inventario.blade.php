@@ -1,8 +1,4 @@
 <div class="space-y-6">
-<div class="text-xs text-white/80">
-    modal: {{ $modalEliminarSeleccion ? 'SI' : 'NO' }}
-</div>
-
 
 
 
@@ -69,13 +65,10 @@
                 <span class="sm:hidden">Exportar</span>
             </button>
 
-<div class="text-xs text-white/80">
-    selected: {{ json_encode($selected) }}
-</div>
 
 
 
-{{-- Eliminar --}}
+
 {{-- Eliminar --}}
 <button
     type="button"
@@ -779,7 +772,6 @@
 
 
 {{-- MODAL ELIMINAR SELECCION --}}
-{{-- Usamos un div externo siempre presente para que Livewire no pierda el rastro --}}
 <div wire:key="container-modal-eliminar">
     @if($modalEliminarSeleccion)
         <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-x-hidden overflow-y-auto outline-none focus:outline-none">

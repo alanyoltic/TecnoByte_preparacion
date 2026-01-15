@@ -914,7 +914,7 @@
             <label class="block text-sm font-medium mb-1">Dedicada (VRAM)</label>
 
             <div class="grid grid-cols-3 gap-2">
-                <input type="number" min="0" wire:model.live="gpu_dedicada_vram" @disabled(! $gpu_dedicada_tiene)
+                <input type="number" min="0" wire:model.defer="gpu_dedicada_vram" @disabled(! $gpu_dedicada_tiene)
                     class="col-span-2 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
                         text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
                         disabled:cursor-not-allowed disabled:opacity-60"
@@ -2381,16 +2381,17 @@
                                     @endforeach
                                 </select>
                             </div>
-
-                            <div class="col-span-7 sm:col-span-8">
+                            <div class="col-span-4 sm:col-span-4">
                                 <input
-                                    type="text"
-                                    wire:model="lectores.{{ $index }}.detalle"
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    placeholder="Cant."
+                                    wire:model="lectores.{{ $index }}.cantidad"
                                     class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                         bg-slate-50 dark:bg-slate-900
                                         text-xs sm:text-sm px-3 py-2
                                         focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                    placeholder="Ej. 1 lector SD frontal, combo SIM + microSD, etc."
                                 >
                             </div>
 

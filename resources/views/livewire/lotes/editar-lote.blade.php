@@ -91,17 +91,7 @@
                 Modelos recibidos en este lote
             </p>
 
-            <button type="button"
-                    wire:click="addModeloRow"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl
-                           bg-white/80 dark:bg-slate-900/60
-                           border border-slate-300/70 dark:border-slate-700
-                           text-[0.7rem] font-medium text-slate-700 dark:text-slate-100
-                           hover:bg-slate-100/90 dark:hover:bg-slate-800/80
-                           transition">
-                <span class="text-lg leading-none">+</span>
-                <span>Agregar modelo</span>
-            </button>
+
         </div>
 
         @error('modelos')
@@ -190,7 +180,20 @@
     </div>
 
     {{-- BOTÓN ACTUALIZAR --}}
-    <div class="pt-2 flex items-center justify-end">
+    <div class="pt-2 flex items-center justify-end gap-3">
+
+            <button type="button"
+                    wire:click="addModeloRow"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl
+                           bg-white/80 dark:bg-slate-900/60
+                           border border-slate-300/70 dark:border-slate-700
+                           text-[0.7rem] font-medium text-slate-700 dark:text-slate-100
+                           hover:bg-slate-100/90 dark:hover:bg-slate-800/80
+                           transition">
+                <span class="text-lg leading-none">+</span>
+                <span>Agregar modelo</span>
+            </button>
+    
         <button
             type="button"
             wire:click="actualizarLote"

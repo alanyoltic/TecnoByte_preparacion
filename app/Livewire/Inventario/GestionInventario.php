@@ -174,7 +174,8 @@ public function confirmarEliminarSeleccion()
             foreach ($equipos as $equipo) {
                 // 2) Auditoría (Snapshot)
                 \App\Models\EquipoEliminacion::create([
-                    'numero_serie' => $equipo->numero_serie,
+                    'numero_serie' => $equipo->numero_serie, 
+                    'equipo_id_original' => $equipo->id,
                     'codigo'       => $equipo->codigo,
                     'tipo_equipo'  => $equipo->tipo_equipo,
                     'marca'        => $equipo->marca,
@@ -211,7 +212,7 @@ public function confirmarEliminarSeleccion()
         $this->motivo_eliminacion = '';
         $this->modalEliminarSeleccion = false;
 
-        $this->dispatch('toast', type: 'success', message: 'Equipos eliminados definitivamente y auditoría registrada.');
+        $this->dispatch('toast', type: 'success', message: 'Equipo/s eliminado/s correctamente.');
 
     } catch (\Exception $e) {
         $this->dispatch('toast', type: 'error', message: 'Error al eliminar: ' . $e->getMessage());

@@ -9,6 +9,8 @@ class EquipoEliminacion extends Model
     protected $table = 'equipo_eliminaciones';
 
     protected $fillable = [
+        'accion',
+        'equipo_id_original',
         'numero_serie',
         'codigo',
         'tipo_equipo',
