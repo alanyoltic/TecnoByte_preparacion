@@ -145,9 +145,9 @@
             {{-- CONTENEDOR PRINCIPAL DEL FORMULARIO --}}
             <div class="max-w-7xl mx-auto">
                 {{-- Aquí montamos el componente Livewire de EDICIÓN y le pasamos el modelo --}}
-                @livewire('inventario.editar-equipo', ['equipo' => $equipo])
+                @livewire('equipos.editar-equipo', ['equipo' => $equipo])
                 {{-- o si prefieres la sintaxis de tag:
-                <livewire:inventario.editar-equipo :equipo="$equipo" />
+                <livewire:equipos.editar-equipo :equipo="$equipo" />
                 --}}
             </div>
         </div>

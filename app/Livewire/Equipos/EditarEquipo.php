@@ -15,22 +15,25 @@ use App\Models\{
 };
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
-class RegistrarEquipo extends Component
+class EditarEquipo extends Component
 {
+    public Equipo $equipo;
+
     /**
-     * ✅ Form Object (nombre estable)
-     * En el Blade usarás: wire:model="form.campo"
+     * ✅ Form Object estable
+     * En Blade usar: wire:model="form.campo"
      */
     public EquipoForm $form;
-
 
     // =======================
     // Catálogos / listas (UI)
     // =======================
     public array $proveedores = [];
-    public array $lotes = [];
+    public array $lotes = [];                 // OJO: aquí guardamos MODELOS (objetos) -> evita error fecha_llegada
     public array $modelosLote = [];
     public array $lotesTerminadosIds = [];
 
@@ -39,6 +42,12 @@ class RegistrarEquipo extends Component
         'DisplayPort', 'Mini DisplayPort',
         'USB 2.0', 'USB 3.0', 'USB 3.1', 'USB 3.2', 'USB-C',
     ];
+
+    // =======================
+    // Control de cambios (opcional)
+    // =======================
+    public array $baseline = [];
+    public bool $hasChanges = false;
 
     // =======================
     // MAPS (UI -> columnas DB)
@@ -95,27 +104,48 @@ class RegistrarEquipo extends Component
     // =======================
     // Lifecycle
     // =======================
-    public function mount(): void
+    public function mount(Equipo $equipo): void
     {
-        // ✅ Instancia estable del Form
-        
+        $this->equipo = $equipo;
 
+        // 1) Catálogos (como objetos)
         $this->cargarCatalogos();
-        $this->setDefaultsEnForm();
+
+        // 2) Hidratar Form desde Equipo (tu Form ya tiene esto en Editar)
+        //    (si tu método se llama distinto, cámbialo aquí)
+        $this->form->setEquipo($equipo);
+
+        $this->hidratarDinamicosDesdeEquipo();
+
+
+        // 3) Asegurar lote_id/proveedor/modelo (porque en equipos guardas lote_modelo_id)
+        $this->hidratarLoteModeloProveedorDesdeLoteModelo();
+
+        // 4) Hidratar tablas hijas a form (baterías/monitor/gpus)
+        $this->hidratarRelacionadas();
+
+        // 5) Defaults sin pisar data existente
+        $this->ensureDefaultsEnForm();
+
+        // 6) Baseline (para detectar cambios)
+        if (method_exists($this->form, 'snapshotPersistible')) {
+            $this->baseline = $this->form->snapshotPersistible();
+        } else {
+            $this->baseline = $this->form->all();
+        }
+        $this->hasChanges = false;
     }
 
-    private function setDefaultsEnForm(): void
+    private function ensureDefaultsEnForm(): void
     {
         $f = $this->form;
-
-        $f->estatus_general = 'En Revisión';
 
         $f->almacenamiento_secundario_capacidad = $f->almacenamiento_secundario_capacidad ?: 'N/A';
         $f->almacenamiento_secundario_tipo      = $f->almacenamiento_secundario_tipo ?: 'N/A';
         $f->teclado_idioma                      = $f->teclado_idioma ?: 'N/A';
 
-        $f->bateria_tiene  = $f->bateria_tiene ?? true;
-        $f->bateria2_tiene = $f->bateria2_tiene ?? false;
+        $f->bateria_tiene  = (bool) ($f->bateria_tiene ?? true);
+        $f->bateria2_tiene = (bool) ($f->bateria2_tiene ?? false);
 
         $f->ethernet_tiene      = (bool) ($f->ethernet_tiene ?? false);
         $f->ethernet_es_gigabit = (bool) ($f->ethernet_es_gigabit ?? false);
@@ -132,11 +162,258 @@ class RegistrarEquipo extends Component
         $f->gpu_dedicada_vram_unidad  = $f->gpu_dedicada_vram_unidad ?: 'GB';
 
         $f->monitor_incluido = $f->monitor_incluido ?: 'NO';
-        $this->modelosLote = [];
     }
 
+    private function hidratarLoteModeloProveedorDesdeLoteModelo(): void
+    {
+        $f = $this->form;
+
+        if (!$f->lote_modelo_id) return;
+
+        $lm = LoteModeloRecibido::with('lote')->find($f->lote_modelo_id);
+        if (!$lm) return;
+
+        $f->lote_id = $lm->lote_id;
+        $f->marca = $lm->marca;
+        $f->modelo = $lm->modelo;
+
+        // proveedor_id por lote (fuente de verdad)
+        $f->proveedor_id = $lm->lote?->proveedor_id ?? $this->equipo->proveedor_id;
+
+        // Cargar modelos del lote para el select (incluye el actual aunque esté lleno)
+        $this->cargarModelosDelLote((int)$lm->lote_id, true);
+    }
+
+    private function hidratarRelacionadas(): void
+    {
+        $f = $this->form;
+
+        // =======================
+        // Monitor / Pantalla
+        // =======================
+        $m = EquipoMonitor::where('equipo_id', $this->equipo->id)->first();
+
+        if ($m) {
+            if ($m->origen_pantalla === 'INTEGRADA') {
+                $f->monitor_incluido = 'NO';
+
+                $f->pantalla_pulgadas   = $m->pulgadas;
+                $f->pantalla_resolucion = $m->resolucion;
+                $f->pantalla_es_touch   = (bool)$m->es_touch;
+
+                // limpiar externo
+                $f->monitor_pulgadas = null;
+                $f->monitor_resolucion = null;
+                $f->monitor_es_touch = false;
+                $f->monitor_entradas_rows = [];
+
+                $f->monitor_detalles_esteticos_checks = '';
+                $f->monitor_detalles_esteticos_otro = null;
+                $f->monitor_detalles_funcionamiento_checks = '';
+                $f->monitor_detalles_funcionamiento_otro = null;
+            } else {
+                // EXTERNA
+                $f->monitor_incluido = ((int)($m->incluido ?? 1) === 1) ? 'SI' : 'NO';
+
+                $f->monitor_pulgadas   = $m->pulgadas;
+                $f->monitor_resolucion = $m->resolucion;
+                $f->monitor_es_touch   = (bool)$m->es_touch;
+
+                // limpiar integrada
+                $f->pantalla_pulgadas = null;
+                $f->pantalla_resolucion = null;
+                $f->pantalla_es_touch = false;
+
+                $f->monitor_detalles_esteticos_checks = (string)($m->detalles_esteticos_checks ?? '');
+                $f->monitor_detalles_esteticos_otro  = (string)($m->detalles_esteticos_otro ?? '');
+
+                $f->monitor_detalles_funcionamiento_checks = (string)($m->detalles_funcionamiento_checks ?? '');
+                $f->monitor_detalles_funcionamiento_otro  = (string)($m->detalles_funcionamiento_otro ?? '');
+
+                // Entradas in_* -> rows
+                $rows = [];
+                foreach (self::MAP_MONITOR_IN as $label => $col) {
+                    $qty = (int)($m->{$col} ?? 0);
+                    if ($qty > 0) $rows[] = ['tipo' => $label, 'cantidad' => $qty];
+                }
+                $f->monitor_entradas_rows = $rows;
+            }
+        } else {
+            // Defaults si no hay registro
+            $f->monitor_incluido = $f->monitor_incluido ?: 'NO';
+            $f->monitor_entradas_rows = $f->monitor_entradas_rows ?: [];
+
+            $f->pantalla_pulgadas = $f->pantalla_pulgadas ?: null;
+            $f->pantalla_resolucion = $f->pantalla_resolucion ?: null;
+            $f->pantalla_es_touch = (bool)($f->pantalla_es_touch ?? false);
+
+            $f->monitor_pulgadas = $f->monitor_pulgadas ?: null;
+            $f->monitor_resolucion = $f->monitor_resolucion ?: null;
+            $f->monitor_es_touch = (bool)($f->monitor_es_touch ?? false);
+
+            $f->monitor_detalles_esteticos_checks = $f->monitor_detalles_esteticos_checks ?: '';
+            $f->monitor_detalles_esteticos_otro = $f->monitor_detalles_esteticos_otro ?: null;
+            $f->monitor_detalles_funcionamiento_checks = $f->monitor_detalles_funcionamiento_checks ?: '';
+            $f->monitor_detalles_funcionamiento_otro = $f->monitor_detalles_funcionamiento_otro ?: null;
+        }
+
+        // =======================
+        // Baterías
+        // =======================
+        $bats = EquipoBateria::query()
+            ->where('equipo_id', $this->equipo->id)
+            ->orderBy('id')
+            ->get()
+            ->values();
+
+        $f->bateria_tiene = $bats->isNotEmpty();
+
+        $f->bateria1_tipo  = $bats[0]->tipo ?? null;
+        $f->bateria1_salud = isset($bats[0]) ? (string)((int)$bats[0]->salud_percent) : null;
+
+        $f->bateria2_tiene = isset($bats[1]);
+        $f->bateria2_tipo  = $bats[1]->tipo ?? null;
+        $f->bateria2_salud = isset($bats[1]) ? (string)((int)$bats[1]->salud_percent) : null;
+
+        // =======================
+        // GPUs (equipo_gpus)
+        // =======================
+        $gpus = EquipoGpu::query()
+            ->where('equipo_id', $this->equipo->id)
+            ->get()
+            ->keyBy(fn ($g) => strtoupper((string)$g->tipo));
+
+        $ig = $gpus->get('INTEGRADA');
+        $dg = $gpus->get('DEDICADA');
+
+        $f->gpu_integrada_tiene = (bool) ($ig?->activo ?? false);
+        $f->gpu_integrada_marca = $ig?->marca;
+        $f->gpu_integrada_modelo = $ig?->modelo;
+        $f->gpu_integrada_vram = $ig?->vram !== null ? (string)((int)$ig->vram) : null;
+        $f->gpu_integrada_vram_unidad = $ig?->vram_unidad ?: ($f->gpu_integrada_vram_unidad ?: 'GB');
+
+        $f->gpu_dedicada_tiene = (bool) ($dg?->activo ?? false);
+        $f->gpu_dedicada_marca = $dg?->marca;
+        $f->gpu_dedicada_modelo = $dg?->modelo;
+        $f->gpu_dedicada_vram = $dg?->vram !== null ? (string)((int)$dg->vram) : null;
+        $f->gpu_dedicada_vram_unidad = $dg?->vram_unidad ?: ($f->gpu_dedicada_vram_unidad ?: 'GB');
+    }
+
+
+    private function hidratarDinamicosDesdeEquipo(): void
+    {
+        // 1) Reconstruir filas dinámicas de puertos/lectores/slots desde columnas del equipo
+        $this->form->puertos_usb = $this->buildRowsFromMap(self::MAP_USB);
+        $this->form->puertos_video = $this->buildRowsFromMap(self::MAP_VIDEO);
+        $this->form->lectores = $this->buildRowsFromMap(self::MAP_LECTORES);
+
+        $this->form->slots_almacenamiento = $this->buildRowsFromSlots([
+            'SSD'       => 'slots_alm_ssd',
+            'M.2'       => 'slots_alm_m2',
+            'M.2 MICRO' => 'slots_alm_m2_micro',
+            'HDD'       => 'slots_alm_hdd',
+            'MSATA'     => 'slots_alm_msata',
+        ]);
+
+        // 2) Parsear detalles_esteticos / detalles_funcionamiento a checks + otro
+        [$checksE, $otroE] = $this->parseChecksAndOtro($this->form->detalles_esteticos ?? '');
+        $this->form->detalles_esteticos_checks = $checksE;
+        $this->form->detalles_esteticos_otro = $otroE;
+
+        [$checksF, $otroF] = $this->parseChecksAndOtro($this->form->detalles_funcionamiento ?? '');
+        $this->form->detalles_funcionamiento_checks = $checksF;
+        $this->form->detalles_funcionamiento_otro = $otroF;
+    }
+
+    /**
+     * Construye rows tipo: [ ['tipo' => 'USB 3.0', 'cantidad' => 2], ... ]
+     * a partir de un MAP label => columna (ej. 'USB 3.0' => 'puertos_usb_30').
+     */
+    private function buildRowsFromMap(array $mapLabelToColumn): array
+    {
+        $rows = [];
+
+        foreach ($mapLabelToColumn as $label => $col) {
+            $val = $this->form->{$col} ?? null;
+
+            if ($val === null || $val === '' || $val === '0' || $val === 0) {
+                continue;
+            }
+
+            $qty = is_numeric($val) ? (int) $val : 1;
+            if ($qty <= 0) continue;
+
+            $rows[] = [
+                'tipo' => $label,
+                'cantidad' => $qty,
+            ];
+        }
+
+        return $rows;
+    }
+
+    private function buildRowsFromSlots(array $labelToColumn): array
+    {
+        $rows = [];
+
+        foreach ($labelToColumn as $label => $col) {
+            $val = $this->form->{$col} ?? null;
+
+            if ($val === null || $val === '' || $val === '0' || $val === 0) {
+                continue;
+            }
+
+            $qty = is_numeric($val) ? (int) $val : 1;
+            if ($qty <= 0) continue;
+
+            $rows[] = [
+                'tipo' => $label,
+                'cantidad' => $qty,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Convierte:
+     * "A, B, C | Otro: algo"
+     * en: [['A','B','C'], 'algo']
+     *
+     * Si viene "N/A", regresa ['N/A'] y otro null.
+     */
+    private function parseChecksAndOtro(string $text): array
+    {
+        $text = trim($text);
+        if ($text === '') return [[], null];
+
+        $otro = null;
+
+        // separa por "|"
+        $parts = array_map('trim', explode('|', $text));
+
+        // primera parte: checks CSV
+        $checksPart = $parts[0] ?? '';
+        $checks = array_values(array_filter(array_map('trim', explode(',', $checksPart))));
+
+        // detectar "Otro:"
+        foreach ($parts as $p) {
+            if (stripos($p, 'otro:') === 0) {
+                $otro = trim(substr($p, 5));
+            }
+        }
+
+        // si contiene N/A -> deja solo N/A
+        if (in_array('N/A', $checks, true)) {
+            return [['N/A'], null];
+        }
+
+        return [$checks, ($otro !== '' ? $otro : null)];
+    }
+
+
     // =======================
-    // Catálogos
+    // Catálogos (igual que Registrar)
     // =======================
     private function cargarCatalogos(): void
     {
@@ -162,29 +439,31 @@ class RegistrarEquipo extends Component
             $tienePendientes ? $lotesConPendientes->push($lote) : $lotesTerminados->push($lote);
         }
 
+        // Tomamos 2 terminados como en registrar
         $terminadosTomados = $lotesTerminados->take(2);
-        $this->lotesTerminadosIds = $terminadosTomados->pluck('id')->toArray();
 
+        // Asegurar que el lote actual esté incluido aunque sea terminado viejo
+        $currentLoteId = null;
+        if ($this->equipo?->lote_modelo_id) {
+            $lm = LoteModeloRecibido::find($this->equipo->lote_modelo_id);
+            $currentLoteId = $lm?->lote_id;
+        }
+
+        if ($currentLoteId) {
+            $yaIncluido = $lotesConPendientes->contains('id', $currentLoteId)
+                || $terminadosTomados->contains('id', $currentLoteId);
+
+            if (!$yaIncluido) {
+                $loteActual = $lotesTerminados->firstWhere('id', $currentLoteId);
+                if ($loteActual) {
+                    $terminadosTomados->push($loteActual);
+                }
+            }
+        }
+
+        $this->lotesTerminadosIds = $terminadosTomados->pluck('id')->unique()->values()->toArray();
         $this->lotes = $lotesConPendientes->concat($terminadosTomados)->values()->all();
     }
-
-
-    public function updatedFormMonitorIncluido($value): void
-{
-    if ($value !== 'SI') {
-        $this->form->monitor_pulgadas = null;
-        $this->form->monitor_resolucion = null;
-
-        $this->form->monitor_entradas_rows = [];
-
-        $this->form->monitor_detalles_esteticos_checks = '';
-        $this->form->monitor_detalles_esteticos_otro = null;
-
-        $this->form->monitor_detalles_funcionamiento_checks = '';
-        $this->form->monitor_detalles_funcionamiento_otro = null;
-    }
-}
-
 
     // =======================
     // Lote / Modelo dependiente
@@ -192,7 +471,6 @@ class RegistrarEquipo extends Component
     public function actualizarLote($loteId): void
     {
         $f = $this->form;
-
 
         $f->lote_id = $loteId ?: null;
         $f->lote_modelo_id = null;
@@ -213,23 +491,56 @@ class RegistrarEquipo extends Component
 
         $f->proveedor_id = $lote->proveedor_id;
 
-        $this->modelosLote = $lote->modelosRecibidos()
+        // En editar: mostramos modelos del lote, incluyendo "llenos" pero marcados
+        $this->cargarModelosDelLote((int)$loteId, false);
+    }
+
+    private function cargarModelosDelLote(int $loteId, bool $includeAllEvenIfFull): void
+    {
+        $f = $this->form;
+
+        $actualModeloId = (int) ($f->lote_modelo_id ?? 0);
+        $actualEquipoId = (int) ($this->equipo->id ?? 0);
+
+        $modelos = LoteModeloRecibido::query()
+            ->where('lote_id', $loteId)
             ->withCount('equipos')
             ->get()
-            ->filter(function ($m) {
+            ->map(function ($m) use ($actualModeloId, $actualEquipoId, $includeAllEvenIfFull) {
                 $total = (int) $m->cantidad_recibida;
                 $registrados = (int) ($m->equipos_count ?? 0);
-                return $registrados < $total;
+
+                // Si este es el modelo actual del equipo, “liberamos” 1 del conteo para permitir permanecer
+                if ($actualModeloId && (int)$m->id === $actualModeloId && $actualEquipoId) {
+                    $registrados = max(0, $registrados - 1);
+                }
+
+                $hayCupo = $registrados < $total;
+
+                if (!$includeAllEvenIfFull && !$hayCupo && (int)$m->id !== $actualModeloId) {
+                    // lo omitimos si está lleno y no es el actual
+                    return null;
+                }
+
+                return [
+                    'id' => $m->id,
+                    'marca' => $m->marca,
+                    'modelo' => $m->modelo,
+                    'hay_cupo' => $hayCupo,
+                    'total' => $total,
+                    'registrados' => $registrados,
+                ];
             })
-            ->map(fn ($m) => ['id' => $m->id, 'marca' => $m->marca, 'modelo' => $m->modelo])
+            ->filter()
             ->values()
             ->toArray();
+
+        $this->modelosLote = $modelos;
     }
 
     public function actualizarModelo($modeloId): void
     {
         $f = $this->form;
-
 
         $f->lote_modelo_id = $modeloId ?: null;
         $f->marca = null;
@@ -245,7 +556,7 @@ class RegistrarEquipo extends Component
     }
 
     // =======================
-    // Helpers UI dinámicos (AHORA en Form)
+    // Helpers UI dinámicos (EN FORM)
     // =======================
     public function addPuertoUsb(): void { $this->form->puertos_usb[] = ['tipo' => '', 'cantidad' => 1]; }
     public function removePuertoUsb($i): void { $this->unsetIndex($this->form->puertos_usb, $i); }
@@ -267,6 +578,7 @@ class RegistrarEquipo extends Component
         if (!isset($arr[$i])) return;
         unset($arr[$i]);
         $arr = array_values($arr);
+        $this->recalcChanges();
     }
 
     // =======================
@@ -301,74 +613,171 @@ class RegistrarEquipo extends Component
         return $this->isPcLikeTipo($this->form->tipo_equipo ?? null);
     }
 
-    // Livewire hooks para propiedades anidadas
+    // =======================
+    // Livewire hooks (igual que Registrar)
+    // =======================
+    public function updated($name, $value): void
+    {
+        $this->recalcChanges();
+    }
+
     public function updatedFormEthernetTiene($value): void
     {
         if (!(bool)$value) $this->form->ethernet_es_gigabit = false;
     }
 
-
     public function updatedFormTipoEquipo($value): void
-{
-    $tipo = strtoupper(trim((string) $value));
-
-    $pantallaIntegrada = in_array($tipo, ['LAPTOP','2 EN 1','ALL IN ONE','TABLET'], true);
-    $pantallaExterna   = in_array($tipo, ['ESCRITORIO','MICRO PC','GAMER'], true);
-
-    if ($pantallaIntegrada) {
-        // Limpia monitor externo
-        $this->form->monitor_incluido = null;
-        $this->form->monitor_pulgadas = null;
-        $this->form->monitor_resolucion = null;
-        $this->form->monitor_entradas_rows = [];
-        $this->form->monitor_detalles_esteticos_checks = '';
-        $this->form->monitor_detalles_esteticos_otro = null;
-        $this->form->monitor_detalles_funcionamiento_checks = '';
-        $this->form->monitor_detalles_funcionamiento_otro = null;
-    }
-
-    if ($pantallaExterna) {
-        // Limpia pantalla integrada
-        $this->form->pantalla_pulgadas = null;
-        $this->form->pantalla_resolucion = null;
-        $this->form->pantalla_es_touch = false;
-    }
-}
-
-
-
-
-    private function resetMonitorAllFields(): void
     {
-        $f = $this->form;
+        $tipo = strtoupper(trim((string) $value));
 
+        $pantallaIntegrada = in_array($tipo, ['LAPTOP','2 EN 1','ALL IN ONE','TABLET'], true);
+        $pantallaExterna   = in_array($tipo, ['ESCRITORIO','MICRO PC','GAMER'], true);
 
-        $f->monitor_pulgadas = null;
-        $f->monitor_resolucion = null;
-        $f->monitor_tipo_panel = null;
-        $f->monitor_es_touch = false;
+        if ($pantallaIntegrada) {
+            // Limpia monitor externo
+            $this->form->monitor_incluido = null;
+            $this->form->monitor_pulgadas = null;
+            $this->form->monitor_resolucion = null;
+            $this->form->monitor_entradas_rows = [];
+            $this->form->monitor_detalles_esteticos_checks = '';
+            $this->form->monitor_detalles_esteticos_otro = null;
+            $this->form->monitor_detalles_funcionamiento_checks = '';
+            $this->form->monitor_detalles_funcionamiento_otro = null;
+        }
 
-        $f->monitor_entradas_rows = [];
-        $f->monitor_detalles_esteticos_checks = '';
-        $f->monitor_detalles_esteticos_otro = '';
-        $f->monitor_detalles_funcionamiento_checks = '';
-        $f->monitor_detalles_funcionamiento_otro = '';
+        if ($pantallaExterna) {
+            // Limpia pantalla integrada
+            $this->form->pantalla_pulgadas = null;
+            $this->form->pantalla_resolucion = null;
+            $this->form->pantalla_es_touch = false;
+        }
+
+        // Regla GPU por tipo
+        $this->syncGpuDefaultsByTipo();
+    }
+
+    public function updatedFormMonitorIncluido($value): void
+    {
+        if ($value !== 'SI') {
+            $this->form->monitor_pulgadas = null;
+            $this->form->monitor_resolucion = null;
+
+            $this->form->monitor_entradas_rows = [];
+
+            $this->form->monitor_detalles_esteticos_checks = '';
+            $this->form->monitor_detalles_esteticos_otro = null;
+
+            $this->form->monitor_detalles_funcionamiento_checks = '';
+            $this->form->monitor_detalles_funcionamiento_otro = null;
+        }
+    }
+
+    public function updatedFormBateriaTiene($value): void
+    {
+        if (! $value) {
+            $this->form->bateria1_tipo = null;
+            $this->form->bateria1_salud = null;
+        }
+    }
+
+    public function updatedFormBateria2Tiene($value): void
+    {
+        if (! $value) {
+            $this->form->bateria2_tipo = null;
+            $this->form->bateria2_salud = null;
+        }
+    }
+
+    // RAM hooks (los mismos que tu registrar)
+    public function updatedFormRamEsSoldada($value): void
+    {
+        if (! $value) {
+            $this->form->ram_cantidad_soldada = '';
+
+            $this->form->ram_sin_slots = false;
+
+            if ($this->form->ram_slots_totales === '0' || $this->form->ram_slots_totales === 0) {
+                $this->form->ram_slots_totales = '';
+            }
+            if ($this->form->ram_expansion_max === '0 GB') {
+                $this->form->ram_expansion_max = '';
+            }
+        }
+    }
+
+    public function updatedFormRamSinSlots($value): void
+    {
+        if ($value && ! $this->form->ram_es_soldada) {
+            $this->form->ram_sin_slots = false;
+            return;
+        }
+
+        if ($value) {
+            $this->form->ram_slots_totales = '0';
+            $this->form->ram_expansion_max = '0 GB';
+            return;
+        }
+
+        if ($this->form->ram_slots_totales === '0' || $this->form->ram_slots_totales === 0) {
+            $this->form->ram_slots_totales = '';
+        }
+        if ($this->form->ram_expansion_max === '0 GB') {
+            $this->form->ram_expansion_max = '';
+        }
+    }
+
+    public function updatedFormRamSlotsTotales($value): void
+    {
+        $isZero = ($value === '0' || $value === 0);
+
+        if ($isZero && ! $this->form->ram_es_soldada) {
+            $this->form->ram_slots_totales = '';
+            $this->form->ram_sin_slots = false;
+            $this->form->ram_expansion_max = '';
+            return;
+        }
+
+        $this->form->ram_sin_slots = $isZero;
+
+        if ($isZero) {
+            $this->form->ram_expansion_max = '0 GB';
+        } elseif ($this->form->ram_expansion_max === '0 GB') {
+            $this->form->ram_expansion_max = '';
+        }
+    }
+
+    public function updatedFormRamExpansionMax($value): void
+    {
+        if ($value === '0 GB' && ! $this->form->ram_es_soldada) {
+            $this->form->ram_expansion_max = '';
+            return;
+        }
+
+        if ($value === '0 GB') {
+            $this->form->ram_slots_totales = '0';
+            $this->form->ram_sin_slots = true;
+            return;
+        }
+
+        if ($this->form->ram_slots_totales === '0' || $this->form->ram_slots_totales === 0) {
+            if (! $this->form->ram_sin_slots) {
+                $this->form->ram_slots_totales = '';
+            }
+        }
     }
 
     // =======================
-    // GPU: reglas
+    // GPU hooks (igual que Registrar)
     // =======================
     private function syncGpuDefaultsByTipo(): void
     {
         if ($this->isLaptopLikeTipo($this->form->tipo_equipo)) {
-            // Laptop-like: integrada SIEMPRE activa
             $this->form->gpu_integrada_tiene = true;
         }
     }
 
     public function updatedFormGpuIntegradaTiene(): void
     {
-        // Si es laptop-like, no permitimos apagar
         if ($this->isLaptopLikeTipo($this->form->tipo_equipo)) {
             $this->form->gpu_integrada_tiene = true;
             return;
@@ -406,16 +815,36 @@ class RegistrarEquipo extends Component
     }
 
     // =======================
+    // Changes
+    // =======================
+    public function recalcChanges(): void
+    {
+        $current = method_exists($this->form, 'snapshotPersistible')
+            ? $this->form->snapshotPersistible()
+            : $this->form->all();
+
+        $this->hasChanges = $current !== $this->baseline;
+    }
+
+    // =======================
     // Validación (prefijada a form.)
     // =======================
     protected function rules(): array
     {
         $f = $this->form;
 
-
         $pref = $this->prefixRules($f->rules());
 
-        // Reglas extra que tu registrar ya tenía (arrays UI)
+        // Parche para unique de numero_serie en edición (ignora el equipo actual)
+        if (array_key_exists('form.numero_serie', $pref)) {
+            $pref['form.numero_serie'] = [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('equipos', 'numero_serie')->ignore($this->equipo->id),
+            ];
+        }
+
         $extra = [
             'form.lote_id'        => 'required|exists:lotes,id',
             'form.lote_modelo_id' => 'required|exists:lote_modelos_recibidos,id',
@@ -446,7 +875,6 @@ class RegistrarEquipo extends Component
             'form.lectores.*.cantidad' => 'nullable|integer|min:1|max:10',
 
             'form.procesador_frecuencia' => ['nullable', 'string', 'max:20'],
-
         ];
 
         return array_merge($pref, $extra);
@@ -462,7 +890,6 @@ class RegistrarEquipo extends Component
             'form.puertos_conectividad.required' => 'Selecciona al menos un puerto de conectividad.',
             'form.dispositivos_entrada.required' => 'Selecciona al menos un dispositivo de entrada.',
             'form.procesador_frecuencia.max' => 'La frecuencia del procesador no debe exceder 20 caracteres (ej: 3.6 GHz).',
-
         ];
     }
 
@@ -473,119 +900,10 @@ class RegistrarEquipo extends Component
         return $out;
     }
 
-
-
-public function updatedFormRamEsSoldada($value): void
-{
-    if (! $value) {
-        // Limpia cantidad soldada
-        $this->form->ram_cantidad_soldada = '';
-
-        // ✅ Apaga "totalmente soldada"
-        $this->form->ram_sin_slots = false;
-
-        // Libera slots/expansion si estaban forzados
-        if ($this->form->ram_slots_totales === '0' || $this->form->ram_slots_totales === 0) {
-            $this->form->ram_slots_totales = '';
-        }
-        if ($this->form->ram_expansion_max === '0 GB') {
-            $this->form->ram_expansion_max = '';
-        }
-    }
-}
-
-
-public function updatedFormRamSinSlots($value): void
-{
-    // Si intentan activar "totalmente soldada" sin RAM soldada, no lo permitas
-    if ($value && ! $this->form->ram_es_soldada) {
-        $this->form->ram_sin_slots = false;
-        return;
-    }
-
-    if ($value) {
-        // Activar "sin slots"
-        $this->form->ram_slots_totales = '0';
-        $this->form->ram_expansion_max = '0 GB';
-        return;
-    }
-
-    // Desactivar "sin slots" (liberar)
-    if ($this->form->ram_slots_totales === '0' || $this->form->ram_slots_totales === 0) {
-        $this->form->ram_slots_totales = '';
-    }
-    if ($this->form->ram_expansion_max === '0 GB') {
-        $this->form->ram_expansion_max = '';
-    }
-}
-
-
-public function updatedFormRamSlotsTotales($value): void
-{
-    $isZero = ($value === '0' || $value === 0);
-
-
-       if ($isZero && ! $this->form->ram_es_soldada) {
-        $this->form->ram_slots_totales = '';
-        $this->form->ram_sin_slots = false;
-        $this->form->ram_expansion_max = '';
-        return;
-    }
-
-    // sincroniza el checkbox visual
-    $this->form->ram_sin_slots = $isZero;
-
-    // y fuerza expansion si es 0
-    if ($isZero) {
-        $this->form->ram_expansion_max = '0 GB';
-    } elseif ($this->form->ram_expansion_max === '0 GB') {
-        $this->form->ram_expansion_max = '';
-    }
-}
-
-
-public function updatedFormRamExpansionMax($value): void
-{
-    // No permitir 0 GB si RAM soldada esta OFF
-    if ($value === '0 GB' && ! $this->form->ram_es_soldada) {
-        $this->form->ram_expansion_max = '';
-        return;
-    }
-
-    // Si eligen 0 GB => debe quedar como "sin expansion"
-    if ($value === '0 GB') {
-        $this->form->ram_slots_totales = '0';
-        $this->form->ram_sin_slots = true; // tu boolean UI
-        return;
-    }
-
-    // Si ya no es 0 GB, y estaba en modo sin-slots, libera slots
-    if ($this->form->ram_slots_totales === '0' || $this->form->ram_slots_totales === 0) {
-        // solo liberalo si NO esta marcado sin-slots (o sea, si venia por expansion)
-        // (si prefieres siempre liberar, quita el if)
-        if (! $this->form->ram_sin_slots) {
-            $this->form->ram_slots_totales = '';
-        }
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     // =======================
-    // Guardar
+    // Guardar (update) - alias
     // =======================
-    public function guardar(): void
+    public function actualizar(): void
     {
         try {
             $this->validate();
@@ -594,10 +912,15 @@ public function updatedFormRamExpansionMax($value): void
             throw $e;
         }
 
+        $this->recalcChanges();
+        if (!$this->hasChanges) {
+            $this->dispatch('toast', type: 'info', message: 'No hay cambios por guardar.');
+            return;
+        }
+
         $f = $this->form;
 
-
-        // Pre-procesamiento
+        // Pre-procesamiento (igual que registrar)
         $f->almacenamiento_secundario_capacidad = $f->almacenamiento_secundario_capacidad ?: 'N/A';
         $f->almacenamiento_secundario_tipo      = $f->almacenamiento_secundario_tipo ?: 'N/A';
         $f->teclado_idioma                      = $f->teclado_idioma ?: 'N/A';
@@ -625,7 +948,7 @@ public function updatedFormRamExpansionMax($value): void
                 ]);
             }
 
-            // Cupo
+            // Cupo (en edición: excluye el equipo actual)
             $lm = LoteModeloRecibido::query()
                 ->whereKey($f->lote_modelo_id)
                 ->lockForUpdate()
@@ -633,6 +956,7 @@ public function updatedFormRamExpansionMax($value): void
 
             $registrados = (int) Equipo::query()
                 ->where('lote_modelo_id', $f->lote_modelo_id)
+                ->where('id', '!=', $this->equipo->id)
                 ->count();
 
             if ($registrados >= (int) $lm->cantidad_recibida) {
@@ -641,37 +965,54 @@ public function updatedFormRamExpansionMax($value): void
                 ]);
             }
 
-            // Crear equipo
-            $equipo = Equipo::create($this->equipoPayload());
+            // Update equipo (solo columnas reales)
+            $payload = $this->equipoPayloadParaUpdate();
 
-            // Relacionadas
-            $this->guardarBaterias((int) $equipo->id);
-            $this->guardarMonitor((int) $equipo->id);
-            $this->guardarGpus((int) $equipo->id);
+            $cols = Schema::getColumnListing('equipos');
+            $payload = array_intersect_key($payload, array_flip($cols));
+
+            // Nunca tocar estas columnas
+            unset($payload['id'], $payload['created_at'], $payload['updated_at'], $payload['deleted_at']);
+
+            $this->equipo->update($payload);
+
+            // Relacionadas (reemplazo total)
+            $this->guardarBaterias((int) $this->equipo->id);
+            $this->guardarMonitor((int) $this->equipo->id);
+            $this->guardarGpus((int) $this->equipo->id);
         });
 
-        $this->reiniciarFormulario();
-        $this->dispatch('toast', type: 'success', message: 'Equipo registrado correctamente.');
-        $this->form->clearAfterSave();
+        // baseline reset
+        $this->baseline = method_exists($this->form, 'snapshotPersistible')
+            ? $this->form->snapshotPersistible()
+            : $this->form->all();
+
+        $this->hasChanges = false;
+
+        $this->dispatch('toast', type: 'success', message: 'Actualizado correctamente.');
         $this->resetValidation();
     }
 
+    /**
+     * Compat: si tu vista usa wire:submit.prevent="guardar"
+     */
+    public function guardar(): void
+    {
+        $this->actualizar();
+    }
+
     // =======================
-    // Payload principal
+    // Payload principal (update)
     // =======================
-    private function equipoPayload(): array
+    private function equipoPayloadParaUpdate(): array
     {
         $f = $this->form;
 
-        
-
-
         return [
-            
-            'lote_modelo_id'         => $f->lote_modelo_id,
-            'numero_serie'           => $f->numero_serie,
-            'registrado_por_user_id' => Auth::id(),
-            'proveedor_id'           => $f->proveedor_id,
+            // NO tocamos registrado_por_user_id en edición
+
+            'lote_modelo_id' => $f->lote_modelo_id,
+            'proveedor_id'   => $f->proveedor_id,
 
             'estatus_general' => $f->estatus_general,
 
@@ -686,7 +1027,7 @@ public function updatedFormRamExpansionMax($value): void
             'procesador_nucleos'    => $f->procesador_nucleos,
             'procesador_frecuencia' => $f->procesador_frecuencia,
 
-
+            'numero_serie' => $f->numero_serie,
 
             'ram_total'            => $f->ram_total,
             'ram_tipo'             => $f->ram_tipo,
@@ -694,7 +1035,6 @@ public function updatedFormRamExpansionMax($value): void
             'ram_slots_totales'    => $f->ram_slots_totales,
             'ram_expansion_max'    => $f->ram_expansion_max,
             'ram_cantidad_soldada' => $f->ram_cantidad_soldada,
-            
 
             'almacenamiento_principal_capacidad'  => $f->almacenamiento_principal_capacidad,
             'almacenamiento_principal_tipo'       => $f->almacenamiento_principal_tipo,
@@ -748,6 +1088,8 @@ public function updatedFormRamExpansionMax($value): void
     {
         $f = $this->form;
 
+        // Reemplazo total
+        EquipoBateria::where('equipo_id', $equipoId)->delete();
 
         if (!$f->bateria_tiene) return;
 
@@ -777,7 +1119,6 @@ public function updatedFormRamExpansionMax($value): void
     {
         $f = $this->form;
 
-
         // INTEGRADA
         if ($this->pantallaIntegrada) {
             EquipoMonitor::updateOrCreate(
@@ -800,7 +1141,7 @@ public function updatedFormRamExpansionMax($value): void
         }
 
         if ($f->monitor_incluido !== 'SI') {
-            // ✅ Mantener registro con incluido=0 y todo lo demás NULL/0
+            // Mantener registro con incluido=0 y resto NULL/0
             EquipoMonitor::updateOrCreate(
                 ['equipo_id' => $equipoId],
                 [
@@ -841,28 +1182,6 @@ public function updatedFormRamExpansionMax($value): void
         );
     }
 
-
-    public function updatedFormBateriaTiene($value): void
-{
-    if (! $value) {
-        $this->form->bateria1_tipo = null;
-        $this->form->bateria1_salud = null;
-    }
-}
-
-    public function updatedFormBateria2Tiene($value): void
-{
-    if (! $value) {
-        $this->form->bateria2_tipo = null;
-        $this->form->bateria2_salud = null;
-    }
-}
-
-
-    /**
-     * Construye payload de columnas in_* para EquipoMonitor.
-     * - Si count es 0, manda NULL.
-     */
     private function monitorInputsPayload(array $countsByLabel): array
     {
         $payload = [];
@@ -880,13 +1199,12 @@ public function updatedFormRamExpansionMax($value): void
     {
         $f = $this->form;
 
-
-        // En registrar: limpiamos por seguridad
+        // Reemplazo total
         EquipoGpu::where('equipo_id', $equipoId)->delete();
 
         $esLaptopLike = $this->isLaptopLikeTipo($f->tipo_equipo);
 
-        // INTEGRADA: obligatoria en laptop-like
+        // INTEGRADA (obligatoria en laptop-like)
         if ($f->gpu_integrada_tiene || $esLaptopLike) {
             EquipoGpu::create([
                 'equipo_id'    => $equipoId,
@@ -900,7 +1218,7 @@ public function updatedFormRamExpansionMax($value): void
             ]);
         }
 
-        // DEDICADA: opcional
+        // DEDICADA (opcional)
         if ($f->gpu_dedicada_tiene) {
             EquipoGpu::create([
                 'equipo_id'    => $equipoId,
@@ -921,7 +1239,6 @@ public function updatedFormRamExpansionMax($value): void
     private function applyAggregatesToEquipoColumns(): void
     {
         $f = $this->form;
-
 
         $usbCounts = $this->aggregateCounters($f->puertos_usb ?? [], 'tipo', 'cantidad');
         $this->applyMapCountsToEquipo($usbCounts, self::MAP_USB);
@@ -957,13 +1274,11 @@ public function updatedFormRamExpansionMax($value): void
     {
         $f = $this->form;
 
-
         foreach ($countsByLabel as $label => $count) {
             if (!isset($mapLabelToEquipoColumn[$label])) continue;
 
             $col = $mapLabelToEquipoColumn[$label];
 
-            // Solo set si está null (para no pisar si ya venía)
             if ($f->{$col} === null) {
                 $f->{$col} = (string) $count;
             }
@@ -1020,25 +1335,8 @@ public function updatedFormRamExpansionMax($value): void
         return mb_strlen($value) > $max ? mb_substr($value, 0, $max) : $value;
     }
 
-    // =======================
-    // Reset
-    // =======================
-    private function reiniciarFormulario(): void
-    {
-        // Reinicia el Form y catálogos sin tocar el componente entero
-        $this->form = new EquipoForm($this, 'equipoForm');
-
-        $this->cargarCatalogos();
-        $this->setDefaultsEnForm();
-
-        $this->resetErrorBag();
-        $this->resetValidation();
-
-        $this->dispatch('reiniciar-ui-selects');
-    }
-
     public function render()
     {
-        return view('livewire.equipos.registrar-equipo');
+        return view('livewire.equipos.editar-equipo');
     }
 }

@@ -130,9 +130,15 @@ Route::middleware(['auth', 'onlyAdminCeo'])->group(function () {
         ->name('users.update');
 
     // Inventario admin
-    Route::get('/inventario/admin/equipos/{equipo}', function (Equipo $equipo) {
-        return view('inventario.editar-equipo', compact('equipo'));
-    })->name('inventario.equipos.editar');
+
+
+
+
+Route::get('/equipos/admin/{equipo}/editar', function (Equipo $equipo) {
+    return view('equipos.editar-equipo', compact('equipo'));
+})->name('equipos.editar');
+
+
 
     Route::get('/inventario/admin/gestion', function () {
         return view('inventario.gestion-inventario');

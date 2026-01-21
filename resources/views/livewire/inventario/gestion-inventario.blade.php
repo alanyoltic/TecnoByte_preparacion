@@ -732,7 +732,8 @@
 
                             @if($esAdminCeo)
                                 <a
-                                    href="{{ route('inventario.equipos.editar', $equipo->id) }}"
+                                    href="{{ route('equipos.editar', $equipo) }}"
+
                                     class="inline-flex items-center px-3 py-1.5 rounded-xl
                                            bg-blue-600 hover:bg-blue-500
                                            text-xs font-semibold text-white

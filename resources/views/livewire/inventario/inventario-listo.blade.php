@@ -462,7 +462,7 @@
                 {{-- Opción: Editar equipo (solo admin / ceo) --}}
                 @if($esAdminCeo)
                     <a
-                        href="{{ route('inventario.equipos.editar', $equipo->id) }}"
+                        href="{{ route('equipos.editar', $equipo) }}"
                         class="block px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800/80"
                     >
                         Editar equipo
