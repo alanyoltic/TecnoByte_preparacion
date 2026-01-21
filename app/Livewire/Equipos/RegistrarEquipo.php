@@ -444,6 +444,9 @@ class RegistrarEquipo extends Component
             'form.lectores' => 'array',
             'form.lectores.*.tipo' => 'nullable|string|max:50',
             'form.lectores.*.cantidad' => 'nullable|integer|min:1|max:10',
+
+            'form.procesador_frecuencia' => ['nullable', 'string', 'max:20'],
+
         ];
 
         return array_merge($pref, $extra);
@@ -458,6 +461,8 @@ class RegistrarEquipo extends Component
             'form.numero_serie.unique' => 'Este número de serie ya está registrado.',
             'form.puertos_conectividad.required' => 'Selecciona al menos un puerto de conectividad.',
             'form.dispositivos_entrada.required' => 'Selecciona al menos un dispositivo de entrada.',
+            'form.procesador_frecuencia.max' => 'La frecuencia del procesador no debe exceder 20 caracteres (ej: 3.6 GHz).',
+
         ];
     }
 
