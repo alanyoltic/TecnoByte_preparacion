@@ -40,6 +40,10 @@
         </div>
     @endif
 
+
+    @include('livewire.equipos._form-equipo', ['mode' => 'edit'])
+
+
     <form wire:submit.prevent="actualizar" class="space-y-8 text-slate-900 dark:text-slate-100">
 
         {{-- =================== --}}

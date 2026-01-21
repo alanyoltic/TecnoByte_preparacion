@@ -24,12 +24,23 @@
                 Captura los datos principales del equipo. Los campos marcados con * son obligatorios.
             </p>
         </div>
+    {{-- DEBUG --}}
+<div class=>
+    {{ get_class($this) }}
+</div>
+
+
+
+       @include('livewire.equipos._form-equipo', ['mode' => 'create'])
+
 
         <form wire:submit.prevent="guardar" class="space-y-8 text-slate-900 dark:text-slate-100">
 
             {{-- =================== --}}
             {{--  1. DATOS BÁSICOS   --}}
             {{-- =================== --}}
+
+             
             <div class="space-y-3">
                 <div class="flex items-center gap-2">
                     <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -45,7 +56,7 @@
                             Lote
                         </label>
                         <select
-                            wire:model.live="lote_id"
+                            wire:model.live="form.lote_id"
                             wire:change="actualizarLote($event.target.value)"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                 bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
@@ -87,7 +98,7 @@
                             Proveedor *
                         </label>
                         <select
-                            wire:model="proveedor_id"
+                            wire:model="form.proveedor_id"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                 bg-slate-100 dark:bg-slate-800
                                 text-sm px-3 py-2
@@ -116,7 +127,7 @@
                         </label>
                         <input
                             type="text"
-                            wire:model.defer="numero_serie"
+                            wire:model.defer="form.numero_serie"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                 bg-slate-50 dark:bg-slate-900
                                 text-sm px-3 py-2
@@ -152,14 +163,16 @@
                             Modelo *
                         </label>
                         <select
-                            wire:model.live="lote_modelo_id"
+                            wire:model.live="form.lote_modelo_id"
 
                             wire:change="actualizarModelo($event.target.value)"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                 bg-slate-50 dark:bg-slate-900
                                 text-sm px-3 py-2
                                 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            @disabled(!$lote_id || empty($modelosLote))
+                            @disabled(!$form->lote_id || empty($modelosLote))
+
+
                         >
                             <option value="">Selecciona un modelo</option>
                             @foreach($modelosLote as $m)
@@ -181,7 +194,7 @@
                         </label>
 
                         <select
-                            wire:model.live="tipo_equipo"
+                            wire:model.live="form.tipo_equipo"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                 bg-slate-50 dark:bg-slate-900
                                 text-sm px-3 py-2
@@ -466,7 +479,8 @@
                                 bg-slate-50 dark:bg-slate-900
                                 text-sm px-3 py-2
                                 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            @disabled($ram_sin_slots)
+                            @disabled($form->ram_sin_slots)
+
                         >
                             <option value="">Selecciona</option>
 
@@ -495,14 +509,14 @@
                                 bg-slate-50 dark:bg-slate-900
                                 text-sm px-3 py-2
                                 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            @disabled($ram_sin_slots)
+                            @disabled($form->ram_sin_slots)
                         >
                             <option value="">Selecciona</option>
 
                             <option value="0">0 SLOTS (SIN EXPANSIÓN)</option>
 
-                            @foreach (range(1, 8) as $slots)
-                                <option value="{{ $slots }}">{{ $slots }} SLOTS</option>
+                            @foreach (range(1, 8) as $form->slots)
+                                <option value="{{ $form->slots }}">{{ $form->slots }} SLOTS</option>
                             @endforeach
                         </select>
 
@@ -525,7 +539,7 @@
                             <input
                                 type="checkbox"
                                 wire:click="toggleRamSoldada"
-                                @checked($ram_es_soldada)
+                                @checked($form->ram_es_soldada)
                                 class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
                                     focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
                             />
@@ -538,7 +552,7 @@
                         </div>
 
                         {{-- Cantidad de RAM soldada --}}
-                        @if($ram_es_soldada)
+                        @if($form->ram_es_soldada)
                             <div>
                                 <label class="block text-sm font-medium mb-1">
                                     Cantidad de RAM soldada
@@ -771,7 +785,7 @@
 
                 <div class="flex items-center gap-2">
                     <span class="text-xs text-slate-500 dark:text-slate-400">
-                        {{ ($isLaptopLike || $gpu_integrada_tiene) ? 'Sí' : 'No' }}
+                        {{ ($isLaptopLike || $form->gpu_integrada_tiene) ? 'Sí' : 'No' }}
                     </span>
 
                     <label class="relative inline-flex items-center cursor-pointer select-none">
@@ -786,10 +800,10 @@
         </div>
 
         {{-- (2) Marca --}}
-        <div class="@if(!($isLaptopLike || $gpu_integrada_tiene)) opacity-60 @endif transition">
+        <div class="@if(!($isLaptopLike || $form->gpu_integrada_tiene)) opacity-60 @endif transition">
             <label class="block text-sm font-medium mb-1">Integrada (marca)</label>
 
-            <select wire:model.live="gpu_integrada_marca_mode" @disabled(!($isLaptopLike || $gpu_integrada_tiene))
+            <select wire:model.live="gpu_integrada_marca_mode" @disabled(!($isLaptopLike || $form->gpu_integrada_tiene))
                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
                     text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
                     disabled:cursor-not-allowed disabled:opacity-60">
@@ -797,7 +811,7 @@
                 <option value="MANUAL">Escribir manual…</option>
             </select>
 
-            @if(($isLaptopLike || $gpu_integrada_tiene) && $gpu_integrada_marca_mode === 'LISTA')
+            @if(($isLaptopLike || $form->gpu_integrada_tiene) && $gpu_integrada_marca_mode === 'LISTA')
                 <select wire:model.live="gpu_integrada_marca"
                     class="mt-2 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
                         text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
@@ -808,7 +822,7 @@
                 </select>
             @endif
 
-            @if(($isLaptopLike || $gpu_integrada_tiene) && $gpu_integrada_marca_mode === 'MANUAL')
+            @if(($isLaptopLike || $form->gpu_integrada_tiene) && $gpu_integrada_marca_mode === 'MANUAL')
                 <input type="text" wire:model.live="gpu_integrada_marca"
                     placeholder="Escribe la marca (ej. Qualcomm, Apple, ATI...)"
                     class="mt-2 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
@@ -819,10 +833,10 @@
         </div>
 
         {{-- (3) Modelo --}}
-        <div class="@if(!($isLaptopLike || $gpu_integrada_tiene)) opacity-60 @endif transition">
+        <div class="@if(!($isLaptopLike || $form->gpu_integrada_tiene)) opacity-60 @endif transition">
             <label class="block text-sm font-medium mb-1">Integrada (modelo)</label>
 
-            <input type="text" wire:model.live="gpu_integrada_modelo" @disabled(!($isLaptopLike || $gpu_integrada_tiene))
+            <input type="text" wire:model.live="gpu_integrada_modelo" @disabled(!($isLaptopLike || $form->gpu_integrada_tiene))
                 placeholder="Iris Xe / Radeon Vega / etc."
                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
                     text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
@@ -849,7 +863,7 @@
 
                 <div class="flex items-center gap-2">
                     <span class="text-xs text-slate-500 dark:text-slate-400">
-                        {{ $gpu_dedicada_tiene ? 'Sí' : 'No' }}
+                        {{ $form->gpu_dedicada_tiene ? 'Sí' : 'No' }}
                     </span>
 
                     <label class="relative inline-flex items-center cursor-pointer select-none">
@@ -864,10 +878,10 @@
         </div>
 
         {{-- (2) Marca --}}
-        <div class="@if(!$gpu_dedicada_tiene) opacity-60 @endif transition">
+        <div class="@if(!$form->gpu_dedicada_tiene) opacity-60 @endif transition">
             <label class="block text-sm font-medium mb-1">Dedicada (marca)</label>
 
-            <select wire:model.live="gpu_dedicada_marca_mode" @disabled(! $gpu_dedicada_tiene)
+            <select wire:model.live="gpu_dedicada_marca_mode" @disabled(! $form->gpu_dedicada_tiene)
                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
                     text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
                     disabled:cursor-not-allowed disabled:opacity-60">
@@ -875,7 +889,7 @@
                 <option value="MANUAL">Escribir manual…</option>
             </select>
 
-            @if($gpu_dedicada_tiene && $gpu_dedicada_marca_mode === 'LISTA')
+            @if($form->gpu_dedicada_tiene && $gpu_dedicada_marca_mode === 'LISTA')
                 <select wire:model.live="gpu_dedicada_marca"
                     class="mt-2 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
                         text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
@@ -886,7 +900,7 @@
                 </select>
             @endif
 
-            @if($gpu_dedicada_tiene && $gpu_dedicada_marca_mode === 'MANUAL')
+            @if($form->gpu_dedicada_tiene && $gpu_dedicada_marca_mode === 'MANUAL')
                 <input type="text" wire:model.live="gpu_dedicada_marca"
                     placeholder="Escribe la marca"
                     class="mt-2 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
@@ -897,10 +911,10 @@
         </div>
 
         {{-- (3) Modelo --}}
-        <div class="@if(!$gpu_dedicada_tiene) opacity-60 @endif transition">
+        <div class="@if(!$form->gpu_dedicada_tiene) opacity-60 @endif transition">
             <label class="block text-sm font-medium mb-1">Dedicada (modelo)</label>
 
-            <input type="text" wire:model.live="gpu_dedicada_modelo" @disabled(! $gpu_dedicada_tiene)
+            <input type="text" wire:model.live="gpu_dedicada_modelo" @disabled(! $form->gpu_dedicada_tiene)
                 placeholder="RTX 3050 / RX 6600..."
                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
                     text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
@@ -910,17 +924,17 @@
         </div>
 
         {{-- (4) VRAM --}}
-        <div class="@if(!$gpu_dedicada_tiene) opacity-60 @endif transition">
+        <div class="@if(!$form->gpu_dedicada_tiene) opacity-60 @endif transition">
             <label class="block text-sm font-medium mb-1">Dedicada (VRAM)</label>
 
             <div class="grid grid-cols-3 gap-2">
-                <input type="number" min="0" wire:model.defer="gpu_dedicada_vram" @disabled(! $gpu_dedicada_tiene)
+                <input type="number" min="0" wire:model.defer="gpu_dedicada_vram" @disabled(! $form->gpu_dedicada_tiene)
                     class="col-span-2 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
                         text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
                         disabled:cursor-not-allowed disabled:opacity-60"
                     placeholder="4">
 
-                <select wire:model.live="gpu_dedicada_vram_unidad" @disabled(! $gpu_dedicada_tiene)
+                <select wire:model.live="gpu_dedicada_vram_unidad" @disabled(! $form->gpu_dedicada_tiene)
                     class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
                         text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
                         disabled:cursor-not-allowed disabled:opacity-60">
@@ -1174,7 +1188,7 @@
                         <input
                             type="checkbox"
                             wire:click="toggleBateriaTiene"
-                            @checked($bateria_tiene)
+                            @checked($form->bateria_tiene)
                             class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
                                 focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
                         >
@@ -1188,7 +1202,7 @@
                 </div>
 
                 {{-- 2) Si tiene batería -> Batería 1 + checkbox de segunda --}}
-                @if($bateria_tiene)
+                @if($form->bateria_tiene)
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-3">
                         {{-- Batería 1 - tipo --}}
                         <div>
@@ -1240,7 +1254,7 @@
                                 <input
                                     type="checkbox"
                                     wire:click="toggleBateria2Tiene"
-                                    @checked($bateria2_tiene)
+                                    @checked($form->bateria2_tiene)
                                     class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
                                         focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
                                 >
@@ -1252,7 +1266,7 @@
                     </div>
 
                     {{-- 3) Si tiene segunda batería -> Batería 2 --}}
-                    @if($bateria2_tiene)
+                    @if($form->bateria2_tiene)
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-3">
                             <div class="md:col-span-2"></div>
 
@@ -2007,7 +2021,7 @@
                     </button>
                 </div>
 
-                @if(empty($puertos_usb))
+                @if(empty($form->puertos_usb))
                     <p class="text-xs text-slate-500 dark:text-slate-400">
                         No hay puertos USB registrados. Usa el botón "Añadir puerto USB".
                     </p>
@@ -2015,7 +2029,7 @@
 
                 @php
                     // Tipos USB ya seleccionados (lowercase, sin espacios extra)
-                    $selectedTiposUsb = collect($puertos_usb ?? [])
+                    $selectedTiposUsb = collect($form->puertos_usb ?? [])
                         ->pluck('tipo')
                         ->filter()
                         ->map(fn($t) => mb_strtolower(trim($t)))
@@ -2032,9 +2046,9 @@
                 @endphp
 
                 <div class="space-y-2">
-                    @foreach($puertos_usb as $index => $puerto)
+                    @foreach($form->puertos_usb as $index => $puerto)
                         @php
-                            $current = mb_strtolower(trim($puertos_usb[$index]['tipo'] ?? ''));
+                            $current = mb_strtolower(trim($form->puertos_usb[$index]['tipo'] ?? ''));
                         @endphp
 
                         <div class="grid grid-cols-12 gap-2 items-center">
@@ -2120,7 +2134,7 @@
                     </button>
                 </div>
 
-                @if(empty($puertos_video))
+                @if(empty($form->puertos_video))
                     <p class="text-xs text-slate-500 dark:text-slate-400">
                         No hay puertos de video registrados.
                     </p>
@@ -2128,7 +2142,7 @@
 
                 @php
                     // lista de tipos ya seleccionados (en minúsculas)
-                    $selectedTiposVideo = collect($puertos_video ?? [])
+                    $selectedTiposVideo = collect($form->puertos_video ?? [])
                         ->pluck('tipo')
                         ->filter()
                         ->map(fn($t) => mb_strtolower(trim($t)))
@@ -2146,9 +2160,9 @@
                 @endphp
 
                 <div class="space-y-2">
-                    @foreach($puertos_video as $index => $puerto)
+                    @foreach($form->puertos_video as $index => $puerto)
                         @php
-                            $current = mb_strtolower(trim($puertos_video[$index]['tipo'] ?? ''));
+                            $current = mb_strtolower(trim($form->puertos_video[$index]['tipo'] ?? ''));
                         @endphp
 
                         <div class="grid grid-cols-12 gap-2 items-center">
@@ -2231,27 +2245,27 @@
                     </button>
                 </div>
 
-                @if(empty($slots_almacenamiento))
+                @if(empty($form->slots_almacenamiento))
                     <p class="text-xs text-slate-500 dark:text-slate-400">
                         No hay slots de almacenamiento registrados.
                     </p>
                 @endif
 
                 @php
-                    $selectedTiposSlots = collect($slots_almacenamiento ?? [])
+                    $selectedTiposSlots = collect($form->slots_almacenamiento ?? [])
                         ->pluck('tipo')
                         ->filter()
                         ->map(fn($t) => mb_strtolower(trim($t)))
                         ->values()
                         ->all();
 
-                    $slotsOptions = ['SSD','M.2','M.2 MICRO','HDD','MSATA'];
+                    $form->slotsOptions = ['SSD','M.2','M.2 MICRO','HDD','MSATA'];
                 @endphp
 
                 <div class="space-y-2">
-                    @foreach($slots_almacenamiento as $index => $slot)
+                    @foreach($form->slots_almacenamiento as $index => $form->slot)
                         @php
-                            $current = mb_strtolower(trim($slots_almacenamiento[$index]['tipo'] ?? ''));
+                            $current = mb_strtolower(trim($form->slots_almacenamiento[$index]['tipo'] ?? ''));
                         @endphp
 
                         <div class="grid grid-cols-12 gap-2 items-center">
@@ -2265,7 +2279,7 @@
                                 >
                                     <option value="">Tipo de slot</option>
 
-                                    @foreach($slotsOptions as $opt)
+                                    @foreach($form->slotsOptions as $opt)
                                         @php $optKey = mb_strtolower(trim($opt)); @endphp
                                         <option
                                             value="{{ $opt }}"
@@ -2336,27 +2350,27 @@
                     </button>
                 </div>
 
-                @if(empty($lectores))
+                @if(empty($form->lectores))
                     <p class="text-xs text-slate-500 dark:text-slate-400">
                         No hay lectores registrados (SD, SIM, eSATA, etc.).
                     </p>
                 @endif
 
                 @php
-                    $selectedTiposLectores = collect($lectores ?? [])
+                    $selectedTiposLectores = collect($form->lectores ?? [])
                         ->pluck('tipo')
                         ->filter()
                         ->map(fn($t) => mb_strtolower(trim($t)))
                         ->values()
                         ->all();
 
-                    $lectoresOptions = ['SD','microSD','SIM','eSATA','SmartCard','Otro'];
+                    $form->lectoresOptions = ['SD','microSD','SIM','eSATA','SmartCard','Otro'];
                 @endphp
 
                 <div class="space-y-2">
-                    @foreach($lectores as $index => $lector)
+                    @foreach($form->lectores as $index => $lector)
                         @php
-                            $current = mb_strtolower(trim($lectores[$index]['tipo'] ?? ''));
+                            $current = mb_strtolower(trim($form->lectores[$index]['tipo'] ?? ''));
                         @endphp
 
                         <div class="grid grid-cols-12 gap-2 items-center">
@@ -2370,7 +2384,7 @@
                                 >
                                     <option value="">Tipo</option>
 
-                                    @foreach($lectoresOptions as $opt)
+                                    @foreach($form->lectoresOptions as $opt)
                                         @php $optKey = mb_strtolower(trim($opt)); @endphp
                                         <option
                                             value="{{ $opt }}"
@@ -2381,16 +2395,17 @@
                                     @endforeach
                                 </select>
                             </div>
-
-                            <div class="col-span-7 sm:col-span-8">
+                            <div class="col-span-4 sm:col-span-4">
                                 <input
-                                    type="text"
-                                    wire:model="lectores.{{ $index }}.detalle"
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    placeholder="Cant."
+                                    wire:model="lectores.{{ $index }}.cantidad"
                                     class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                         bg-slate-50 dark:bg-slate-900
                                         text-xs sm:text-sm px-3 py-2
                                         focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                    placeholder="Ej. 1 lector SD frontal, combo SIM + microSD, etc."
                                 >
                             </div>
 
@@ -2933,12 +2948,12 @@
                     </span>
 
                     <span class="text-xs text-slate-300/80">
-                        {{ $ethernet_tiene ? 'Sí' : 'No' }}
+                        {{ $form->ethernet_tiene ? 'Sí' : 'No' }}
                     </span>
                 </label>
             </div>
 
-            @if($ethernet_tiene)
+            @if($form->ethernet_tiene)
                 <div class="mt-3 flex items-center justify-between">
                     <span class="text-xs text-slate-300/80">¿Es Gigabit?</span>
 
@@ -2954,7 +2969,7 @@
                         </span>
 
                         <span class="text-xs text-slate-300/80">
-                            {{ $ethernet_es_gigabit ? 'Sí' : 'No' }}
+                            {{ $form->ethernet_es_gigabit ? 'Sí' : 'No' }}
                         </span>
                     </label>
                 </div>

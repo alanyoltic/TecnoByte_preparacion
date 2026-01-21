@@ -74,6 +74,8 @@
     .dot{width:8px; height:8px; border-radius:999px; background: var(--orange); box-shadow: 0 0 18px rgba(255,149,33,.75); animation: pulse 1.2s infinite;}
     @keyframes pulse{0%,100%{transform:scale(1); opacity:1} 50%{transform:scale(.72); opacity:.55}}
     .content{padding:22px 22px 18px; text-align:center;}
+    
+    
     .imgGlow{position:relative; width:120px; height:120px; margin: 8px auto 14px;}
     .imgGlow::before{content:""; position:absolute; inset:-14px; background: rgba(255,149,33,.14); filter: blur(22px); border-radius: 28px;}
     .imgBox{position:relative; width:120px; height:120px; border-radius:22px; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); box-shadow: 0 18px 40px rgba(0,0,0,.55); overflow:hidden; display:grid; place-items:center;}
@@ -84,6 +86,23 @@
     .badge2 .dot2{width:8px; height:8px; border-radius:999px; background: rgba(59,130,246,.9); box-shadow: 0 0 16px rgba(59,130,246,.55); animation: pulse 1.4s infinite;}
     .footer{display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-top: 1px solid rgba(255,255,255,.10); font-size:12px; color: var(--muted2);}
     .below{margin-top:14px; text-align:center; font-size:11px; color: var(--muted2);}
+
+
+    .eta{
+  margin:1px auto 0;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:8px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.05);
+  color: rgba(226,232,240,.80);
+  font-size:12px;
+}
+.etaLabel{ color: rgba(226,232,240,.60); }
+.etaValue{ color: white; font-weight:700; letter-spacing:.2px; }
+
   </style>
 </head>
 <body>
@@ -136,11 +155,20 @@
         </p>
         <div class="badge2">
           <span class="dot2"></span> Gracias por tu paciencia 🙌
+          
         </div>
       </div>
 
+
+
+
+
       <div class="footer">
         <span>© {{ date('Y') }} TecnoByte</span>
+              <div class="eta" id="etaBox" data-eta="2026-01-22T17:00:00-06:00">
+  <span class="etaLabel">Disponible aprox:</span>
+  <span class="etaValue" id="etaText">Calculando…</span>
+</div>
         <span>Preparación</span>
       </div>
     </div>
@@ -153,6 +181,11 @@
       const enterBtn = document.getElementById('enterSite');
       const music = document.getElementById('bgMusic');
       const toggleBtn = document.getElementById('soundToggle');
+
+
+      const etaBox = document.getElementById('etaBox');
+      const etaText = document.getElementById('etaText');
+
 
       music.volume = 0.4;
 
@@ -170,6 +203,45 @@
         // 2. Desvanecer la pantalla de bienvenida
         splash.classList.add('splash-hidden');
       }
+
+
+      function formatRemaining(ms) {
+        if (ms <= 0) return 'En breve…';
+        const totalSec = Math.floor(ms / 1000);
+        const h = Math.floor(totalSec / 3600);
+        const m = Math.floor((totalSec % 3600) / 60);
+        const s = totalSec % 60;
+
+        if (h > 0) return `${h}h ${m}m ${s}s`;
+        if (m > 0) return `${m}m ${s}s`;
+        return `${s}s`;
+      }
+
+      function tickETA() {
+        if (!etaBox || !etaText) return;
+        const etaStr = etaBox.getAttribute('data-eta');
+        const eta = new Date(etaStr);
+        if (isNaN(eta.getTime())) {
+          etaText.textContent = 'No definido';
+          return;
+        }
+        const now = new Date();
+        const diff = eta.getTime() - now.getTime();
+
+        // Muestra hora local objetivo + restante
+        const timeLocal = eta.toLocaleString('es-MX', {
+          hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short'
+        });
+
+        if (diff <= 0) {
+          etaText.textContent = 'En breve…';
+        } else {
+          etaText.textContent = `${timeLocal} (faltan ${formatRemaining(diff)})`;
+        }
+      }
+
+      tickETA();
+      setInterval(tickETA, 1000);
 
       // El usuario da clic en "Ingresar" -> BOOM, tenemos audio garantizado
       enterBtn.addEventListener('click', startExperience);

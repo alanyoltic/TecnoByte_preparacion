@@ -283,6 +283,24 @@ public function updated($name, $value): void
 }
 
 
+public function updatedFormBateriaTiene($value): void
+{
+    if (! $value) {
+        $this->form->bateria1_tipo = null;
+        $this->form->bateria1_salud = null;
+    }
+}
+
+public function updatedFormBateria2Tiene($value): void
+{
+    if (! $value) {
+        $this->form->bateria2_tipo = null;
+        $this->form->bateria2_salud = null;
+    }
+}
+
+
+
 public function getPantallaIntegradaProperty(): bool
 {
     // 1) Si ya existe registro en equipo_monitores, manda eso
@@ -572,29 +590,7 @@ private function guardarMonitor(): void
     );
 }
 
-public function updatedFormTipoEquipo($value): void
-{
-    // Si ahora es integrada, limpia campos externos del FORM
-    if ($this->pantallaIntegradaPorTipo()) {
-        $this->form->monitor_incluido = 'NO';
-        $this->form->monitor_pulgadas = null;
-        $this->form->monitor_resolucion = null;
-        $this->form->monitor_es_touch = false;
-        $this->form->monitor_entradas_rows = [];
 
-        $this->form->monitor_detalles_esteticos_checks = '';
-        $this->form->monitor_detalles_esteticos_otro = '';
-        $this->form->monitor_detalles_funcionamiento_checks = '';
-        $this->form->monitor_detalles_funcionamiento_otro = '';
-    }
-
-    // Si ahora es externa, limpia pantalla integrada del FORM (opcional)
-    if ($this->pantallaExternaPorTipo()) {
-        $this->form->pantalla_pulgadas = null;
-        $this->form->pantalla_resolucion = null;
-        $this->form->pantalla_es_touch = false;
-    }
-}
 
 
 
@@ -648,6 +644,51 @@ public function removeMonitorEntrada(int $index): void
     $this->recalcChanges();
 
 }
+
+public function updatedFormMonitorIncluido($value): void
+{
+    if ($value !== 'SI') {
+        $this->form->monitor_pulgadas = null;
+        $this->form->monitor_resolucion = null;
+
+        $this->form->monitor_entradas_rows = [];
+
+        $this->form->monitor_detalles_esteticos_checks = '';
+        $this->form->monitor_detalles_esteticos_otro = null;
+
+        $this->form->monitor_detalles_funcionamiento_checks = '';
+        $this->form->monitor_detalles_funcionamiento_otro = null;
+    }
+}
+
+
+public function updatedFormTipoEquipo($value): void
+{
+    $tipo = strtoupper(trim((string) $value));
+
+    $pantallaIntegrada = in_array($tipo, ['LAPTOP','2 EN 1','ALL IN ONE','TABLET'], true);
+    $pantallaExterna   = in_array($tipo, ['ESCRITORIO','MICRO PC','GAMER'], true);
+
+    if ($pantallaIntegrada) {
+        // Limpia monitor externo
+        $this->form->monitor_incluido = null;
+        $this->form->monitor_pulgadas = null;
+        $this->form->monitor_resolucion = null;
+        $this->form->monitor_entradas_rows = [];
+        $this->form->monitor_detalles_esteticos_checks = '';
+        $this->form->monitor_detalles_esteticos_otro = null;
+        $this->form->monitor_detalles_funcionamiento_checks = '';
+        $this->form->monitor_detalles_funcionamiento_otro = null;
+    }
+
+    if ($pantallaExterna) {
+        // Limpia pantalla integrada
+        $this->form->pantalla_pulgadas = null;
+        $this->form->pantalla_resolucion = null;
+        $this->form->pantalla_es_touch = false;
+    }
+}
+
 
 
 
