@@ -104,8 +104,20 @@ class EditarEquipo extends Component
     // =======================
     // Lifecycle
     // =======================
+
+
+
+    public ?string $motivo = null;     // input opcional
+    public bool $pedirMotivo = false;  // para UI/validación
+
+    public bool $isHydrating = true;
+
     public function mount(Equipo $equipo): void
     {
+
+
+        $this->isHydrating = true;
+    
         $this->equipo = $equipo;
 
         // 1) Catálogos (como objetos)
@@ -115,8 +127,15 @@ class EditarEquipo extends Component
         //    (si tu método se llama distinto, cámbialo aquí)
         $this->form->setEquipo($equipo);
 
+        $this->hidratarLoteModeloProveedorDesdeLoteModelo();
+        $this->hidratarRelacionadas();
+
         $this->hidratarDinamicosDesdeEquipo();
 
+        $this->ensureDefaultsEnForm();
+
+        $this->hidratarDinamicosDesdeEquipo();
+        $this->syncPuertosExpansionesToColumns();
 
         // 3) Asegurar lote_id/proveedor/modelo (porque en equipos guardas lote_modelo_id)
         $this->hidratarLoteModeloProveedorDesdeLoteModelo();
@@ -127,13 +146,12 @@ class EditarEquipo extends Component
         // 5) Defaults sin pisar data existente
         $this->ensureDefaultsEnForm();
 
-        // 6) Baseline (para detectar cambios)
-        if (method_exists($this->form, 'snapshotPersistible')) {
-            $this->baseline = $this->form->snapshotPersistible();
-        } else {
-            $this->baseline = $this->form->all();
-        }
-        $this->hasChanges = false;
+    $this->baseline = method_exists($this->form, 'snapshotPersistible')
+        ? $this->form->snapshotPersistible()
+        : $this->form->all();
+
+    $this->hasChanges = false;
+    $this->isHydrating = false;
     }
 
     private function ensureDefaultsEnForm(): void
@@ -618,8 +636,10 @@ class EditarEquipo extends Component
     // =======================
     public function updated($name, $value): void
     {
+        if ($this->isHydrating) return;
         $this->recalcChanges();
     }
+
 
     public function updatedFormEthernetTiene($value): void
     {
@@ -819,12 +839,44 @@ class EditarEquipo extends Component
     // =======================
     public function recalcChanges(): void
     {
+        // ✅ Sincroniza dinámicos -> columnas antes de comparar baseline
+        $this->syncPuertosExpansionesToColumns();
+
         $current = method_exists($this->form, 'snapshotPersistible')
             ? $this->form->snapshotPersistible()
             : $this->form->all();
 
         $this->hasChanges = $current !== $this->baseline;
     }
+
+
+    private function syncPuertosExpansionesToColumns(): void
+    {
+        $f = $this->form;
+
+        // Reset a 0/null primero (MUY IMPORTANTE para detectar borrados)
+        foreach (self::MAP_USB as $label => $col) {
+            $f->{$col} = null;
+        }
+        foreach (self::MAP_VIDEO as $label => $col) {
+            $f->{$col} = null;
+        }
+        foreach (self::MAP_LECTORES as $label => $col) {
+            $f->{$col} = null;
+        }
+
+        $f->slots_alm_ssd = null;
+        $f->slots_alm_m2 = null;
+        $f->slots_alm_m2_micro = null;
+        $f->slots_alm_hdd = null;
+        $f->slots_alm_msata = null;
+
+        // Aplicar desde rows actuales
+        $this->mapSlotsToDbColumns();
+        $this->applyAggregatesToEquipoColumns();
+    }
+
+
 
     // =======================
     // Validación (prefijada a form.)
@@ -900,6 +952,125 @@ class EditarEquipo extends Component
         return $out;
     }
 
+
+
+
+    private function currentSnapshotForAudit(): array
+{
+    // Importante: antes de tomar snapshot, asegúrate que derivados (puertos/slots/etc) estén sincronizados
+    if (method_exists($this, 'syncPuertosExpansionesToColumns')) {
+        $this->syncPuertosExpansionesToColumns();
+    }
+
+    return method_exists($this->form, 'snapshotPersistible')
+        ? $this->form->snapshotPersistible()
+        : $this->form->all();
+}
+
+/**
+ * Construye un diff simple:
+ * [
+ *   'campo' => ['from' => old, 'to' => new],
+ *   ...
+ * ]
+ */
+private function buildAuditDiff(array $before, array $after): array
+{
+    // ignora ruido típico
+    $ignore = [
+        'updated_at', 'created_at',
+    ];
+
+    $diff = [];
+
+    // Unimos llaves (por si hay campos presentes en uno y no en otro)
+    $keys = array_unique(array_merge(array_keys($before), array_keys($after)));
+
+    foreach ($keys as $k) {
+        if (in_array($k, $ignore, true)) continue;
+
+        $old = $before[$k] ?? null;
+        $new = $after[$k] ?? null;
+
+        // Normaliza strings vacíos vs null para que no cuente como cambio “falso”
+        $oldN = $this->normAuditVal($old);
+        $newN = $this->normAuditVal($new);
+
+        if ($oldN !== $newN) {
+            $diff[$k] = ['from' => $old, 'to' => $new];
+        }
+    }
+
+    return $diff;
+}
+
+private function normAuditVal($v)
+{
+    // normaliza para comparar
+    if ($v === '') return null;
+    if (is_string($v)) return trim($v);
+    if (is_bool($v)) return (int)$v;
+    return $v;
+}
+
+/**
+ * Reglas:
+ * - motivo obligatorio si: ELIMINADO, RESTAURADO (si lo manejas), REASIGNADO (lote/modelo/proveedor),
+ *   o cambió numero_serie
+ * - EDITADO normal: motivo opcional
+ */
+private function classifyAuditAction(array $diff): array
+{
+    $keys = array_keys($diff);
+
+    $cambioRelacion = false;
+    foreach (['lote_id', 'lote_modelo_id', 'proveedor_id'] as $k) {
+        if (in_array($k, $keys, true)) {
+            $cambioRelacion = true;
+            break;
+        }
+    }
+
+    $cambioSerie = in_array('numero_serie', $keys, true);
+
+    // Si tienes acciones de eliminar/restaurar en este mismo componente, aquí se detectan por diff
+    // (ejemplo: deleted_at)
+    if (in_array('deleted_at', $keys, true)) {
+        $to = $diff['deleted_at']['to'] ?? null;
+        if ($to !== null) {
+            return ['ELIMINADO', true];
+        }
+        return ['RESTAURADO', true];
+    }
+
+    if ($cambioRelacion) {
+        return ['REASIGNADO', true];
+    }
+
+    if ($cambioSerie) {
+        return ['SERIE_CAMBIADA', true];
+    }
+
+    return ['EDITADO', false];
+}
+
+private function registrarAuditoria(int $equipoId, string $accion, ?string $motivo, array $cambios): void
+{
+    // si no hubo cambios, no registres nada
+    if (empty($cambios)) return;
+
+    \App\Models\EquipoAuditoria::create([
+        'equipo_id'   => $equipoId,
+        'user_id'     => (int) auth()->id(),
+        'accion'      => $accion,
+        'motivo'      => filled($motivo) ? $motivo : null,
+        'cambios'     => $cambios,                 // cast a array/json
+        'ip'          => request()->ip(),
+        'user_agent'  => request()->userAgent(),
+    ]);
+}
+
+
     // =======================
     // Guardar (update) - alias
     // =======================
@@ -973,6 +1144,32 @@ class EditarEquipo extends Component
 
             // Nunca tocar estas columnas
             unset($payload['id'], $payload['created_at'], $payload['updated_at'], $payload['deleted_at']);
+
+
+
+            $diff = $this->buildAuditDiff($this->baseline, $this->currentSnapshotForAudit());
+
+            // decide acción según diff
+            [$accion, $motivoRequerido] = $this->classifyAuditAction($diff);
+
+            // si requiere motivo y no viene, lanza validation
+            if ($motivoRequerido && !filled($this->motivo)) {
+                throw ValidationException::withMessages([
+                    'motivo' => 'Motivo es obligatorio para esta acción.',
+                ]);
+            }
+            $this->registrarAuditoria(
+                equipoId: (int) $this->equipo->id,
+                accion: $accion,
+                motivo: $this->motivo,
+                cambios: $diff
+            );
+
+
+
+
+
+
 
             $this->equipo->update($payload);
 
@@ -1084,16 +1281,32 @@ class EditarEquipo extends Component
     // =======================
     // Relacionadas: Baterías
     // =======================
-    private function guardarBaterias(int $equipoId): void
-    {
-        $f = $this->form;
+private function guardarBaterias(int $equipoId): void
+{
+    $f = $this->form;
 
-        // Reemplazo total
-        EquipoBateria::where('equipo_id', $equipoId)->delete();
+    $existentes = EquipoBateria::where('equipo_id', $equipoId)
+        ->orderBy('id')
+        ->get()
+        ->values();
 
-        if (!$f->bateria_tiene) return;
+    // Si ya no tiene baterías: borra las existentes (esto sí elimina, pero no crea nuevas)
+    if (! $f->bateria_tiene) {
+        if ($existentes->isNotEmpty()) {
+            EquipoBateria::where('equipo_id', $equipoId)->delete();
+        }
+        return;
+    }
 
-        if ($f->bateria1_tipo) {
+    // === BATERÍA 1 ===
+    if ($f->bateria1_tipo) {
+        if (isset($existentes[0])) {
+            $existentes[0]->update([
+                'tipo'          => $f->bateria1_tipo,
+                'salud_percent' => $f->bateria1_salud ?: null,
+                'notas'         => null,
+            ]);
+        } else {
             EquipoBateria::create([
                 'equipo_id'     => $equipoId,
                 'tipo'          => $f->bateria1_tipo,
@@ -1101,8 +1314,24 @@ class EditarEquipo extends Component
                 'notas'         => null,
             ]);
         }
+    } else {
+        // si no hay tipo, y existe fila 1, podrías borrarla (opcional)
+        if (isset($existentes[0])) {
+            $existentes[0]->delete();
+        }
+    }
 
-        if ($f->bateria2_tiene && $f->bateria2_tipo) {
+    // === BATERÍA 2 ===
+    $quiereBateria2 = (bool) $f->bateria2_tiene && (bool) $f->bateria2_tipo;
+
+    if ($quiereBateria2) {
+        if (isset($existentes[1])) {
+            $existentes[1]->update([
+                'tipo'          => $f->bateria2_tipo,
+                'salud_percent' => $f->bateria2_salud ?: null,
+                'notas'         => null,
+            ]);
+        } else {
             EquipoBateria::create([
                 'equipo_id'     => $equipoId,
                 'tipo'          => $f->bateria2_tipo,
@@ -1110,7 +1339,21 @@ class EditarEquipo extends Component
                 'notas'         => null,
             ]);
         }
+    } else {
+        // si existe fila 2 y ya no debe estar, borrar solo esa
+        if (isset($existentes[1])) {
+            $existentes[1]->delete();
+        }
     }
+
+    // Si llegaran a existir más de 2 por datos viejos, limpia excedentes
+    if ($existentes->count() > 2) {
+        EquipoBateria::where('equipo_id', $equipoId)
+            ->whereNotIn('id', $existentes->take(2)->pluck('id'))
+            ->delete();
+    }
+}
+
 
     // =======================
     // Relacionadas: Monitor/Pantalla
@@ -1195,43 +1438,50 @@ class EditarEquipo extends Component
     // =======================
     // Relacionadas: GPU (equipo_gpus)
     // =======================
-    private function guardarGpus(int $equipoId): void
-    {
-        $f = $this->form;
+private function guardarGpus(int $equipoId): void
+{
+    $f = $this->form;
 
-        // Reemplazo total
-        EquipoGpu::where('equipo_id', $equipoId)->delete();
+    $esLaptopLike = $this->isLaptopLikeTipo($f->tipo_equipo);
 
-        $esLaptopLike = $this->isLaptopLikeTipo($f->tipo_equipo);
+    // ===== INTEGRADA =====
+    $debeTenerIntegrada = (bool) $f->gpu_integrada_tiene || $esLaptopLike;
 
-        // INTEGRADA (obligatoria en laptop-like)
-        if ($f->gpu_integrada_tiene || $esLaptopLike) {
-            EquipoGpu::create([
-                'equipo_id'    => $equipoId,
-                'tipo'         => 'INTEGRADA',
-                'activo'       => 1,
-                'marca'        => $f->gpu_integrada_marca ?: null,
-                'modelo'       => $f->gpu_integrada_modelo ?: null,
-                'vram'         => filled($f->gpu_integrada_vram) ? (int)$f->gpu_integrada_vram : null,
-                'vram_unidad'  => filled($f->gpu_integrada_vram) ? ($f->gpu_integrada_vram_unidad ?: 'GB') : null,
-                'notas'        => null,
-            ]);
-        }
-
-        // DEDICADA (opcional)
-        if ($f->gpu_dedicada_tiene) {
-            EquipoGpu::create([
-                'equipo_id'    => $equipoId,
-                'tipo'         => 'DEDICADA',
-                'activo'       => 1,
-                'marca'        => $f->gpu_dedicada_marca,
-                'modelo'       => $f->gpu_dedicada_modelo,
-                'vram'         => filled($f->gpu_dedicada_vram) ? (int)$f->gpu_dedicada_vram : null,
-                'vram_unidad'  => filled($f->gpu_dedicada_vram) ? ($f->gpu_dedicada_vram_unidad ?: 'GB') : null,
-                'notas'        => null,
-            ]);
-        }
+    if ($debeTenerIntegrada) {
+        EquipoGpu::updateOrCreate(
+            ['equipo_id' => $equipoId, 'tipo' => 'INTEGRADA'],
+            [
+                'activo'      => 1,
+                'marca'       => $f->gpu_integrada_marca ?: null,
+                'modelo'      => $f->gpu_integrada_modelo ?: null,
+                'vram'        => filled($f->gpu_integrada_vram) ? (int)$f->gpu_integrada_vram : null,
+                'vram_unidad' => filled($f->gpu_integrada_vram) ? ($f->gpu_integrada_vram_unidad ?: 'GB') : null,
+                'notas'       => null,
+            ]
+        );
+    } else {
+        // si realmente ya no debe existir
+        EquipoGpu::where('equipo_id', $equipoId)->where('tipo', 'INTEGRADA')->delete();
     }
+
+    // ===== DEDICADA =====
+    if ((bool) $f->gpu_dedicada_tiene) {
+        EquipoGpu::updateOrCreate(
+            ['equipo_id' => $equipoId, 'tipo' => 'DEDICADA'],
+            [
+                'activo'      => 1,
+                'marca'       => $f->gpu_dedicada_marca ?: null,
+                'modelo'      => $f->gpu_dedicada_modelo ?: null,
+                'vram'        => filled($f->gpu_dedicada_vram) ? (int)$f->gpu_dedicada_vram : null,
+                'vram_unidad' => filled($f->gpu_dedicada_vram) ? ($f->gpu_dedicada_vram_unidad ?: 'GB') : null,
+                'notas'       => null,
+            ]
+        );
+    } else {
+        EquipoGpu::where('equipo_id', $equipoId)->where('tipo', 'DEDICADA')->delete();
+    }
+}
+
 
     // =======================
     // Agregadores / Mappers (Form UI -> columnas Equipo)
@@ -1270,20 +1520,20 @@ class EditarEquipo extends Component
         return $counts;
     }
 
-    private function applyMapCountsToEquipo(array $countsByLabel, array $mapLabelToEquipoColumn): void
-    {
-        $f = $this->form;
+private function applyMapCountsToEquipo(array $countsByLabel, array $mapLabelToEquipoColumn): void
+{
+    $f = $this->form;
 
-        foreach ($countsByLabel as $label => $count) {
-            if (!isset($mapLabelToEquipoColumn[$label])) continue;
+    foreach ($mapLabelToEquipoColumn as $label => $col) {
+        $count = (int) ($countsByLabel[$label] ?? 0);
 
-            $col = $mapLabelToEquipoColumn[$label];
-
-            if ($f->{$col} === null) {
-                $f->{$col} = (string) $count;
-            }
-        }
+        // Sobrescribe SIEMPRE:
+        // - cantidad si existe
+        // - null si ya no hay
+        $f->{$col} = $count > 0 ? (string) $count : null;
     }
+}
+
 
     private function mapSlotsToDbColumns(): void
     {

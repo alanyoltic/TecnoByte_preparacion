@@ -21,14 +21,4 @@ class EquipoAuditoria extends Model
     protected $casts = [
         'cambios' => 'array',
     ];
-
-    public function equipo()
-    {
-        return $this->belongsTo(Equipo::class);
-    }
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
 }
