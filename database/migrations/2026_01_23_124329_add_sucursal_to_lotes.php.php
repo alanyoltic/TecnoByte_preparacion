@@ -18,6 +18,7 @@ return new class extends Migration {
     public function down(): void
     {
         Schema::table('lotes', function (Blueprint $table) {
+            $table->dropIndex(['sucursal_id']);
             $table->dropConstrainedForeignId('sucursal_id');
         });
     }
