@@ -25,5 +25,7 @@ class DatabaseSeeder extends Seeder
             'role_id' => $ceoRole->id,
             'is_active' => true,
         ]);
+
+        $this->call(CoreEstructuraSeeder::class);
     }
 }
