@@ -16,13 +16,19 @@ class UserController extends Controller
      */
     public function index()
     {
-        // 1. Busca todos los usuarios con su relación de 'role' cargada
-        $usuarios = User::with('role')->get();
+            $query = \App\Models\User::query();
 
-        // 2. Manda los usuarios a la vista
-        return view('usuarios.index', [
-            'usuarios' => $usuarios
-        ]);
+            $user = auth()->user();
+            $slug = optional($user->role)->slug;
+
+            // CEO ve todo
+            if ($slug !== 'ceo') {
+                // por ahora: zona = departamento
+                $query->where('departamento_id', $user->departamento_id);
+            }
+
+            $users = $query->get();
+
     }
 
     /**

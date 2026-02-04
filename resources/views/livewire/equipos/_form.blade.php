@@ -484,23 +484,24 @@
                                         </label>
 
 <select
-    wire:model.live="form.ram_slots_totales"
-    class="w-full rounded-lg border border-slate-300 dark:border-slate-700
-        bg-slate-50 dark:bg-slate-900
-        text-sm px-3 py-2
-        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-    @disabled($form->ram_sin_slots)
+  wire:model.live="form.ram_slots_totales"
+  class="w-full rounded-lg border border-slate-300 dark:border-slate-700
+         bg-slate-50 dark:bg-slate-900
+         text-sm px-3 py-2
+         focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+  @disabled($form->ram_sin_slots)
 >
-    <option value="">Selecciona</option>
 
-    <option value="0" @disabled(! $form->ram_es_soldada)>
-        0 SLOTS (SIN EXPANSIÓN)
-    </option>
+                                        <option value="">Selecciona</option>
 
-    @foreach(range(1,8) as $slots)
-        <option value="{{ $slots }}">{{ $slots }} SLOTS</option>
-    @endforeach
-</select>
+                                        <option value="0" @disabled(! $form->ram_es_soldada)>
+                                            0 SLOTS (SIN EXPANSIÓN)
+                                        </option>
+
+                                        @foreach(range(1,32) as $slots)
+                                            <option value="{{ $slots }}">{{ $slots }} SLOTS</option>
+                                        @endforeach
+                                    </select>
 
 
 
@@ -573,12 +574,12 @@
                                     RAM totalmente soldada
                                 </label>
                                 <div class="flex items-start gap-2 mt-1">
-<input
-    type="checkbox"
-    wire:model.live="form.ram_sin_slots"
-    class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
-        focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
-/>
+                            <input
+                                type="checkbox"
+                                wire:model.live="form.ram_sin_slots"
+                                class="mt-1 rounded border-slate-300 text-indigo-600 shadow-sm
+                                    focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700"
+                            />
 
 
 
