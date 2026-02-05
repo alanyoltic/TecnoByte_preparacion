@@ -8,6 +8,9 @@ class AfterLoginRedirectController extends Controller
 {
     public function __invoke(Request $request)
     {
+
+
+
         $user = $request->user();
 
         $roleSlug = strtoupper((string) optional($user->role)->slug);
@@ -21,6 +24,9 @@ class AfterLoginRedirectController extends Controller
         | El CEO entra por su departamento como cualquier otro usuario.
         | Si en el futuro quieres un dashboard global, se agrega explícito.
         */
+
+
+        
 
         logger()->info('AFTER_LOGIN_REDIRECT', [
             'user_id'        => $user->id,
