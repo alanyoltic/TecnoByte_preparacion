@@ -497,7 +497,7 @@
         0 SLOTS (SIN EXPANSIÓN)
     </option>
 
-    @foreach(range(1,8) as $slots)
+    @foreach(range(1,16) as $slots)
         <option value="{{ $slots }}">{{ $slots }} SLOTS</option>
     @endforeach
 </select>
