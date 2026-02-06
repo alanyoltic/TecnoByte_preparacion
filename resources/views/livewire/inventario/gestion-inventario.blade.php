@@ -726,23 +726,23 @@
                         {{-- Acciones (solo admin/ceo, igual que en Inventario Listo si quieres) --}}
                         <td class="px-4 py-3 align-top text-right whitespace-nowrap">
                             @php
-                                $user = auth()->user();
-                                $esAdminCeo = $user && in_array(optional($user->role)->slug, ['admin', 'ceo']);
-                            @endphp
+    $user = auth()->user();
+    $puedeEditar = $user && $user->tienePermiso('equipos.editar');
+@endphp
 
-                            @if($esAdminCeo)
-                                <a
-                                    href="{{ route('equipos.editar', $equipo) }}"
+@if($puedeEditar)
+    <a
+        href="{{ route('equipos.editar', $equipo) }}"
+        class="inline-flex items-center px-3 py-1.5 rounded-xl
+               bg-blue-600 hover:bg-blue-500
+               text-xs font-semibold text-white
+               shadow shadow-blue-500/40
+               transition"
+    >
+        Editar
+    </a>
+@endif
 
-                                    class="inline-flex items-center px-3 py-1.5 rounded-xl
-                                           bg-blue-600 hover:bg-blue-500
-                                           text-xs font-semibold text-white
-                                           shadow shadow-blue-500/40
-                                           transition"
-                                >
-                                    Editar
-                                </a>
-                            @endif
                         </td>
                     </tr>
 
