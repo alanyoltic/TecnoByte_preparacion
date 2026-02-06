@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6bda21ef96724d6e0acf37fe1b3881a4",
+    "content-hash": "cbd3ffb8aab4e6b64a72a5c5b56688f3",
     "packages": [
         {
             "name": "brick/math",
@@ -3073,6 +3073,67 @@
                 }
             ],
             "time": "2025-10-18T11:10:27+00:00"
+        },
+        {
+            "name": "onamfc/laravel-route-visualizer",
+            "version": "1.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/onamfc/laravel-route-visualizer.git",
+                "reference": "1fa3de20756c132e1ef4a8aba0a80f5b04539751"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/onamfc/laravel-route-visualizer/zipball/1fa3de20756c132e1ef4a8aba0a80f5b04539751",
+                "reference": "1fa3de20756c132e1ef4a8aba0a80f5b04539751",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/console": "^10.0|^11.0|^12.0",
+                "illuminate/routing": "^10.0|^11.0|^12.0",
+                "illuminate/support": "^10.0|^11.0|^12.0",
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^8.0|^9.0|^10.0",
+                "phpunit/phpunit": "^10.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "onamfc\\LaravelRouteVisualizer\\RouteVisualizerServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "onamfc\\LaravelRouteVisualizer\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Brandon Estrella",
+                    "email": "brandonestrelladev@gmail.com"
+                }
+            ],
+            "description": "A comprehensive route visualization package for Laravel applications",
+            "keywords": [
+                "debugging",
+                "development",
+                "laravel",
+                "routes",
+                "visualization"
+            ],
+            "support": {
+                "issues": "https://github.com/onamfc/laravel-route-visualizer/issues",
+                "source": "https://github.com/onamfc/laravel-route-visualizer/tree/v1.0.1"
+            },
+            "time": "2025-08-20T00:46:22+00:00"
         },
         {
             "name": "phpoffice/phpspreadsheet",
@@ -8343,6 +8404,59 @@
                 "source": "https://github.com/phpstan/phpdoc-parser/tree/2.3.0"
             },
             "time": "2025-08-30T15:50:23+00:00"
+        },
+        {
+            "name": "phpstan/phpstan",
+            "version": "2.1.38",
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/dfaf1f530e1663aa167bc3e52197adb221582629",
+                "reference": "dfaf1f530e1663aa167bc3e52197adb221582629",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4|^8.0"
+            },
+            "conflict": {
+                "phpstan/phpstan-shim": "*"
+            },
+            "bin": [
+                "phpstan",
+                "phpstan.phar"
+            ],
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "bootstrap.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "PHPStan - PHP Static Analysis Tool",
+            "keywords": [
+                "dev",
+                "static analysis"
+            ],
+            "support": {
+                "docs": "https://phpstan.org/user-guide/getting-started",
+                "forum": "https://github.com/phpstan/phpstan/discussions",
+                "issues": "https://github.com/phpstan/phpstan/issues",
+                "security": "https://github.com/phpstan/phpstan/security/policy",
+                "source": "https://github.com/phpstan/phpstan-src"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/ondrejmirtes",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/phpstan",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-01-30T17:12:46+00:00"
         },
         {
             "name": "phpunit/php-code-coverage",

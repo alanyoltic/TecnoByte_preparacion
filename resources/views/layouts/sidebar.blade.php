@@ -80,8 +80,24 @@
             $isLotes      = request()->routeIs('lotes.*');
             $isUsuarios   = request()->routeIs('users.*') || request()->routeIs('register');
 
-            $roleSlug = optional(auth()->user()->role)->slug;
-            $esAdminCeo = in_array($roleSlug, ['admin','ceo']);
+            $u = auth()->user();
+            $roleSlug = optional($u?->role)->slug;
+
+            // Flags por permiso (globales)
+            $puedePrep   = $u && $u->tienePermiso('modulo.preparacion');
+            $puedeSis    = $u && $u->tienePermiso('modulo.sistema');
+
+            // Preparacion
+            $puedeEquipos      = $u && $u->tienePermiso('prep.equipos.ver');
+            $puedeInv          = $u && $u->tienePermiso('prep.inventario.ver');
+            $puedeInvGestion   = $u && $u->tienePermiso('prep.inventario.gestion');
+            $puedeLotes        = $u && $u->tienePermiso('prep.lotes.ver');
+
+            // Sistema
+            $puedeUsuarios     = $u && $u->tienePermiso('sistema.usuarios.ver');
+            $puedeAvisos       = $u && $u->tienePermiso('sistema.avisos.ver');
+
+
         @endphp
 
        {{-- NAV --}}
@@ -132,7 +148,9 @@
     </div>
 
    {{-- ===================== EQUIPOS (ACORDEÓN + POPOVER TELEPORT) ===================== --}}
-@if(auth()->check() && in_array($roleSlug, ['tecnico','admin','ceo']))
+@if($puedePrep && $puedeEquipos)
+
+
     @php
         $equiposItems = [
             ['label' => 'Registrar Entrada',   'href' => route('equipos.create')],
@@ -299,7 +317,7 @@
     $inventarioItems = [
         ['label' => 'Inventario listo', 'href' => route('inventario.listo')],
     ];
-    if ($esAdminCeo) {
+    if (auth()->check() && auth()->user()->tienePermiso('prep.inventario.gestion')) {
         $inventarioItems[] = [
             'label' => 'Gestión de inventario',
             'href' => route('inventario.gestion'),
@@ -461,7 +479,8 @@
 
 
 {{-- ===================== LOTES (ACORDEÓN + POPOVER TELEPORT) ===================== --}}
-@if($esAdminCeo)
+@if(auth()->check() && auth()->user()->tienePermiso('sistema.usuarios.ver'))
+
     @php
         $lotesItems = [
             ['label' => 'Registrar Lotes', 'href' => route('lotes.registrar')],
@@ -621,7 +640,8 @@
 
 
 {{-- ===================== USUARIOS (ACORDEÓN + POPOVER TELEPORT) ===================== --}}
-@if($esAdminCeo)
+@if(auth()->check() && auth()->user()->tienePermiso('sistema.usuarios.ver'))
+
     @php
         $usuariosItems = [
             ['label' => 'Agregar Usuario',      'href' => route('register')],
@@ -888,7 +908,8 @@
                                       transition-colors duration-150">
                                 Perfil
                             </a>
-                                @if($esAdminCeo)
+                                @if(auth()->check() && auth()->user()->tienePermiso('sistema.usuarios.ver'))
+
                             <a href="{{ route('avisos.index') }}"
                             class="group flex items-center gap-3 px-3 py-2 rounded-xl
                                     text-slate-200/90 hover:text-white

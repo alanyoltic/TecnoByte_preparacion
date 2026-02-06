@@ -4,7 +4,9 @@ namespace App\Models;
 
 // ¡Asegúrate de que esta importación esté aquí!
 use App\Models\Roles; 
-use Illuminate\Contracts\Auth\MustVerifyEmail; // Importa esto
+use App\Models\Puesto;
+use App\Models\Departamento;
+use Illuminate\Contracts\Auth\MustVerifyEmail; 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -14,6 +16,20 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable implements MustVerifyEmail
 {
     use HasFactory, Notifiable, SoftDeletes;
+
+
+
+    public function departamento()
+    {
+        return $this->belongsTo(Departamento::class, 'departamento_id');
+    }
+
+
+    public function puesto()
+    {
+        return $this->belongsTo(Puesto::class, 'puesto_id');
+    }
+
 
     /**
      * Los atributos que se pueden asignar masivamente.
@@ -27,7 +43,10 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'role_id',
         'is_active',
-        'foto_perfil'
+        'foto_perfil',
+        'departamento_id',
+        'sucursal_id',
+
     ];
 
 
@@ -51,6 +70,35 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
 
+
+
+
+public function tienePermiso(string $slug): bool
+{
+    // CEO = todo
+    if (optional($this->role)->slug === 'ceo') {
+        return true;
+    }
+
+    // Por rol
+    $porRol = \DB::table('rol_permiso')
+        ->join('permisos', 'permisos.id', '=', 'rol_permiso.permiso_id')
+        ->where('rol_permiso.rol_id', $this->role_id)
+        ->where('permisos.slug', $slug)
+        ->exists();
+
+    if ($porRol) return true;
+
+    // Por usuario (override)
+    return \DB::table('usuario_permiso')
+        ->join('permisos', 'permisos.id', '=', 'usuario_permiso.permiso_id')
+        ->where('usuario_permiso.user_id', $this->id)
+        ->where('permisos.slug', $slug)
+        ->exists();
+}
+
+
+
     public function isAdminCeo()
     {
         return in_array($this->role?->slug, ['admin', 'ceo']);
@@ -68,19 +116,22 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     public function setNombreAttribute($value)
-{
-    $this->attributes['nombre'] = ucwords(mb_strtolower($value));
-}
+    {
+        $this->attributes['nombre'] = ucwords(mb_strtolower($value));
+    }
 
-public function setApellidoPaternoAttribute($value)
-{
-    $this->attributes['apellido_paterno'] = ucwords(mb_strtolower($value));
-}
+    public function setApellidoPaternoAttribute($value)
+    {
+        $this->attributes['apellido_paterno'] = ucwords(mb_strtolower($value));
+    }
 
-public function setApellidoMaternoAttribute($value)
-{
-    $this->attributes['apellido_materno'] = ucwords(mb_strtolower($value));
-}
+    public function setApellidoMaternoAttribute($value)
+    {
+        $this->attributes['apellido_materno'] = ucwords(mb_strtolower($value));
+    }
+
+
+    
 
 
 
