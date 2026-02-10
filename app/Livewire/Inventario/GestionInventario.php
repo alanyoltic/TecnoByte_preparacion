@@ -55,6 +55,20 @@ class GestionInventario extends Component
     public $sistemasOperativos = [];
 
 
+public function descargarExcel()
+{
+$equipos = Equipo::with([
+    'loteModelo.lote.proveedor',
+    'registradoPor',
+    'gpus',
+    'monitor',
+    'baterias',
+])->get();
+
+
+    return Excel::download(new EquiposExport($equipos), 'equipos.xlsx');
+}
+
 
 
 

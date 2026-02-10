@@ -77,6 +77,7 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
             // Dashboard real de preparación (para redirección / acceso directo)
             Route::get('/dashboard', [DashboardController::class, 'index'])
                 ->name('preparacion.dashboard');
+                
 
             // ---------------------------
             // EQUIPOS
