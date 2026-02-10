@@ -100,7 +100,6 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
                     ->name('equipos.piezas-pendientes'); // mantengo tu name
 
                                 Route::view('/caracteristicas', 'preparacion.inventario.resumen')
-                ->middleware('permiso:prep.equipos.caracteristicas')
                 ->name('equipos.caracteristicas');
 
                 // Editar equipo (antes era /equipos/admin/{equipo}/editar)
