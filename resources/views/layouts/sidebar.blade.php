@@ -151,13 +151,34 @@
 @if($puedePrep && $puedeEquipos)
 
 
-    @php
-        $equiposItems = [
-            ['label' => 'Registrar Entrada',   'href' => route('equipos.create')],
-            ['label' => 'Garantía Proveedor',  'href' => '#'],
-            ['label' => 'Pendiente de piezas', 'href' => route('equipos.piezas-pendientes')],
-        ];
-    @endphp
+@php
+    $user = auth()->user();
+
+    $equiposItems = [
+        [
+            'label' => 'Registrar Entrada',
+            'href'  => route('equipos.create'),
+            'perm'  => 'prep.equipos.ver',
+        ],
+        [
+            'label' => 'Garantía Proveedor',
+            'href'  => '#',
+            'perm'  => 'prep.equipos.caracteristicas', // ajusta si aplica
+        ],
+        [
+            'label' => 'Características equipos',
+            'href'  => route('equipos.caracteristicas'),
+            'perm'  => 'prep.equipos.caracteristicas',
+        ],
+    ];
+
+    // 🔒 Filtrar solo los que el usuario puede ver
+    $equiposItems = array_values(array_filter(
+        $equiposItems,
+        fn ($it) => $user && $user->tienePermiso($it['perm'])
+    ));
+@endphp
+
 
     <div class="w-full mt-3 px-3"
         x-data="{

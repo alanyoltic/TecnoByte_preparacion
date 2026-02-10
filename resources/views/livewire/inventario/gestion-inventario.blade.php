@@ -235,321 +235,321 @@
             dark:hover:shadow-2xl dark:hover:shadow-indigo-500/25
             hover:border-[#3B82F6]/70 dark:hover:border-indigo-400/50"
     >
-        <div class="px-5 py-4 border-b border-slate-200/60 dark:border-slate-800/80 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <h3 class="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    Filtros
-                </h3>
-                <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
-                    Combina filtros básicos y avanzados para preparar tus reportes.
-                </p>
-            </div>
+                    <div class="px-5 py-4 border-b border-slate-200/60 dark:border-slate-800/80 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h3 class="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100">
+                                Filtros
+                            </h3>
+                            <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+                                Combina filtros básicos y avanzados para preparar tus reportes.
+                            </p>
+                        </div>
 
-            <div class="flex items-center gap-3 text-xs sm:text-sm">
-                <p class="hidden sm:block text-slate-600 dark:text-slate-300">
-                    Mostrando
-                    <span class="font-bold text-slate-900 dark:text-slate-50">{{ $equipos->total() }}</span>
-                    registro(s)
-                    @if($search)
-                        para “<span class="font-semibold">{{ $search }}</span>”
-                    @endif
-                </p>
+                        <div class="flex items-center gap-3 text-xs sm:text-sm">
+                            <p class="hidden sm:block text-slate-600 dark:text-slate-300">
+                                Mostrando
+                                <span class="font-bold text-slate-900 dark:text-slate-50">{{ $equipos->total() }}</span>
+                                registro(s)
+                                @if($search)
+                                    para “<span class="font-semibold">{{ $search }}</span>”
+                                @endif
+                            </p>
 
 
-                {{-- NUEVO: Limpiar filtros --}}
-        <button
-            type="button"
-            wire:click="resetFiltros"
-            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full
-                   bg-slate-100/80 dark:bg-slate-900/80
-                   text-[0.75rem] font-semibold text-slate-700 dark:text-slate-100
-                   border border-slate-300/70 dark:border-slate-700/80
-                   hover:bg-slate-200/80 dark:hover:bg-slate-800
-                   transition-colors"
-        >
-            <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M4 4a1 1 0 011-1h10a1 1 0 01.8 1.6L12 10.25V15a1 1 0 01-.553.894l-3 1.5A1 1 0 017 16.5v-6.25L3.2 4.6A1 1 0 014 4z"/>
-            </svg>
-            Limpiar filtros
-        </button>
-
-                {{-- Botón mostrar/ocultar filtros avanzados --}}
-                <button
-                    type="button"
-                    @click="openAvanzados = !openAvanzados"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full
-                           bg-slate-900/90 dark:bg-slate-900/80
-                           text-[0.75rem] font-semibold text-slate-100
-                           border border-slate-700/80
-                           shadow shadow-slate-900/40
-                           hover:bg-slate-800"
-                >
-                    <span>Filtros avanzados</span>
-                    <svg
-                        class="w-3 h-3 transform transition-transform duration-150"
-                        :class="openAvanzados ? 'rotate-180' : 'rotate-0'"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
+                            {{-- NUEVO: Limpiar filtros --}}
+                    <button
+                        type="button"
+                        wire:click="resetFiltros"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full
+                            bg-slate-100/80 dark:bg-slate-900/80
+                            text-[0.75rem] font-semibold text-slate-700 dark:text-slate-100
+                            border border-slate-300/70 dark:border-slate-700/80
+                            hover:bg-slate-200/80 dark:hover:bg-slate-800
+                            transition-colors"
                     >
-                        <path fill-rule="evenodd"
-                              d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0
-                              111.414 1.414l-4 4a1 1 0
-                              01-1.414 0l-4-4a1 1 0
-                              010-1.414z"
-                              clip-rule="evenodd" />
-                    </svg>
-                </button>
-            </div>
-        </div>
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M4 4a1 1 0 011-1h10a1 1 0 01.8 1.6L12 10.25V15a1 1 0 01-.553.894l-3 1.5A1 1 0 017 16.5v-6.25L3.2 4.6A1 1 0 014 4z"/>
+                        </svg>
+                        Limpiar filtros
+                    </button>
 
-        {{-- Campos de filtros BÁSICOS --}}
-        <div class="px-5 py-4 grid grid-cols-1 md:grid-cols-4 gap-4 border-b border-slate-200/60 dark:border-slate-800/80">
+                            {{-- Botón mostrar/ocultar filtros avanzados --}}
+                            <button
+                                type="button"
+                                @click="openAvanzados = !openAvanzados"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full
+                                    bg-slate-900/90 dark:bg-slate-900/80
+                                    text-[0.75rem] font-semibold text-slate-100
+                                    border border-slate-700/80
+                                    shadow shadow-slate-900/40
+                                    hover:bg-slate-800"
+                            >
+                                <span>Filtros avanzados</span>
+                                <svg
+                                    class="w-3 h-3 transform transition-transform duration-150"
+                                    :class="openAvanzados ? 'rotate-180' : 'rotate-0'"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                >
+                                    <path fill-rule="evenodd"
+                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0
+                                        111.414 1.414l-4 4a1 1 0
+                                        01-1.414 0l-4-4a1 1 0
+                                        010-1.414z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
 
-            {{-- Estatus --}}
-            <div class="flex flex-col gap-1.5">
-                <label class="text-sm sm:text-base font-semibold text-slate-700 dark:text-slate-200">
-                    Estatus general
-                </label>
-                <select
-                    wire:model.change="filtroEstado"
-                    class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
-                           border border-white/60 dark:border-slate-600/70
-                           text-sm sm:text-base text-slate-900 dark:text-slate-100
-                           focus:outline-none focus:ring-2 focus:ring-blue-500/70"
-                >
-                    <option value="todos">Todos</option>
-                    <option value="En Revisión">En Revisión</option>
-                    <option value="Aprobado">Aprobado</option>
-                    <option value="Pendiente Pieza">Pendiente Pieza</option>
-                    <option value="Pendiente Garantía">Pendiente Garantía</option>
-                    <option value="Pendiente Deshueso">Pendiente Deshueso</option>
-                    <option value="Finalizado">Finalizado</option>
-                </select>
-            </div>
+                    {{-- Campos de filtros BÁSICOS --}}
+                    <div class="px-5 py-4 grid grid-cols-1 md:grid-cols-4 gap-4 border-b border-slate-200/60 dark:border-slate-800/80">
 
-            {{-- Lote --}}
-            <div class="flex flex-col gap-1.5">
-                <label class="text-sm sm:text-base font-semibold text-slate-700 dark:text-slate-200">
-                    Lote
-                </label>
-                <select
-                    wire:model.change="filtroLote"
-                    class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
-                           border border-white/60 dark:border-slate-600/70
-                           text-sm sm:text-base text-slate-900 dark:text-slate-100
-                           focus:outline-none focus:ring-2 focus:ring-blue-500/70"
-                >
-                    <option value="todos">Todos los lotes</option>
-                    @foreach ($lotes as $lote)
-                        <option value="{{ $lote->id }}">
-                            Lote {{ $lote->nombre_lote }}
-                            @if($lote->fecha_llegada)
-                                - {{ \Carbon\Carbon::parse($lote->fecha_llegada)->format('d/m/Y') }}
-                            @endif
-                        </option>
-                    @endforeach
-                </select>
-            </div>
+                        {{-- Estatus --}}
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-sm sm:text-base font-semibold text-slate-700 dark:text-slate-200">
+                                Estatus general
+                            </label>
+                            <select
+                                wire:model.change="filtroEstado"
+                                class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
+                                    border border-white/60 dark:border-slate-600/70
+                                    text-sm sm:text-base text-slate-900 dark:text-slate-100
+                                    focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+                            >
+                                <option value="todos">Todos</option>
+                                <option value="En Revisión">En Revisión</option>
+                                <option value="Aprobado">Aprobado</option>
+                                <option value="Pendiente Pieza">Pendiente Pieza</option>
+                                <option value="Pendiente Garantía">Pendiente Garantía</option>
+                                <option value="Pendiente Deshueso">Pendiente Deshueso</option>
+                                <option value="Finalizado">Finalizado</option>
+                            </select>
+                        </div>
 
-            {{-- Proveedor --}}
-            <div class="flex flex-col gap-1.5">
-                <label class="text-sm sm:text-base font-semibold text-slate-700 dark:text-slate-200">
-                    Proveedor
-                </label>
-                <select
-                    wire:model.change="filtroProveedor"
-                    class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
-                           border border-white/60 dark:border-slate-600/70
-                           text-sm sm:text-base text-slate-900 dark:text-slate-100
-                           focus:outline-none focus:ring-2 focus:ring-blue-500/70"
-                >
-                    <option value="todos">Todos los proveedores</option>
-                    @foreach ($proveedores as $proveedor)
-                        <option value="{{ $proveedor->id }}">
-                            {{ $proveedor->nombre_empresa }}
-                            @if($proveedor->abreviacion)
-                                ({{ $proveedor->abreviacion }})
-                            @endif
-                        </option>
-                    @endforeach
-                </select>
-            </div>
+                        {{-- Lote --}}
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-sm sm:text-base font-semibold text-slate-700 dark:text-slate-200">
+                                Lote
+                            </label>
+                            <select
+                                wire:model.change="filtroLote"
+                                class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
+                                    border border-white/60 dark:border-slate-600/70
+                                    text-sm sm:text-base text-slate-900 dark:text-slate-100
+                                    focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+                            >
+                                <option value="todos">Todos los lotes</option>
+                                @foreach ($lotes as $lote)
+                                    <option value="{{ $lote->id }}">
+                                        Lote {{ $lote->nombre_lote }}
+                                        @if($lote->fecha_llegada)
+                                            - {{ \Carbon\Carbon::parse($lote->fecha_llegada)->format('d/m/Y') }}
+                                        @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
 
-            {{-- Registros por página --}}
-            <div class="flex flex-col gap-1.5">
-                <label class="text-sm sm:text-base font-semibold text-slate-700 dark:text-slate-200">
-                    Registros por página
-                </label>
-                <select
-                    wire:model.change="perPage"
-                    class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
-                           border border-white/60 dark:border-slate-600/70
-                           text-sm sm:text-base text-slate-900 dark:text-slate-100
-                           focus:outline-none focus:ring-2 focus:ring-blue-500/70"
-                >
-                    <option value="10">10</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                </select>
-            </div>
-        </div>
+                        {{-- Proveedor --}}
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-sm sm:text-base font-semibold text-slate-700 dark:text-slate-200">
+                                Proveedor
+                            </label>
+                            <select
+                                wire:model.change="filtroProveedor"
+                                class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
+                                    border border-white/60 dark:border-slate-600/70
+                                    text-sm sm:text-base text-slate-900 dark:text-slate-100
+                                    focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+                            >
+                                <option value="todos">Todos los proveedores</option>
+                                @foreach ($proveedores as $proveedor)
+                                    <option value="{{ $proveedor->id }}">
+                                        {{ $proveedor->nombre_empresa }}
+                                        @if($proveedor->abreviacion)
+                                            ({{ $proveedor->abreviacion }})
+                                        @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
 
-        {{-- FILTROS AVANZADOS --}}
-        <div
-            class="px-5 pt-0 pb-4 space-y-4"
-            x-show="openAvanzados"
-            x-transition
-        >
-            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
+                        {{-- Registros por página --}}
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-sm sm:text-base font-semibold text-slate-700 dark:text-slate-200">
+                                Registros por página
+                            </label>
+                            <select
+                                wire:model.live.debounce.150ms="perPage"
+                                class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
+                                    border border-white/60 dark:border-slate-600/70
+                                    text-sm sm:text-base text-slate-900 dark:text-slate-100
+                                    focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+                            >
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
 
-                {{-- Rango de fechas --}}
-                <div class="flex flex-col gap-1.5">
-                    <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                        Fecha desde
-                    </label>
-                    <input
-                        type="date"
-                        wire:model.change="fechaDesde"
-                        class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
-                               border border-white/60 dark:border-slate-600/70
-                               text-sm text-slate-900 dark:text-slate-100
-                               focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+                    {{-- FILTROS AVANZADOS --}}
+                    <div
+                        class="px-5 pt-0 pb-4 space-y-4"
+                        x-show="openAvanzados"
+                        x-transition
                     >
-                </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
 
-                <div class="flex flex-col gap-1.5">
-                    <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                        Fecha hasta
-                    </label>
-                    <input
-                        type="date"
-                        wire:model.change="fechaHasta"
-                        class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
-                               border border-white/60 dark:border-slate-600/70
-                               text-sm text-slate-900 dark:text-slate-100
-                               focus:outline-none focus:ring-2 focus:ring-blue-500/70"
-                    >
-                </div>
+                            {{-- Rango de fechas --}}
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    Fecha desde
+                                </label>
+                                <input
+                                    type="date"
+                                    wire:model.change="fechaDesde"
+                                    class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
+                                        border border-white/60 dark:border-slate-600/70
+                                        text-sm text-slate-900 dark:text-slate-100
+                                        focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+                                >
+                            </div>
 
-                {{-- Tipo de equipo --}}
-                <div class="flex flex-col gap-1.5">
-                    <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                        Tipo de equipo
-                    </label>
-                    <select
-                        wire:model.change="filtroTipoEquipo"
-                        class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
-                               border border-white/60 dark:border-slate-600/70
-                               text-sm text-slate-900 dark:text-slate-100
-                               focus:outline-none focus:ring-2 focus:ring-blue-500/70"
-                    >
-                        <option value="todos">Todos</option>
-                        @foreach ($tiposEquipo as $tipo)
-                            <option value="{{ $tipo }}">{{ $tipo }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    Fecha hasta
+                                </label>
+                                <input
+                                    type="date"
+                                    wire:model.change="fechaHasta"
+                                    class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
+                                        border border-white/60 dark:border-slate-600/70
+                                        text-sm text-slate-900 dark:text-slate-100
+                                        focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+                                >
+                            </div>
 
-                {{-- Área / tienda --}}
-                <div class="flex flex-col gap-1.5">
-                    <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                        Área / tienda
-                    </label>
-                    <select
-                        wire:model.change="filtroArea"
-                        class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
-                               border border-white/60 dark:border-slate-600/70
-                               text-sm text-slate-900 dark:text-slate-100
-                               focus:outline-none focus:ring-2 focus:ring-blue-500/70"
-                    >
-                        <option value="todos">Todas</option>
-                        @foreach ($areas as $area)
-                            <option value="{{ $area }}">{{ $area }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                            {{-- Tipo de equipo --}}
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    Tipo de equipo
+                                </label>
+                                <select
+                                    wire:model.change="filtroTipoEquipo"
+                                    class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
+                                        border border-white/60 dark:border-slate-600/70
+                                        text-sm text-slate-900 dark:text-slate-100
+                                        focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+                                >
+                                    <option value="todos">Todos</option>
+                                    @foreach ($tiposEquipo as $tipo)
+                                        <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                {{-- GPU --}}
-                <div class="flex flex-col gap-1.5">
-                    <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                        GPU
-                    </label>
-                    <select
-                        wire:model.change="filtroGpu"
-                        class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
-                               border border-white/60 dark:border-slate-600/70
-                               text-sm text-slate-900 dark:text-slate-100
-                               focus:outline-none focus:ring-2 focus:ring-blue-500/70"
-                    >
-                        <option value="todos">Todas</option>
-                        <option value="dedicada">Con dedicada</option>
-                        <option value="sin_dedicada">Sin dedicada</option>
-                    </select>
-                </div>
+                            {{-- Área / tienda --}}
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    Área / tienda
+                                </label>
+                                <select
+                                    wire:model.change="filtroArea"
+                                    class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
+                                        border border-white/60 dark:border-slate-600/70
+                                        text-sm text-slate-900 dark:text-slate-100
+                                        focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+                                >
+                                    <option value="todos">Todas</option>
+                                    @foreach ($areas as $area)
+                                        <option value="{{ $area }}">{{ $area }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                {{-- Salud batería --}}
-                <div class="flex flex-col gap-1.5">
-                    <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                        Salud de batería
-                    </label>
-                    <select
-                        wire:model.change="filtroBateria"
-                        class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
-                               border border-white/60 dark:border-slate-600/70
-                               text-sm text-slate-900 dark:text-slate-100
-                               focus:outline-none focus:ring-2 focus:ring-blue-500/70"
-                    >
-                        <option value="todos">Todas</option>
-                        <option value="baja">Baja (&lt; 70%)</option>
-                        <option value="media">Media (70–89%)</option>
-                        <option value="alta">Alta (≥ 90%)</option>
-                    </select>
-                </div>
+                            {{-- GPU --}}
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    GPU
+                                </label>
+                                <select
+                                    wire:model.change="filtroGpu"
+                                    class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
+                                        border border-white/60 dark:border-slate-600/70
+                                        text-sm text-slate-900 dark:text-slate-100
+                                        focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+                                >
+                                    <option value="todos">Todas</option>
+                                    <option value="dedicada">Con dedicada</option>
+                                    <option value="sin_dedicada">Sin dedicada</option>
+                                </select>
+                            </div>
 
-                {{-- Sistema operativo --}}
-                <div class="flex flex-col gap-1.5">
-                    <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                        Sistema operativo
-                    </label>
-                    <select
-                        wire:model.change="filtroSO"
-                        class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
-                               border border-white/60 dark:border-slate-600/70
-                               text-sm text-slate-900 dark:text-slate-100
-                               focus:outline-none focus:ring-2 focus:ring-blue-500/70"
-                    >
-                        <option value="todos">Todos</option>
-                        @foreach ($sistemasOperativos as $so)
-                            <option value="{{ $so }}">{{ $so }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                                {{-- Técnico --}}
-                <div class="flex flex-col gap-1.5">
-                    <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                        Técnico
-                    </label>
+                            {{-- Salud batería --}}
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    Salud de batería
+                                </label>
+                                <select
+                                    wire:model.change="filtroBateria"
+                                    class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
+                                        border border-white/60 dark:border-slate-600/70
+                                        text-sm text-slate-900 dark:text-slate-100
+                                        focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+                                >
+                                    <option value="todos">Todas</option>
+                                    <option value="baja">Baja (&lt; 70%)</option>
+                                    <option value="media">Media (70–89%)</option>
+                                    <option value="alta">Alta (≥ 90%)</option>
+                                </select>
+                            </div>
 
-                    <select
-                        wire:model.live="tecnico_id"
-                        class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
-                                            border border-white/60 dark:border-slate-600/70
-                                            text-sm text-slate-900 dark:text-slate-100
-                                            focus:outline-none focus:ring-2 focus:ring-blue-500/70"
-                    >
-                        <option value="">Todos</option>
+                            {{-- Sistema operativo --}}
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    Sistema operativo
+                                </label>
+                                <select
+                                    wire:model.change="filtroSO"
+                                    class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
+                                        border border-white/60 dark:border-slate-600/70
+                                        text-sm text-slate-900 dark:text-slate-100
+                                        focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+                                >
+                                    <option value="todos">Todos</option>
+                                    @foreach ($sistemasOperativos as $so)
+                                        <option value="{{ $so }}">{{ $so }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                                            {{-- Técnico --}}
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    Técnico
+                                </label>
 
-                        @foreach($tecnicos as $tecnico)
-                            <option value="{{ $tecnico['id'] }}">
-                                {{ $tecnico['nombre'] }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
+                                <select
+                                    wire:model.live="tecnico_id"
+                                    class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
+                                                        border border-white/60 dark:border-slate-600/70
+                                                        text-sm text-slate-900 dark:text-slate-100
+                                                        focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+                                >
+                                    <option value="">Todos</option>
 
-            </div>
-        </div>
+                                    @foreach($tecnicos as $tecnico)
+                                        <option value="{{ $tecnico['id'] }}">
+                                            {{ $tecnico['nombre'] }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                        </div>
+                    </div>
     </div>
 
     {{-- TABLA DE EQUIPOS --}}
@@ -709,6 +709,8 @@
                             @endif
                         </td>
 
+                        
+
                         {{-- Fecha --}}
                         <td class="px-4 py-3 align-top whitespace-nowrap">
                             @if($equipo->created_at)
@@ -726,6 +728,9 @@
                         {{-- Acciones (solo admin/ceo, igual que en Inventario Listo si quieres) --}}
                         <td class="px-4 py-3 align-top text-right whitespace-nowrap">
                             @php
+
+
+                            
     $user = auth()->user();
     $puedeEditar = $user && $user->tienePermiso('equipos.editar');
 @endphp
@@ -741,6 +746,9 @@
     >
         Editar
     </a>
+
+
+    
 @endif
 
                         </td>

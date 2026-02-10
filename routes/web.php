@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
+use App\Livewire\Inventario\ResumenInventario;
+
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\LoteController;
 use App\Http\Controllers\AfterLoginRedirectController;
@@ -77,6 +79,10 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
             // Dashboard real de preparación (para redirección / acceso directo)
             Route::get('/dashboard', [DashboardController::class, 'index'])
                 ->name('preparacion.dashboard');
+
+                
+
+
                 
 
             // ---------------------------
@@ -93,12 +99,21 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
                     ->middleware('permiso:prep.equipos.ver')
                     ->name('equipos.piezas-pendientes'); // mantengo tu name
 
+                                Route::view('/caracteristicas', 'preparacion.inventario.resumen')
+                ->middleware('permiso:prep.equipos.caracteristicas')
+                ->name('equipos.caracteristicas');
+
                 // Editar equipo (antes era /equipos/admin/{equipo}/editar)
                 Route::get('/{equipo}/editar', function (Equipo $equipo) {
                     return view('equipos.editar-equipo', compact('equipo'));
                 })
                 ->middleware('permiso:prep.equipos.editar')
                 ->name('equipos.editar'); // mantengo tu name
+
+
+
+
+
             });
 
             // ---------------------------
@@ -114,6 +129,9 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
                 Route::get('/gestion', fn () => view('inventario.gestion-inventario'))
                     ->middleware('permiso:prep.inventario.gestion')
                     ->name('inventario.gestion'); // mantengo tu name
+
+                    
+
             });
 
             // ---------------------------

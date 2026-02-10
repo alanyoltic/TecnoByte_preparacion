@@ -165,6 +165,20 @@ public function abrirEliminarSeleccion()
     $this->modalEliminarSeleccion = true;
 }
 
+public ?Equipo $equipoSeleccionado = null;
+
+
+public function verResumenEquipo($equipoId)
+{
+    $this->equipoSeleccionado = Equipo::with([
+        'loteModelo.lote.proveedor',
+        'registradoPor',
+        'gpus',
+        'monitor',
+        'baterias',
+    ])->findOrFail($equipoId);
+}
+
 
 
 public function confirmarEliminarSeleccion()

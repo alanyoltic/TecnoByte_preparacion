@@ -11,7 +11,8 @@
         "laravel/tinker": "^2.10.1",
         "livewire/livewire": "^3.6",
         "maatwebsite/excel": "^3.1",
-        "onamfc/laravel-route-visualizer": "^1.0"
+        "onamfc/laravel-route-visualizer": "^1.0",
+        "phpoffice/phpword": "^1.4"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html 
     lang="{{ str_replace('_', '-', app()->getLocale()) }}"
-    class="text-[18px]"
+    class="text-[14px]"
+
     x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }"
     x-init="$watch('darkMode', val => localStorage.setItem('darkMode', val))"
     :class="{ 'dark': darkMode }"
