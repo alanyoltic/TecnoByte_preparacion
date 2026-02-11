@@ -34,13 +34,27 @@
     wire:click="exportarSeleccionWord"
     wire:loading.attr="disabled"
     @disabled(!$tieneSeleccion)
-    @class([
-        'inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs sm:text-sm font-semibold text-white transition',
-        'bg-blue-600 hover:bg-blue-500 shadow-md shadow-blue-500/30' => $tieneSeleccion,
-        'bg-slate-600/60 cursor-not-allowed opacity-60' => !$tieneSeleccion,
-    ])
+    class="inline-flex items-center gap-2 rounded-xl px-3 py-1.5
+           text-xs sm:text-sm font-semibold text-white transition
+           {{ $tieneSeleccion
+                ? 'bg-blue-600 hover:bg-blue-500 shadow-md shadow-blue-500/30'
+                : 'bg-slate-600/60 cursor-not-allowed opacity-60' }}"
 >
     Exportar Word
+</button>
+
+<button
+    type="button"
+    wire:click="exportarSeleccionPdf"
+    wire:loading.attr="disabled"
+    @disabled(!$tieneSeleccion)
+    class="inline-flex items-center gap-2 rounded-xl px-3 py-1.5
+           text-xs sm:text-sm font-semibold text-white transition
+           {{ $tieneSeleccion
+                ? 'bg-slate-900 hover:bg-slate-800 shadow-md shadow-slate-900/30'
+                : 'bg-slate-600/60 cursor-not-allowed opacity-60' }}"
+>
+    Exportar PDF
 </button>
 
 
@@ -771,10 +785,16 @@
         <div class="mt-5 space-y-2">
             @foreach($resumenLineas as $l)
                 <div class="flex gap-3 text-sm text-slate-200">
-                    <div class="w-6 text-center shrink-0">{{ $l['icon'] }}</div>
-                    <div class="leading-snug">{{ $l['text'] }}</div>
+                    <div class="w-6 text-center shrink-0">
+                        {{ $l['icon'] ?? '•' }}
+                    </div>
+                    <div class="leading-snug">
+                        <span class="font-semibold">{{ $l['label'] }}:</span>
+                        {{ $l['text'] }}
+                    </div>
                 </div>
             @endforeach
+
         </div>
 
         <div class="mt-6 flex justify-end">

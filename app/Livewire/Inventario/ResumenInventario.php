@@ -8,6 +8,7 @@ use App\Models\Proveedor;
 use App\Models\Roles;
 use App\Models\User;
 use Livewire\Component;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\PhpWord;
@@ -310,31 +311,57 @@ return $q->orderByDesc('created_at')->orderByDesc('id');
         $lineas = [];
 
         // helper local
-        $push = function (?string $text, string $icon) use (&$lineas) {
-            $text = trim((string) $text);
-            if ($text !== '') {
-                $lineas[] = ['icon' => $icon, 'text' => $text];
-            }
-        };
+$push = function (string $label, ?string $value, ?string $icon = null) use (&$lineas) {
+    $value = trim((string) $value);
+    if ($value !== '') {
+        $lineas[] = [
+            'label' => $label,
+            'text'  => $value,
+            'icon'  => $icon, // puede ser null para exports
+        ];
+    }
+};
 
-        // orden principal
-        $push($cpu, '🧠');
-        $push($ram, '💾');
-        $push($storage, '🗄️');
-        $push($pantalla, '🖥️');
+// ORDEN PRINCIPAL
+$push('CPU', $cpu, '🧠');
+$push('RAM', $ram, '💾');
+$push('ALMACENAMIENTO', $storage, '🗄️');
+$push('PANTALLA / MONITOR', $pantalla, '🖥️');
 
-        if ($gpuIntTxt) $push("Gráfica integrada: {$gpuIntTxt}", '🎮');
-        if ($gpuDedTxt) $push("Gráfica dedicada: {$gpuDedTxt}", '🚀');
+// GPU
+if ($gpuIntTxt) $push('GPU INTEGRADA', $gpuIntTxt, '🎮');
+if ($gpuDedTxt) $push('GPU DEDICADA', $gpuDedTxt, '🚀');
 
-        // baterías
-        foreach ($batLineas as $btxt) {
-            $push($btxt, '🔋');
-        }
+// Baterías
+foreach ($batLineas as $btxt) {
+    $push('BATERÍA', $btxt, '🔋');
+}
 
-        // extras
-        foreach ($extras as $ex) {
-            $push($ex, '✨');
-        }
+// ✅ EXTRAS CON ETIQUETAS
+if ($e->puertos_conectividad) {
+    $push('CONECTIVIDAD', $e->puertos_conectividad, '✨');
+}
+if ($e->dispositivos_entrada) {
+    $push('ENTRADA / PERIFÉRICOS', $e->dispositivos_entrada, '✨');
+}
+if ($e->ethernet_tiene) {
+    $push('ETHERNET', $e->ethernet_es_gigabit ? 'Gigabit' : 'Sí', '✨');
+}
+
+// Puertos específicos (ejemplos)
+$usb = [];
+if ($e->puertos_usb_30) $usb[] = "{$e->puertos_usb_30} USB 3.0";
+if ($e->puertos_usb_c)  $usb[] = "{$e->puertos_usb_c} USB-C";
+if ($usb) $push('PUERTOS USB', implode(', ', $usb), '✨');
+
+$video = [];
+if ($e->puertos_hdmi) $video[] = "{$e->puertos_hdmi} HDMI";
+if ($video) $push('PUERTOS DE VIDEO', implode(', ', $video), '✨');
+
+if ($e->teclado_idioma && $e->teclado_idioma !== 'N/A') {
+    $push('TECLADO', $e->teclado_idioma, '✨');
+}
+
 
         return [$titulo ?: 'Equipo', $lineas];
 
@@ -451,6 +478,51 @@ return $q->orderByDesc('created_at')->orderByDesc('id');
 
     return response()->download($fullpath)->deleteFileAfterSend(true);
 }
+
+
+public function exportarSeleccionPdf()
+{
+    if (empty($this->selected)) {
+        return;
+    }
+
+    $equipos = Equipo::query()
+        ->with(['loteModelo.lote.proveedor', 'gpus', 'baterias', 'monitor'])
+        ->whereIn('id', $this->selected)
+        ->orderBy('id')
+        ->get();
+
+    if ($equipos->isEmpty()) {
+        return;
+    }
+
+    $items = $equipos->map(function ($e) {
+        [$titulo, $lineas] = $this->buildResumen($e);
+
+        return [
+            'titulo' => $titulo ?: trim(($e->marca ?? '') . ' ' . ($e->modelo ?? '')) ?: 'Equipo',
+            'serie'  => $e->numero_serie ?? '—',
+            'lineas' => $lineas ?? [],
+        ];
+    })->values()->all();
+
+    $pdf = Pdf::loadView('pdf.resumen-equipos', [
+        'items' => $items,
+    ])->setPaper('letter'); // o 'a4'
+
+    $filename = 'ResumenEquipos_' . now()->format('Ymd_His') . '.pdf';
+
+    return response()->streamDownload(function () use ($pdf) {
+        echo $pdf->output();
+    }, $filename);
+}
+
+
+
+
+
+
+
 
     
 

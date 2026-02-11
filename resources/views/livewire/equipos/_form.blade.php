@@ -729,8 +729,8 @@
 
 @php
     $tipo = $tipo_equipo ?? null;
-    $isLaptopLike = in_array($tipo, ['LAPTOP','2 EN 1','ALL IN ONE','TABLET'], true);
-    $isPcLike     = in_array($tipo, ['ESCRITORIO','MICRO PC','GAMER'], true);
+    $isLaptopLike = in_array($tipo, ['LAPTOP','2 EN 1','ALL IN ONE','TABLET', 'GAMER'], true);
+    $isPcLike     = in_array($tipo, ['ESCRITORIO','MICRO PC'], true);
 @endphp
 
 <div class="space-y-4">
@@ -1312,8 +1312,8 @@
     @php
         $tipo = trim((string) ($form->tipo_equipo ?? ''));
 
-        $pantallaIntegrada = in_array($tipo, ['LAPTOP','2 EN 1','ALL IN ONE','TABLET'], true);
-        $pantallaExterna   = in_array($tipo, ['ESCRITORIO','MICRO PC','GAMER'], true);
+        $pantallaIntegrada = in_array($tipo, ['LAPTOP','2 EN 1','ALL IN ONE','TABLET','GAMER'], true);
+        $pantallaExterna   = in_array($tipo, ['ESCRITORIO','MICRO PC'], true);
         $pantallaDefinida  = $pantallaIntegrada || $pantallaExterna;
         $detallesEsteticosMonitorCatalogo = [
             'RAYONES LEVES',
