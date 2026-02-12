@@ -288,8 +288,8 @@ class RegistrarEquipo extends Component
 
     private function isPcLikeTipo(?string $tipo): bool
         {
-            return in_array($this->tipoKey($tipo), ['escritorio','micro pc','gamer'], true)
-                || in_array(trim((string)$tipo), ['ESCRITORIO','MICRO PC','GAMER'], true);
+            return in_array($this->tipoKey($tipo), ['escritorio','micro pc',], true)
+                || in_array(trim((string)$tipo), ['ESCRITORIO','MICRO PC',], true);
         }
 
 
