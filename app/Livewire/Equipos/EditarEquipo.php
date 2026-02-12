@@ -58,7 +58,7 @@ class EditarEquipo extends Component
         'USB 3.1'    => 'puertos_usb_31',
         'USB 3.2'    => 'puertos_usb_32',
         'USB-C'      => 'puertos_usb_c',
-        'USB tipo C' => 'puertos_usb_c',
+        
     ];
 
     private const MAP_VIDEO = [
