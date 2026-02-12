@@ -280,16 +280,18 @@ class RegistrarEquipo extends Component
     }
 
     private function isLaptopLikeTipo(?string $tipo): bool
-    {
-        return in_array($this->tipoKey($tipo), ['laptop','2 en 1','all in one','tablet'], true)
-            || in_array(trim((string)$tipo), ['LAPTOP','2 EN 1','ALL IN ONE','TABLET'], true);
-    }
+        {
+            return in_array($this->tipoKey($tipo), ['laptop','2 en 1','all in one','tablet','gamer'], true)
+                || in_array(trim((string)$tipo), ['LAPTOP','2 EN 1','ALL IN ONE','TABLET','GAMER'], true);
+        }
+
 
     private function isPcLikeTipo(?string $tipo): bool
-    {
-        return in_array($this->tipoKey($tipo), ['escritorio','micro pc','gamer'], true)
-            || in_array(trim((string)$tipo), ['ESCRITORIO','MICRO PC','GAMER'], true);
-    }
+        {
+            return in_array($this->tipoKey($tipo), ['escritorio','micro pc','gamer'], true)
+                || in_array(trim((string)$tipo), ['ESCRITORIO','MICRO PC','GAMER'], true);
+        }
+
 
     public function getPantallaIntegradaProperty(): bool
     {
@@ -312,8 +314,9 @@ class RegistrarEquipo extends Component
 {
     $tipo = strtoupper(trim((string) $value));
 
-    $pantallaIntegrada = in_array($tipo, ['LAPTOP','2 EN 1','ALL IN ONE','TABLET'], true);
-    $pantallaExterna   = in_array($tipo, ['ESCRITORIO','MICRO PC','GAMER'], true);
+    $pantallaIntegrada = in_array($tipo, ['LAPTOP','2 EN 1','ALL IN ONE','TABLET','GAMER'], true);
+    $pantallaExterna   = in_array($tipo, ['ESCRITORIO','MICRO PC'], true);
+
 
     if ($pantallaIntegrada) {
         // Limpia monitor externo
