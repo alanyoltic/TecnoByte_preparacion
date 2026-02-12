@@ -8,7 +8,7 @@ use App\Models\Proveedor;
 use App\Models\Roles;
 use App\Models\User;
 use Livewire\Component;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Spatie\Browsershot\Browsershot;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\PhpWord;
@@ -323,14 +323,14 @@ $push = function (string $label, ?string $value, ?string $icon = null) use (&$li
 };
 
 // ORDEN PRINCIPAL
-$push('CPU', $cpu, '🧠');
-$push('RAM', $ram, '💾');
-$push('ALMACENAMIENTO', $storage, '🗄️');
+$push('CPU', $cpu, '💻');
+$push('RAM', $ram, '📀');
+$push('ALMACENAMIENTO', $storage, '💾');
 $push('PANTALLA / MONITOR', $pantalla, '🖥️');
 
 // GPU
-if ($gpuIntTxt) $push('GPU INTEGRADA', $gpuIntTxt, '🎮');
-if ($gpuDedTxt) $push('GPU DEDICADA', $gpuDedTxt, '🚀');
+if ($gpuIntTxt) $push('GPU INTEGRADA', $gpuIntTxt, '🚀');
+if ($gpuDedTxt) $push('GPU DEDICADA', $gpuDedTxt, '🎮');
 
 // Baterías
 foreach ($batLineas as $btxt) {
@@ -339,27 +339,27 @@ foreach ($batLineas as $btxt) {
 
 // ✅ EXTRAS CON ETIQUETAS
 if ($e->puertos_conectividad) {
-    $push('CONECTIVIDAD', $e->puertos_conectividad, '✨');
+    $push('CONECTIVIDAD', $e->puertos_conectividad, '📌');
 }
 if ($e->dispositivos_entrada) {
-    $push('ENTRADA / PERIFÉRICOS', $e->dispositivos_entrada, '✨');
+    $push('ENTRADA / PERIFÉRICOS', $e->dispositivos_entrada, '📌');
 }
 if ($e->ethernet_tiene) {
-    $push('ETHERNET', $e->ethernet_es_gigabit ? 'Gigabit' : 'Sí', '✨');
+    $push('ETHERNET', $e->ethernet_es_gigabit ? 'Gigabit' : 'Sí', '📌');
 }
 
 // Puertos específicos (ejemplos)
 $usb = [];
 if ($e->puertos_usb_30) $usb[] = "{$e->puertos_usb_30} USB 3.0";
 if ($e->puertos_usb_c)  $usb[] = "{$e->puertos_usb_c} USB-C";
-if ($usb) $push('PUERTOS USB', implode(', ', $usb), '✨');
+if ($usb) $push('PUERTOS USB', implode(', ', $usb), '📌');
 
 $video = [];
 if ($e->puertos_hdmi) $video[] = "{$e->puertos_hdmi} HDMI";
-if ($video) $push('PUERTOS DE VIDEO', implode(', ', $video), '✨');
+if ($video) $push('PUERTOS DE VIDEO', implode(', ', $video), '📌');
 
 if ($e->teclado_idioma && $e->teclado_idioma !== 'N/A') {
-    $push('TECLADO', $e->teclado_idioma, '✨');
+    $push('TECLADO', $e->teclado_idioma, '📌');
 }
 
 
@@ -506,16 +506,23 @@ public function exportarSeleccionPdf()
         ];
     })->values()->all();
 
-    $pdf = Pdf::loadView('pdf.resumen-equipos', [
+    $html = view('pdf.resumen-equipos', [
         'items' => $items,
-    ])->setPaper('letter'); // o 'a4'
+    ])->render();
+
+$pdf = Browsershot::html($html)
+    ->format('A4')
+    ->margins(10, 10, 10, 10)
+    ->pdf();
+
 
     $filename = 'ResumenEquipos_' . now()->format('Ymd_His') . '.pdf';
 
     return response()->streamDownload(function () use ($pdf) {
-        echo $pdf->output();
+        echo $pdf;
     }, $filename);
 }
+
 
 
 
