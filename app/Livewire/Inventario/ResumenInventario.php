@@ -510,10 +510,20 @@ public function exportarSeleccionPdf()
         'items' => $items,
     ])->render();
 
-$pdf = Browsershot::html($html)
+$browsershot = Browsershot::html($html)
     ->format('A4')
-    ->margins(10, 10, 10, 10)
-    ->pdf();
+    ->margins(10, 10, 10, 10);
+
+if (app()->environment('production')) {
+    $browsershot
+        ->setChromePath('/usr/bin/chromium-browser')
+        ->addChromiumArguments([
+            '--no-sandbox',
+            '--disable-setuid-sandbox'
+        ]);
+}
+
+$pdf = $browsershot->pdf();
 
 
     $filename = 'ResumenEquipos_' . now()->format('Ymd_His') . '.pdf';
