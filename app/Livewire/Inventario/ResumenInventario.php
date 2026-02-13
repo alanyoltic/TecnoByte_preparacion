@@ -58,6 +58,11 @@ class ResumenInventario extends Component
     public string $resumenTitulo = '';
     public array $resumenLineas = [];
 
+
+
+    public bool $modalComparar = false;
+    public array $comparacion = [];
+
     public function mount(): void
     {
         $this->lotes = Lote::query()->orderByDesc('fecha_llegada')->get();
@@ -205,7 +210,16 @@ return $q->orderByDesc('created_at')->orderByDesc('id');
      */
     protected function buildResumen(Equipo $e): array
     {
-        $titulo = trim(($e->marca ?? '') . ' ' . ($e->modelo ?? ''));
+        $tituloBase = trim(($e->marca ?? '') . ' ' . ($e->modelo ?? ''));
+
+        $emoji = '🔥';
+
+        $titulo = $tituloBase
+            ? "{$emoji} {$tituloBase} {$emoji}"
+            : "{$emoji} Equipo {$emoji}";
+
+
+        
 
         // CPU
         $cpuParts = array_filter([
@@ -345,18 +359,56 @@ if ($e->dispositivos_entrada) {
     $push('ENTRADA / PERIFÉRICOS', $e->dispositivos_entrada, '📌');
 }
 if ($e->ethernet_tiene) {
-    $push('ETHERNET', $e->ethernet_es_gigabit ? 'Gigabit' : 'Sí', '📌');
+
+    $ethernetTexto = $e->ethernet_es_gigabit
+        ? 'Ethernet Gigabit'
+        : 'Ethernet NO gigabit';
+
+    $push('RED ETHERNET', $ethernetTexto, '📌');
 }
+
 
 // Puertos específicos (ejemplos)
 $usb = [];
-if ($e->puertos_usb_30) $usb[] = "{$e->puertos_usb_30} USB 3.0";
-if ($e->puertos_usb_c)  $usb[] = "{$e->puertos_usb_c} USB-C";
-if ($usb) $push('PUERTOS USB', implode(', ', $usb), '📌');
+
+if ($e->puertos_usb_2)  $usb[] = "{$e->puertos_usb_2}x USB 2.0";
+if ($e->puertos_usb_30) $usb[] = "{$e->puertos_usb_30}x USB 3.0";
+if ($e->puertos_usb_31) $usb[] = "{$e->puertos_usb_31}x USB 3.1";
+if ($e->puertos_usb_32) $usb[] = "{$e->puertos_usb_32}x USB 3.2";
+if ($e->puertos_usb_c)  $usb[] = "{$e->puertos_usb_c}x USB-C";
+
+if (!empty($usb)) {
+    $push('PUERTOS USB', implode(' · ', $usb), '📌');
+}
+
 
 $video = [];
-if ($e->puertos_hdmi) $video[] = "{$e->puertos_hdmi} HDMI";
-if ($video) $push('PUERTOS DE VIDEO', implode(', ', $video), '📌');
+
+if ($e->puertos_hdmi)        $video[] = "{$e->puertos_hdmi}x HDMI";
+if ($e->puertos_mini_hdmi)   $video[] = "{$e->puertos_mini_hdmi}x Mini HDMI";
+if ($e->puertos_vga)         $video[] = "{$e->puertos_vga}x VGA";
+if ($e->puertos_dvi)         $video[] = "{$e->puertos_dvi}x DVI";
+if ($e->puertos_displayport) $video[] = "{$e->puertos_displayport}x DisplayPort";
+if ($e->puertos_mini_dp)     $video[] = "{$e->puertos_mini_dp}x Mini DP";
+
+if (!empty($video)) {
+    $push('PUERTOS DE VIDEO', implode(' · ', $video), '📌');
+}
+
+
+$slots = [];
+
+if ($e->slots_alm_ssd)      $slots[] = "{$e->slots_alm_ssd}x SSD SATA";
+if ($e->slots_alm_m2)       $slots[] = "{$e->slots_alm_m2}x M.2";
+if ($e->slots_alm_m2_micro) $slots[] = "{$e->slots_alm_m2_micro}x M.2 Micro";
+if ($e->slots_alm_hdd)      $slots[] = "{$e->slots_alm_hdd}x HDD";
+if ($e->slots_alm_msata)    $slots[] = "{$e->slots_alm_msata}x mSATA";
+
+if (!empty($slots)) {
+    $push('SLOTS DE ALMACENAMIENTO', implode(' · ', $slots), '📌');
+}
+
+
 
 if ($e->teclado_idioma && $e->teclado_idioma !== 'N/A') {
     $push('TECLADO', $e->teclado_idioma, '📌');
@@ -533,7 +585,34 @@ $pdf = $browsershot->pdf();
     }, $filename);
 }
 
+public function compararSeleccion()
+{
+    if (count($this->selected) < 2) return;
 
+    $equipos = Equipo::with(['gpus','monitor'])
+        ->whereIn('id', $this->selected)
+        ->get();
+
+    $this->comparacion = $equipos->map(function ($e) {
+
+        $gpu = optional($e->gpus->firstWhere('tipo','DEDICADA'))->modelo
+            ?? optional($e->gpus->firstWhere('tipo','INTEGRADA'))->modelo
+            ?? 'N/A';
+
+        return [
+            'nombre' => "{$e->marca} {$e->modelo}",
+            'cpu' => $e->procesador_modelo,
+            'gpu' => $gpu,
+            'ram' => $e->ram_total,
+            'almacenamiento' => $e->almacenamiento_principal_capacidad,
+            'pantalla' => optional($e->monitor)->pulgadas
+                ? optional($e->monitor)->pulgadas . '"'
+                : 'N/A',
+        ];
+    })->toArray();
+
+    $this->modalComparar = true;
+}
 
 
 

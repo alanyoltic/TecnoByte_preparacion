@@ -29,6 +29,20 @@
     $tieneSeleccion = !empty($selected) && count($selected) > 0;
 @endphp
 
+
+
+@if(count($selected) >= 2)
+    <button wire:click="compararSeleccion"
+            class="inline-flex items-center gap-2 rounded-xl px-3 py-1.5
+           text-xs sm:text-sm font-semibold text-white transition
+           {{ $tieneSeleccion
+            ? 'bg-blue-600 hover:bg-blue-500 shadow-md shadow-blue-500/30'
+            : 'bg-slate-600/60 cursor-not-allowed opacity-60' }}"
+>
+        🔍 Comparar
+    </button>
+@endif
+
 <button
     type="button"
     wire:click="exportarSeleccionWord"
@@ -56,6 +70,10 @@
 >
     Exportar PDF
 </button>
+
+
+
+
 
 
 
@@ -811,6 +829,72 @@
         </div>
     </div>
 </div>
+
+
+
+@if($modalComparar)
+<div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+    <div class="bg-white w-11/12 max-w-6xl rounded-lg p-6 overflow-auto">
+
+        <h2 class="text-xl font-bold mb-4">📊 Comparación de Equipos</h2>
+
+        <table class="w-full border text-sm">
+            <thead>
+                <tr>
+                    <th class="border p-2">Especificación</th>
+                    @foreach($comparacion as $item)
+                        <th class="border p-2">{{ $item['nombre'] }}</th>
+                    @endforeach
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="border p-2 font-bold">🧠 Procesador</td>
+                    @foreach($comparacion as $item)
+                        <td class="border p-2">{{ $item['cpu'] }}</td>
+                    @endforeach
+                </tr>
+
+                <tr>
+                    <td class="border p-2 font-bold">🎮 Gráfica</td>
+                    @foreach($comparacion as $item)
+                        <td class="border p-2">{{ $item['gpu'] }}</td>
+                    @endforeach
+                </tr>
+
+                <tr>
+                    <td class="border p-2 font-bold">💾 RAM</td>
+                    @foreach($comparacion as $item)
+                        <td class="border p-2">{{ $item['ram'] }}</td>
+                    @endforeach
+                </tr>
+
+                <tr>
+                    <td class="border p-2 font-bold">💽 Almacenamiento</td>
+                    @foreach($comparacion as $item)
+                        <td class="border p-2">{{ $item['almacenamiento'] }}</td>
+                    @endforeach
+                </tr>
+
+                <tr>
+                    <td class="border p-2 font-bold">🖥️ Pantalla</td>
+                    @foreach($comparacion as $item)
+                        <td class="border p-2">{{ $item['pantalla'] }}</td>
+                    @endforeach
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="mt-4 text-right">
+            <button wire:click="$set('modalComparar', false)"
+                class="bg-gray-500 text-white px-4 py-2 rounded">
+                Cerrar
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+
 
 
 
