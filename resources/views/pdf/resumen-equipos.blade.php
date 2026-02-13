@@ -4,6 +4,13 @@
     <meta charset="utf-8">
     <title>Resumen de equipos</title>
     <style>
+
+        
+            body {
+                font-family: "Noto Color Emoji", "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
+            }
+        
+
         body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color:#111; }
         .h1 { font-size: 18px; font-weight: 700; margin: 0 0 6px 0; }
         .sub { font-size: 11px; font-weight: 700; margin: 0 0 12px 0; }
