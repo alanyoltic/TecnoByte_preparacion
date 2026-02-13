@@ -62,6 +62,7 @@ class ResumenInventario extends Component
 
     public bool $modalComparar = false;
     public array $comparacion = [];
+    public array $comparacionResumen = [];
 
     public function mount(): void
     {
@@ -585,6 +586,10 @@ $pdf = $browsershot->pdf();
     }, $filename);
 }
 
+
+
+
+
 public function compararSeleccion()
 {
     if (count($this->selected) < 2) return;
@@ -593,23 +598,19 @@ public function compararSeleccion()
         ->whereIn('id', $this->selected)
         ->get();
 
-    $this->comparacion = $equipos->map(function ($e) {
-
-        $gpu = optional($e->gpus->firstWhere('tipo','DEDICADA'))->modelo
-            ?? optional($e->gpus->firstWhere('tipo','INTEGRADA'))->modelo
-            ?? 'N/A';
-
-        return [
-            'nombre' => "{$e->marca} {$e->modelo}",
-            'cpu' => $e->procesador_modelo,
-            'gpu' => $gpu,
-            'ram' => $e->ram_total,
-            'almacenamiento' => $e->almacenamiento_principal_capacidad,
-            'pantalla' => optional($e->monitor)->pulgadas
-                ? optional($e->monitor)->pulgadas . '"'
-                : 'N/A',
-        ];
-    })->toArray();
+    $this->comparacionResumen = [
+        'cpu' => $equipos->groupBy('procesador_modelo')->map->count(),
+        'ram' => $equipos->groupBy('ram_total')->map->count(),
+        'almacenamiento' => $equipos->groupBy('almacenamiento_principal_capacidad')->map->count(),
+        'pantalla' => $equipos->groupBy(fn($e) =>
+            optional($e->monitor)->pulgadas ?? 'N/A'
+        )->map->count(),
+        'gpu' => $equipos->groupBy(function ($e) {
+            return optional($e->gpus->firstWhere('tipo','DEDICADA'))->modelo
+                ?? optional($e->gpus->firstWhere('tipo','INTEGRADA'))->modelo
+                ?? 'N/A';
+        })->map->count(),
+    ];
 
     $this->modalComparar = true;
 }

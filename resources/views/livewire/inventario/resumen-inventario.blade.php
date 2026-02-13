@@ -897,6 +897,44 @@
 
 
 
+@if($modalComparar)
+<div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+    <div class="bg-white w-11/12 max-w-4xl rounded-lg p-6 overflow-auto">
+
+        <h2 class="text-xl font-bold mb-6">
+            📊 Detector de Diferencias
+        </h2>
+
+        @foreach($comparacionResumen as $campo => $valores)
+
+            <div class="mb-6">
+                <h3 class="font-semibold mb-2 text-gray-700 uppercase">
+                    {{ strtoupper($campo) }}
+                </h3>
+
+                @foreach($valores as $valor => $cantidad)
+                    <div class="flex justify-between p-2 rounded 
+                        {{ count($valores) > 1 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700' }}">
+                        <span>{{ $valor ?: 'N/A' }}</span>
+                        <span>{{ $cantidad }} equipo(s)</span>
+                    </div>
+                @endforeach
+            </div>
+
+        @endforeach
+
+        <div class="text-right">
+            <button wire:click="$set('modalComparar', false)"
+                class="bg-gray-600 text-white px-4 py-2 rounded">
+                Cerrar
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+
+
+
 
 
 
