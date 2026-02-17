@@ -1,4 +1,5 @@
 <x-tb-background poll="refreshDashboard" :glows="$glows">
+    
     <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10">
         <div class="relative">
             <x-topbar
@@ -249,7 +250,19 @@
                                     <div class="{{ $cardClass }} {{ $cardGlow }} {{ $cardGlow2 }}">
                                         <span class="{{ $labelClass }}">Equipos Hechos (Hoy)</span>
                                         <span class="{{ $valueClass }}">{{ $kpis['equiposHoy'] ?? 0 }}</span>
-                                        <span class="{{ $badgeClass }}">
+                                        @php
+                                            $change = $kpis['hoy_change'] ?? '0%';
+                                            $isPositive = str_contains($change, '+');
+                                            $colorClass = $isPositive
+                                                ? 'text-emerald-600 dark:text-emerald-400'
+                                                : 'text-rose-600 dark:text-rose-400';
+                                                
+                                        @endphp
+
+                                        
+
+                                        <span class="inline-flex items-center text-xs font-semibold {{ $colorClass }}">
+
                                             <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1"></span>
                                             {{ $kpis['hoy_change'] ?? '' }}
                                         </span>
@@ -258,7 +271,19 @@
                                     <div class="{{ $cardClass }} {{ $cardGlow }} {{ $cardGlow2 }}">
                                         <span class="{{ $labelClass }}">Equipos Hechos (Semana)</span>
                                         <span class="{{ $valueClass }}">{{ $kpis['equiposSemana'] ?? 0 }}</span>
-                                        <span class="{{ $badgeClass }}">
+                                        @php
+                                            $change = $kpis['semana_change'] ?? '0%';
+                                            $isPositive = str_contains($change, '+');
+                                            $colorClass = $isPositive
+                                                ? 'text-emerald-600 dark:text-emerald-400'
+                                                : 'text-rose-600 dark:text-rose-400';
+                                        @endphp
+
+                                        <span class="inline-flex items-center text-xs font-semibold {{ $colorClass }}">
+
+
+
+                                        
                                             <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1"></span>
                                             {{ $kpis['semana_change'] ?? '' }}
                                         </span>
@@ -267,7 +292,16 @@
                                     <div class="{{ $cardClass }} {{ $cardGlow }} {{ $cardGlow2 }}">
                                         <span class="{{ $labelClass }}">Equipos Hechos (Mes)</span>
                                         <span class="{{ $valueClass }}">{{ $kpis['equiposMes'] ?? 0 }}</span>
-                                        <span class="{{ $badgeClass }}">
+                                        @php
+                                            $change = $kpis['mes_change'] ?? '0%';
+                                            $isPositive = str_contains($change, '+');
+                                            $colorClass = $isPositive
+                                                ? 'text-emerald-600 dark:text-emerald-400'
+                                                : 'text-rose-600 dark:text-rose-400';
+                                        @endphp
+
+                                    <span class="inline-flex items-center text-xs font-semibold {{ $colorClass }}"> 
+
                                             <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1"></span>
                                             {{ $kpis['mes_change'] ?? '' }}
                                         </span>
@@ -592,22 +626,21 @@
                                                         shadow-xl shadow-slate-900/10 dark:shadow-black/35
                                                         overflow-hidden
                                                         flex items-center justify-center">
-                                               
-                                            @if(!empty($empleadoMes['foto_perfil']))
-                                                <img
-                                                    src="{{ $empleadoMes['foto_perfil'] }}"
-                                                    alt="Foto empleado del mes"
-                                                    class="w-full h-full object-cover"
-                                                    loading="lazy"
-                                                    referrerpolicy="no-referrer"
-                                                />
-                                            @else
                                                 {{-- placeholder --}}
-                                                <svg class="w-20 h-20 text-slate-400/70 dark:text-slate-300/30" viewBox="0 0 24 24" fill="none">
-                                                    <path d="M12 12c2.761 0 5-2.239 5-5S14.761 2 12 2 7 4.239 7 7s2.239 5 5 5Z" fill="currentColor"/>
-                                                    <path d="M20 22c0-4.418-3.582-8-8-8s-8 3.582-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                                </svg>
-                                            @endif
+@if(!empty($empleadoMes['foto_perfil']))
+    <img
+        src="{{ asset('storage/' . $empleadoMes['foto_perfil']) }}"
+        alt="Foto empleado del mes"
+        class="w-full h-full object-cover"
+        loading="lazy"
+    >
+@else
+    {{-- placeholder --}}
+    <svg class="w-20 h-20 text-slate-400/70 dark:text-slate-300/30" viewBox="0 0 24 24" fill="none">
+        <path d="M12 12c2.761 0 5-2.239 5-5S14.761 2 12 2 7 4.239 7 7s2.239 5 5 5Z" fill="currentColor"/>
+        <path d="M20 22c0-4.418-3.582-8-8-8s-8 3.582-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+@endif
 
                                             </div>
                                         </div>
@@ -621,34 +654,46 @@
                                         </p>
 
 
-                                        <div class="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full
-                                                    bg-gradient-to-r from-[#1E3A8A]/20 via-[#3B82F6]/15 to-[#2563EB]/20
-                                                    border border-white/10
-                                                    text-sm font-semibold text-slate-100
-                                                    shadow-sm shadow-blue-900/20">
-                                            <span class="inline-block w-2 h-2 rounded-full bg-emerald-400"></span>
-                                            Reconocimiento activo
+
+                                    </div>
+                                        {{-- (Opcional) Botón dentro de la tarjeta --}}
+                                        <div class="mt-8 flex justify-center">
+                                            @if($esAdminCeo)
+                                                <button
+                                                    type="button"
+                                                    wire:click="openEmpleadoModal"
+                                                    class="inline-flex items-center gap-2
+                                                        px-4 py-2 rounded-full text-sm font-semibold
+                                                        bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                                                        text-white shadow-lg shadow-blue-800/60
+                                                        backdrop-blur-xl transition-all duration-200
+                                                        hover:shadow-blue-500/80 hover:-translate-y-0.5"
+                                                >
+                                                    Configurar empleado del mes
+                                                </button>
+                                            @endif
                                         </div>
-                                    </div>
 
-                                    {{-- (Opcional) Botón dentro de la tarjeta --}}
-                                    <div class="mt-8 flex justify-center">
-                                        @if($esAdminCeo)
-                                            <button
-                                                type="button"
-                                                wire:click="openEmpleadoModal"
-                                                class="inline-flex items-center gap-2
-                                                    px-4 py-2 rounded-full text-sm font-semibold
-                                                    bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                                                    text-white shadow-lg shadow-blue-800/60
-                                                    backdrop-blur-xl transition-all duration-200
-                                                    hover:shadow-blue-500/80 hover:-translate-y-0.5"
-                                            >
-                                                Configurar empleado del mes
-                                            </button>
-                                        @endif
-                                    </div>
+                                        @if($esAdminCeo && !empty($empleadoMes))
+    <button
+        type="button"
+        x-data
+        @click.prevent="if (confirm('¿Seguro que deseas quitar el empleado del mes?')) { $wire.quitarEmpleadoDelMes() }"
+        class="inline-flex items-center gap-2
+               px-4 py-2 rounded-full text-sm font-semibold
+               bg-rose-600/90 text-white
+               shadow-lg shadow-rose-900/40
+               transition-all duration-200
+               hover:bg-rose-500 hover:shadow-rose-700/60"
+    >
+        Quitar empleado
+    </button>
+@endif
 
+
+
+
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -671,7 +716,7 @@
     </div>
 
 
-     @if($esAdminCeo && $showEmpleadoModal)
+     @if($showEmpleadoModal)
 <div class="fixed inset-0 z-[999] flex items-center justify-center px-4">
     <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" wire:click="closeEmpleadoModal"></div>
 

@@ -47,8 +47,6 @@ class Dashboard extends Component
     // Glows persistentes 
     public array $glows = [];
 
-    public ?string $selectedDate = null; // formato Y-m-d
-
 
     //Empleado del mes
     public ?array $empleadoMes = null;
@@ -98,7 +96,6 @@ class Dashboard extends Component
         $roleSlug = strtolower(optional($user->role)->slug ?? '');
         $roleName = strtolower(optional($user->role)->nombre ?? '');
         $this->cargarAvisos();
-        
 
         $this->isTecnico = in_array($roleSlug, ['tecnico', 'técnico'])
             || in_array($roleName, ['tecnico', 'técnico']);
@@ -320,9 +317,8 @@ private function calcularCambio($actual, $anterior)
         $equiposHoy = $aplicarFiltro(
             Equipo::whereDate('created_at', $today)
         )->count();
-        $hoy = $selectedDate->copy()->day(Carbon::now()->day);
-        $ayer = $hoy->copy()->subDay();
-
+        $hoy = Carbon::today();
+        $ayer = Carbon::yesterday();
 
         $equiposHoy = Equipo::whereDate('created_at', $hoy)->count();
         $equiposAyer = Equipo::whereDate('created_at', $ayer)->count();
@@ -338,12 +334,11 @@ private function calcularCambio($actual, $anterior)
         $equiposSemana = $aplicarFiltro(
             Equipo::whereBetween('created_at', [$semanaInicio, $semanaFin])
         )->count();
-        $inicioSemana = $selectedDate->copy()->startOfWeek();
-        $finSemana = $selectedDate->copy()->endOfWeek();
+        $inicioSemana = Carbon::now()->startOfWeek();
+        $finSemana = Carbon::now()->endOfWeek();
 
-        $inicioSemanaAnterior = $selectedDate->copy()->subWeek()->startOfWeek();
-        $finSemanaAnterior = $selectedDate->copy()->subWeek()->endOfWeek();
-
+        $inicioSemanaAnterior = Carbon::now()->subWeek()->startOfWeek();
+        $finSemanaAnterior = Carbon::now()->subWeek()->endOfWeek();
 
         $equiposSemana = Equipo::whereBetween('created_at', [$inicioSemana, $finSemana])->count();
         $equiposSemanaAnterior = Equipo::whereBetween('created_at', [$inicioSemanaAnterior, $finSemanaAnterior])->count();
@@ -358,12 +353,11 @@ private function calcularCambio($actual, $anterior)
         $equiposMes = $aplicarFiltro(
             Equipo::whereBetween('created_at', [$startOfMonth, $endOfMonth])
         )->count();
-        $inicioMes = $selectedDate->copy()->startOfMonth();
-        $finMes = $selectedDate->copy()->endOfMonth();
+        $inicioMes = Carbon::now()->startOfMonth();
+        $finMes = Carbon::now()->endOfMonth();
 
-        $inicioMesAnterior = $selectedDate->copy()->subMonth()->startOfMonth();
-        $finMesAnterior = $selectedDate->copy()->subMonth()->endOfMonth();
-
+        $inicioMesAnterior = Carbon::now()->subMonth()->startOfMonth();
+        $finMesAnterior = Carbon::now()->subMonth()->endOfMonth();
 
         $equiposMes = Equipo::whereBetween('created_at', [$inicioMes, $finMes])->count();
         $equiposMesAnterior = Equipo::whereBetween('created_at', [$inicioMesAnterior, $finMesAnterior])->count();

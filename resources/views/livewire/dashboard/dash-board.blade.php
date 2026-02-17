@@ -36,6 +36,9 @@
                             @endforeach
                         </select>
 
+
+                        
+
                         {{-- Selector colaborador (solo admin/ceo) --}}
                         @if(!$isTecnico && !empty($colaboradores))
                             <select
@@ -250,7 +253,18 @@
                                     <div class="{{ $cardClass }} {{ $cardGlow }} {{ $cardGlow2 }}">
                                         <span class="{{ $labelClass }}">Equipos Hechos (Hoy)</span>
                                         <span class="{{ $valueClass }}">{{ $kpis['equiposHoy'] ?? 0 }}</span>
-                                        <span class="{{ $badgeClass }}">
+                                        @php
+                                            $change = $kpis['hoy_change'] ?? '0%';
+                                            $isPositive = str_contains($change, '+');
+                                            $colorClass = $isPositive
+                                                ? 'text-emerald-600 dark:text-emerald-400'
+                                                : 'text-rose-600 dark:text-rose-400';
+                                        @endphp
+
+                                        
+
+                                        <span class="inline-flex items-center text-xs font-semibold {{ $colorClass }}">
+
                                             <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1"></span>
                                             {{ $kpis['hoy_change'] ?? '' }}
                                         </span>
@@ -259,7 +273,19 @@
                                     <div class="{{ $cardClass }} {{ $cardGlow }} {{ $cardGlow2 }}">
                                         <span class="{{ $labelClass }}">Equipos Hechos (Semana)</span>
                                         <span class="{{ $valueClass }}">{{ $kpis['equiposSemana'] ?? 0 }}</span>
-                                        <span class="{{ $badgeClass }}">
+                                        @php
+                                            $change = $kpis['semana_change'] ?? '0%';
+                                            $isPositive = str_contains($change, '+');
+                                            $colorClass = $isPositive
+                                                ? 'text-emerald-600 dark:text-emerald-400'
+                                                : 'text-rose-600 dark:text-rose-400';
+                                        @endphp
+
+                                        <span class="inline-flex items-center text-xs font-semibold {{ $colorClass }}">
+
+
+
+                                        
                                             <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1"></span>
                                             {{ $kpis['semana_change'] ?? '' }}
                                         </span>
@@ -268,7 +294,16 @@
                                     <div class="{{ $cardClass }} {{ $cardGlow }} {{ $cardGlow2 }}">
                                         <span class="{{ $labelClass }}">Equipos Hechos (Mes)</span>
                                         <span class="{{ $valueClass }}">{{ $kpis['equiposMes'] ?? 0 }}</span>
-                                        <span class="{{ $badgeClass }}">
+                                        @php
+                                            $change = $kpis['mes_change'] ?? '0%';
+                                            $isPositive = str_contains($change, '+');
+                                            $colorClass = $isPositive
+                                                ? 'text-emerald-600 dark:text-emerald-400'
+                                                : 'text-rose-600 dark:text-rose-400';
+                                        @endphp
+
+                                    <span class="inline-flex items-center text-xs font-semibold {{ $colorClass }}"> 
+
                                             <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1"></span>
                                             {{ $kpis['mes_change'] ?? '' }}
                                         </span>
