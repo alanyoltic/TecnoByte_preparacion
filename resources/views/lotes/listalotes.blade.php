@@ -13,7 +13,7 @@
                 />
 
                 {{-- CONTENEDOR --}}
-                <div class="max-w-7xl mx-auto">
+                <div class="">
                     <livewire:lotes.lista-lotes />
                 </div>
 

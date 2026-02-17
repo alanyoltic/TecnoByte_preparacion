@@ -12,7 +12,7 @@
                             chip="Usuarios · Administrar"
                             description="Consulta, edita y gestiona los usuarios registrados en el sistema."
                         />
-                <div class="max-w-7xl mx-auto space-y-8">
+                <div class="">
                     {{-- CARD PRINCIPAL --}}
                     <div
                         class="rounded-3xl

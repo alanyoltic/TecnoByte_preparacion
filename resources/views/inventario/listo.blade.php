@@ -13,7 +13,7 @@
 
 
             {{-- CONTENIDO PRINCIPAL: LIVEWIRE INVENTARIO LISTO --}}
-            <div class="max-w-7xl mx-auto">
+            <div class="">
                 <livewire:inventario.inventario-listo />
             </div>
         </div>

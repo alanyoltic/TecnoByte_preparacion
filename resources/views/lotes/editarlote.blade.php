@@ -9,11 +9,11 @@
                                         <x-topbar
                     title="Editar lote"
                     chip="Lotes ·Editar lote"
-                    description="Selecciona un lote para entrar a su edición."
+                    description="Edita Equipos, piezas y características de un lote seleccionado."
                 />
 
                 {{-- CONTENEDOR LIMITADO --}}
-                <div class="max-w-6xl mx-auto">
+                <div class="">
 
                     {{-- TARJETA FORMULARIO --}}
                     <div

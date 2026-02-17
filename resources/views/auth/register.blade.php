@@ -16,7 +16,7 @@
                         description="Completa la información para agregar un nuevo colaborador al sistema."
                     />
 
-            <div class="max-w-5xl mx-auto space-y-6">
+            <div class="">
 
                 {{-- CARD PRINCIPAL DEL FORMULARIO --}}
                 <div

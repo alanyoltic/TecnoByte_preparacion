@@ -15,7 +15,7 @@
 
 
                 {{-- CONTENEDOR PRINCIPAL DEL FORMULARIO --}}
-                <div class="max-w-7xl mx-auto">
+                <div class="">
                     @livewire('inventario.resumen-inventario')
 
                 </div>

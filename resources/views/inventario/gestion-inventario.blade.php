@@ -56,7 +56,7 @@
                 @endif
 
                 {{-- CONTENEDOR PRINCIPAL --}}
-                <div class="max-w-7xl mx-auto">
+                <div class="">
                     @livewire('inventario.gestion-inventario')
                 </div>
 

@@ -44,6 +44,9 @@
 
 <body class="font-sans text-lg antialiased overflow-x-hidden bg-transparent">
 
+
+
+
         {{-- FONDO GLOBAL FIJO DETRÁS DE TODO (para evitar el bloque negro) --}}
         <div
             class="fixed inset-0 -z-50
@@ -221,6 +224,8 @@
                 </div>
             </template>
         </div>
+
+        
 @stack('scripts')
 
 

@@ -13,7 +13,7 @@
                 />
 
                 
-                <div class="max-w-6xl mx-auto">
+                <div class="">
 
                     {{-- TARJETA FORMULARIO --}}
                     <div
