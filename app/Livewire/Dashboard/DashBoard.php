@@ -85,7 +85,7 @@ class Dashboard extends Component
                 'texto'  => $a->texto,
                 'tag'    => $a->tag ?? 'INFO',
                 'color'  => $a->color ?? 'slate',
-                'icono'  => $a->icono ?? '📌',
+                'icono'  => $a->icono ?? 'Ã°Å¸â€œÅ’',
             ])
             ->toArray();
 }
@@ -104,12 +104,12 @@ class Dashboard extends Component
         $this->cargarAvisos();
         
 
-        $this->isTecnico = in_array($roleSlug, ['tecnico', 'técnico'])
-            || in_array($roleName, ['tecnico', 'técnico']);
+        $this->isTecnico = in_array($roleSlug, ['tecnico', 'tÃƒÂ©cnico'])
+            || in_array($roleName, ['tecnico', 'tÃƒÂ©cnico']);
 
         $this->selectedMonthValue = now()->format('Y-m');
 
-        // Si es técnico, el filtro de colaborador debe quedar vacío (porque siempre se filtra a él)
+        // Si es tÃƒÂ©cnico, el filtro de colaborador debe quedar vacÃƒÂ­o (porque siempre se filtra a ÃƒÂ©l)
         if ($this->isTecnico) {
             $this->selectedColaboradorId = null;
         }
@@ -138,7 +138,7 @@ class Dashboard extends Component
 
     public function updatedSelectedColaboradorId(): void
     {
-        // Si es técnico, ignora cambios (por seguridad)
+        // Si es tÃƒÂ©cnico, ignora cambios (por seguridad)
         if ($this->isTecnico) {
             $this->selectedColaboradorId = null;
         }
@@ -181,10 +181,10 @@ private function cargarEmpleadoDelMes(): void
 
     $u = $record->user;
 
-    // ✅ Normalizar foto_perfil a "path" (ej: fotos_perfil/archivo.jpg)
+    // Ã¢Å“â€¦ Normalizar foto_perfil a "path" (ej: fotos_perfil/archivo.jpg)
     $foto = $u->foto_perfil ?? null;
 
-    // Si por alguna razón viene como URL completa (http://.../storage/...), lo convertimos a path
+    // Si por alguna razÃƒÂ³n viene como URL completa (http://.../storage/...), lo convertimos a path
     if ($foto && str_contains($foto, '/storage/')) {
         $foto = ltrim(explode('/storage/', $foto, 2)[1], '/');
     }
@@ -194,7 +194,7 @@ private function cargarEmpleadoDelMes(): void
         'nombre'      => trim(($u->nombre ?? '') . ' ' . ($u->apellido_paterno ?? '')),
         'mensaje'     => $record->mensaje,
         'month'       => $record->month,
-        'foto_perfil' => $foto, // ✅ MISMO NOMBRE que en users/sidebar
+        'foto_perfil' => $foto, // Ã¢Å“â€¦ MISMO NOMBRE que en users/sidebar
     ];
 }
 
@@ -249,7 +249,7 @@ public function openEmpleadoModal(): void
     $this->validate([
         'empleadoMesUserId' => 'required|exists:users,id',
         'empleadoMesMensaje' => 'nullable|string|max:400',
-        // cuando agreguemos "hasta qué fecha", aquí va su regla
+        // cuando agreguemos "hasta quÃƒÂ© fecha", aquÃƒÂ­ va su regla
     ]);
 
     EmpleadoDelMes::updateOrCreate(
@@ -326,10 +326,12 @@ private function calcularCambio($actual, $anterior)
         )->count();
         $hoy = $selectedDate->copy()->day(Carbon::now()->day);
         $ayer = $hoy->copy()->subDay();
-
-
-        $equiposHoy = Equipo::whereDate('created_at', $hoy)->count();
-        $equiposAyer = Equipo::whereDate('created_at', $ayer)->count();
+        $equiposHoy = $aplicarFiltro(
+            Equipo::whereDate('created_at', $hoy)
+        )->count();
+        $equiposAyer = $aplicarFiltro(
+            Equipo::whereDate('created_at', $ayer)
+        )->count();
 
         $hoyChange = $this->calcularCambio($equiposHoy, $equiposAyer);
 
@@ -347,10 +349,12 @@ private function calcularCambio($actual, $anterior)
 
         $inicioSemanaAnterior = $selectedDate->copy()->subWeek()->startOfWeek();
         $finSemanaAnterior = $selectedDate->copy()->subWeek()->endOfWeek();
-
-
-        $equiposSemana = Equipo::whereBetween('created_at', [$inicioSemana, $finSemana])->count();
-        $equiposSemanaAnterior = Equipo::whereBetween('created_at', [$inicioSemanaAnterior, $finSemanaAnterior])->count();
+        $equiposSemana = $aplicarFiltro(
+            Equipo::whereBetween('created_at', [$inicioSemana, $finSemana])
+        )->count();
+        $equiposSemanaAnterior = $aplicarFiltro(
+            Equipo::whereBetween('created_at', [$inicioSemanaAnterior, $finSemanaAnterior])
+        )->count();
 
         $semanaChange = $this->calcularCambio($equiposSemana, $equiposSemanaAnterior);
 
@@ -367,10 +371,12 @@ private function calcularCambio($actual, $anterior)
 
         $inicioMesAnterior = $selectedDate->copy()->subMonth()->startOfMonth();
         $finMesAnterior = $selectedDate->copy()->subMonth()->endOfMonth();
-
-
-        $equiposMes = Equipo::whereBetween('created_at', [$inicioMes, $finMes])->count();
-        $equiposMesAnterior = Equipo::whereBetween('created_at', [$inicioMesAnterior, $finMesAnterior])->count();
+        $equiposMes = $aplicarFiltro(
+            Equipo::whereBetween('created_at', [$inicioMes, $finMes])
+        )->count();
+        $equiposMesAnterior = $aplicarFiltro(
+            Equipo::whereBetween('created_at', [$inicioMesAnterior, $finMesAnterior])
+        )->count();
 
         $mesChange = $this->calcularCambio($equiposMes, $equiposMesAnterior);
 
@@ -386,7 +392,7 @@ private function calcularCambio($actual, $anterior)
         ];
 
 
-        // ===== 3. GRÁFICA LÍNEA =====
+        // ===== 3. GRÃƒÂFICA LÃƒÂNEA =====
         $lineDataLabels = ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4', 'Semana 5'];
         $lineDataCounts = [0, 0, 0, 0, 0];
 
@@ -415,7 +421,7 @@ private function calcularCambio($actual, $anterior)
             'data'   => $lineDataCounts,
         ];
 
-        // ===== 4. GRÁFICA BARRAS =====
+        // ===== 4. GRÃƒÂFICA BARRAS =====
         $labels           = [];
         $serieActualAno   = [];
         $serieAnoAnterior = [];
@@ -454,7 +460,7 @@ private function calcularCambio($actual, $anterior)
         // ===== 5. COLABORADORES =====
         $tecnicosBaseQuery = User::query()
             ->join('roles', 'users.role_id', '=', 'roles.id')
-            ->whereIn(DB::raw('LOWER(roles.slug)'), ['tecnico', 'técnico']);
+            ->whereIn(DB::raw('LOWER(roles.slug)'), ['tecnico', 'tÃƒÂ©cnico']);
 
         $colaboradoresCount = (clone $tecnicosBaseQuery)->count();
 
@@ -486,12 +492,12 @@ $metaRecord = PreparacionMetaMensual::where('anio', $anio)
     ->where('mes', $mes)
     ->first();
 
-// Si NO existe y es el mes actual → la creamos
+// Si NO existe y es el mes actual Ã¢â€ â€™ la creamos
 if (!$metaRecord && $anio == now()->year && $mes == now()->month) {
 
     $tecnicosIniciales = $colaboradoresCount;
 
-    $metaPorColaborador = 120; // tu regla actual
+    $metaPorColaborador = 140; // regla actual
     $metaTotalCalculada = max($tecnicosIniciales, 1) * $metaPorColaborador;
 
     $metaRecord = PreparacionMetaMensual::create([
@@ -502,10 +508,18 @@ if (!$metaRecord && $anio == now()->year && $mes == now()->month) {
     ]);
 }
 
-// Si es mes pasado y no existe, NO lo creamos automáticamente
-// (opcionalmente después podemos hacer backfill)
+// Si es mes pasado y no existe, NO lo creamos automÃƒÂ¡ticamente
+// (opcionalmente despuÃƒÂ©s podemos hacer backfill)
+        $metaPorColaborador = 140;
+        $isPersonalView = $this->isTecnico || !empty($selectedColaboradorId);
 
-$metaTotal = $metaRecord->meta_total ?? 0;
+        if ($isPersonalView) {
+            // Vista personal: meta individual.
+            $metaTotal = $metaPorColaborador;
+        } else {
+            // Vista global: meta congelada del mes.
+            $metaTotal = $metaRecord->meta_total ?? 0;
+        }
 
 $equiposRealizadosMes = $equiposMes;
 $equiposFaltantes     = max($metaTotal - $equiposRealizadosMes, 0);
@@ -517,7 +531,7 @@ $percentMeta = $metaTotal > 0
 $this->radialPercent = (int) $percentMeta;
 if ($metaRecord && $metaRecord->hubo_movimientos) {
     $this->breakdown[] = [
-        'label' => '⚠ Hubo movimientos de personal este mes',
+        'label' => 'Ã¢Å¡Â  Hubo movimientos de personal este mes',
         'value' => '',
     ];
 }
@@ -527,11 +541,11 @@ $this->breakdown = [
     ['label' => 'Meta mensual total',       'value' => $metaTotal],
     ['label' => 'Equipos realizados (mes)', 'value' => $equiposRealizadosMes],
     ['label' => 'Faltantes para la meta',   'value' => $equiposFaltantes],
-    ['label' => 'Técnicos iniciales',       'value' => $metaRecord->tecnicos_iniciales ?? 0],
+    ['label' => 'TÃƒÂ©cnicos iniciales',       'value' => $isPersonalView ? 1 : ($metaRecord->tecnicos_iniciales ?? 0)],
 ];
 
 
-        // ✅ Disparar evento para actualizar ApexCharts sin recargar
+        // Ã¢Å“â€¦ Disparar evento para actualizar ApexCharts sin recargar
         $this->dispatch('dashboard-data-updated',
             lineChart: $this->lineChart,
             tecnicoChart: $this->tecnicoChart,
@@ -556,3 +570,7 @@ $this->breakdown = [
    
 
 }
+
+
+
+

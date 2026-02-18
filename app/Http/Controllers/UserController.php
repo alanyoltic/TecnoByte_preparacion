@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Roles;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules;
@@ -10,125 +11,134 @@ use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
-    /**
-     * Helpers (UNIFICADOS)
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Helpers
+    |--------------------------------------------------------------------------
+    */
+
     private function roleSlug(?User $user = null): ?string
     {
         $u = $user ?: auth()->user();
         return optional($u->role)->slug;
     }
 
-    private function esGlobal(?User $user = null): bool
+    private function isGlobal(?User $user = null): bool
     {
         $slug = $this->roleSlug($user);
         return in_array($slug, ['ceo', 'admin_sistema', 'sistemas'], true);
     }
 
-    private function enforcePuedeGestionarUsuario(User $target): void
+    /**
+     * Autoriza si el usuario autenticado puede gestionar al usuario objetivo.
+     */
+    private function authorizeUserScope(User $target): void
     {
         $auth = auth()->user();
 
-        // Globales: todo
-        if ($this->esGlobal($auth)) {
-            return;
-        }
-
-        // Siempre puedo editarme a mí mismo
-        if ((int) $auth->id === (int) $target->id) {
-            return;
-        }
-
-        // Gerente/Líder: solo dentro del mismo departamento
-        if ($auth->departamento_id === null || $target->departamento_id !== $auth->departamento_id) {
+        if (!$auth) {
             abort(403);
+        }
+
+        // Global roles: acceso total
+        if ($this->isGlobal($auth)) {
+            return;
+        }
+
+        // Puede editarse a sí mismo
+        if ($auth->id === $target->id) {
+            return;
+        }
+
+        // Gerente / Líder → solo mismo departamento
+        if ($auth->departamento_id !== $target->departamento_id) {
+            abort(403, 'No puedes gestionar usuarios fuera de tu departamento.');
         }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Index
+    |--------------------------------------------------------------------------
+    */
 
-    /**
-     * Lista de usuarios
-     */
     public function index()
     {
         $auth = auth()->user();
-        $authSlug = optional($auth->role)->slug;
 
         $query = User::query();
 
-        if (! $this->esGlobal()) {
+        if (!$this->isGlobal()) {
             $query->where('departamento_id', $auth->departamento_id);
 
-            if ($authSlug === 'lider') {
-                // lider solo ve tecnicos
+            if ($this->roleSlug($auth) === 'lider') {
                 $query->whereHas('role', fn($q) => $q->where('slug', 'tecnico'));
             }
         }
 
-        $usuarios = $query->orderBy('nombre')->get();
+        $users = $query->orderBy('nombre')->get();
 
-        return view('usuarios.index', compact('usuarios'));
+        return view('usuarios.index', compact('users'));
     }
 
-public function edit(User $user)
-{
-    $this->enforceScopeUsuarios($user);
-    return view('sistema.usuarios.edit', compact('user'));
-}
+    /*
+    |--------------------------------------------------------------------------
+    | Edit
+    |--------------------------------------------------------------------------
+    */
 
 
-    /**
-     * Guardar cambios del usuario
-     */
+
+    public function edit(User $user)
+    {
+        $this->authorizeUserScope($user);
+
+        $roles = Roles::orderBy('nombre')->get();
+
+        return view('usuarios.edit', compact('user', 'roles'));
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Update
+    |--------------------------------------------------------------------------
+    */
+
     public function update(Request $request, User $user)
     {
-
-
-        $this->enforceScopeUsuarios($user);
-
-        $esGlobal = $this->esGlobal();
-        // Bloquear cross-departamento para gerente/lider
-        $this->enforcePuedeGestionarUsuario($user);
-
+        $this->authorizeUserScope($user);
 
         $auth = auth()->user();
-        $esGlobal = $this->esGlobal($auth);
+        $isGlobal = $this->isGlobal($auth);
 
-        // Validación base
         $rules = [
-            'nombre'            => ['required', 'string', 'max:255'],
-            'segundo_nombre'    => ['nullable', 'string', 'max:255'],
-            'apellido_paterno'  => ['required', 'string', 'max:255'],
-            'apellido_materno'  => ['nullable', 'string', 'max:255'],
-            'email'             => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email,' . $user->id],
-            'password'          => ['nullable', 'confirmed', Rules\Password::defaults()],
-            'foto_perfil'       => ['nullable', 'image', 'max:20480'],
+            'nombre'           => ['required', 'string', 'max:255'],
+            'segundo_nombre'   => ['nullable', 'string', 'max:255'],
+            'apellido_paterno' => ['required', 'string', 'max:255'],
+            'apellido_materno' => ['nullable', 'string', 'max:255'],
+            'email'            => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'password'         => ['nullable', 'confirmed', Rules\Password::defaults()],
+            'foto_perfil'      => ['nullable', 'image', 'max:20480'],
         ];
 
-        // Solo roles globales pueden cambiar role_id (evita escalación)
-        if ($esGlobal) {
+        if ($isGlobal) {
             $rules['role_id'] = ['required', 'integer', 'exists:roles,id'];
         }
 
         $validated = $request->validate($rules);
 
-        /**
-         * Foto
-         */
+        // Foto
         if ($request->hasFile('foto_perfil')) {
 
-            // borrar foto anterior si existe
             if ($user->foto_perfil && Storage::disk('public')->exists($user->foto_perfil)) {
                 Storage::disk('public')->delete($user->foto_perfil);
             }
 
-            $path = $request->file('foto_perfil')->store('fotos_perfil', 'public');
-            $validated['foto_perfil'] = $path;
+            $validated['foto_perfil'] =
+                $request->file('foto_perfil')->store('fotos_perfil', 'public');
         }
 
-        /**
-         * Payload update
-         */
         $payload = [
             'nombre'           => $validated['nombre'],
             'segundo_nombre'   => $validated['segundo_nombre'] ?? null,
@@ -138,18 +148,16 @@ public function edit(User $user)
             'foto_perfil'      => $validated['foto_perfil'] ?? $user->foto_perfil,
         ];
 
-        if ($esGlobal) {
+        if ($isGlobal) {
             $payload['role_id'] = $validated['role_id'];
         }
 
         $user->update($payload);
 
-        /**
-         * Password (si viene)
-         */
         if (!empty($validated['password'])) {
-            $user->password = Hash::make($validated['password']);
-            $user->save();
+            $user->update([
+                'password' => Hash::make($validated['password'])
+            ]);
         }
 
         return redirect()

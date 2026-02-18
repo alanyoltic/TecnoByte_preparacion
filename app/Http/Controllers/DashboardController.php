@@ -187,7 +187,7 @@ class DashboardController extends Controller
         }
 
         // ===== 6. META MENSUAL (radial) =====
-        $metaPorColaborador = 120;
+        $metaPorColaborador = 140;
 
         // ¿Para cuántos colaboradores calculamos la meta?
         if ($isTecnico) {

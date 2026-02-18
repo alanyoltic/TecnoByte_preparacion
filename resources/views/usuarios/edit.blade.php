@@ -65,7 +65,7 @@
                                  bg-slate-100/80 dark:bg-slate-800/80
                                  text-slate-600 dark:text-slate-200
                                  border border-slate-200/80 dark:border-slate-700/80">
-                        ID: {{ $usuario->id }}
+                        ID: {{ $user->id }}
                     </span>
                 </div>
             </div>
@@ -101,7 +101,7 @@
                 </div>
 
                 {{-- FORMULARIO --}}
-                <form method="POST" action="{{ route('users.update', $usuario) }}" class="space-y-8" enctype="multipart/form-data">
+                <form method="POST" action="{{ route('users.update', $user) }}" class="space-y-8" enctype="multipart/form-data">
 
                     @csrf
                     @method('PATCH')
@@ -115,25 +115,25 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <x-input-label for="nombre" value="Nombre *" />
-                                <x-text-input id="nombre" class="block mt-1 w-full" type="text" name="nombre" :value="old('nombre', $usuario->nombre)" required autofocus />
+                                <x-text-input id="nombre" class="block mt-1 w-full" type="text" name="nombre" :value="old('nombre', $user->nombre)" required autofocus />
                                 <x-input-error :messages="$errors->get('nombre')" class="mt-2" />
                             </div>
 
                             <div>
                                 <x-input-label for="segundo_nombre" value="Segundo Nombre (Opcional)" />
-                                <x-text-input id="segundo_nombre" class="block mt-1 w-full" type="text" name="segundo_nombre" :value="old('segundo_nombre', $usuario->segundo_nombre)" />
+                                <x-text-input id="segundo_nombre" class="block mt-1 w-full" type="text" name="segundo_nombre" :value="old('segundo_nombre', $user->segundo_nombre)" />
                                 <x-input-error :messages="$errors->get('segundo_nombre')" class="mt-2" />
                             </div>
 
                             <div>
                                 <x-input-label for="apellido_paterno" value="Apellido Paterno *" />
-                                <x-text-input id="apellido_paterno" class="block mt-1 w-full" type="text" name="apellido_paterno" :value="old('apellido_paterno', $usuario->apellido_paterno)" required />
+                                <x-text-input id="apellido_paterno" class="block mt-1 w-full" type="text" name="apellido_paterno" :value="old('apellido_paterno', $user->apellido_paterno)" required />
                                 <x-input-error :messages="$errors->get('apellido_paterno')" class="mt-2" />
                             </div>
 
                             <div>
                                 <x-input-label for="apellido_materno" value="Apellido Materno (Opcional)" />
-                                <x-text-input id="apellido_materno" class="block mt-1 w-full" type="text" name="apellido_materno" :value="old('apellido_materno', $usuario->apellido_materno)" />
+                                <x-text-input id="apellido_materno" class="block mt-1 w-full" type="text" name="apellido_materno" :value="old('apellido_materno', $user->apellido_materno)" />
                                 <x-input-error :messages="$errors->get('apellido_materno')" class="mt-2" />
                             </div>
                         </div>
@@ -150,9 +150,9 @@
                         <div class="flex flex-col sm:flex-row sm:items-center gap-4">
                             {{-- Preview actual --}}
                             <div>
-                                @if($usuario->foto_perfil)
+                                @if($user->foto_perfil)
                                     <img
-                                        src="{{ asset('storage/' . $usuario->foto_perfil) }}"
+                                        src="{{ asset('storage/' . $user->foto_perfil) }}"
                                         alt="Foto de perfil"
                                         class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover
                                             border border-slate-200/80 dark:border-slate-700/80
@@ -216,7 +216,7 @@
                         <div class="space-y-4">
                             <div>
                                 <x-input-label for="email" value="Email *" />
-                                <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email', $usuario->email)" required />
+                                <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email', $user->email)" required />
                                 <x-input-error :messages="$errors->get('email')" class="mt-2" />
                             </div>
 
@@ -253,7 +253,7 @@
                                 <select id="role_id" name="role_id" class="block mt-1 w-full rounded-xl border border-slate-300/80 dark:border-slate-700/80 bg-white/90 dark:bg-slate-900/80 text-sm text-slate-800 dark:text-slate-100 shadow-sm shadow-slate-900/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/70 focus:border-indigo-500" required>
                                     <option value="">-- Seleccionar un rol --</option>
                                     @foreach($roles as $role)
-                                        <option value="{{ $role->id }}" {{ old('role_id', $usuario->role_id) == $role->id ? 'selected' : '' }}>
+                                        <option value="{{ $role->id }}" {{ old('role_id', $user->role_id) == $role->id ? 'selected' : '' }}>
                                             {{ $role->nombre }}
                                         </option>
                                     @endforeach

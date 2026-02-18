@@ -79,7 +79,7 @@
                                     </thead>
 
                                     <tbody class="divide-y divide-slate-200/60 dark:divide-slate-800/70">
-                                        @forelse ($usuarios as $usuario)
+                                        @forelse ($users as $usuario)
                                             @php
                                                 $roleName = $usuario->role?->nombre ?? 'Sin rol';
                                                 $roleSlug = $usuario->role?->slug ?? null;
