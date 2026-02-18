@@ -14,6 +14,8 @@ use App\Models\EmpleadoDelMes;
 class Dashboard extends Component
 {
 
+//fix
+
     public bool $esAdminCeo = false;
 
     // ===== Roles =====
