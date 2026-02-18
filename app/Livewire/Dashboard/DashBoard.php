@@ -5,6 +5,7 @@ namespace App\Livewire\Dashboard;
 use Livewire\Component;
 use App\Models\Equipo;
 use App\Models\User;
+use App\Models\PreparacionMetaMensual;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Models\Aviso;
@@ -88,6 +89,9 @@ class Dashboard extends Component
             ])
             ->toArray();
 }
+
+
+    
 
 
 
@@ -472,34 +476,60 @@ private function calcularCambio($actual, $anterior)
                 ->toArray();
         }
 
-        // ===== 6. META MENSUAL =====
-        $metaPorColaborador = 120;
+        // ===== 6. META MENSUAL (CONGELADA) =====
 
-        if ($this->isTecnico) {
-            $colaboradoresMetaCount = 1;
-        } elseif (!$this->isTecnico && !empty($selectedColaboradorId)) {
-            $colaboradoresMetaCount = 1;
-        } else {
-            $colaboradoresMetaCount = max($colaboradoresCount, 1);
-        }
+$anio = $selectedDate->year;
+$mes  = $selectedDate->month;
 
-        $metaTotal = $colaboradoresMetaCount * $metaPorColaborador;
+// Buscar si ya existe meta congelada
+$metaRecord = PreparacionMetaMensual::where('anio', $anio)
+    ->where('mes', $mes)
+    ->first();
 
-        $equiposRealizadosMes = $equiposMes;
-        $equiposFaltantes     = max($metaTotal - $equiposRealizadosMes, 0);
+// Si NO existe y es el mes actual → la creamos
+if (!$metaRecord && $anio == now()->year && $mes == now()->month) {
 
-        $percentMeta = $metaTotal > 0
-            ? min(round(($equiposRealizadosMes / $metaTotal) * 100), 100)
-            : 0;
+    $tecnicosIniciales = $colaboradoresCount;
 
-        $this->radialPercent = (int) $percentMeta;
+    $metaPorColaborador = 120; // tu regla actual
+    $metaTotalCalculada = max($tecnicosIniciales, 1) * $metaPorColaborador;
 
-        $this->breakdown = [
-            ['label' => 'Meta mensual total',       'value' => $metaTotal],
-            ['label' => 'Equipos realizados (mes)', 'value' => $equiposRealizadosMes],
-            ['label' => 'Faltantes para la meta',   'value' => $equiposFaltantes],
-            ['label' => 'Colaboradores',            'value' => $colaboradoresMetaCount],
-        ];
+    $metaRecord = PreparacionMetaMensual::create([
+        'anio' => $anio,
+        'mes' => $mes,
+        'tecnicos_iniciales' => $tecnicosIniciales,
+        'meta_total' => $metaTotalCalculada,
+    ]);
+}
+
+// Si es mes pasado y no existe, NO lo creamos automáticamente
+// (opcionalmente después podemos hacer backfill)
+
+$metaTotal = $metaRecord->meta_total ?? 0;
+
+$equiposRealizadosMes = $equiposMes;
+$equiposFaltantes     = max($metaTotal - $equiposRealizadosMes, 0);
+
+$percentMeta = $metaTotal > 0
+    ? min(round(($equiposRealizadosMes / $metaTotal) * 100), 100)
+    : 0;
+
+$this->radialPercent = (int) $percentMeta;
+if ($metaRecord && $metaRecord->hubo_movimientos) {
+    $this->breakdown[] = [
+        'label' => '⚠ Hubo movimientos de personal este mes',
+        'value' => '',
+    ];
+}
+
+
+$this->breakdown = [
+    ['label' => 'Meta mensual total',       'value' => $metaTotal],
+    ['label' => 'Equipos realizados (mes)', 'value' => $equiposRealizadosMes],
+    ['label' => 'Faltantes para la meta',   'value' => $equiposFaltantes],
+    ['label' => 'Técnicos iniciales',       'value' => $metaRecord->tecnicos_iniciales ?? 0],
+];
+
 
         // ✅ Disparar evento para actualizar ApexCharts sin recargar
         $this->dispatch('dashboard-data-updated',
