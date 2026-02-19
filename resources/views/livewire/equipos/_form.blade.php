@@ -433,6 +433,7 @@
                             <option value="PC3">PC3</option>
                             <option value="PC3L">PC3L</option>
                             <option value="PC4">PC4</option>
+                            <option value="LPDDR4x">LPDDR4x</option>
                         </select>
 
                         @error('form.ram_tipo')
@@ -1399,7 +1400,7 @@
                             bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
                             focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">Selecciona</option>
-                        @foreach(['10','11','11.6','12','12.3','12.5','13.3','14','15.4','15.6','16','17.3','21','22','23','23.8','24','25',] as $p)
+                        @foreach(['10','11','11.6','12','12.3','12.5','13.0','13.3','14','15.4','15.6','16','17.3','21','22','23','23.8','24','25',] as $p)
                             <option value="{{ $p }}">{{ $p }}"</option>
                         @endforeach
                     </select>
@@ -1412,7 +1413,7 @@
                             bg-slate-50 dark:bg-slate-900 text-sm px-3 py-2
                             focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">Selecciona</option>
-                        @foreach(['1366x768','1600x900','1920x1080','1920x1200','2560x1440','2880x1800','3200x1800','3840x2160'] as $r)
+                        @foreach(['1366x768','1600x900','1920x1080','1920x1200','1920x1280','2560x1440','2880x1800','3200x1800','3840x2160'] as $r)
                             <option value="{{ $r }}">{{ $r }}</option>
                         @endforeach
                     </select>

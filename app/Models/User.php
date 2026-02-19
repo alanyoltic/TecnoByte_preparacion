@@ -39,12 +39,14 @@ class User extends Authenticatable implements MustVerifyEmail
         'segundo_nombre',
         'apellido_paterno',
         'apellido_materno',
+        'fecha_nacimiento',
         'email',
         'password',
         'role_id',
         'is_active',
         'foto_perfil',
         'departamento_id',
+        'puesto_id',
         'sucursal_id',
 
     ];
@@ -58,6 +60,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'fecha_nacimiento' => 'date',
         'password' => 'hashed',
         'is_active' => 'boolean',
     ];
