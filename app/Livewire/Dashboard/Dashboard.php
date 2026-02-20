@@ -345,15 +345,34 @@ private function calcularCambio($actual, $anterior)
 
 
 
-// ===== SEMANA (CORRECTA) =====
+// ===== SEMANA BASADA EN EL DÍA ACTUAL PERO DEL MES SELECCIONADO =====
 
-$weekStart = Carbon::now()->startOfWeek();
-$weekEnd   = Carbon::now()->endOfWeek();
+$today = Carbon::now();
+$day   = $today->day;
+
+// Construir fecha base en el mes seleccionado
+$referenceDate = $selectedDate->copy()->day(
+    min($day, $selectedDate->copy()->endOfMonth()->day)
+);
+
+// Calcular inicio y fin de semana
+$weekStart = $referenceDate->copy()->startOfWeek();
+$weekEnd   = $referenceDate->copy()->endOfWeek();
+
+// Limitar para que no se salga del mes seleccionado
+if ($weekStart->lt($startOfMonth)) {
+    $weekStart = $startOfMonth->copy();
+}
+
+if ($weekEnd->gt($endOfMonth)) {
+    $weekEnd = $endOfMonth->copy();
+}
 
 $equiposSemana = $aplicarFiltro(
     Equipo::whereBetween('created_at', [$weekStart, $weekEnd])
 )->count();
 
+// Semana anterior
 $prevWeekStart = $weekStart->copy()->subWeek();
 $prevWeekEnd   = $weekEnd->copy()->subWeek();
 
