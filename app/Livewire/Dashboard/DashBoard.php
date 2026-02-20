@@ -337,6 +337,12 @@ private function calcularCambio($actual, $anterior)
 
         $hoyChange = $this->calcularCambio($equiposHoy, $equiposAyer);
 
+        \Log::info('DEBUG SEMANA', [
+    'weekStart' => $weekStart ?? null,
+    'weekEnd'   => $weekEnd ?? null,
+    'selectedMonth' => $this->selectedMonthValue,
+]);
+
 
 
 // ===== SEMANA (CORRECTA) =====
@@ -389,6 +395,10 @@ $semanaChange = $this->calcularCambio($equiposSemana, $equiposSemanaAnterior);
             'semana_change' => $semanaChange,
             'mes_change' => $mesChange,
         ];
+
+        \Log::info('DEBUG SEMANA COUNT', [
+    'equiposSemana' => $equiposSemana,
+]);
 
 
         // ===== 3. GRÃƒÂFICA LÃƒÂNEA =====
