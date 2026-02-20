@@ -339,21 +339,15 @@ private function calcularCambio($actual, $anterior)
 
 
 
-
-// ===== SEMANA CORRECTA DENTRO DEL MES =====
+// ===== SEMANA (CORRECTA) =====
 
 $weekStart = Carbon::now()->startOfWeek();
 $weekEnd   = Carbon::now()->endOfWeek();
-
-// Limitar la semana al mes seleccionado
-$weekStart = $weekStart->lt($startOfMonth) ? $startOfMonth : $weekStart;
-$weekEnd   = $weekEnd->gt($endOfMonth) ? $endOfMonth : $weekEnd;
 
 $equiposSemana = $aplicarFiltro(
     Equipo::whereBetween('created_at', [$weekStart, $weekEnd])
 )->count();
 
-// Semana anterior
 $prevWeekStart = $weekStart->copy()->subWeek();
 $prevWeekEnd   = $weekEnd->copy()->subWeek();
 
