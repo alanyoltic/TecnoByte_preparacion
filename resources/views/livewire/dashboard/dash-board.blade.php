@@ -251,7 +251,7 @@
 
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                                     <div class="{{ $cardClass }} {{ $cardGlow }} {{ $cardGlow2 }}">
-                                        <span class="{{ $labelClass }}">Equipos Hechos (Hoy)</span>
+                                        <span class="{{ $labelClass }}">Equipos Hechos ({{ $labelDia }})</span>
                                         <span class="{{ $valueClass }}">{{ $kpis['equiposHoy'] ?? 0 }}</span>
                                         @php
                                             $change = $kpis['hoy_change'] ?? '0%';
@@ -271,7 +271,7 @@
                                     </div>
 
                                     <div class="{{ $cardClass }} {{ $cardGlow }} {{ $cardGlow2 }}">
-                                        <span class="{{ $labelClass }}">Equipos Hechos (Semana)</span>
+                                        <span class="{{ $labelClass }}">Equipos Hechos ({{ $labelSemana }})</span>
                                         <span class="{{ $valueClass }}">{{ $kpis['equiposSemana'] ?? 0 }}</span>
                                         @php
                                             $change = $kpis['semana_change'] ?? '0%';
@@ -292,7 +292,7 @@
                                     </div>
 
                                     <div class="{{ $cardClass }} {{ $cardGlow }} {{ $cardGlow2 }}">
-                                        <span class="{{ $labelClass }}">Equipos Hechos (Mes)</span>
+                                        <span class="{{ $labelClass }}">Equipos Hechos ({{ $labelMes }})</span>
                                         <span class="{{ $valueClass }}">{{ $kpis['equiposMes'] ?? 0 }}</span>
                                         @php
                                             $change = $kpis['mes_change'] ?? '0%';

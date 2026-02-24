@@ -5,8 +5,6 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
-use App\Livewire\Inventario\ResumenInventario;
-
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\LoteController;
 use App\Http\Controllers\AfterLoginRedirectController;
@@ -14,34 +12,44 @@ use App\Http\Controllers\AfterLoginRedirectController;
 use App\Models\Equipo;
 use App\Models\Lote;
 
-// ===============================
-// RUTAS PÚBLICAS
-// ===============================
+/*
+|--------------------------------------------------------------------------
+| RUTAS PÚBLICAS
+|--------------------------------------------------------------------------
+*/
+
 Route::get('/', fn () => view('auth.login'));
 
-
-// ========================================================================
-// ============================== CORE (GLOBAL) ===========================
-// ========================================================================
+/*
+|--------------------------------------------------------------------------
+| CORE GLOBAL (auth + role_depto)
+|--------------------------------------------------------------------------
+*/
 
 Route::middleware(['auth', 'role_depto'])->group(function () {
 
-    // ===========================
-    // PUERTA INTELIGENTE (GLOBAL)
-    // ===========================
+    /*
+    |--------------------------------------------------------------------------
+    | DASHBOARD INTELIGENTE
+    |--------------------------------------------------------------------------
+    */
     Route::get('/dashboard', AfterLoginRedirectController::class)->name('dashboard');
 
-    // ===========================
-    // PERFIL (GLOBAL)
-    // ===========================
+    /*
+    |--------------------------------------------------------------------------
+    | PERFIL
+    |--------------------------------------------------------------------------
+    */
     Route::get('/perfil', [ProfileController::class, 'show'])->name('profile.show');
     Route::get('/perfil/editar', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/perfil', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/perfil', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // ===========================
-    // ETIQUETA TSPL (GLOBAL)
-    // ===========================
+    /*
+    |--------------------------------------------------------------------------
+    | ETIQUETA TSPL
+    |--------------------------------------------------------------------------
+    */
     Route::get('/equipos/{equipo}/etiqueta-comando', function (Equipo $equipo) {
 
         $titulo = strtoupper(trim(($equipo->marca ?? '') . ' ' . ($equipo->modelo ?? '')));
@@ -66,137 +74,139 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
 
         return response(implode("\r\n", $lines), 200)
             ->header('Content-Type', 'text/plain; charset=US-ASCII');
+
     })->name('equipos.etiqueta.comando');
 
 
-    // ====================================================================
-    // =========================== PREPARACION =============================
-    // ====================================================================
-    Route::prefix('preparacion')
+    /*
+    |--------------------------------------------------------------------------
+    | INVENTARIO (GLOBAL)
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('inventario')->group(function () {
+
+        Route::get('/listo', fn () => view('inventario.listo'))
+            ->middleware('permiso:prep.inventario.ver')
+            ->name('inventario.listo');
+
+        Route::get('/gestion', fn () => view('inventario.gestion-inventario'))
+            ->middleware('permiso:prep.inventario.gestion')
+            ->name('inventario.gestion');
+
+        // Aquí luego agregaremos traslados
+        // Route::get('/traslados', ...)->middleware('permiso:prep.inventario.trasladar');
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | EQUIPOS (GLOBAL)
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('equipos')->group(function () {
+
+        Route::get('/registrar', fn () => view('equipos.registrar'))
+            ->middleware('permiso:prep.equipos.ver')
+            ->name('equipos.create');
+
+        Route::get('/piezas-pendientes', fn () => view('equipos.pendientes-piezas'))
+            ->middleware('permiso:prep.equipos.ver')
+            ->name('equipos.piezas-pendientes');
+
+        Route::view('/caracteristicas', 'preparacion.inventario.resumen')
+            ->middleware('permiso:prep.equipos.ver')
+            ->name('equipos.caracteristicas');
+
+        Route::get('/{equipo}/editar', function (Equipo $equipo) {
+
+            $equipo->load([
+                'movimientos.desde',
+                'movimientos.hacia'
+            ]);
+
+            return view('equipos.editar-equipo', compact('equipo'));
+
+        })->middleware('permiso:prep.equipos.editar')
+          ->name('equipos.editar');
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | LOTES (GLOBAL)
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('lotes')->group(function () {
+
+        Route::get('/registrar', [LoteController::class, 'registrar'])
+            ->middleware('permiso:prep.lotes.gestion')
+            ->name('lotes.registrar');
+
+        Route::get('/editar', fn () => view('lotes.listalotes'))
+            ->middleware('permiso:prep.lotes.ver')
+            ->name('lotes.editar');
+
+        Route::get('/{lote}/editar', function (Lote $lote) {
+            return view('lotes.editarlote', compact('lote'));
+        })->middleware('permiso:prep.lotes.gestion')
+          ->name('lotes.edit');
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | PREPARACION (SOLO DASHBOARD)
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/preparacion/dashboard', [DashboardController::class, 'index'])
         ->middleware('permiso:modulo.preparacion')
-        ->group(function () {
-
-            // Dashboard real de preparación (para redirección / acceso directo)
-            Route::get('/dashboard', [DashboardController::class, 'index'])
-                ->name('preparacion.dashboard');
-
-                
+        ->name('preparacion.dashboard');
 
 
-                
+    /*
+    |--------------------------------------------------------------------------
+    | SISTEMA
+    |--------------------------------------------------------------------------
+    */
 
-            // ---------------------------
-            // EQUIPOS
-            // ---------------------------
-            Route::prefix('equipos')->group(function () {
-
-                // Registrar / Pendientes
-                Route::get('/registrar', fn () => view('equipos.registrar'))
-                    ->middleware('permiso:prep.equipos.ver')
-                    ->name('equipos.create'); // mantengo tu name para no romper vistas
-
-                Route::get('/piezas-pendientes', fn () => view('equipos.pendientes-piezas'))
-                    ->middleware('permiso:prep.equipos.ver')
-                    ->name('equipos.piezas-pendientes'); // mantengo tu name
-
-                Route::view('/caracteristicas', 'preparacion.inventario.resumen')
-                    ->middleware('permiso:prep.equipos.ver')
-                    ->name('equipos.caracteristicas');
-
-
-                // Editar equipo (antes era /equipos/admin/{equipo}/editar)
-                Route::get('/{equipo}/editar', function (Equipo $equipo) {
-                    return view('equipos.editar-equipo', compact('equipo'));
-                })
-                ->middleware('permiso:prep.equipos.editar')
-                ->name('equipos.editar'); // mantengo tu name
-
-
-
-
-
-            });
-
-            // ---------------------------
-            // INVENTARIO
-            // ---------------------------
-            Route::prefix('inventario')->group(function () {
-
-                Route::get('/listo', fn () => view('inventario.listo'))
-                    ->middleware('permiso:prep.inventario.ver')
-                    ->name('inventario.listo'); // mantengo tu name
-
-                // Gestión inventario (antes era /inventario/admin/gestion)
-                Route::get('/gestion', fn () => view('inventario.gestion-inventario'))
-                    ->middleware('permiso:prep.inventario.gestion')
-                    ->name('inventario.gestion'); // mantengo tu name
-
-                    
-
-            });
-
-            // ---------------------------
-            // LOTES
-            // ---------------------------
-            Route::prefix('lotes')->group(function () {
-
-                Route::get('/registrar', [LoteController::class, 'registrar'])
-                    ->middleware('permiso:prep.lotes.gestion')
-                    ->name('lotes.registrar'); // mantengo tu name
-
-                Route::get('/editar', fn () => view('lotes.listalotes'))
-                    ->middleware('permiso:prep.lotes.ver')
-                    ->name('lotes.editar'); // mantengo tu name
-
-                Route::get('/{lote}/editar', function (Lote $lote) {
-                    return view('lotes.editarlote', compact('lote'));
-                })
-                ->middleware('permiso:prep.lotes.gestion')
-                ->name('lotes.edit'); // mantengo tu name
-            });
-        });
-
-
-    // ====================================================================
-    // ============================= SISTEMA ===============================
-    // (Compartido: Usuarios / Avisos, con scope por zona en controller)
-    // ====================================================================
     Route::prefix('sistema')
         ->middleware('permiso:modulo.sistema')
         ->group(function () {
 
-            // USUARIOS
             Route::get('/usuarios', [UserController::class, 'index'])
                 ->middleware('permiso:sistema.usuarios.ver')
-                ->name('users.index'); // mantengo tu name viejo
+                ->name('users.index');
 
             Route::get('/usuarios/{user}/edit', [UserController::class, 'edit'])
                 ->middleware('permiso:sistema.usuarios.editar')
-                ->name('users.edit'); // mantengo tu name viejo
+                ->name('users.edit');
 
             Route::patch('/usuarios/{user}', [UserController::class, 'update'])
                 ->middleware('permiso:sistema.usuarios.editar')
-                ->name('users.update'); // mantengo tu name viejo
+                ->name('users.update');
 
-            // Crear usuario (antes /register)
             Route::get('/usuarios/crear', [RegisteredUserController::class, 'create'])
                 ->middleware('permiso:sistema.usuarios.crear')
-                ->name('register'); // mantengo tu name viejo
+                ->name('register');
 
             Route::post('/usuarios/crear', [RegisteredUserController::class, 'store'])
                 ->middleware('permiso:sistema.usuarios.crear');
 
-            // AVISOS
             Route::get('/avisos', \App\Livewire\Avisos\Index::class)
                 ->middleware('permiso:sistema.avisos.ver')
-                ->name('avisos.index'); // mantengo tu name viejo
+                ->name('avisos.index');
         });
 
 
-    // ====================================================================
-    // ========================== OTRAS AREAS ==============================
-    // Por ahora solo dashboards (cuando exista el modulo real, se migra igual)
-    // ====================================================================
+    /*
+    |--------------------------------------------------------------------------
+    | OTROS DASHBOARDS
+    |--------------------------------------------------------------------------
+    */
 
     Route::view('/ventas/dashboard', 'ventas.dashboard')
         ->middleware('permiso:modulo.ventas')
@@ -214,6 +224,5 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
         ->middleware('permiso:modulo.administracion')
         ->name('administracion.dashboard');
 });
-
 
 require __DIR__ . '/auth.php';

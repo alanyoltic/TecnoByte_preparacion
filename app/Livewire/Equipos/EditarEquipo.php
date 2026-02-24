@@ -37,6 +37,10 @@ class EditarEquipo extends Component
     public array $modelosLote = [];
     public array $lotesTerminadosIds = [];
 
+    public $almacenDestinoId;
+public $motivoTransferencia;
+public $almacenesDisponibles = [];
+
     public array $monitorEntradasOptions = [
         'HDMI', 'Mini HDMI', 'VGA', 'DVI',
         'DisplayPort', 'Mini DisplayPort',
@@ -112,8 +116,39 @@ class EditarEquipo extends Component
 
     public bool $isHydrating = true;
 
+
+    public function transferir()
+{
+    $this->validate([
+        'almacenDestinoId' => 'required|exists:almacenes,id',
+        'motivoTransferencia' => 'nullable|string|max:255',
+    ]);
+
+    $destino = \App\Models\Almacen::find($this->almacenDestinoId);
+
+    app(\App\Services\EquipoMovimientoService::class)
+        ->mover($this->equipo, $destino, 'MOVER_ALMACEN', $this->motivoTransferencia);
+
+    $this->equipo->refresh()->load([
+        'movimientos.desde',
+        'movimientos.hacia'
+    ]);
+
+    $this->reset(['almacenDestinoId', 'motivoTransferencia']);
+
+    $this->dispatch('notify', type: 'success', message: 'Equipo transferido correctamente.');
+}
+
     public function mount(Equipo $equipo): void
     {
+
+
+
+
+    $this->almacenesDisponibles = \App\Models\Almacen::where('activo', 1)
+    ->orderBy('nombre')
+    ->get();
+
 
 
         $this->isHydrating = true;

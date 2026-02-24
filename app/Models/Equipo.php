@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Equipo extends Model
 {
     use HasFactory, SoftDeletes;
+    
 
     // Esto permite la importación masiva (como en el Seeder)
     protected $guarded = [];
@@ -48,60 +49,76 @@ class Equipo extends Model
     }
 
 
+    public function movimientos()
+{
+    return $this->hasMany(\App\Models\EquipoMovimiento::class)
+        ->orderByDesc('created_at');
+}
 
+public function estancias()
+{
+    return $this->hasMany(\App\Models\EquipoEstancia::class)
+        ->orderByDesc('inicio_at');
+}
+
+public function estanciaActual()
+{
+    return $this->hasOne(\App\Models\EquipoEstancia::class)
+        ->whereNull('fin_at');
+}
 
 
 
 
 
     public function gpus()
-{
-    return $this->hasMany(\App\Models\EquipoGpu::class, 'equipo_id');
-}
+    {
+        return $this->hasMany(\App\Models\EquipoGpu::class, 'equipo_id');
+    }
 
-public function gpuIntegrada()
-{
-    return $this->hasOne(\App\Models\EquipoGpu::class, 'equipo_id')
-        ->where('tipo', 'integrada')
-        ->where('activo', true);
-}
+    public function gpuIntegrada()
+    {
+        return $this->hasOne(\App\Models\EquipoGpu::class, 'equipo_id')
+            ->where('tipo', 'integrada')
+            ->where('activo', true);
+    }
 
-public function gpuDedicada()
-{
-    return $this->hasOne(\App\Models\EquipoGpu::class, 'equipo_id')
-        ->where('tipo', 'dedicada')
-        ->where('activo', true);
-}
-
-
-
-
-public function getTieneIntegradaAttribute(): bool
-{
-    return $this->gpus()
-        ->where('tipo', 'integrada')
-        ->where('activo', true)
-        ->exists();
-}
-
-public function getTieneDedicadaAttribute(): bool
-{
-    return $this->gpus()
-        ->where('tipo', 'dedicada')
-        ->where('activo', true)
-        ->exists();
-}
+    public function gpuDedicada()
+    {
+        return $this->hasOne(\App\Models\EquipoGpu::class, 'equipo_id')
+            ->where('tipo', 'dedicada')
+            ->where('activo', true);
+    }
 
 
 
 
+    public function getTieneIntegradaAttribute(): bool
+    {
+        return $this->gpus()
+            ->where('tipo', 'integrada')
+            ->where('activo', true)
+            ->exists();
+    }
 
-    protected $casts = [
-    'puertos_usb'   => 'array',
-    'puertos_video' => 'array',
-    'lectores'      => 'array',
-    'ram_es_soldada' => 'boolean',
-    'ram_sin_slots' => 'boolean',
-];
+    public function getTieneDedicadaAttribute(): bool
+    {
+        return $this->gpus()
+            ->where('tipo', 'dedicada')
+            ->where('activo', true)
+            ->exists();
+    }
+
+
+
+
+
+        protected $casts = [
+        'puertos_usb'   => 'array',
+        'puertos_video' => 'array',
+        'lectores'      => 'array',
+        'ram_es_soldada' => 'boolean',
+        'ram_sin_slots' => 'boolean',
+    ];
 
 }

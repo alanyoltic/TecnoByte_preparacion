@@ -23,6 +23,9 @@
         </p>
     </div>
 
+
+    
+
     {{-- Mensajes --}}
     @if (session()->has('success'))
         <div class="mb-4 rounded-xl border border-emerald-200/60 dark:border-emerald-400/20
@@ -75,4 +78,94 @@
             </div>
 
     </form>
+
+
+
+
+    
+<div class="mt-8 p-6 rounded-2xl bg-white/5 backdrop-blur border border-white/10">
+
+    <h2 class="text-lg font-semibold text-white mb-4">
+        Transferir Equipo
+    </h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+        <div>
+            <label class="text-sm text-gray-300">Almacén destino</label>
+            <select wire:model="almacenDestinoId"
+                    class="w-full mt-1 bg-black/40 border border-white/20 rounded-lg p-2 text-white">
+                <option value="">Seleccione</option>
+                @foreach($almacenesDisponibles as $alm)
+                    <option value="{{ $alm->id }}">
+                        {{ $alm->nombre }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+
+        <div>
+            <label class="text-sm text-gray-300">Motivo</label>
+            <input type="text"
+                   wire:model="motivoTransferencia"
+                   class="w-full mt-1 bg-black/40 border border-white/20 rounded-lg p-2 text-white">
+        </div>
+
+        <div class="flex items-end">
+            <button wire:click="transferir"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                Transferir
+            </button>
+        </div>
+
+    </div>
+
+</div>
+
+<div class="mt-10 p-6 rounded-2xl bg-white/5 backdrop-blur border border-white/10">
+
+    <h2 class="text-lg font-semibold text-white mb-6">
+        Historial de Movimientos
+    </h2>
+
+    @forelse($equipo->movimientos as $mov)
+
+        <div class="mb-6 border-l-4 border-blue-500 pl-4">
+
+            <div class="text-xs text-gray-400">
+                {{ $mov->created_at->format('d M Y H:i') }}
+            </div>
+
+            <div class="text-white font-semibold">
+                {{ $mov->tipo }}
+            </div>
+
+            <div class="text-sm text-gray-300">
+                De:
+                <span class="text-orange-400">
+                    {{ optional($mov->desde)->nombre ?? 'N/A' }}
+                </span>
+
+                →
+                A:
+                <span class="text-green-400">
+                    {{ optional($mov->hacia)->nombre ?? 'N/A' }}
+                </span>
+            </div>
+
+            @if($mov->motivo)
+                <div class="text-xs text-gray-500 mt-1">
+                    Motivo: {{ $mov->motivo }}
+                </div>
+            @endif
+
+        </div>
+
+    @empty
+        <div class="text-gray-500">
+            No hay movimientos registrados para este equipo.
+        </div>
+    @endforelse
+
+</div>
 </div>

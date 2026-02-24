@@ -150,6 +150,12 @@
                 <livewire:equipos.editar-equipo :equipo="$equipo" />
                 --}}
             </div>
+
+
+
+
+
+
         </div>
     </div>
 </x-app-layout>

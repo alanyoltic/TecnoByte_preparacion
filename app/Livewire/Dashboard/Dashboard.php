@@ -42,6 +42,10 @@ class Dashboard extends Component
     // ===== Data =====
     public $avisos =[];
 
+    public string $labelDia = '';
+    public string $labelSemana = '';
+    public string $labelMes = '';
+
 
 
     
@@ -345,42 +349,53 @@ private function calcularCambio($actual, $anterior)
 
 
 
-// ===== SEMANA BASADA EN EL DÍA ACTUAL PERO DEL MES SELECCIONADO =====
+        // SEMANA
 
-$today = Carbon::now();
-$day   = $today->day;
+        $today = Carbon::now();
+        $day   = $today->day;
 
-// Construir fecha base en el mes seleccionado
-$referenceDate = $selectedDate->copy()->day(
-    min($day, $selectedDate->copy()->endOfMonth()->day)
-);
+        // Construir fecha base en el mes seleccionado
+        $referenceDate = $selectedDate->copy()->day(
+            min($day, $selectedDate->copy()->endOfMonth()->day)
+        );
 
-// Calcular inicio y fin de semana
-$weekStart = $referenceDate->copy()->startOfWeek();
-$weekEnd   = $referenceDate->copy()->endOfWeek();
+        // Calcular inicio y fin de semana
+        $weekStart = $referenceDate->copy()->startOfWeek();
+        $weekEnd   = $referenceDate->copy()->endOfWeek();
 
-// Limitar para que no se salga del mes seleccionado
-if ($weekStart->lt($startOfMonth)) {
-    $weekStart = $startOfMonth->copy();
-}
+        // Limitar para que no se salga del mes seleccionado
+        if ($weekStart->lt($startOfMonth)) {
+            $weekStart = $startOfMonth->copy();
+        }
 
-if ($weekEnd->gt($endOfMonth)) {
-    $weekEnd = $endOfMonth->copy();
-}
+        if ($weekEnd->gt($endOfMonth)) {
+            $weekEnd = $endOfMonth->copy();
+        }
 
-$equiposSemana = $aplicarFiltro(
-    Equipo::whereBetween('created_at', [$weekStart, $weekEnd])
-)->count();
+        $equiposSemana = $aplicarFiltro(
+            Equipo::whereBetween('created_at', [$weekStart, $weekEnd])
+        )->count();
 
-// Semana anterior
-$prevWeekStart = $weekStart->copy()->subWeek();
-$prevWeekEnd   = $weekEnd->copy()->subWeek();
+        // Semana anterior
+        $prevWeekStart = $weekStart->copy()->subWeek();
+        $prevWeekEnd   = $weekEnd->copy()->subWeek();
 
-$equiposSemanaAnterior = $aplicarFiltro(
-    Equipo::whereBetween('created_at', [$prevWeekStart, $prevWeekEnd])
-)->count();
+        $equiposSemanaAnterior = $aplicarFiltro(
+            Equipo::whereBetween('created_at', [$prevWeekStart, $prevWeekEnd])
+        )->count();
 
-$semanaChange = $this->calcularCambio($equiposSemana, $equiposSemanaAnterior);
+        $semanaChange = $this->calcularCambio($equiposSemana, $equiposSemanaAnterior);
+
+        // ===== LABELS DINÁMICOS =====
+
+        $this->labelDia = $referenceDate->locale('es')->translatedFormat('d M Y');
+
+        $this->labelSemana =
+            $weekStart->locale('es')->translatedFormat('d M')
+            . ' - ' .
+            $weekEnd->locale('es')->translatedFormat('d M');
+
+$this->labelMes = $selectedDate->locale('es')->translatedFormat('F Y');
 
 
 

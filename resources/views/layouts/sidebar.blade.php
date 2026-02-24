@@ -148,7 +148,7 @@
     </div>
 
    {{-- ===================== EQUIPOS (ACORDEÓN + POPOVER TELEPORT) ===================== --}}
-@if($puedePrep && $puedeEquipos)
+@if($puedeEquipos)
 
 
 @php
