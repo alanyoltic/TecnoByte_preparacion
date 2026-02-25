@@ -11,6 +11,7 @@ class ReportePreparacionPlaneacionExport implements WithMultipleSheets
         return [
             new EquiposActivosSheet(),
             new LotesPendientesSheet(),
+            new ResumenEjecutivoSheet(),
         ];
     }
 }
