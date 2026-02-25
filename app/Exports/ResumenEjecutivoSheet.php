@@ -12,54 +12,58 @@ class ResumenEjecutivoSheet implements FromCollection
     {
         $rows = new Collection();
 
-        /*
-        |--------------------------------------------------------------------------
-        | TABLA 1 - FINALIZADOS POR MODELO
-        |--------------------------------------------------------------------------
-        */
+        // Definimos número fijo de columnas (la tabla más grande usa 7)
+        $columnas = 7;
 
-/*
-|--------------------------------------------------------------------------
-| TABLA 1 - TOTAL POR MARCA Y MODELO (SIN IMPORTAR ESTATUS)
-|--------------------------------------------------------------------------
-*/
-
-$rows->push(['===== TOTAL EQUIPOS POR MARCA Y MODELO =====']);
-$rows->push([]);
-
-$conteoModelos = DB::table('equipos')
-    ->whereNull('deleted_at')
-    ->selectRaw('
-        UPPER(TRIM(marca)) as marca_normalizada,
-        UPPER(TRIM(modelo)) as modelo_normalizado,
-        COUNT(id) as total
-    ')
-    ->groupBy(
-        DB::raw('UPPER(TRIM(marca))'),
-        DB::raw('UPPER(TRIM(modelo))')
-    )
-    ->orderBy('marca_normalizada')
-    ->orderBy('modelo_normalizado')
-    ->get();
-
-$rows->push(['Marca','Modelo','Total']);
-
-foreach ($conteoModelos as $c) {
-    $rows->push([
-        $c->marca_normalizada,
-        $c->modelo_normalizado,
-        $c->total
-    ]);
-}
-
-$rows->push([]);
-$rows->push([]);
+        $pad = function ($array) use ($columnas) {
+            return array_pad($array, $columnas, '');
+        };
 
         /*
         |--------------------------------------------------------------------------
-        | TABLA 2 - AVANCE POR LOTE / MODELO
+        | TABLA 1 - TOTAL EQUIPOS POR MARCA Y MODELO (NORMALIZADO)
         |--------------------------------------------------------------------------
         */
+
+        $rows->push($pad(['===== TOTAL EQUIPOS POR MARCA Y MODELO =====']));
+        $rows->push($pad([]));
+
+        $conteoModelos = DB::table('equipos')
+            ->whereNull('deleted_at')
+            ->selectRaw('
+                UPPER(TRIM(marca)) as marca_normalizada,
+                UPPER(TRIM(modelo)) as modelo_normalizado,
+                COUNT(id) as total
+            ')
+            ->groupBy(
+                DB::raw('UPPER(TRIM(marca))'),
+                DB::raw('UPPER(TRIM(modelo))')
+            )
+            ->orderBy('marca_normalizada')
+            ->orderBy('modelo_normalizado')
+            ->get();
+
+        $rows->push($pad(['Marca','Modelo','Total']));
+
+        foreach ($conteoModelos as $c) {
+            $rows->push($pad([
+                $c->marca_normalizada,
+                $c->modelo_normalizado,
+                $c->total
+            ]));
+        }
+
+        $rows->push($pad([]));
+        $rows->push($pad([]));
+
+        /*
+        |--------------------------------------------------------------------------
+        | TABLA 2 - AVANCE POR LOTE Y MODELO
+        |--------------------------------------------------------------------------
+        */
+
+        $rows->push($pad(['===== AVANCE POR LOTE Y MODELO =====']));
+        $rows->push($pad([]));
 
         $avance = DB::table('lote_modelos_recibidos as lmr')
             ->join('lotes as l', 'lmr.lote_id', '=', 'l.id')
@@ -83,16 +87,25 @@ $rows->push([]);
             )
             ->get();
 
-        $rows->push(['Lote','Marca','Modelo','Total Lote','Creados','Pendientes','% Avance']);
+        $rows->push($pad([
+            'Lote',
+            'Marca',
+            'Modelo',
+            'Total Lote',
+            'Creados',
+            'Pendientes',
+            '% Avance'
+        ]));
 
         foreach ($avance as $a) {
 
             $pendientes = $a->cantidad_recibida - $a->creados;
+
             $porcentaje = $a->cantidad_recibida > 0
                 ? round(($a->creados / $a->cantidad_recibida) * 100, 2)
                 : 0;
 
-            $rows->push([
+            $rows->push($pad([
                 $a->nombre_lote,
                 $a->marca,
                 $a->modelo,
@@ -100,19 +113,20 @@ $rows->push([]);
                 $a->creados,
                 $pendientes,
                 $porcentaje
-            ]);
+            ]));
         }
 
-        $rows->push([]);
-        $rows->push([]);
-        $rows->push(['===== RESUMEN GLOBAL =====']);
-        $rows->push([]);
+        $rows->push($pad([]));
+        $rows->push($pad([]));
 
         /*
         |--------------------------------------------------------------------------
         | TABLA 3 - RESUMEN GLOBAL
         |--------------------------------------------------------------------------
         */
+
+        $rows->push($pad(['===== RESUMEN GLOBAL =====']));
+        $rows->push($pad([]));
 
         $totalRecibido = DB::table('lote_modelos_recibidos')
             ->sum('cantidad_recibida');
@@ -127,14 +141,19 @@ $rows->push([]);
             ? round(($totalCreados / $totalRecibido) * 100, 2)
             : 0;
 
-        $rows->push(['Total Recibido','Total Creados','Pendientes','% Global']);
+        $rows->push($pad([
+            'Total Recibido',
+            'Total Creados',
+            'Pendientes',
+            '% Global'
+        ]));
 
-        $rows->push([
+        $rows->push($pad([
             $totalRecibido,
             $totalCreados,
             $pendientes,
             $porcentaje
-        ]);
+        ]));
 
         return $rows;
     }
