@@ -56,104 +56,185 @@ class ResumenEjecutivoSheet implements FromCollection, WithStrictNullComparison
         $rows->push($pad([]));
         $rows->push($pad([]));
 
-        /*
-        |--------------------------------------------------------------------------
-        | TABLA 2 - AVANCE POR LOTE Y MODELO
-        |--------------------------------------------------------------------------
-        */
+/*
+|--------------------------------------------------------------------------
+| TABLA 2 - ANALISIS POR LOTE Y MODELO
+|--------------------------------------------------------------------------
+*/
 
-        $rows->push($pad(['AVANCE POR LOTE Y MODELO']));
+$rows->push($pad(['ANALISIS POR LOTE Y MODELO']));
+$rows->push($pad([]));
+
+$avance = DB::table('lote_modelos_recibidos as lmr')
+    ->join('lotes as l', 'lmr.lote_id', '=', 'l.id')
+    ->leftJoin('equipos as e', function ($join) {
+        $join->on('e.lote_modelo_id', '=', 'lmr.id')
+             ->whereNull('e.deleted_at');
+    })
+    ->selectRaw('
+        l.nombre_lote,
+        lmr.marca,
+        lmr.modelo,
+        lmr.cantidad_recibida,
+        COUNT(e.id) as creados
+    ')
+    ->groupBy(
+        'lmr.id',
+        'l.nombre_lote',
+        'lmr.marca',
+        'lmr.modelo',
+        'lmr.cantidad_recibida'
+    )
+    ->orderBy('l.nombre_lote')
+    ->get();
+
+$rows->push($pad([
+    'Lote',
+    'Marca',
+    'Modelo',
+    'Total Lote',
+    'Creados',
+    'Pendientes',
+    '% Avance'
+]));
+
+foreach ($avance as $a) {
+
+    $pendientes = (int)$a->cantidad_recibida - (int)$a->creados;
+
+    $porcentaje = $a->cantidad_recibida > 0
+        ? round(($a->creados / $a->cantidad_recibida) * 100, 2)
+        : 0;
+
+    $rows->push($pad([
+        (string)$a->nombre_lote,
+        (string)$a->marca,
+        (string)$a->modelo,
+        (int)$a->cantidad_recibida,
+        (int)$a->creados,
+        (int)$pendientes,
+        (float)$porcentaje
+    ]));
+}
+
+$rows->push($pad([]));
+$rows->push($pad([]));
+
+/*
+|--------------------------------------------------------------------------
+| TABLA 2 - ANALISIS POR LOTE Y MODELO (AGRUPADO VISUALMENTE)
+|--------------------------------------------------------------------------
+*/
+
+$rows->push($pad(['ANALISIS POR LOTE Y MODELO']));
+$rows->push($pad([]));
+
+$avance = DB::table('lote_modelos_recibidos as lmr')
+    ->join('lotes as l', 'lmr.lote_id', '=', 'l.id')
+    ->leftJoin('equipos as e', function ($join) {
+        $join->on('e.lote_modelo_id', '=', 'lmr.id')
+             ->whereNull('e.deleted_at');
+    })
+    ->selectRaw('
+        l.nombre_lote,
+        lmr.marca,
+        lmr.modelo,
+        lmr.cantidad_recibida,
+        COUNT(e.id) as creados
+    ')
+    ->groupBy(
+        'lmr.id',
+        'l.nombre_lote',
+        'lmr.marca',
+        'lmr.modelo',
+        'lmr.cantidad_recibida'
+    )
+    ->orderBy('l.nombre_lote')
+    ->orderBy('lmr.marca')
+    ->orderBy('lmr.modelo')
+    ->get();
+
+$loteActual = null;
+
+foreach ($avance as $a) {
+
+    // Si cambia el lote, imprimimos encabezado
+    if ($loteActual !== $a->nombre_lote) {
+
+        $loteActual = $a->nombre_lote;
+
         $rows->push($pad([]));
-
-        $avance = DB::table('lote_modelos_recibidos as lmr')
-            ->join('lotes as l', 'lmr.lote_id', '=', 'l.id')
-            ->leftJoin('equipos as e', function ($join) {
-                $join->on('e.lote_modelo_id', '=', 'lmr.id')
-                     ->whereNull('e.deleted_at');
-            })
-            ->selectRaw('
-                l.nombre_lote,
-                lmr.marca,
-                lmr.modelo,
-                lmr.cantidad_recibida,
-                COUNT(e.id) as creados
-            ')
-            ->groupBy(
-                'lmr.id',
-                'l.nombre_lote',
-                'lmr.marca',
-                'lmr.modelo',
-                'lmr.cantidad_recibida'
-            )
-            ->get();
-
+        $rows->push($pad(["LOTE: {$loteActual}"]));
         $rows->push($pad([
-            'Lote',
             'Marca',
             'Modelo',
             'Total Lote',
             'Creados',
             'Pendientes',
-            'Porcentaje'
+            '% Avance'
         ]));
+    }
 
-        foreach ($avance as $a) {
+    $pendientes = (int)$a->cantidad_recibida - (int)$a->creados;
 
-            $pendientes = (int)$a->cantidad_recibida - (int)$a->creados;
+    $porcentaje = $a->cantidad_recibida > 0
+        ? round(($a->creados / $a->cantidad_recibida) * 100, 2)
+        : 0;
 
-            $porcentaje = $a->cantidad_recibida > 0
-                ? round(($a->creados / $a->cantidad_recibida) * 100, 2)
-                : 0;
+    $rows->push($pad([
+        (string)$a->marca,
+        (string)$a->modelo,
+        (int)$a->cantidad_recibida,
+        (int)$a->creados,
+        (int)$pendientes,
+        (float)$porcentaje
+    ]));
+}
+/*
+|--------------------------------------------------------------------------
+| TABLA 3 - RESUMEN GLOBAL DEL SISTEMA
+|--------------------------------------------------------------------------
+*/
 
-            $rows->push($pad([
-                (string) $a->nombre_lote,
-                (string) $a->marca,
-                (string) $a->modelo,
-                (int) $a->cantidad_recibida,
-                (int) $a->creados,
-                (int) $pendientes,
-                (float) $porcentaje
-            ]));
-        }
+$rows->push($pad(['RESUMEN GLOBAL DEL SISTEMA']));
+$rows->push($pad([]));
 
-        $rows->push($pad([]));
-        $rows->push($pad([]));
+// Total físico recibido
+$totalRecibido = (int) DB::table('lote_modelos_recibidos')
+    ->sum('cantidad_recibida');
 
-        /*
-        |--------------------------------------------------------------------------
-        | TABLA 3 - RESUMEN GLOBAL
-        |--------------------------------------------------------------------------
-        */
+// Total creados (ya existen como equipo)
+$totalCreados = (int) DB::table('equipos')
+    ->whereNull('deleted_at')
+    ->count();
 
-        $rows->push($pad(['RESUMEN GLOBAL']));
-        $rows->push($pad([]));
+// Pendientes (aún no creados)
+$pendientes = $totalRecibido - $totalCreados;
 
-        $totalRecibido = (int) DB::table('lote_modelos_recibidos')
-            ->sum('cantidad_recibida');
+// Porcentajes
+$porcentajePreparado = $totalRecibido > 0
+    ? round(($totalCreados / $totalRecibido) * 100, 2)
+    : 0;
 
-        $totalCreados = (int) DB::table('equipos')
-            ->whereNull('deleted_at')
-            ->count();
+$porcentajePendiente = $totalRecibido > 0
+    ? round(($pendientes / $totalRecibido) * 100, 2)
+    : 0;
 
-        $pendientes = $totalRecibido - $totalCreados;
+$rows->push($pad([
+    'Total Recibido',
+    'Total Creados',
+    'Pendientes',
+    '% Preparado',
+    '% Pendiente'
+]));
 
-        $porcentaje = $totalRecibido > 0
-            ? round(($totalCreados / $totalRecibido) * 100, 2)
-            : 0;
-
-        $rows->push($pad([
-            'Total Recibido',
-            'Total Creados',
-            'Pendientes',
-            'Porcentaje Global'
-        ]));
-
-        $rows->push($pad([
-            $totalRecibido,
-            $totalCreados,
-            $pendientes,
-            $porcentaje
-        ]));
+$rows->push($pad([
+    $totalRecibido,
+    $totalCreados,
+    $pendientes,
+    $porcentajePreparado,
+    $porcentajePendiente
+]));
 
         return $rows;
     }
