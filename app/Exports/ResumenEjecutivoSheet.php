@@ -6,27 +6,40 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Events\AfterSheet;
 
-class ResumenEjecutivoSheet implements FromCollection, WithStrictNullComparison
+class ResumenEjecutivoSheet implements FromCollection, WithStrictNullComparison, WithEvents
 {
+    protected $rowPositions = [];
+
     public function collection()
     {
         $rows = new Collection();
-
         $columnas = 7;
 
         $pad = function ($array) use ($columnas) {
             return array_values(array_pad($array, $columnas, ''));
         };
 
+        $currentRow = 1;
+
         /*
         |--------------------------------------------------------------------------
-        | TABLA 1 - TOTAL POR MARCA Y MODELO
+        | TABLA 1
         |--------------------------------------------------------------------------
         */
 
+        $this->rowPositions['tabla1_title'] = $currentRow;
         $rows->push($pad(['TOTAL EQUIPOS POR MARCA Y MODELO']));
+        $currentRow++;
+
         $rows->push($pad([]));
+        $currentRow++;
+
+        $this->rowPositions['tabla1_header'] = $currentRow;
+        $rows->push($pad(['Marca','Modelo','Total']));
+        $currentRow++;
 
         $conteo = DB::table('equipos')
             ->whereNull('deleted_at')
@@ -39,203 +52,227 @@ class ResumenEjecutivoSheet implements FromCollection, WithStrictNullComparison
                 DB::raw('UPPER(TRIM(marca))'),
                 DB::raw('UPPER(TRIM(modelo))')
             )
-            ->orderBy('marca')
-            ->orderBy('modelo')
             ->get();
 
-        $rows->push($pad(['Marca','Modelo','Total']));
-
         foreach ($conteo as $c) {
-            $rows->push($pad([
-                (string) $c->marca,
-                (string) $c->modelo,
-                (int) $c->total
-            ]));
+            $rows->push($pad([$c->marca, $c->modelo, $c->total]));
+            $currentRow++;
         }
 
         $rows->push($pad([]));
-        $rows->push($pad([]));
+        $currentRow++;
 
-/*
-|--------------------------------------------------------------------------
-| TABLA 2 - ANALISIS POR LOTE Y MODELO
-|--------------------------------------------------------------------------
-*/
+        /*
+        |--------------------------------------------------------------------------
+        | TABLA 2
+        |--------------------------------------------------------------------------
+        */
 
-$rows->push($pad(['ANALISIS POR LOTE Y MODELO']));
-$rows->push($pad([]));
-
-$avance = DB::table('lote_modelos_recibidos as lmr')
-    ->join('lotes as l', 'lmr.lote_id', '=', 'l.id')
-    ->leftJoin('equipos as e', function ($join) {
-        $join->on('e.lote_modelo_id', '=', 'lmr.id')
-             ->whereNull('e.deleted_at');
-    })
-    ->selectRaw('
-        l.nombre_lote,
-        lmr.marca,
-        lmr.modelo,
-        lmr.cantidad_recibida,
-        COUNT(e.id) as creados
-    ')
-    ->groupBy(
-        'lmr.id',
-        'l.nombre_lote',
-        'lmr.marca',
-        'lmr.modelo',
-        'lmr.cantidad_recibida'
-    )
-    ->orderBy('l.nombre_lote')
-    ->get();
-
-$rows->push($pad([
-    'Lote',
-    'Marca',
-    'Modelo',
-    'Total Lote',
-    'Creados',
-    'Pendientes',
-    '% Avance'
-]));
-
-foreach ($avance as $a) {
-
-    $pendientes = (int)$a->cantidad_recibida - (int)$a->creados;
-
-    $porcentaje = $a->cantidad_recibida > 0
-        ? round(($a->creados / $a->cantidad_recibida) * 100, 2)
-        : 0;
-
-    $rows->push($pad([
-        (string)$a->nombre_lote,
-        (string)$a->marca,
-        (string)$a->modelo,
-        (int)$a->cantidad_recibida,
-        (int)$a->creados,
-        (int)$pendientes,
-        (float)$porcentaje
-    ]));
-}
-
-$rows->push($pad([]));
-$rows->push($pad([]));
-
-/*
-|--------------------------------------------------------------------------
-| TABLA 2 - ANALISIS POR LOTE Y MODELO (AGRUPADO VISUALMENTE)
-|--------------------------------------------------------------------------
-*/
-
-$rows->push($pad(['ANALISIS POR LOTE Y MODELO']));
-$rows->push($pad([]));
-
-$avance = DB::table('lote_modelos_recibidos as lmr')
-    ->join('lotes as l', 'lmr.lote_id', '=', 'l.id')
-    ->leftJoin('equipos as e', function ($join) {
-        $join->on('e.lote_modelo_id', '=', 'lmr.id')
-             ->whereNull('e.deleted_at');
-    })
-    ->selectRaw('
-        l.nombre_lote,
-        lmr.marca,
-        lmr.modelo,
-        lmr.cantidad_recibida,
-        COUNT(e.id) as creados
-    ')
-    ->groupBy(
-        'lmr.id',
-        'l.nombre_lote',
-        'lmr.marca',
-        'lmr.modelo',
-        'lmr.cantidad_recibida'
-    )
-    ->orderBy('l.nombre_lote')
-    ->orderBy('lmr.marca')
-    ->orderBy('lmr.modelo')
-    ->get();
-
-$loteActual = null;
-
-foreach ($avance as $a) {
-
-    // Si cambia el lote, imprimimos encabezado
-    if ($loteActual !== $a->nombre_lote) {
-
-        $loteActual = $a->nombre_lote;
+        $this->rowPositions['tabla2_title'] = $currentRow;
+        $rows->push($pad(['ANALISIS POR LOTE Y MODELO']));
+        $currentRow++;
 
         $rows->push($pad([]));
-        $rows->push($pad(["LOTE: {$loteActual}"]));
+        $currentRow++;
+
+        $avance = DB::table('lote_modelos_recibidos as lmr')
+            ->join('lotes as l', 'lmr.lote_id', '=', 'l.id')
+            ->leftJoin('equipos as e', function ($join) {
+                $join->on('e.lote_modelo_id', '=', 'lmr.id')
+                     ->whereNull('e.deleted_at');
+            })
+            ->selectRaw('
+                l.nombre_lote,
+                lmr.marca,
+                lmr.modelo,
+                lmr.cantidad_recibida,
+                COUNT(e.id) as creados
+            ')
+            ->groupBy(
+                'lmr.id',
+                'l.nombre_lote',
+                'lmr.marca',
+                'lmr.modelo',
+                'lmr.cantidad_recibida'
+            )
+            ->orderBy('l.nombre_lote')
+            ->get();
+
+        $loteActual = null;
+
+        foreach ($avance as $a) {
+
+            if ($loteActual !== $a->nombre_lote) {
+
+                $loteActual = $a->nombre_lote;
+
+                $rows->push($pad([]));
+                $currentRow++;
+
+                $rows->push($pad(["LOTE: {$loteActual}"]));
+                $this->rowPositions['lote_titles'][] = $currentRow;
+                $currentRow++;
+
+                $rows->push($pad([
+                    'Marca',
+                    'Modelo',
+                    'Total Lote',
+                    'Creados',
+                    'Pendientes',
+                    '% Avance'
+                ]));
+                $this->rowPositions['tabla2_headers'][] = $currentRow;
+                $currentRow++;
+            }
+
+            $pendientes = $a->cantidad_recibida - $a->creados;
+            $porcentaje = $a->cantidad_recibida > 0
+                ? round(($a->creados / $a->cantidad_recibida) * 100, 2)
+                : 0;
+
+            $rows->push($pad([
+                $a->marca,
+                $a->modelo,
+                $a->cantidad_recibida,
+                $a->creados,
+                $pendientes,
+                $porcentaje
+            ]));
+
+            $currentRow++;
+        }
+
+        $rows->push($pad([]));
+        $currentRow++;
+
+        /*
+        |--------------------------------------------------------------------------
+        | TABLA 3
+        |--------------------------------------------------------------------------
+        */
+
+        $this->rowPositions['tabla3_title'] = $currentRow;
+        $rows->push($pad(['CONSOLIDADO GLOBAL POR MODELO']));
+        $currentRow++;
+
+        $rows->push($pad([]));
+        $currentRow++;
+
+        $this->rowPositions['tabla3_header'] = $currentRow;
         $rows->push($pad([
             'Marca',
             'Modelo',
-            'Total Lote',
-            'Creados',
-            'Pendientes',
+            'Total Recibido',
+            'Finalizados',
+            'Libres',
             '% Avance'
         ]));
-    }
+        $currentRow++;
 
-    $pendientes = (int)$a->cantidad_recibida - (int)$a->creados;
+        $modelosGlobal = DB::table('lote_modelos_recibidos as lmr')
+            ->leftJoin('equipos as e', function ($join) {
+                $join->on('e.lote_modelo_id', '=', 'lmr.id')
+                     ->whereNull('e.deleted_at');
+            })
+            ->selectRaw('
+                UPPER(TRIM(lmr.marca)) as marca_normalizada,
+                UPPER(TRIM(lmr.modelo)) as modelo_normalizado,
+                SUM(lmr.cantidad_recibida) as total_recibido,
+                COUNT(e.id) as total_finalizados
+            ')
+            ->groupBy(
+                DB::raw('UPPER(TRIM(lmr.marca))'),
+                DB::raw('UPPER(TRIM(lmr.modelo))')
+            )
+            ->get();
 
-    $porcentaje = $a->cantidad_recibida > 0
-        ? round(($a->creados / $a->cantidad_recibida) * 100, 2)
-        : 0;
+        $totalGlobalLibres = 0;
 
-    $rows->push($pad([
-        (string)$a->marca,
-        (string)$a->modelo,
-        (int)$a->cantidad_recibida,
-        (int)$a->creados,
-        (int)$pendientes,
-        (float)$porcentaje
-    ]));
-}
-/*
-|--------------------------------------------------------------------------
-| TABLA 3 - RESUMEN GLOBAL DEL SISTEMA
-|--------------------------------------------------------------------------
-*/
+        foreach ($modelosGlobal as $m) {
 
-$rows->push($pad(['RESUMEN GLOBAL DEL SISTEMA']));
-$rows->push($pad([]));
+            $libres = $m->total_recibido - $m->total_finalizados;
+            $porcentaje = $m->total_recibido > 0
+                ? round(($m->total_finalizados / $m->total_recibido) * 100, 2)
+                : 0;
 
-// Total físico recibido
-$totalRecibido = (int) DB::table('lote_modelos_recibidos')
-    ->sum('cantidad_recibida');
+            $totalGlobalLibres += $libres;
 
-// Total creados (ya existen como equipo)
-$totalCreados = (int) DB::table('equipos')
-    ->whereNull('deleted_at')
-    ->count();
+            $rows->push($pad([
+                $m->marca_normalizada,
+                $m->modelo_normalizado,
+                $m->total_recibido,
+                $m->total_finalizados,
+                $libres,
+                $porcentaje
+            ]));
 
-// Pendientes (aún no creados)
-$pendientes = $totalRecibido - $totalCreados;
+            $currentRow++;
+        }
 
-// Porcentajes
-$porcentajePreparado = $totalRecibido > 0
-    ? round(($totalCreados / $totalRecibido) * 100, 2)
-    : 0;
+        $rows->push($pad([]));
+        $currentRow++;
 
-$porcentajePendiente = $totalRecibido > 0
-    ? round(($pendientes / $totalRecibido) * 100, 2)
-    : 0;
-
-$rows->push($pad([
-    'Total Recibido',
-    'Total Creados',
-    'Pendientes',
-    '% Preparado',
-    '% Pendiente'
-]));
-
-$rows->push($pad([
-    $totalRecibido,
-    $totalCreados,
-    $pendientes,
-    $porcentajePreparado,
-    $porcentajePendiente
-]));
+        $this->rowPositions['total_libres'] = $currentRow;
+        $rows->push($pad(['TOTAL EQUIPOS LIBRES', '', '', '', $totalGlobalLibres]));
 
         return $rows;
+    }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function (AfterSheet $event) {
+
+                $sheet = $event->sheet->getDelegate();
+                $azul = '1E3A8A';
+                $azulClaro = 'DBEAFE';
+
+                foreach(range('A','G') as $col) {
+                    $sheet->getColumnDimension($col)->setAutoSize(true);
+                }
+
+                // Títulos principales
+                foreach (['tabla1_title','tabla2_title','tabla3_title'] as $key) {
+                    if(isset($this->rowPositions[$key])) {
+                        $sheet->getStyle("A{$this->rowPositions[$key]}:G{$this->rowPositions[$key]}")
+                            ->applyFromArray([
+                                'font' => ['bold' => true, 'size' => 14, 'color'=>['rgb'=>'FFFFFF']],
+                                'fill' => ['fillType'=>'solid','startColor'=>['rgb'=>$azul]]
+                            ]);
+                    }
+                }
+
+                // Headers
+                foreach (['tabla1_header','tabla3_header'] as $key) {
+                    if(isset($this->rowPositions[$key])) {
+                        $sheet->getStyle("A{$this->rowPositions[$key]}:G{$this->rowPositions[$key]}")
+                            ->applyFromArray([
+                                'font' => ['bold'=>true],
+                                'fill'=>['fillType'=>'solid','startColor'=>['rgb'=>$azulClaro]]
+                            ]);
+                    }
+                }
+
+                if(isset($this->rowPositions['tabla2_headers'])){
+                    foreach($this->rowPositions['tabla2_headers'] as $row){
+                        $sheet->getStyle("A{$row}:G{$row}")
+                            ->applyFromArray([
+                                'font'=>['bold'=>true],
+                                'fill'=>['fillType'=>'solid','startColor'=>['rgb'=>$azulClaro]]
+                            ]);
+                    }
+                }
+
+                // Total libres resaltado
+                if(isset($this->rowPositions['total_libres'])){
+                    $sheet->getStyle("A{$this->rowPositions['total_libres']}:G{$this->rowPositions['total_libres']}")
+                        ->applyFromArray([
+                            'font'=>['bold'=>true,'size'=>12],
+                            'fill'=>['fillType'=>'solid','startColor'=>['rgb'=>'FEF3C7']]
+                        ]);
+                }
+
+            }
+        ];
     }
 }
