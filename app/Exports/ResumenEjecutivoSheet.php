@@ -18,37 +18,42 @@ class ResumenEjecutivoSheet implements FromCollection
         |--------------------------------------------------------------------------
         */
 
-        $rows->push(['===== FINALIZADOS POR MODELO =====']);
-        $rows->push([]);
+/*
+|--------------------------------------------------------------------------
+| TABLA 1 - TOTAL POR MARCA Y MODELO (SIN IMPORTAR ESTATUS)
+|--------------------------------------------------------------------------
+*/
 
-        $finalizados = DB::table('equipos')
-            ->whereNull('deleted_at')
-            ->selectRaw('
-                marca,
-                modelo,
-                estado_operativo,
-                estatus_general,
-                COUNT(id) as total
-            ')
-            ->groupBy('marca','modelo','estado_operativo','estatus_general')
-            ->get();
+$rows->push(['===== TOTAL EQUIPOS POR MARCA Y MODELO =====']);
+$rows->push([]);
 
-        $rows->push(['Marca','Modelo','Estado Operativo','Estatus General','Total']);
+$conteoModelos = DB::table('equipos')
+    ->whereNull('deleted_at')
+    ->selectRaw('
+        UPPER(TRIM(marca)) as marca_normalizada,
+        UPPER(TRIM(modelo)) as modelo_normalizado,
+        COUNT(id) as total
+    ')
+    ->groupBy(
+        DB::raw('UPPER(TRIM(marca))'),
+        DB::raw('UPPER(TRIM(modelo))')
+    )
+    ->orderBy('marca_normalizada')
+    ->orderBy('modelo_normalizado')
+    ->get();
 
-        foreach ($finalizados as $f) {
-            $rows->push([
-                $f->marca,
-                $f->modelo,
-                $f->estado_operativo,
-                $f->estatus_general,
-                $f->total
-            ]);
-        }
+$rows->push(['Marca','Modelo','Total']);
 
-        $rows->push([]);
-        $rows->push([]);
-        $rows->push(['===== AVANCE POR LOTE Y MODELO =====']);
-        $rows->push([]);
+foreach ($conteoModelos as $c) {
+    $rows->push([
+        $c->marca_normalizada,
+        $c->modelo_normalizado,
+        $c->total
+    ]);
+}
+
+$rows->push([]);
+$rows->push([]);
 
         /*
         |--------------------------------------------------------------------------
