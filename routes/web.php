@@ -94,9 +94,17 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
             ->middleware('permiso:prep.inventario.gestion')
             ->name('inventario.gestion');
 
-        // Aquí luego agregaremos traslados
-        // Route::get('/traslados', ...)->middleware('permiso:prep.inventario.trasladar');
-    });
+        Route::get('/transferencias', fn () => view('inventario.traslados'))
+            ->middleware('permiso:transferencias.ver')
+            ->name('inventario.transferencias');
+            
+        Route::get('/transferencias/crear', fn () => view('inventario.transferencias-crear'))
+            ->middleware('permiso:transferencias.crear')
+            ->name('inventario.transferencias.crear');
+
+
+
+            });
 
 
     /*
@@ -154,6 +162,18 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
         })->middleware('permiso:prep.lotes.gestion')
           ->name('lotes.edit');
     });
+
+    
+    /*
+    |--------------------------------------------------------------------------
+    | TRANSFERENCIAS (GLOBAL)
+    |--------------------------------------------------------------------------
+    */
+
+
+
+
+
 
 
     /*

@@ -64,6 +64,12 @@
                 <span class="hidden sm:inline">Exportar a Excel</span>
                 <span class="sm:hidden">Exportar</span>
             </button>
+            <button 
+    wire:click="exportarReportePlaneacion"
+    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow"
+>
+    Exportar Planeación Compras
+</button>
 
 
 

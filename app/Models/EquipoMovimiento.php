@@ -43,4 +43,9 @@ class EquipoMovimiento extends Model
     {
         return $this->belongsTo(Almacen::class, 'hacia_almacen_id');
     }
+
+    public function usuario()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'created_by');
+    }
 }

@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Component; 
 use App\Models\EquipoEliminacion;
 use Livewire\WithPagination;
+use App\Exports\ReportePreparacionPlaneacionExport;
+
 
 class GestionInventario extends Component
 {
@@ -406,6 +408,15 @@ public function cerrarEliminarSeleccion()
 
         session()->flash('success', 'Se actualizó el estatus de los equipos seleccionados.');
     }
+
+
+    public function exportarReportePlaneacion()
+{
+    return Excel::download(
+        new ReportePreparacionPlaneacionExport,
+        'reporte_planeacion_preparacion.xlsx'
+    );
+}
 
 
         /**

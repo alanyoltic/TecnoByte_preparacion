@@ -1,26 +1,21 @@
-@extends('layouts.app')
+<x-app-layout>
 
-@section('content')
 
-<div class="relative min-h-screen py-10">
+<x-tb-background>
+        {{-- CONTENIDO: HEADER + TABLA / LISTA INVENTARIO --}}
+        <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10">
 
-    {{-- Glow background global --}}
-    <div class="pointer-events-none absolute -top-32 -left-32 w-96 h-96 bg-blue-500/20 blur-3xl"></div>
-    <div class="pointer-events-none absolute bottom-0 right-0 w-96 h-96 bg-indigo-500/20 blur-3xl"></div>
+            <x-topbar
+                title="Transferencia de inventario"
+                chip="Inventario · Transferencias"
+                description="Consulta y filtra los equipos que ya están capturados en el sistema."
+            />
 
-    <div class="max-w-6xl mx-auto px-6">
 
-        {{-- Topbar ya estándar --}}
-        <x-topbar>
-            <x-slot name="title">
-                Transferencia de Equipos
-            </x-slot>
-        </x-topbar>
-
-        {{-- Componente Livewire --}}
-        <livewire:inventario.transferencias />
-
-    </div>
-</div>
-
-@endsection
+            {{-- CONTENIDO PRINCIPAL: LIVEWIRE INVENTARIO LISTO --}}
+            <div class="">
+                <livewire:inventario.transferencias />
+            </div>
+        </div>
+</x-tb-background>    
+</x-app-layout>
