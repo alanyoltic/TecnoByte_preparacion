@@ -13,22 +13,29 @@ class LotesPendientesSheet implements FromCollection, WithHeadings
     {
         $rows = new Collection();
 
-        $lotes = DB::table('lote_modelos_recibidos as lmr')
-            ->join('lotes as l', 'lmr.lote_id', '=', 'l.id')
-            ->leftJoin('equipos as e', function ($join) {
-                $join->on('e.lote_modelo_id', '=', 'lmr.id')
-                     ->whereNull('e.deleted_at');
-            })
-            ->selectRaw('
-                l.nombre_lote,
-                l.fecha_llegada,
-                lmr.marca,
-                lmr.modelo,
-                lmr.cantidad_recibida,
-                COUNT(e.id) as total_creados
-            ')
-            ->groupBy('lmr.id')
-            ->get();
+$lotes = DB::table('lote_modelos_recibidos as lmr')
+    ->join('lotes as l', 'lmr.lote_id', '=', 'l.id')
+    ->leftJoin('equipos as e', function ($join) {
+        $join->on('e.lote_modelo_id', '=', 'lmr.id')
+             ->whereNull('e.deleted_at');
+    })
+    ->selectRaw('
+        l.nombre_lote,
+        l.fecha_llegada,
+        lmr.marca,
+        lmr.modelo,
+        lmr.cantidad_recibida,
+        COUNT(e.id) as total_creados
+    ')
+    ->groupBy(
+        'lmr.id',
+        'l.nombre_lote',
+        'l.fecha_llegada',
+        'lmr.marca',
+        'lmr.modelo',
+        'lmr.cantidad_recibida'
+    )
+    ->get();
 
         foreach ($lotes as $lote) {
 
