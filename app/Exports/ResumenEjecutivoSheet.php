@@ -5,51 +5,51 @@ namespace App\Exports;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 
-class ResumenEjecutivoSheet implements FromCollection
+class ResumenEjecutivoSheet implements FromCollection, WithStrictNullComparison
 {
     public function collection()
     {
         $rows = new Collection();
 
-        // Definimos número fijo de columnas (la tabla más grande usa 7)
         $columnas = 7;
 
         $pad = function ($array) use ($columnas) {
-            return array_pad($array, $columnas, '');
+            return array_values(array_pad($array, $columnas, ''));
         };
 
         /*
         |--------------------------------------------------------------------------
-        | TABLA 1 - TOTAL EQUIPOS POR MARCA Y MODELO (NORMALIZADO)
+        | TABLA 1 - TOTAL POR MARCA Y MODELO
         |--------------------------------------------------------------------------
         */
 
-        $rows->push($pad(['===== TOTAL EQUIPOS POR MARCA Y MODELO =====']));
+        $rows->push($pad(['TOTAL EQUIPOS POR MARCA Y MODELO']));
         $rows->push($pad([]));
 
-        $conteoModelos = DB::table('equipos')
+        $conteo = DB::table('equipos')
             ->whereNull('deleted_at')
             ->selectRaw('
-                UPPER(TRIM(marca)) as marca_normalizada,
-                UPPER(TRIM(modelo)) as modelo_normalizado,
+                UPPER(TRIM(marca)) as marca,
+                UPPER(TRIM(modelo)) as modelo,
                 COUNT(id) as total
             ')
             ->groupBy(
                 DB::raw('UPPER(TRIM(marca))'),
                 DB::raw('UPPER(TRIM(modelo))')
             )
-            ->orderBy('marca_normalizada')
-            ->orderBy('modelo_normalizado')
+            ->orderBy('marca')
+            ->orderBy('modelo')
             ->get();
 
         $rows->push($pad(['Marca','Modelo','Total']));
 
-        foreach ($conteoModelos as $c) {
+        foreach ($conteo as $c) {
             $rows->push($pad([
-                $c->marca_normalizada,
-                $c->modelo_normalizado,
-                $c->total
+                (string) $c->marca,
+                (string) $c->modelo,
+                (int) $c->total
             ]));
         }
 
@@ -62,7 +62,7 @@ class ResumenEjecutivoSheet implements FromCollection
         |--------------------------------------------------------------------------
         */
 
-        $rows->push($pad(['===== AVANCE POR LOTE Y MODELO =====']));
+        $rows->push($pad(['AVANCE POR LOTE Y MODELO']));
         $rows->push($pad([]));
 
         $avance = DB::table('lote_modelos_recibidos as lmr')
@@ -94,25 +94,25 @@ class ResumenEjecutivoSheet implements FromCollection
             'Total Lote',
             'Creados',
             'Pendientes',
-            '% Avance'
+            'Porcentaje'
         ]));
 
         foreach ($avance as $a) {
 
-            $pendientes = $a->cantidad_recibida - $a->creados;
+            $pendientes = (int)$a->cantidad_recibida - (int)$a->creados;
 
             $porcentaje = $a->cantidad_recibida > 0
                 ? round(($a->creados / $a->cantidad_recibida) * 100, 2)
                 : 0;
 
             $rows->push($pad([
-                $a->nombre_lote,
-                $a->marca,
-                $a->modelo,
-                $a->cantidad_recibida,
-                $a->creados,
-                $pendientes,
-                $porcentaje
+                (string) $a->nombre_lote,
+                (string) $a->marca,
+                (string) $a->modelo,
+                (int) $a->cantidad_recibida,
+                (int) $a->creados,
+                (int) $pendientes,
+                (float) $porcentaje
             ]));
         }
 
@@ -125,13 +125,13 @@ class ResumenEjecutivoSheet implements FromCollection
         |--------------------------------------------------------------------------
         */
 
-        $rows->push($pad(['===== RESUMEN GLOBAL =====']));
+        $rows->push($pad(['RESUMEN GLOBAL']));
         $rows->push($pad([]));
 
-        $totalRecibido = DB::table('lote_modelos_recibidos')
+        $totalRecibido = (int) DB::table('lote_modelos_recibidos')
             ->sum('cantidad_recibida');
 
-        $totalCreados = DB::table('equipos')
+        $totalCreados = (int) DB::table('equipos')
             ->whereNull('deleted_at')
             ->count();
 
@@ -145,7 +145,7 @@ class ResumenEjecutivoSheet implements FromCollection
             'Total Recibido',
             'Total Creados',
             'Pendientes',
-            '% Global'
+            'Porcentaje Global'
         ]));
 
         $rows->push($pad([
