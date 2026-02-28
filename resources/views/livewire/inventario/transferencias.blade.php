@@ -195,8 +195,7 @@
                             <option value="Finalizado">Finalizado</option>
                         </select>
                     </div>
-
-                    @if(auth()->check() && auth()->user()->tienePermiso('transferencias.crear'))
+@if(auth()->check() && auth()->user()->tienePermiso('transferencias.crear'))
     <a href="{{ route('inventario.transferencias.crear') }}"
        class="px-4 py-2 rounded-xl bg-indigo-600 text-white">
         Nueva transferencia

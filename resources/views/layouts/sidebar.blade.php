@@ -345,14 +345,14 @@
             'accent' => true
         ];
     }
-    /*
+    
     if (auth()->check() && auth()->user()->tienePermiso('transferencias.ver')) {
     $inventarioItems[] = [
         'label' => 'Transferencias',
-        'href' => route('inventario.traslados'),
+        'href' => route('inventario.transferencias'),
     ];
     }
-    */
+    
 @endphp
 
 <div class="w-full mt-2 px-3"

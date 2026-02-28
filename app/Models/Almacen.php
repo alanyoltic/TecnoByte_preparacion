@@ -14,4 +14,9 @@ class Almacen extends Model
     {
         return $this->hasMany(Equipo::class);
     }
+
+    public function encargados()
+{
+    return $this->hasMany(\App\Models\AlmacenEncargado::class, 'almacen_id');
+}
 }

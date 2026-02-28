@@ -94,7 +94,7 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
             ->middleware('permiso:prep.inventario.gestion')
             ->name('inventario.gestion');
 
-        Route::get('/transferencias', fn () => view('inventario.traslados'))
+        Route::get('/transferencias', fn () => view('inventario.transferencias'))
             ->middleware('permiso:transferencias.ver')
             ->name('inventario.transferencias');
             
