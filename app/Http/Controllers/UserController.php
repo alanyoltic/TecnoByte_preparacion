@@ -268,4 +268,15 @@ class UserController extends Controller
             ->route('users.index')
             ->with('status', 'Usuario actualizado exitosamente!');
     }
+
+
+    public function baja(User $user)
+{
+    $user->update([
+        'is_active' => false,
+        'fecha_baja' => now(),
+    ]);
+
+    return back()->with('success', 'Usuario dado de baja correctamente.');
+}
 }

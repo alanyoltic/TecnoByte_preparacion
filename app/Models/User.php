@@ -63,6 +63,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'fecha_nacimiento' => 'date',
         'password' => 'hashed',
         'is_active' => 'boolean',
+        'fecha_baja' => 'datetime',
     ];
 
  
@@ -71,6 +72,13 @@ class User extends Authenticatable implements MustVerifyEmail
 
         return $this->belongsTo(Roles::class, 'role_id');
     }
+
+    protected static function booted()
+{
+    static::addGlobalScope('is_active', function ($query) {
+        $query->where('is_active', true);
+    });
+}
 
 
 
@@ -131,6 +139,12 @@ public function tienePermiso(string $slug): bool
     public function setApellidoMaternoAttribute($value)
     {
         $this->attributes['apellido_materno'] = ucwords(mb_strtolower($value));
+    }
+
+    // En User.php — agrega esto junto a tus otras relaciones
+    public static function conBajas()
+    {
+        return static::withoutGlobalScopes();
     }
 
 

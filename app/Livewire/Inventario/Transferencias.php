@@ -3,40 +3,64 @@
 namespace App\Livewire\Inventario;
 
 use Livewire\Component;
-use App\Models\EquipoMovimiento;
+use Livewire\WithPagination;
+use App\Models\Transferencia;
 
 class Transferencias extends Component
 {
-    public $busqueda = '';
-    public $equipoSeleccionado = null;
-    public $departamentoDestino = '';
-    public $motivo = '';
-    public $search = '';
-    
+    use WithPagination;
 
-    public function buscar()
+    public string $search = '';
+    public string $filtroEstado = 'todos';
+
+    public function updatedSearch(): void
     {
-        // luego conectamos lógica real
+        $this->resetPage();
     }
 
-    public function transferir()
+    public function updatedFiltroEstado(): void
     {
-        // luego conectamos motor de movimientos
+        $this->resetPage();
     }
 
     public function render()
     {
-        $transferencias = EquipoMovimiento::with([
-            'equipo',
-            'desde',
-            'hacia',
-            'usuario'
-        ])
-        ->latest()
-        ->paginate(10);
+        $query = Transferencia::with([
+            'origen',
+            'destino',
+            'creador',
+            'detalles',
+        ])->latest();
+
+        if ($this->filtroEstado !== 'todos') {
+            $estadoDb = match ($this->filtroEstado) {
+                'PENDIENTE' => 'ENVIADA',
+                'APROBADA' => 'ACEPTADA',
+                default => $this->filtroEstado,
+            };
+
+            $query->where('estatus', $estadoDb);
+        }
+
+        if ($this->search !== '') {
+            $search = $this->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('id', 'like', "%{$search}%")
+                    ->orWhereHas('origen', fn($q2) => $q2->where('nombre', 'like', "%{$search}%"))
+                    ->orWhereHas('destino', fn($q2) => $q2->where('nombre', 'like', "%{$search}%"))
+                    ->orWhereHas('creador', fn($q2) => $q2->where('name', 'like', "%{$search}%"));
+            });
+        }
 
         return view('livewire.inventario.transferencias', [
-            'transferencias' => $transferencias,
+            'transferencias' => $query->paginate(15),
+            'stats' => [
+                'total' => Transferencia::count(),
+                'borrador' => Transferencia::where('estatus', 'BORRADOR')->count(),
+                // La UI usa "Pendiente"/"Aprobada", en BD corresponden a ENVIADA/ACEPTADA.
+                'pendiente' => Transferencia::where('estatus', 'ENVIADA')->count(),
+                'aprobada' => Transferencia::where('estatus', 'ACEPTADA')->count(),
+            ],
         ]);
     }
 }

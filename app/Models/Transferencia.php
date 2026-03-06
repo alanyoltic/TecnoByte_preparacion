@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Transferencia extends Model
 {
@@ -12,33 +14,38 @@ class Transferencia extends Model
         'created_by',
         'approved_by',
         'estatus',
-        'observaciones',
         'enviada_at',
-        'aprobada_at'
+        'aprobada_at',
+        'observaciones',
     ];
 
-    public function detalles()
-    {
-        return $this->hasMany(TransferenciaDetalle::class);
-    }
+    protected $casts = [
+        'enviada_at' => 'datetime',
+        'aprobada_at' => 'datetime',
+    ];
 
-    public function origen()
+    public function origen(): BelongsTo
     {
         return $this->belongsTo(Almacen::class, 'almacen_origen_id');
     }
 
-    public function destino()
+    public function destino(): BelongsTo
     {
         return $this->belongsTo(Almacen::class, 'almacen_destino_id');
     }
 
-    public function creador()
+    public function creador(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function aprobador()
+    public function aprobador(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function detalles(): HasMany
+    {
+        return $this->hasMany(TransferenciaDetalle::class);
     }
 }

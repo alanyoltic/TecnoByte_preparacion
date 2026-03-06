@@ -219,6 +219,10 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
             Route::get('/avisos', \App\Livewire\Avisos\Index::class)
                 ->middleware('permiso:sistema.avisos.ver')
                 ->name('avisos.index');
+
+                Route::patch('/usuarios/{user}/baja', [UserController::class, 'baja'])
+    ->name('usuarios.baja')
+    ->middleware('permiso:sistema.usuarios.editar');
         });
 
 

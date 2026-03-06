@@ -45,25 +45,21 @@ class InventarioListo extends Component
         
     ];
 
-    public function mount()
-    {
-        // Lotes y proveedores para los selects
-        $this->lotes = Lote::orderBy('fecha_llegada', 'desc')->get();
-        $this->proveedores = Proveedor::orderBy('nombre_empresa', 'asc')->get();
+public function mount()
+{
+    $this->lotes = Lote::orderBy('fecha_llegada', 'desc')->get();
+    $this->proveedores = Proveedor::orderBy('nombre_empresa', 'asc')->get();
 
-        $this->calcularStats();
+    $this->calcularStats();
 
-        $this->colaboradores = User::query()
-            ->select('id', 'nombre') // si usas "name" cambia aquí
-            ->orderBy('nombre')
-            ->get()
-            ->map(fn ($u) => ['id' => $u->id, 'nombre' => $u->nombre])
-            ->toArray();
+    $this->colaboradores = User::withoutGlobalScopes() // ← aquí
+        ->select('id', 'nombre')
+        ->orderBy('nombre')
+        ->get()
+        ->map(fn ($u) => ['id' => $u->id, 'nombre' => $u->nombre])
+        ->toArray();
+}
 
-
-
-
-    }
 
     /** Cuando cambia cualquiera de estos campos, regresamos a la página 1 */
     public function updatingSearch()
@@ -103,10 +99,10 @@ class InventarioListo extends Component
 
     public function render()
     {
-        $query = Equipo::query()
-            ->with([
-                'loteModelo.lote.proveedor',
-                'registradoPor',
+         $query = Equipo::query()
+        ->with([
+            'loteModelo.lote.proveedor',
+            'registradoPor' => fn($q) => $q->withoutGlobalScopes(), // ← y aquí
             ])
             ->orderByDesc('created_at');
 

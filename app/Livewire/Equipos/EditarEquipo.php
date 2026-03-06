@@ -113,6 +113,7 @@ public $almacenesDisponibles = [];
 
     public ?string $motivo = null;     // input opcional
     public bool $pedirMotivo = false;  // para UI/validación
+    public bool $guardadoPendienteConfirmacion = false;
 
     public bool $isHydrating = true;
 
@@ -1109,7 +1110,8 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
     // =======================
     // Guardar (update) - alias
     // =======================
-    public function actualizar(): void
+    // Intercepta submit, calcula diff, abre modal si hay cambios críticos o guarda directo
+    public function solicitarGuardar(): void
     {
         try {
             $this->validate();
@@ -1119,30 +1121,92 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
         }
 
         $this->recalcChanges();
+
         if (!$this->hasChanges) {
             $this->dispatch('toast', type: 'info', message: 'No hay cambios por guardar.');
             return;
         }
 
+        $diff = $this->buildAuditDiff($this->baseline, $this->currentSnapshotForAudit());
+        [$accion, $motivoRequerido] = $this->classifyAuditAction($diff);
+
+        // Sin cambios críticos: guardar directo sin modal
+        if (!$motivoRequerido) {
+            $this->motivo = null;
+            $this->guardadoPendienteConfirmacion = false;
+            $this->ejecutarGuardado();
+            return;
+        }
+
+        // Hay cambios críticos: preparar datos para el modal
+        $camposCriticos = ['lote_id', 'lote_modelo_id', 'proveedor_id', 'numero_serie'];
+        $etiquetas      = $this->etiquetasCampos();
+
+        $cambiosCriticos  = [];
+        $cambiosGenerales = [];
+
+        foreach ($diff as $campo => $valores) {
+            $entrada = [
+                'campo'    => $campo,
+                'etiqueta' => $etiquetas[$campo] ?? $campo,
+                'de'       => $this->formatearValorAudit($campo, $valores['from']),
+                'a'        => $this->formatearValorAudit($campo, $valores['to']),
+            ];
+
+            if (in_array($campo, $camposCriticos, true)) {
+                $cambiosCriticos[] = $entrada;
+            } else {
+                $cambiosGenerales[] = $entrada;
+            }
+        }
+
+        $cambiosGenerales = array_slice($cambiosGenerales, 0, 8);
+        $this->guardadoPendienteConfirmacion = true;
+
+        $this->dispatch('abrir-modal-confirmacion',
+            cambiosCriticos:  $cambiosCriticos,
+            cambiosGenerales: $cambiosGenerales,
+            accion:           $accion,
+        );
+    }
+
+    // Recibe el motivo desde el evento window disparado por el modal
+    #[\Livewire\Attributes\On('modal-confirmacion-aceptada')]
+    public function confirmarGuardar(string $motivo): void
+    {
+        if (!$this->guardadoPendienteConfirmacion) {
+            return;
+        }
+
+        if (!filled($motivo)) {
+            $this->dispatch('toast', type: 'error', message: 'El motivo es obligatorio.');
+            return;
+        }
+
+        $this->motivo = $motivo;
+        $this->guardadoPendienteConfirmacion = false;
+        $this->ejecutarGuardado();
+    }
+
+    // Lógica real de guardado
+    private function ejecutarGuardado(): void
+    {
         $f = $this->form;
 
-        // Pre-procesamiento (igual que registrar)
         $f->almacenamiento_secundario_capacidad = $f->almacenamiento_secundario_capacidad ?: 'N/A';
         $f->almacenamiento_secundario_tipo      = $f->almacenamiento_secundario_tipo ?: 'N/A';
         $f->teclado_idioma                      = $f->teclado_idioma ?: 'N/A';
 
-        $f->detalles_esteticos = $this->buildChecksText($f->detalles_esteticos_checks ?? [], $f->detalles_esteticos_otro);
+        $f->detalles_esteticos      = $this->buildChecksText($f->detalles_esteticos_checks ?? [], $f->detalles_esteticos_otro);
         $f->detalles_funcionamiento = $this->buildChecksText($f->detalles_funcionamiento_checks ?? [], $f->detalles_funcionamiento_otro);
 
         $f->puertos_conectividad = $this->truncate($f->puertos_conectividad, 255);
         $f->dispositivos_entrada = $this->truncate($f->dispositivos_entrada, 255);
 
-        // Mappers a columnas (antes del payload)
         $this->mapSlotsToDbColumns();
         $this->applyAggregatesToEquipoColumns();
 
         DB::transaction(function () use ($f) {
-            // Seguridad: el modelo debe pertenecer al lote
             $belongs = LoteModeloRecibido::query()
                 ->whereKey($f->lote_modelo_id)
                 ->where('lote_id', $f->lote_id)
@@ -1154,7 +1218,6 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
                 ]);
             }
 
-            // Cupo (en edición: excluye el equipo actual)
             $lm = LoteModeloRecibido::query()
                 ->whereKey($f->lote_modelo_id)
                 ->lockForUpdate()
@@ -1171,66 +1234,109 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
                 ]);
             }
 
-            // Update equipo (solo columnas reales)
-            $payload = $this->equipoPayloadParaUpdate();
+            $diff    = $this->buildAuditDiff($this->baseline, $this->currentSnapshotForAudit());
+            [$accion] = $this->classifyAuditAction($diff);
 
-            $cols = Schema::getColumnListing('equipos');
-            $payload = array_intersect_key($payload, array_flip($cols));
-
-            // Nunca tocar estas columnas
-            unset($payload['id'], $payload['created_at'], $payload['updated_at'], $payload['deleted_at']);
-
-
-
-            $diff = $this->buildAuditDiff($this->baseline, $this->currentSnapshotForAudit());
-
-            // decide acción según diff
-            [$accion, $motivoRequerido] = $this->classifyAuditAction($diff);
-
-            // si requiere motivo y no viene, lanza validation
-            if ($motivoRequerido && !filled($this->motivo)) {
-                throw ValidationException::withMessages([
-                    'motivo' => 'Motivo es obligatorio para esta acción.',
-                ]);
-            }
             $this->registrarAuditoria(
                 equipoId: (int) $this->equipo->id,
-                accion: $accion,
-                motivo: $this->motivo,
-                cambios: $diff
+                accion:   $accion,
+                motivo:   $this->motivo,
+                cambios:  $diff
             );
 
-
-
-
-
-
+            $payload = $this->equipoPayloadParaUpdate();
+            $cols    = Schema::getColumnListing('equipos');
+            $payload = array_intersect_key($payload, array_flip($cols));
+            unset($payload['id'], $payload['created_at'], $payload['updated_at'], $payload['deleted_at']);
 
             $this->equipo->update($payload);
 
-            // Relacionadas (reemplazo total)
             $this->guardarBaterias((int) $this->equipo->id);
             $this->guardarMonitor((int) $this->equipo->id);
             $this->guardarGpus((int) $this->equipo->id);
         });
 
-        // baseline reset
         $this->baseline = method_exists($this->form, 'snapshotPersistible')
             ? $this->form->snapshotPersistible()
             : $this->form->all();
 
         $this->hasChanges = false;
+        $this->motivo     = null;
 
         $this->dispatch('toast', type: 'success', message: 'Actualizado correctamente.');
         $this->resetValidation();
     }
 
-    /**
-     * Compat: si tu vista usa wire:submit.prevent="guardar"
-     */
+    // Etiquetas legibles por campo para mostrar en el modal
+    private function etiquetasCampos(): array
+    {
+        return [
+            'lote_id'                             => 'Lote',
+            'lote_modelo_id'                      => 'Modelo del lote',
+            'proveedor_id'                        => 'Proveedor',
+            'numero_serie'                        => 'Núm. de serie',
+            'marca'                               => 'Marca',
+            'modelo'                              => 'Modelo',
+            'tipo_equipo'                         => 'Tipo de equipo',
+            'sistema_operativo'                   => 'Sistema operativo',
+            'procesador_modelo'                   => 'Procesador',
+            'procesador_generacion'               => 'Generación CPU',
+            'procesador_nucleos'                  => 'Núcleos CPU',
+            'ram_total'                           => 'RAM total',
+            'ram_tipo'                            => 'Tipo RAM',
+            'almacenamiento_principal_capacidad'  => 'Almac. principal',
+            'almacenamiento_principal_tipo'       => 'Tipo almac. principal',
+            'estatus_general'                     => 'Estatus',
+            'ethernet_tiene'                      => 'Puerto Ethernet',
+            'puertos_conectividad'                => 'Conectividad',
+            'dispositivos_entrada'                => 'Dispositivos entrada',
+            'teclado_idioma'                      => 'Idioma teclado',
+            'notas_generales'                     => 'Notas generales',
+            'detalles_esteticos'                  => 'Detalles estéticos',
+            'detalles_funcionamiento'             => 'Detalles funcionamiento',
+            'bateria_tiene'                       => 'Tiene batería',
+        ];
+    }
+
+    // Formatea valores del diff para mostrarse legibles en el modal
+    private function formatearValorAudit(string $campo, $valor): ?string
+    {
+        if ($valor === null || $valor === '') return null;
+
+        $boolCampos = ['ram_es_soldada', 'bateria_tiene', 'bateria2_tiene',
+                       'ethernet_tiene', 'ethernet_es_gigabit'];
+
+        if (in_array($campo, $boolCampos, true)) {
+            return $valor ? 'Sí' : 'No';
+        }
+
+        if ($campo === 'lote_id') {
+            $lote = Lote::find($valor);
+            return $lote ? 'Lote ' . $lote->nombre_lote : (string) $valor;
+        }
+        if ($campo === 'lote_modelo_id') {
+            $lm = LoteModeloRecibido::find($valor);
+            return $lm ? $lm->marca . ' ' . $lm->modelo : (string) $valor;
+        }
+        if ($campo === 'proveedor_id') {
+            $prov = Proveedor::find($valor);
+            return $prov ? $prov->nombre_empresa : (string) $valor;
+        }
+
+        if (is_array($valor)) return implode(', ', $valor);
+
+        $str = (string) $valor;
+        return mb_strlen($str) > 60 ? mb_substr($str, 0, 57) . '…' : $str;
+    }
+
+    public function actualizar(): void
+    {
+        $this->solicitarGuardar();
+    }
+
     public function guardar(): void
     {
-        $this->actualizar();
+        $this->solicitarGuardar();
     }
 
     // =======================

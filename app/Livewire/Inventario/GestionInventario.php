@@ -116,7 +116,7 @@ $equipos = Equipo::with([
             ->toArray();
         $rolTecnicoId = Roles::where('slug', 'tecnico')->value('id');
 
-        $this->tecnicos = User::query()
+        $this->tecnicos = User::withoutGlobalScopes()
             ->select('id', 'nombre')
             ->whereNull('deleted_at')
             ->where('role_id', $rolTecnicoId)
@@ -314,7 +314,10 @@ public function cerrarEliminarSeleccion()
     protected function equiposQuery()
     {
         $q = Equipo::query()
-            ->with(['loteModelo.lote.proveedor', 'registradoPor'])
+            ->with([
+                'loteModelo.lote.proveedor',
+                'registradoPor' => fn($q) => $q->withoutGlobalScopes(),
+            ])
             ->when($this->search, function ($q) {
                 $s = trim($this->search);
                 $q->where(function ($q) use ($s) {
@@ -341,6 +344,7 @@ public function cerrarEliminarSeleccion()
 
             ->when($this->tecnico_id, function ($q) {
             $q->where('registrado_por_user_id', $this->tecnico_id);
+            
             });
 
             
@@ -390,6 +394,8 @@ public function cerrarEliminarSeleccion()
 
         return $q->orderByDesc('created_at');
     }
+
+    
 
     /**
      * Cambiar estatus masivo
@@ -458,6 +464,7 @@ public function cerrarEliminarSeleccion()
     $equipos = $query
         ->with(['loteModelo.lote.proveedor', 'registradoPor'])
         ->get();
+        
 
     $fileName = 'inventario_' . now()->format('Ymd_His') . '.xlsx';
 
