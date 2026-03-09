@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout pageTitle="Equipos — Editar Equipo #{{ $equipo->id }}">
 
     {{-- FONDO ESTILO LOGIN + REGISTRO DE EQUIPOS --}}
     <div

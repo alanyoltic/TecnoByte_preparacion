@@ -1,5 +1,6 @@
 <x-tb-background poll="refreshDashboard" :glows="$glows">
     
+    
     <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10">
         <div class="relative">
             <x-topbar

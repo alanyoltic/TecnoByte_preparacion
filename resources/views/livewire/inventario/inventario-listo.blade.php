@@ -414,7 +414,7 @@
 
         // 2) Rol para ver si puede editar
         $user = auth()->user();
-        $esAdminCeo = $user && in_array(optional($user->role)->slug, ['admin', 'ceo']);
+        $esAdminCeo = $user && $user->tienePermiso('prep.equipos.editar');
     @endphp
 
     {{-- MENÚ DE ACCIONES (Imprimir / Editar) --}}

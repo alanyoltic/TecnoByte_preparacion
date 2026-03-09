@@ -2,38 +2,30 @@
 
 namespace App\Models;
 
-// ¡Asegúrate de que esta importación esté aquí!
-use App\Models\Roles; 
+use App\Models\Roles;
 use App\Models\Puesto;
 use App\Models\Departamento;
-use Illuminate\Contracts\Auth\MustVerifyEmail; 
+use App\Traits\TieneRolTransferencias;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-// Asegúrate de que 'implements MustVerifyEmail' esté aquí
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasFactory, Notifiable, SoftDeletes;
-
-
+    use HasFactory, Notifiable, SoftDeletes, TieneRolTransferencias;
 
     public function departamento()
     {
         return $this->belongsTo(Departamento::class, 'departamento_id');
     }
 
-
     public function puesto()
     {
         return $this->belongsTo(Puesto::class, 'puesto_id');
     }
 
-
-    /**
-     * Los atributos que se pueden asignar masivamente.
-     */
     protected $fillable = [
         'nombre',
         'segundo_nombre',
@@ -48,81 +40,64 @@ class User extends Authenticatable implements MustVerifyEmail
         'departamento_id',
         'puesto_id',
         'sucursal_id',
-
     ];
-
 
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'fecha_nacimiento' => 'date',
-        'password' => 'hashed',
-        'is_active' => 'boolean',
-        'fecha_baja' => 'datetime',
+        'fecha_nacimiento'  => 'date',
+        'password'          => 'hashed',
+        'is_active'         => 'boolean',
+        'fecha_baja'        => 'datetime',
     ];
 
- 
     public function role()
     {
-
         return $this->belongsTo(Roles::class, 'role_id');
     }
 
     protected static function booted()
-{
-    static::addGlobalScope('is_active', function ($query) {
-        $query->where('is_active', true);
-    });
-}
-
-
-
-
-
-public function tienePermiso(string $slug): bool
-{
-    // CEO = todo
-    if (optional($this->role)->slug === 'ceo') {
-        return true;
+    {
+        static::addGlobalScope('is_active', function ($query) {
+            $query->where('is_active', true);
+        });
     }
 
-    // Por rol
-    $porRol = \DB::table('rol_permiso')
-        ->join('permisos', 'permisos.id', '=', 'rol_permiso.permiso_id')
-        ->where('rol_permiso.rol_id', $this->role_id)
-        ->where('permisos.slug', $slug)
-        ->exists();
+    public function tienePermiso(string $slug): bool
+    {
+        if (optional($this->role)->slug === 'ceo') {
+            return true;
+        }
 
-    if ($porRol) return true;
+        $porRol = \DB::table('rol_permiso')
+            ->join('permisos', 'permisos.id', '=', 'rol_permiso.permiso_id')
+            ->where('rol_permiso.rol_id', $this->role_id)
+            ->where('permisos.slug', $slug)
+            ->exists();
 
-    // Por usuario (override)
-    return \DB::table('usuario_permiso')
-        ->join('permisos', 'permisos.id', '=', 'usuario_permiso.permiso_id')
-        ->where('usuario_permiso.user_id', $this->id)
-        ->where('permisos.slug', $slug)
-        ->exists();
-}
+        if ($porRol) return true;
 
-
+        return \DB::table('usuario_permiso')
+            ->join('permisos', 'permisos.id', '=', 'usuario_permiso.permiso_id')
+            ->where('usuario_permiso.user_id', $this->id)
+            ->where('permisos.slug', $slug)
+            ->exists();
+    }
 
     public function isAdminCeo()
     {
         return in_array($this->role?->slug, ['admin', 'ceo']);
     }
 
-
-        public function getNombreInicialAttribute()
+    public function getNombreInicialAttribute()
     {
-        $nombre = $this->nombre ?? '';
+        $nombre   = $this->nombre ?? '';
         $apellido = $this->apellido_paterno ?? '';
-
-        $inicial = $apellido ? strtoupper(mb_substr($apellido, 0, 1)) . '.' : '';
-
+        $inicial  = $apellido ? strtoupper(mb_substr($apellido, 0, 1)) . '.' : '';
         return trim("$nombre $inicial");
     }
 
@@ -141,16 +116,8 @@ public function tienePermiso(string $slug): bool
         $this->attributes['apellido_materno'] = ucwords(mb_strtolower($value));
     }
 
-    // En User.php — agrega esto junto a tus otras relaciones
     public static function conBajas()
     {
         return static::withoutGlobalScopes();
     }
-
-
-    
-
-
-
-
 }

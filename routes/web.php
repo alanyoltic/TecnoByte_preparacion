@@ -95,12 +95,12 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
             ->name('inventario.gestion');
 
         Route::get('/transferencias', fn () => view('inventario.transferencias'))
-            ->middleware('permiso:transferencias.ver')
+            ->middleware('permiso:prep.transferencias.ver')
             ->name('inventario.transferencias');
             
         Route::get('/transferencias/crear', fn () => view('inventario.transferencias-crear'))
-            ->middleware('permiso:transferencias.crear')
-            ->name('inventario.transferencias.crear');
+            ->middleware('permiso:prep.transferencias.crear')
+            ->name('inventario.prep.transferencias.crear');
 
 
 

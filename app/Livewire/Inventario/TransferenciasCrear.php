@@ -8,12 +8,11 @@ use App\Models\Transferencia;
 use App\Models\Equipo;
 use App\Models\Consumible;
 use App\Models\InventarioConsumible;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class TransferenciasCrear extends Component
 {
-    public $almacenesOrigen = [];
+    public $almacenesOrigen  = [];
     public $almacen_origen_id  = '';
     public $almacen_destino_id = '';
 
@@ -30,22 +29,14 @@ class TransferenciasCrear extends Component
 
     public function mount(): void
     {
-        $this->cargarAlmacenesOrigen();
-    }
-
-    private function cargarAlmacenesOrigen(): void
-    {
         $user = auth()->user();
 
-        $this->almacenesOrigen = Almacen::whereHas('encargados', function ($q) use ($user) {
-            $q->where('user_id', $user->id)
-              ->where('activo', 1)
-              ->where('desde', '<=', Carbon::now())
-              ->where(function ($q2) {
-                  $q2->whereNull('hasta')
-                     ->orWhere('hasta', '>=', Carbon::now());
-              });
-        })->get();
+        // Bloquear acceso si el rol no puede crear transferencias
+        if (!$user->puedeCriarTransferencias()) {
+            abort(403);
+        }
+
+        $this->almacenesOrigen = $user->almacenesPermitidosOrigen();
     }
 
     public function updatedAlmacenOrigenId(): void
@@ -88,7 +79,6 @@ class TransferenciasCrear extends Component
             return;
         }
 
-        // Buscar por numero de serie o por ID si es numerico
         $equipo = Equipo::where('almacen_id', $this->almacen_origen_id)
             ->where(function ($q) use ($busqueda) {
                 $q->whereRaw('UPPER(numero_serie) = ?', [strtoupper($busqueda)]);
@@ -103,7 +93,6 @@ class TransferenciasCrear extends Component
             return;
         }
 
-        // Verificar duplicado
         if (collect($this->equiposAgregados)->contains('id', $equipo->id)) {
             $this->errorSerial = "El equipo [{$equipo->numero_serie}] ya fue agregado.";
             return;
@@ -185,7 +174,7 @@ class TransferenciasCrear extends Component
     // =========================================================================
     public function guardar(): void
     {
-        if (!auth()->user()->tienePermiso('transferencias.crear')) {
+        if (!auth()->user()->puedeCriarTransferencias()) {
             abort(403);
         }
 
@@ -234,8 +223,11 @@ class TransferenciasCrear extends Component
     // =========================================================================
     public function render()
     {
+        $user = auth()->user();
+
         return view('livewire.inventario.transferencias-crear', [
-            'almacenesDestino' => Almacen::where('id', '!=', $this->almacen_origen_id ?: 0)->get(),
+            'almacenesDestino' => $user->almacenesPermitidosDestino()
+                ->where('id', '!=', $this->almacen_origen_id ?: 0),
             'errorSerial'      => $this->errorSerial,
             'errorConsumible'  => $this->errorConsumible,
         ]);

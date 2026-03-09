@@ -738,7 +738,7 @@
 
                             
     $user = auth()->user();
-    $puedeEditar = $user && $user->tienePermiso('equipos.editar');
+    $puedeEditar = $user && $user->tienePermiso('prep.equipos.editar');
 @endphp
 
 @if($puedeEditar)
