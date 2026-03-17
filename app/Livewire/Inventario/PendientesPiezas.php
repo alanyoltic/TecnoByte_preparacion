@@ -46,7 +46,7 @@ class PendientesPiezas extends Component
                 'pieza',
             ])
             ->whereHas('equipo', function ($q) {
-                $q->where('estatus_general', 'Pendiente Pieza');
+                $q->where('estatus_area', 'PENDIENTE_PIEZA');
             });
 
         // Filtro búsqueda (serie, marca, modelo, tipo, pieza)

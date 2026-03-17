@@ -1,5 +1,4 @@
-<?php
-
+<?php 
 namespace App\Livewire\Inventario;
 
 
@@ -329,7 +328,7 @@ public function cerrarEliminarSeleccion()
                 });
             })
             ->when($this->filtroEstado !== 'todos', function ($q) {
-                $q->where('estatus_general', $this->filtroEstado);
+                $q->where('estatus_area', $this->filtroEstado);
             })
             ->when($this->filtroLote !== 'todos', function ($q) {
                 $q->whereHas('loteModelo.lote', function ($q2) {
@@ -407,7 +406,7 @@ public function cerrarEliminarSeleccion()
         }
 
         Equipo::whereIn('id', $this->selected)->update([
-            'estatus_general' => $nuevoEstatus,
+            'estatus_area' => $nuevoEstatus,
         ]);
 
         $this->resetSelection();
@@ -480,9 +479,9 @@ public function cerrarEliminarSeleccion()
         // Stats para las tarjetas (son counts, ligeros)
         $stats = [
             'total'        => Equipo::count(),
-            'en_revision'  => Equipo::where('estatus_general', 'En Revisión')->count(),
-            'aprobados'    => Equipo::where('estatus_general', 'Aprobado')->count(),
-            'finalizados'  => Equipo::where('estatus_general', 'Finalizado')->count(),
+            'en_revision' => Equipo::where('estatus_area', 'EN_PROCESO')->count(),
+            'aprobados'    => Equipo::where('estatus_area', 'LISTO')->count(),
+            'finalizados'  => Equipo::where('estatus_area', 'TRANSFERIDO')->count(),
         ];
 
         return view('livewire.inventario.gestion-inventario', [

@@ -98,10 +98,10 @@
 
                     {{-- Recordarme + ¿Olvidaste tu contraseña? --}}
                     <div class="flex items-center justify-between text-xs md:text-sm text-slate-400">
-                        <label for="remember_me" class="inline-flex items-center gap-2">
-                            <input id="remember_me" type="checkbox"
-                                   class="rounded border-slate-600 bg-slate-900/70 text-orange-500
-                                          focus:ring-orange-400/70">
+                        <input id="remember_me" type="checkbox"
+                            name="remember"
+                            class="rounded border-slate-600 bg-slate-900/70 text-orange-500
+                                    focus:ring-orange-400/70">
                             <span>{{ __('Recordarme') }}</span>
                         </label>
 

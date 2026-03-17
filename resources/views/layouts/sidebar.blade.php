@@ -158,17 +158,31 @@
         [
             'label' => 'Registrar Entrada',
             'href'  => route('equipos.create'),
-            'perm'  => 'prep.equipos.ver',
+            'perm'  => 'prep.equipos.crear',
         ],
         [
             'label' => 'Garantía Proveedor',
             'href'  => '#',
-            'perm'  => 'prep.equipos.caracteristicas', // ajusta si aplica
+            'perm'  => 'prep.equipos.ver', // ajusta si aplica
         ],
         [
             'label' => 'Características equipos',
             'href'  => route('equipos.caracteristicas'),
-            'perm'  => 'prep.equipos.caracteristicas',
+            'perm'  => 'prep.equipos.ver',
+        ],
+
+
+        [
+            'label' => 'Asignaciones',
+            'href'  => route('preparacion.asignaciones'),
+            'perm'  => 'prep.equipos.ver',
+        ],
+
+
+        [
+            'label' => 'Mi Trabajo',
+            'href'  => route('preparacion.mi-trabajo'),
+            'perm'  => 'prep.equipos.ver',
         ],
     ];
 
@@ -346,7 +360,7 @@
         ];
     }
     
-    if (auth()->check() && auth()->user()->tienePermiso('transferencias.ver')) {
+    if (auth()->check() && auth()->user()->tienePermiso('prep.transferencias.ver')) {
     $inventarioItems[] = [
         'label' => 'Transferencias',
         'href' => route('inventario.transferencias'),

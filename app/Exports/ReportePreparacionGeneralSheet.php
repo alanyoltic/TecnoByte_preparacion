@@ -50,11 +50,11 @@ class ReportePreparacionGeneralSheet implements FromCollection
             ->selectRaw('
                 marca,
                 modelo,
-                estado_operativo,
-                estatus_general,
+                estatus_ciclo,
+                estatus_area,
                 COUNT(id) as total
             ')
-            ->groupBy('marca','modelo','estado_operativo','estatus_general')
+            ->groupBy('marca','modelo','estatus_ciclo','estatus_area')
             ->get();
 
         $rows->push(['Marca','Modelo','Estado Operativo','Estatus General','Total']);
@@ -63,8 +63,8 @@ class ReportePreparacionGeneralSheet implements FromCollection
             $rows->push([
                 $f->marca,
                 $f->modelo,
-                $f->estado_operativo,
-                $f->estatus_general,
+                $f->estatus_ciclo,
+                $f->estatus_area,
                 $f->total
             ]);
         }

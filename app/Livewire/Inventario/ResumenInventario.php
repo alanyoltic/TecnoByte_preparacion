@@ -163,7 +163,7 @@ class ResumenInventario extends Component
                         ->orWhere('tipo_equipo', 'like', "%{$s}%");
                 });
             })
-            ->when($this->filtroEstado !== 'todos', fn($q) => $q->where('estatus_general', $this->filtroEstado))
+            ->when($this->filtroEstado !== 'todos', fn($q) => $q->where('estatus_area', $this->filtroEstado))
             ->when($this->filtroLote !== 'todos', function ($q) {
                 $q->whereHas('loteModelo.lote', fn($q2) => $q2->where('id', $this->filtroLote));
             })
@@ -426,9 +426,9 @@ if ($e->teclado_idioma && $e->teclado_idioma !== 'N/A') {
 
         $stats = [
             'total'        => Equipo::count(),
-            'en_revision'  => Equipo::where('estatus_general', 'En Revisión')->count(),
-            'aprobados'    => Equipo::where('estatus_general', 'Aprobado')->count(),
-            'finalizados'  => Equipo::where('estatus_general', 'Finalizado')->count(),
+            'en_revision'  => Equipo::where('estatus_area', 'EN_PROCESO')->count(),
+            'aprobados'    => Equipo::where('estatus_area', 'LISTO')->count(),
+            'finalizados'  => Equipo::where('estatus_area', 'TRANSFERIDO')->count(),
         ];
 
         return view('livewire.inventario.resumen-inventario', [

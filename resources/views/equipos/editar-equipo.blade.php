@@ -1,4 +1,4 @@
-<x-app-layout pageTitle="Equipos — Editar Equipo #{{ $equipo->id }}">
+﻿<x-app-layout pageTitle="Equipos — Editar Equipo #{{ $equipo->id }}">
 
     {{-- FONDO ESTILO LOGIN + REGISTRO DE EQUIPOS --}}
     <div
@@ -80,14 +80,14 @@
 
                 <x-slot:right>
                     <div class="flex items-center gap-2 text-xs">
-                        @if($equipo->estatus_general)
+                        @if($equipo->estatus_area)
                             <span
                                 class="inline-flex items-center px-2.5 py-1 rounded-full
                                     text-[0.7rem] font-semibold tracking-wide
                                     bg-emerald-500/10 text-emerald-400
                                     border border-emerald-500/40"
                             >
-                                Estado: {{ $equipo->estatus_general }}
+                                Estado: {{ $equipo->estatus_area }}
                             </span>
                         @endif
                     </div>

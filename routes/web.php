@@ -8,9 +8,12 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\LoteController;
 use App\Http\Controllers\AfterLoginRedirectController;
+use App\Livewire\Preparacion\Equipos\MiTrabajo;
+use App\Livewire\Preparacion\Equipos\Asignaciones;
 
 use App\Models\Equipo;
 use App\Models\Lote;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -185,6 +188,20 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
     Route::get('/preparacion/dashboard', [DashboardController::class, 'index'])
         ->middleware('permiso:modulo.preparacion')
         ->name('preparacion.dashboard');
+
+        Route::get('/preparacion/dashboard', [DashboardController::class, 'index'])
+    ->middleware('permiso:modulo.preparacion')
+    ->name('preparacion.dashboard');
+
+    // ── NUEVO ──
+    Route::get('/preparacion/mi-trabajo', MiTrabajo::class)
+        ->middleware('permiso:prep.equipos.ver')
+        ->name('preparacion.mi-trabajo');
+
+
+    Route::get('/preparacion/asignaciones', Asignaciones::class)
+        ->middleware('permiso:prep.equipos.ver')
+        ->name('preparacion.asignaciones');
 
 
     /*

@@ -108,7 +108,7 @@ class RegistrarEquipo extends Component
     {
         $f = $this->form;
 
-        $f->estatus_general = 'En Revisión';
+        $f->estatus_area = 'EN_PROCESO';
 
         $f->almacenamiento_secundario_capacidad = $f->almacenamiento_secundario_capacidad ?: 'N/A';
         $f->almacenamiento_secundario_tipo      = $f->almacenamiento_secundario_tipo ?: 'N/A';
@@ -676,7 +676,7 @@ public function updatedFormRamExpansionMax($value): void
             'registrado_por_user_id' => Auth::id(),
             'proveedor_id'           => $f->proveedor_id,
 
-            'estatus_general' => $f->estatus_general,
+            'estatus_area' => $f->estatus_area,
 
             'marca'             => $f->marca,
             'modelo'            => $f->modelo,

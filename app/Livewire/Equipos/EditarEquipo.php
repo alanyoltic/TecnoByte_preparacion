@@ -1286,7 +1286,7 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
             'ram_tipo'                            => 'Tipo RAM',
             'almacenamiento_principal_capacidad'  => 'Almac. principal',
             'almacenamiento_principal_tipo'       => 'Tipo almac. principal',
-            'estatus_general'                     => 'Estatus',
+            'estatus_area'                     => 'Estatus',
             'ethernet_tiene'                      => 'Puerto Ethernet',
             'puertos_conectividad'                => 'Conectividad',
             'dispositivos_entrada'                => 'Dispositivos entrada',
@@ -1352,7 +1352,7 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
             'lote_modelo_id' => $f->lote_modelo_id,
             'proveedor_id'   => $f->proveedor_id,
 
-            'estatus_general' => $f->estatus_general,
+            'estatus_area' => $f->estatus_area,
 
             'marca'             => $f->marca,
             'modelo'            => $f->modelo,

@@ -1,4 +1,4 @@
-@php
+﻿@php
     /** @var string $mode create|edit */
     $mode = $mode ?? 'create';
 
@@ -3020,20 +3020,20 @@
                             </label>
 
                             <select
-                                wire:model.defer="form.estatus_general"
+                                wire:model.defer="form.estatus_area"
                                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                     bg-slate-50 dark:bg-slate-900
                                     text-sm px-3 py-2
                                     focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             >
-                                <option value="En Revisión">En Revisión</option>
-                                <option value="Pendiente Pieza">Pendiente Pieza</option>
+                                <option value="EN_PROCESO">En Proceso</option>
+                                <option value="PENDIENTE_PIEZA">Pendiente Pieza</option>
                                 <option value="Pendiente Garantía">Pendiente Garantía</option>
                                 <option value="Pendiente Deshueso">Pendiente Deshueso</option>
-                                <option value="Finalizado">Finalizado</option>
+                                <option value="TRANSFERIDO">Finalizado</option>
                             </select>
 
-                            @error('form.estatus_general')
+                            @error('form.estatus_area')
                                 <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                             @enderror
                         </div>

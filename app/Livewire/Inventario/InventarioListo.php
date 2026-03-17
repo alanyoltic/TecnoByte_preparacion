@@ -92,9 +92,9 @@ public function mount()
     {
         // Totales globales (sin filtros) – solo para las tarjetas de arriba
         $this->stats['total']        = Equipo::count();
-        $this->stats['en_revision']  = Equipo::where('estatus_general', 'En Revisión')->count();
-        $this->stats['aprobados']    = Equipo::where('estatus_general', 'Aprobado')->count();
-        $this->stats['finalizados']  = Equipo::where('estatus_general', 'Finalizado')->count();
+        $this->stats['en_revision']  = Equipo::where('estatus_area', 'EN_PROCESO')->count();
+        $this->stats['aprobados']    = Equipo::where('estatus_area', 'LISTO')->count();
+        $this->stats['finalizados']  = Equipo::where('estatus_area', 'TRANSFERIDO')->count();
     }
 
     public function render()
@@ -120,7 +120,7 @@ public function mount()
 
         // 🎯 Filtro por estatus
         if ($this->filtroEstado !== 'todos') {
-            $query->where('estatus_general', $this->filtroEstado);
+            $query->where('estatus_area', $this->filtroEstado);
         }
 
         // 🎯 Filtro por lote

@@ -204,7 +204,7 @@ public function map($e): array
         optional($e->created_at)->format('Y-m-d H:i:s'),
         $usuario?->nombre ?? '',
         $proveedor->nombre_empresa ?? '',
-        $e->estatus_general,
+        $e->estatus_area,
 
         // 5-10
         $e->tipo_equipo,
