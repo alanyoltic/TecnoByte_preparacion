@@ -32,6 +32,16 @@ class Index extends Component
         'filter' => ['except' => 'activos'],
     ];
 
+    public function mount(): void
+    {
+        $this->autorizarGestionAvisos();
+    }
+
+    private function autorizarGestionAvisos(): void
+    {
+        abort_unless(auth()->user()?->tienePermiso('sistema.admin.configuracion'), 403);
+    }
+
     public function updatingSearch(): void
     {
         $this->resetPage();
@@ -44,12 +54,14 @@ class Index extends Component
 
     public function openCreate(): void
     {
+        $this->autorizarGestionAvisos();
         $this->resetForm();
         $this->modalOpen = true;
     }
 
     public function openEdit(int $id): void
     {
+        $this->autorizarGestionAvisos();
         $aviso = Aviso::findOrFail($id);
 
         $this->editingId = $aviso->id;
@@ -91,6 +103,7 @@ class Index extends Component
 
     public function save(): void
     {
+        $this->autorizarGestionAvisos();
         $this->validate([
             'titulo' => 'required|string|max:120',
             'texto'  => 'required|string|max:2000',
@@ -134,6 +147,7 @@ class Index extends Component
 
     public function toggleActive(int $id): void
     {
+        $this->autorizarGestionAvisos();
         $aviso = Aviso::findOrFail($id);
         $aviso->is_active = !$aviso->is_active;
         $aviso->save();
@@ -146,6 +160,7 @@ class Index extends Component
 
     public function togglePinned(int $id): void
     {
+        $this->autorizarGestionAvisos();
         $aviso = Aviso::findOrFail($id);
         $aviso->pinned = !$aviso->pinned;
         $aviso->save();
@@ -158,6 +173,7 @@ class Index extends Component
 
     public function delete(int $id): void
     {
+        $this->autorizarGestionAvisos();
         $aviso = Aviso::findOrFail($id);
         $aviso->delete();
 

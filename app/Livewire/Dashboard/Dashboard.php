@@ -108,10 +108,11 @@ class Dashboard extends Component
         $roleSlug = strtolower(optional($user->role)->slug ?? '');
         $roleName = strtolower(optional($user->role)->nombre ?? '');
         $this->cargarAvisos();
+        $this->esAdminCeo = in_array($roleSlug, ['ceo', 'admin', 'admin_sistema'], true);
         
 
-        $this->isTecnico = in_array($roleSlug, ['tecnico', 'tÃƒÂ©cnico'])
-            || in_array($roleName, ['tecnico', 'tÃƒÂ©cnico']);
+        $this->isTecnico = in_array($roleSlug, ['tecnico'])
+            || in_array($roleName, ['tecnico']);
 
         $this->selectedMonthValue = now()->format('Y-m');
 
@@ -207,7 +208,7 @@ private function cargarEmpleadoDelMes(): void
 
 public function quitarEmpleadoDelMes(): void
 {
-    if (! $this->esAdminCeo) return; // o abort_unless($this->esAdminCeo, 403);
+    abort_unless($this->esAdminCeo, 403);
 
     EmpleadoDelMes::query()
         ->where('month', $this->selectedMonthValue)
@@ -229,7 +230,7 @@ public function quitarEmpleadoDelMes(): void
 
 public function openEmpleadoModal(): void
 {
-    if (! $this->esAdminCeo) return;
+    abort_unless($this->esAdminCeo, 403);
 
     $this->showEmpleadoModal = true;
 
@@ -250,7 +251,7 @@ public function openEmpleadoModal(): void
 
     public function saveEmpleadoDelMes(): void
 {
-    if (! $this->esAdminCeo) return;
+    abort_unless($this->esAdminCeo, 403);
 
     $this->validate([
         'empleadoMesUserId' => 'required|exists:users,id',
@@ -598,7 +599,6 @@ $this->breakdown = [
        
         
         $this->cargarEmpleadoDelMes();
-        $this->esAdminCeo = ! $this->isTecnico;
 
 
 
@@ -613,7 +613,4 @@ $this->breakdown = [
    
 
 }
-
-
-
 

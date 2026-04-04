@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"C:/Users/DELL/Desktop/proyectos/web/TecnoByte_preparacion/app/Livewire/Preparacion/Inventario\")",
+      "Bash(mv \"C:/Users/DELL/Desktop/proyectos/web/TecnoByte_preparacion/app/Livewire/Preparacion/Equipos/inventario/CatalogoPiezas.php\" \"C:/Users/DELL/Desktop/proyectos/web/TecnoByte_preparacion/app/Livewire/Preparacion/Inventario/CatalogoPiezas.php\")",
+      "Bash(mkdir -p app/Livewire/Preparacion/Forms)",
+      "Bash(mkdir -p app/Livewire/Preparacion/Lotes)",
+      "Bash(mv app/Livewire/Forms/EquipoForm.php app/Livewire/Preparacion/Forms/EquipoForm.php)",
+      "Bash(mv app/Livewire/Equipos/EditarEquipo.php app/Livewire/Preparacion/Equipos/EditarEquipo.php)",
+      "Bash(mv app/Livewire/Equipos/RegistrarEquipo.php app/Livewire/Preparacion/Equipos/RegistrarEquipo.php)",
+      "Bash(sed -i \"s/view\\(''inventario.listo''\\)/view\\(''preparacion.inventario.listo''\\)/g\" routes/web.php)",
+      "Bash(sed -i \"s/view\\(''inventario.gestion-inventario''\\)/view\\(''preparacion.inventario.gestion-inventario''\\)/g\" routes/web.php)",
+      "Bash(sed -i \"s/view\\(''inventario.transferencias''\\)/view\\(''preparacion.inventario.transferencias''\\)/g\" routes/web.php)",
+      "Bash(sed -i \"s/view\\(''inventario.transferencias-crear''\\)/view\\(''preparacion.inventario.transferencias-crear''\\)/g\" routes/web.php)",
+      "Bash(sed -i \"s/view\\(''equipos.registrar''\\)/view\\(''preparacion.equipos.registrar''\\)/g\" routes/web.php)",
+      "Bash(mv administracion/dasboard.blade.php administracion/dashboard.blade.php)",
+      "Bash(mv rrhh/dasboard.blade.php rrhh/dashboard.blade.php)",
+      "Bash(mv soporte/dasboard.blade.php soporte/dashboard.blade.php)",
+      "Bash(mv ventas/dasboard.blade.php ventas/dashboard.blade.php)",
+      "Bash(php artisan tinker --execute=\":*)",
+      "Bash(grep -E \"\\\\.\\(php\\)$\")",
+      "Bash(xargs ls:*)",
+      "Read(//c/Users/DELL/Desktop/proyectos/web/TecnoByte_preparacion/**)",
+      "Read(//tmp/**)",
+      "Bash(php artisan:*)"
+    ]
+  }
+}

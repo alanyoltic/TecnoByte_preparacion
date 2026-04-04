@@ -1,4 +1,4 @@
-{{-- resources/views/layouts/partials/sidebar.blade.php (o donde lo tengas) --}}
+{{-- resources/views/layouts/sidebar.blade.php --}}
 
 <div
     class="fixed inset-y-0 left-0 z-50 h-screen
@@ -75,9 +75,9 @@
             $labelBase = "ml-2 whitespace-nowrap";
 
             $isDashboard  = request()->routeIs('dashboard');
-            $isEquipos    = request()->routeIs('equipos.*');
-            $isInventario = request()->routeIs('inventario.*');
             $isLotes      = request()->routeIs('lotes.*');
+            $isOperaciones = request()->routeIs('preparacion.*');
+            $isInventario = request()->routeIs('inventario.*') || request()->routeIs('preparacion.inventario.*');
             $isUsuarios   = request()->routeIs('users.*') || request()->routeIs('register');
 
             $u = auth()->user();
@@ -92,12 +92,12 @@
             $puedeInv          = $u && $u->tienePermiso('prep.inventario.ver');
             $puedeInvGestion   = $u && $u->tienePermiso('prep.inventario.gestion');
             $puedeLotes        = $u && $u->tienePermiso('prep.lotes.ver');
+            $puedeVerMisAsignaciones = $u && $u->tienePermiso('prep.equipos.ver') && in_array($roleSlug, ['lider', 'tecnico'], true);
 
             // Sistema
-            $puedeUsuarios     = $u && $u->tienePermiso('sistema.usuarios.ver');
-            $puedeAvisos       = $u && $u->tienePermiso('sistema.avisos.ver');
-
-
+            $puedeUsuarios      = $u && $u->tienePermiso('sistema.usuarios.ver');
+            $puedeUsuariosCrear = $u && $u->tienePermiso('sistema.usuarios.crear');
+            $puedeAdminConfig   = $u && $u->tienePermiso('sistema.admin.configuracion');
         @endphp
 
        {{-- NAV --}}
@@ -109,10 +109,8 @@
     }"
     @click.outside="if(sidebarOpen) closeMenu()"
     @keydown.escape.window="closeMenu()"
-     {{-- ✅ NUEVO: si el mouse sale de la ventana, cierra todo --}}
     @mouseleave.window="closeAll()"
     @blur.window="closeAll()"
-
     @resize.window="closeAll()"
     @scroll.window="window.dispatchEvent(new CustomEvent('tb-close-popovers'))"
 >
@@ -147,391 +145,30 @@
         </a>
     </div>
 
-   {{-- ===================== EQUIPOS (ACORDEÓN + POPOVER TELEPORT) ===================== --}}
-@if($puedeEquipos)
-
-
-@php
-    $user = auth()->user();
-
-    $equiposItems = [
-        [
-            'label' => 'Registrar Entrada',
-            'href'  => route('equipos.create'),
-            'perm'  => 'prep.equipos.crear',
-        ],
-        [
-            'label' => 'Garantía Proveedor',
-            'href'  => '#',
-            'perm'  => 'prep.equipos.ver', // ajusta si aplica
-        ],
-        [
-            'label' => 'Características equipos',
-            'href'  => route('equipos.caracteristicas'),
-            'perm'  => 'prep.equipos.ver',
-        ],
-
-
-        [
-            'label' => 'Asignaciones',
-            'href'  => route('preparacion.asignaciones'),
-            'perm'  => 'prep.equipos.ver',
-        ],
-
-
-        [
-            'label' => 'Mi Trabajo',
-            'href'  => route('preparacion.mi-trabajo'),
-            'perm'  => 'prep.equipos.ver',
-        ],
-    ];
-
-    // 🔒 Filtrar solo los que el usuario puede ver
-    $equiposItems = array_values(array_filter(
-        $equiposItems,
-        fn ($it) => $user && $user->tienePermiso($it['perm'])
-    ));
-@endphp
-
-
-    <div class="w-full mt-3 px-3"
-        x-data="{
-            id: 'equipos',
-            popoverOpen: false,
-            popoverStyle: '',
-            triggerEl: null,
-
-            isOpen(){ return sidebarOpen && activeMenu === this.id; },
-
-            toggle(e){
-                if (sidebarOpen) { 
-                    setMenu(this.id); 
-                    return; 
-                }
-
-                // ✅ Si este popover ya está abierto, solo ciérralo (toggle real)
-                if (this.popoverOpen) {
-                    this.popoverOpen = false;
-                    return;
-                }
-
-                // ✅ Si no estaba abierto, cierra otros y abre este
-                window.dispatchEvent(new CustomEvent('tb-close-popovers'));
-
-                this.triggerEl = e.currentTarget;
-                this.popoverOpen = true;
-
-                this.positionPopover();
-            },
-
-
-            positionPopover(){
-                this.$nextTick(() => {
-                    if (!this.triggerEl) return;
-
-                    const r = this.triggerEl.getBoundingClientRect();
-                    const width = 260, gap = 12;
-
-                    let top  = r.top;
-                    let left = r.right + gap;
-
-                    const estimatedHeight = 190;
-                    const maxTop = window.innerHeight - 12;
-                    if (top + estimatedHeight > maxTop) top = Math.max(12, maxTop - estimatedHeight);
-
-                    this.popoverStyle = `top:${top}px; left:${left}px; width:${width}px;`;
-                });
-            },
-
-            closePopover(){ this.popoverOpen = false; },
-            closeAll(){ this.popoverOpen = false; }
-        }"
-        @tb-close-popovers.window="closePopover()"
-        @keydown.escape.window="closeAll()"
-        @resize.window="positionPopover()"
-        @scroll.window="positionPopover()"
-        x-effect="if(sidebarOpen) popoverOpen=false"
-    >
-        {{-- BOTÓN PADRE --}}
-        <button
-            type="button"
-            @click.stop="toggle($event)"
-            class="{{ $linkBase }} {{ $isEquipos
-                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                text-white font-semibold
-                drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
-                border-blue-400/70
-                shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
-                : 'bg-white/10 dark:bg-slate-900/20
-                    text-slate-700 dark:text-slate-400
-                    hover:bg-white/20 dark:hover:bg-slate-900/30
-                    hover:text-slate-900 dark:hover:text-white' }}"
-            :class="sidebarOpen ? 'justify-between' : 'justify-center'"
-            title="Gestión de Equipos"
-        >
-            <div class="flex items-center">
-                <div class="flex items-center justify-center w-7 h-7">
-                    <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white"
-                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                </div>
-
-                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>
-                    Equipos
-                </span>
-            </div>
-
-            <svg class="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors duration-200"
-                fill="currentColor" viewBox="0 0 20 20"
-                x-show="sidebarOpen" x-transition
-                :class="isOpen() ? 'rotate-180' : ''"
-                style="transition: transform .2s ease;">
-                <path fill-rule="evenodd"
-                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                    clip-rule="evenodd" />
-            </svg>
-        </button>
-
-        {{-- ACORDEÓN (SIDEBAR ABIERTO) --}}
-        <div x-show="isOpen()" x-transition class="mt-2 space-y-1 pl-2">
-            <div class="rounded-2xl border
-                        bg-white/60 dark:bg-slate-950/40
-                        border-slate-200/70 dark:border-white/10
-                        backdrop-blur-xl overflow-x-hidden">
-                @foreach($equiposItems as $it)
-                    <a href="{{ $it['href'] }}"
-                    class="block px-4 py-2.5 text-[0.80rem]
-                            text-slate-700 dark:text-slate-200
-                            hover:bg-slate-100/90 dark:hover:bg-slate-800/70
-                            hover:text-slate-900 dark:hover:text-white
-                            transition-colors duration-150">
-                        {{ $it['label'] }}
-                    </a>
-                @endforeach
-            </div>
-        </div>
-
-        {{-- POPOVER TELEPORT (SIDEBAR CERRADO) --}}
-        <template x-teleport="body">
-                <div
-                    x-cloak
-                    x-show="popoverOpen && !sidebarOpen"
-                    x-transition.opacity.duration.150ms
-                    @click.outside="popoverOpen=false"
-                    class="fixed z-[999999] pointer-events-auto"
-                    :style="popoverStyle"
-                >
-
-                <div class="rounded-2xl border
-                            bg-white/90 dark:bg-slate-900/95
-                            border-slate-200/70 dark:border-slate-700/70
-                            shadow-[0_18px_45px_rgba(15,23,42,0.65)]
-                            backdrop-blur-xl overflow-hidden">
-                    @foreach($equiposItems as $it)
-                        <a href="{{ $it['href'] }}"
-                        class="block px-4 py-3 text-[0.80rem]
-                                text-slate-700 dark:text-slate-200
-                                hover:bg-slate-100/90 dark:hover:bg-slate-800/80
-                                hover:text-slate-900 dark:hover:text-white
-                                transition-colors duration-150">
-                            {{ $it['label'] }}
-                        </a>
-                    @endforeach
-                </div>
-            </div>
-        </template>
-
-    </div>
-@endif
-
-
-{{-- ===================== INVENTARIO (ACORDEÓN + POPOVER TELEPORT) ===================== --}}
-@php
-    $inventarioItems = [
-        ['label' => 'Inventario listo', 'href' => route('inventario.listo')],
-    ];
-    if (auth()->check() && auth()->user()->tienePermiso('prep.inventario.gestion')) {
-        $inventarioItems[] = [
-            'label' => 'Gestión de inventario',
-            'href' => route('inventario.gestion'),
-            'accent' => true
-        ];
-    }
-    
-    if (auth()->check() && auth()->user()->tienePermiso('prep.transferencias.ver')) {
-    $inventarioItems[] = [
-        'label' => 'Transferencias',
-        'href' => route('inventario.transferencias'),
-    ];
-    }
-    
-@endphp
-
-<div class="w-full mt-2 px-3"
-    x-data="{
-        id: 'inventario',
-        popoverOpen: false,
-        popoverStyle: '',
-        triggerEl: null,
-
-        isOpen(){ return sidebarOpen && activeMenu === this.id; },
-
-            toggle(e){
-                if (sidebarOpen) { 
-                    setMenu(this.id); 
-                    return; 
-                }
-
-                // ✅ Si este popover ya está abierto, solo ciérralo (toggle real)
-                if (this.popoverOpen) {
-                    this.popoverOpen = false;
-                    return;
-                }
-
-                // ✅ Si no estaba abierto, cierra otros y abre este
-                window.dispatchEvent(new CustomEvent('tb-close-popovers'));
-
-                this.triggerEl = e.currentTarget;
-                this.popoverOpen = true;
-
-                this.positionPopover();
-            },
-
-
-        positionPopover(){
-            this.$nextTick(() => {
-                if (!this.triggerEl) return;
-
-                const r = this.triggerEl.getBoundingClientRect();
-                const width = 260, gap = 12;
-
-                let top  = r.top;
-                let left = r.right + gap;
-
-                const estimatedHeight = 180;
-                const maxTop = window.innerHeight - 12;
-                if (top + estimatedHeight > maxTop) top = Math.max(12, maxTop - estimatedHeight);
-
-                this.popoverStyle = `top:${top}px; left:${left}px; width:${width}px;`;
-            });
-        },
-
-        closePopover(){ this.popoverOpen = false; },
-        closeAll(){ this.popoverOpen = false; }
-    }"
-    @tb-close-popovers.window="closePopover()"
-    @keydown.escape.window="closeAll()"
-    @resize.window="positionPopover()"
-    @scroll.window="positionPopover()"
-    x-effect="if(sidebarOpen) popoverOpen=false"
->
-    <button
-        type="button"
-        @click.stop="toggle($event)"
-        class="{{ $linkBase }} {{ $isInventario
-            ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-            text-white font-semibold
-            drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
-            border-blue-400/70
-            shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
-            : 'bg-white/10 dark:bg-slate-900/20
-                text-slate-700 dark:text-slate-400
-                hover:bg-white/20 dark:hover:bg-slate-900/30
-                hover:text-slate-900 dark:hover:text-white' }}"
-        :class="sidebarOpen ? 'justify-between' : 'justify-center'"
-        title="Inventario"
-    >
-        <div class="flex items-center">
-            <div class="flex items-center justify-center w-7 h-7">
-                <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white"
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M3 7l9-4 9 4-9 4-9-4z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M3 7v10l9 4 9-4V7" />
-                </svg>
-            </div>
-
-            <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>
-                Inventario
-            </span>
-        </div>
-
-        <svg class="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors duration-200"
-            fill="currentColor" viewBox="0 0 20 20"
-            x-show="sidebarOpen" x-transition
-            :class="isOpen() ? 'rotate-180' : ''"
-            style="transition: transform .2s ease;">
-            <path fill-rule="evenodd"
-                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                clip-rule="evenodd" />
-        </svg>
-    </button>
-
-    <div x-show="isOpen()" x-transition class="mt-2 space-y-1 pl-2">
-        <div class="rounded-2xl border
-                    bg-white/60 dark:bg-slate-950/40
-                    border-slate-200/70 dark:border-white/10
-                    backdrop-blur-xl overflow-hidden">
-            @foreach($inventarioItems as $it)
-                <a href="{{ $it['href'] }}"
-                class="block px-4 py-2.5 text-[0.80rem]
-                        {{ !empty($it['accent'])
-                                ? 'text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100/80 dark:hover:bg-slate-800/70'
-                                : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100/90 dark:hover:bg-slate-800/70' }}
-                        hover:text-slate-900 dark:hover:text-white
-                        transition-colors duration-150">
-                    {{ $it['label'] }}
-                </a>
-            @endforeach
-        </div>
-    </div>
-
-    <template x-teleport="body">
-            <div
-                x-cloak
-                x-show="popoverOpen && !sidebarOpen"
-                x-transition.opacity.duration.150ms
-                @click.outside="popoverOpen=false"
-                class="fixed z-[999999] pointer-events-auto"
-                :style="popoverStyle"
-            >
-
-            <div class="rounded-2xl border
-                        bg-white/90 dark:bg-slate-900/95
-                        border-slate-200/70 dark:border-slate-700/70
-                        shadow-[0_18px_45px_rgba(15,23,42,0.65)]
-                        backdrop-blur-xl overflow-hidden">
-                @foreach($inventarioItems as $it)
-                    <a href="{{ $it['href'] }}"
-                    class="block px-4 py-3 text-[0.80rem]
-                            {{ !empty($it['accent'])
-                                    ? 'text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100/80 dark:hover:bg-slate-800/80'
-                                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100/90 dark:hover:bg-slate-800/80' }}
-                            hover:text-slate-900 dark:hover:text-white
-                            transition-colors duration-150">
-                        {{ $it['label'] }}
-                    </a>
-                @endforeach
-            </div>
-        </div>
-    </template>
-</div>
-
-
-{{-- ===================== LOTES (ACORDEÓN + POPOVER TELEPORT) ===================== --}}
-@if(auth()->check() && auth()->user()->tienePermiso('sistema.usuarios.ver'))
-
+    {{-- ===================== RECEPCIÓN - LOTES ===================== --}}
+    @if($puedeLotes)
     @php
+        $user = auth()->user();
         $lotesItems = [
-            ['label' => 'Registrar Lotes', 'href' => route('lotes.registrar')],
-            ['label' => 'Editar lotes',    'href' => route('lotes.editar')],
+            [
+                'label' => 'Lista de Lotes',
+                'href'  => route('lotes.editar'),
+                'perm'  => 'prep.lotes.ver',
+            ],
+            [
+                'label' => 'Registrar Lote',
+                'href'  => route('lotes.registrar'),
+                'perm'  => 'prep.lotes.gestion',
+            ],
         ];
+
+        $lotesItems = array_values(array_filter(
+            $lotesItems,
+            fn ($it) => $user && $user->tienePermiso($it['perm'])
+        ));
     @endphp
 
-    <div class="w-full mt-2 px-3"
+    <div class="w-full mt-3 px-3"
         x-data="{
             id: 'lotes',
             popoverOpen: false,
@@ -546,36 +183,27 @@
                     return; 
                 }
 
-                // ✅ Si este popover ya está abierto, solo ciérralo (toggle real)
                 if (this.popoverOpen) {
                     this.popoverOpen = false;
                     return;
                 }
 
-                // ✅ Si no estaba abierto, cierra otros y abre este
                 window.dispatchEvent(new CustomEvent('tb-close-popovers'));
-
                 this.triggerEl = e.currentTarget;
                 this.popoverOpen = true;
-
                 this.positionPopover();
             },
-
 
             positionPopover(){
                 this.$nextTick(() => {
                     if (!this.triggerEl) return;
-
                     const r = this.triggerEl.getBoundingClientRect();
                     const width = 260, gap = 12;
-
                     let top  = r.top;
                     let left = r.right + gap;
-
-                    const estimatedHeight = 170;
+                    const estimatedHeight = 120;
                     const maxTop = window.innerHeight - 12;
                     if (top + estimatedHeight > maxTop) top = Math.max(12, maxTop - estimatedHeight);
-
                     this.popoverStyle = `top:${top}px; left:${left}px; width:${width}px;`;
                 });
             },
@@ -606,19 +234,14 @@
             title="Lotes"
         >
             <div class="flex items-center">
-            <div class="flex items-center justify-center w-7 h-7">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-boxes" viewBox="0 0 16 16">
-                  <path d="M7.752.066a.5.5 0 0 1 .496 0l3.75 2.143a.5.5 0 0 1 .252.434v3.995l3.498 2A.5.5 0 0 1 16 9.07v4.286a.5.5 0 0 1-.252.434l-3.75 2.143a.5.5 0 0 1-.496 0l-3.502-2-3.502 2.001a.5.5 0 0 1-.496 0l-3.75-2.143A.5.5 0 0 1 0 13.357V9.071a.5.5 0 0 1 .252-.434L3.75 6.638V2.643a.5.5 0 0 1 .252-.434zM4.25 7.504 1.508 9.071l2.742 1.567 2.742-1.567zM7.5 9.933l-2.75 1.571v3.134l2.75-1.571zm1 3.134 2.75 1.571v-3.134L8.5 9.933zm.508-3.996 2.742 1.567 2.742-1.567-2.742-1.567zm2.242-2.433V3.504L8.5 5.076V8.21zM7.5 8.21V5.076L4.75 3.504v3.134zM5.258 2.643 8 4.21l2.742-1.567L8 1.076zM15 9.933l-2.75 1.571v3.134L15 13.067zM3.75 14.638v-3.134L1 9.933v3.134z"/>
-                </svg>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-            </div>
-
-
-                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>
-                    Lotes
-                </span>
+                <div class="flex items-center justify-center w-7 h-7">
+                    <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                </div>
+                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Lotes</span>
             </div>
 
             <svg class="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors duration-200"
@@ -636,7 +259,7 @@
             <div class="rounded-2xl border
                         bg-white/60 dark:bg-slate-950/40
                         border-slate-200/70 dark:border-white/10
-                        backdrop-blur-xl overflow-hidden">
+                        backdrop-blur-xl overflow-x-hidden">
                 @foreach($lotesItems as $it)
                     <a href="{{ $it['href'] }}"
                     class="block px-4 py-2.5 text-[0.80rem]
@@ -651,15 +274,14 @@
         </div>
 
         <template x-teleport="body">
-                <div
-                    x-cloak
-                    x-show="popoverOpen && !sidebarOpen"
-                    x-transition.opacity.duration.150ms
-                    @click.outside="popoverOpen=false"
-                    class="fixed z-[999999] pointer-events-auto"
-                    :style="popoverStyle"
-                >
-
+            <div
+                x-cloak
+                x-show="popoverOpen && !sidebarOpen"
+                x-transition.opacity.duration.150ms
+                @click.outside="popoverOpen=false"
+                class="fixed z-[999999] pointer-events-auto"
+                :style="popoverStyle"
+            >
                 <div class="rounded-2xl border
                             bg-white/90 dark:bg-slate-900/95
                             border-slate-200/70 dark:border-slate-700/70
@@ -679,20 +301,362 @@
             </div>
         </template>
     </div>
-@endif
+    @endif
 
-
-{{-- ===================== USUARIOS (ACORDEÓN + POPOVER TELEPORT) ===================== --}}
-@if(auth()->check() && auth()->user()->tienePermiso('sistema.usuarios.ver'))
-
+    {{-- ===================== OPERACIONES ===================== --}}
+    @if($puedeEquipos)
     @php
-        $usuariosItems = [
-            ['label' => 'Agregar Usuario',      'href' => route('register')],
-            ['label' => 'Administrar Usuarios', 'href' => route('users.index')],
+        $user = auth()->user();
+        $operacionesItems = [
+            [
+                'label' => 'Mis Asignaciones',
+                'href'  => route('preparacion.mi-trabajo'),
+                'visible' => $puedeVerMisAsignaciones,
+            ],
+            [
+                'label' => 'Mis Solicitudes de Piezas',
+                'href'  => route('inventario.piezas.solicitudes'),
+                'perm'  => 'prep.equipos.ver',
+            ],
+            [
+                'label' => 'Gestionar Asignaciones',
+                'href'  => route('preparacion.asignaciones'),
+                'perm'  => 'prep.inventario.gestion',
+            ],
+            [
+                'label' => 'Resumen de Equipos',
+                'href'  => route('equipos.caracteristicas'),
+                'perm'  => 'prep.inventario.gestion',
+            ],
         ];
+
+        $operacionesItems = array_values(array_filter(
+            $operacionesItems,
+            fn ($it) => $it['visible'] ?? ($user && $user->tienePermiso($it['perm']))
+        ));
     @endphp
 
-    <div class="w-full mt-2 px-3"
+    <div class="w-full mt-3 px-3"
+        x-data="{
+            id: 'operaciones',
+            popoverOpen: false,
+            popoverStyle: '',
+            triggerEl: null,
+
+            isOpen(){ return sidebarOpen && activeMenu === this.id; },
+
+            toggle(e){
+                if (sidebarOpen) { 
+                    setMenu(this.id); 
+                    return; 
+                }
+
+                if (this.popoverOpen) {
+                    this.popoverOpen = false;
+                    return;
+                }
+
+                window.dispatchEvent(new CustomEvent('tb-close-popovers'));
+                this.triggerEl = e.currentTarget;
+                this.popoverOpen = true;
+                this.positionPopover();
+            },
+
+            positionPopover(){
+                this.$nextTick(() => {
+                    if (!this.triggerEl) return;
+                    const r = this.triggerEl.getBoundingClientRect();
+                    const width = 260, gap = 12;
+                    let top  = r.top;
+                    let left = r.right + gap;
+                    const estimatedHeight = 140;
+                    const maxTop = window.innerHeight - 12;
+                    if (top + estimatedHeight > maxTop) top = Math.max(12, maxTop - estimatedHeight);
+                    this.popoverStyle = `top:${top}px; left:${left}px; width:${width}px;`;
+                });
+            },
+
+            closePopover(){ this.popoverOpen = false; },
+            closeAll(){ this.popoverOpen = false; }
+        }"
+        @tb-close-popovers.window="closePopover()"
+        @keydown.escape.window="closeAll()"
+        @resize.window="positionPopover()"
+        @scroll.window="positionPopover()"
+        x-effect="if(sidebarOpen) popoverOpen=false"
+    >
+        <button
+            type="button"
+            @click.stop="toggle($event)"
+            class="{{ $linkBase }} {{ $isOperaciones
+                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                text-white font-semibold
+                drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                border-blue-400/70
+                shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                : 'bg-white/10 dark:bg-slate-900/20
+                    text-slate-700 dark:text-slate-400
+                    hover:bg-white/20 dark:hover:bg-slate-900/30
+                    hover:text-slate-900 dark:hover:text-white' }}"
+            :class="sidebarOpen ? 'justify-between' : 'justify-center'"
+            title="Operaciones"
+        >
+            <div class="flex items-center">
+                <div class="flex items-center justify-center w-7 h-7">
+                    <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                </div>
+                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Operaciones</span>
+            </div>
+
+            <svg class="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors duration-200"
+                fill="currentColor" viewBox="0 0 20 20"
+                x-show="sidebarOpen" x-transition
+                :class="isOpen() ? 'rotate-180' : ''"
+                style="transition: transform .2s ease;">
+                <path fill-rule="evenodd"
+                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                    clip-rule="evenodd" />
+            </svg>
+        </button>
+
+        <div x-show="isOpen()" x-transition class="mt-2 space-y-1 pl-2">
+            <div class="rounded-2xl border
+                        bg-white/60 dark:bg-slate-950/40
+                        border-slate-200/70 dark:border-white/10
+                        backdrop-blur-xl overflow-x-hidden">
+                @foreach($operacionesItems as $it)
+                    <a href="{{ $it['href'] }}"
+                    class="block px-4 py-2.5 text-[0.80rem]
+                            text-slate-700 dark:text-slate-200
+                            hover:bg-slate-100/90 dark:hover:bg-slate-800/70
+                            hover:text-slate-900 dark:hover:text-white
+                            transition-colors duration-150">
+                        {{ $it['label'] }}
+                    </a>
+                @endforeach
+            </div>
+        </div>
+
+        <template x-teleport="body">
+            <div
+                x-cloak
+                x-show="popoverOpen && !sidebarOpen"
+                x-transition.opacity.duration.150ms
+                @click.outside="popoverOpen=false"
+                class="fixed z-[999999] pointer-events-auto"
+                :style="popoverStyle"
+            >
+                <div class="rounded-2xl border
+                            bg-white/90 dark:bg-slate-900/95
+                            border-slate-200/70 dark:border-slate-700/70
+                            shadow-[0_18px_45px_rgba(15,23,42,0.65)]
+                            backdrop-blur-xl overflow-hidden">
+                    @foreach($operacionesItems as $it)
+                        <a href="{{ $it['href'] }}"
+                        class="block px-4 py-3 text-[0.80rem]
+                                text-slate-700 dark:text-slate-200
+                                hover:bg-slate-100/90 dark:hover:bg-slate-800/80
+                                hover:text-slate-900 dark:hover:text-white
+                                transition-colors duration-150">
+                            {{ $it['label'] }}
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        </template>
+    </div>
+    @endif
+
+    {{-- ===================== INVENTARIO ===================== --}}
+    @if($puedeInv)
+    @php
+        $user = auth()->user();
+        $inventarioItems = [
+            [
+                'label' => 'Gestión General',
+                'href'  => route('inventario.gestion'),
+                'perm'  => 'prep.inventario.gestion',
+            ],
+            [
+                'label' => 'Equipos Listos',
+                'href'  => route('inventario.listo'),
+                'perm'  => 'prep.inventario.ver',
+            ],
+            [
+                'label' => 'Pendientes Piezas',
+                'href'  => route('equipos.piezas-pendientes'),
+                'perm'  => 'prep.inventario.ver',
+            ],
+            [
+                'label' => 'Catálogo Piezas',
+                'href'  => route('preparacion.catalogo-piezas'),
+                'perm'  => 'prep.inventario.gestion',
+            ],
+            [
+                'label' => 'Compras de Piezas',
+                'href'  => route('inventario.compras'),
+                'perm'  => 'prep.inventario.gestion',
+            ],
+            [
+                'label' => 'Transferencias',
+                'href'  => route('inventario.transferencias'),
+                'perm'  => 'prep.transferencias.ver',
+            ],
+            [
+                'label' => 'Gestión Solicitudes',
+                'href'  => route('inventario.solicitudes.gestionar'),
+                'perm'  => 'prep.inventario.gestion',
+            ],
+        ];
+
+        $inventarioItems = array_values(array_filter(
+            $inventarioItems,
+            fn ($it) => $user && $user->tienePermiso($it['perm'])
+        ));
+    @endphp
+
+    <div class="w-full mt-3 px-3"
+        x-data="{
+            id: 'inventario',
+            popoverOpen: false,
+            popoverStyle: '',
+            triggerEl: null,
+
+            isOpen(){ return sidebarOpen && activeMenu === this.id; },
+
+            toggle(e){
+                if (sidebarOpen) { 
+                    setMenu(this.id); 
+                    return; 
+                }
+
+                if (this.popoverOpen) {
+                    this.popoverOpen = false;
+                    return;
+                }
+
+                window.dispatchEvent(new CustomEvent('tb-close-popovers'));
+                this.triggerEl = e.currentTarget;
+                this.popoverOpen = true;
+                this.positionPopover();
+            },
+
+            positionPopover(){
+                this.$nextTick(() => {
+                    if (!this.triggerEl) return;
+                    const r = this.triggerEl.getBoundingClientRect();
+                    const width = 260, gap = 12;
+                    let top  = r.top;
+                    let left = r.right + gap;
+                    const estimatedHeight = 280;
+                    const maxTop = window.innerHeight - 12;
+                    if (top + estimatedHeight > maxTop) top = Math.max(12, maxTop - estimatedHeight);
+                    this.popoverStyle = `top:${top}px; left:${left}px; width:${width}px;`;
+                });
+            },
+
+            closePopover(){ this.popoverOpen = false; },
+            closeAll(){ this.popoverOpen = false; }
+        }"
+        @tb-close-popovers.window="closePopover()"
+        @keydown.escape.window="closeAll()"
+        @resize.window="positionPopover()"
+        @scroll.window="positionPopover()"
+        x-effect="if(sidebarOpen) popoverOpen=false"
+    >
+        <button
+            type="button"
+            @click.stop="toggle($event)"
+            class="{{ $linkBase }} {{ $isInventario
+                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                text-white font-semibold
+                drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                border-blue-400/70
+                shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                : 'bg-white/10 dark:bg-slate-900/20
+                    text-slate-700 dark:text-slate-400
+                    hover:bg-white/20 dark:hover:bg-slate-900/30
+                    hover:text-slate-900 dark:hover:text-white' }}"
+            :class="sidebarOpen ? 'justify-between' : 'justify-center'"
+            title="Inventario"
+        >
+            <div class="flex items-center">
+                <div class="flex items-center justify-center w-7 h-7">
+                    <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                    </svg>
+                </div>
+                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Inventario</span>
+            </div>
+
+            <svg class="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors duration-200"
+                fill="currentColor" viewBox="0 0 20 20"
+                x-show="sidebarOpen" x-transition
+                :class="isOpen() ? 'rotate-180' : ''"
+                style="transition: transform .2s ease;">
+                <path fill-rule="evenodd"
+                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                    clip-rule="evenodd" />
+            </svg>
+        </button>
+
+        <div x-show="isOpen()" x-transition class="mt-2 space-y-1 pl-2">
+            <div class="rounded-2xl border
+                        bg-white/60 dark:bg-slate-950/40
+                        border-slate-200/70 dark:border-white/10
+                        backdrop-blur-xl overflow-x-hidden">
+                @foreach($inventarioItems as $it)
+                    <a href="{{ $it['href'] }}"
+                    class="block px-4 py-2.5 text-[0.80rem]
+                            text-slate-700 dark:text-slate-200
+                            hover:bg-slate-100/90 dark:hover:bg-slate-800/70
+                            hover:text-slate-900 dark:hover:text-white
+                            transition-colors duration-150">
+                        {{ $it['label'] }}
+                    </a>
+                @endforeach
+            </div>
+        </div>
+
+        <template x-teleport="body">
+            <div
+                x-cloak
+                x-show="popoverOpen && !sidebarOpen"
+                x-transition.opacity.duration.150ms
+                @click.outside="popoverOpen=false"
+                class="fixed z-[999999] pointer-events-auto"
+                :style="popoverStyle"
+            >
+                <div class="rounded-2xl border
+                            bg-white/90 dark:bg-slate-900/95
+                            border-slate-200/70 dark:border-slate-700/70
+                            shadow-[0_18px_45px_rgba(15,23,42,0.65)]
+                            backdrop-blur-xl overflow-hidden">
+                    @foreach($inventarioItems as $it)
+                        <a href="{{ $it['href'] }}"
+                        class="block px-4 py-3 text-[0.80rem]
+                                text-slate-700 dark:text-slate-200
+                                hover:bg-slate-100/90 dark:hover:bg-slate-800/80
+                                hover:text-slate-900 dark:hover:text-white
+                                transition-colors duration-150">
+                            {{ $it['label'] }}
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        </template>
+    </div>
+    @endif
+
+    {{-- ===================== USUARIOS (ADMINISTRACIÓN) ===================== --}}
+    @if($puedeUsuarios)
+    <div class="w-full mt-3 px-3"
         x-data="{
             id: 'usuarios',
             popoverOpen: false,
@@ -707,36 +671,27 @@
                     return; 
                 }
 
-                // ✅ Si este popover ya está abierto, solo ciérralo (toggle real)
                 if (this.popoverOpen) {
                     this.popoverOpen = false;
                     return;
                 }
 
-                // ✅ Si no estaba abierto, cierra otros y abre este
                 window.dispatchEvent(new CustomEvent('tb-close-popovers'));
-
                 this.triggerEl = e.currentTarget;
                 this.popoverOpen = true;
-
                 this.positionPopover();
             },
-
 
             positionPopover(){
                 this.$nextTick(() => {
                     if (!this.triggerEl) return;
-
                     const r = this.triggerEl.getBoundingClientRect();
                     const width = 260, gap = 12;
-
                     let top  = r.top;
                     let left = r.right + gap;
-
-                    const estimatedHeight = 170;
+                    const estimatedHeight = 120;
                     const maxTop = window.innerHeight - 12;
                     if (top + estimatedHeight > maxTop) top = Math.max(12, maxTop - estimatedHeight);
-
                     this.popoverStyle = `top:${top}px; left:${left}px; width:${width}px;`;
                 });
             },
@@ -768,16 +723,13 @@
         >
             <div class="flex items-center">
                 <div class="flex items-center justify-center w-7 h-7">
-                    <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
                 </div>
-
-
-                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>
-                    Usuarios
-                </span>
+                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Usuarios</span>
             </div>
 
             <svg class="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors duration-200"
@@ -791,11 +743,26 @@
             </svg>
         </button>
 
+        @php
+        $usuariosItems = [
+            [
+                'label' => 'Gestión de Usuarios',
+                'href'  => route('users.index'),
+            ],
+        ];
+        if ($puedeUsuariosCrear) {
+            $usuariosItems[] = [
+                'label' => 'Crear Usuario',
+                'href'  => route('register'),
+            ];
+        }
+        @endphp
+
         <div x-show="isOpen()" x-transition class="mt-2 space-y-1 pl-2">
             <div class="rounded-2xl border
                         bg-white/60 dark:bg-slate-950/40
                         border-slate-200/70 dark:border-white/10
-                        backdrop-blur-xl overflow-hidden">
+                        backdrop-blur-xl overflow-x-hidden">
                 @foreach($usuariosItems as $it)
                     <a href="{{ $it['href'] }}"
                     class="block px-4 py-2.5 text-[0.80rem]
@@ -810,15 +777,14 @@
         </div>
 
         <template x-teleport="body">
-                <div
-                    x-cloak
-                    x-show="popoverOpen && !sidebarOpen"
-                    x-transition.opacity.duration.150ms
-                    @click.outside="popoverOpen=false"
-                    class="fixed z-[999999] pointer-events-auto"
-                    :style="popoverStyle"
-                >
-
+            <div
+                x-cloak
+                x-show="popoverOpen && !sidebarOpen"
+                x-transition.opacity.duration.150ms
+                @click.outside="popoverOpen=false"
+                class="fixed z-[999999] pointer-events-auto"
+                :style="popoverStyle"
+            >
                 <div class="rounded-2xl border
                             bg-white/90 dark:bg-slate-900/95
                             border-slate-200/70 dark:border-slate-700/70
@@ -838,11 +804,7 @@
             </div>
         </template>
     </div>
-@endif
-
-
-
-
+    @endif
 
 </nav>
 
@@ -951,15 +913,15 @@
                                       transition-colors duration-150">
                                 Perfil
                             </a>
-                                @if(auth()->check() && auth()->user()->tienePermiso('sistema.usuarios.ver'))
-
+                            @if($puedeAdminConfig)
                             <a href="{{ route('avisos.index') }}"
-                            class="group flex items-center gap-3 px-3 py-2 rounded-xl
-                                    text-slate-200/90 hover:text-white
-                                    hover:bg-white/5 transition-all">
-                                <span class="text-sm font-medium">Anuncios</span>
+                               class="block px-4 py-2
+                                      text-slate-700 dark:text-slate-200
+                                      hover:bg-slate-200/70 dark:hover:bg-slate-800/80
+                                      transition-colors duration-150">
+                                Anuncios
                             </a>
-                        @endif
+                            @endif
 
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf

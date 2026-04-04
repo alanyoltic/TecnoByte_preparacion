@@ -1,27 +1,7 @@
 <!DOCTYPE html>
-
-
-<style>
-    html, body {
-        
-        background-color: #020617; /* parecido a slate-950 */
-    }
-
-    [x-cloak] { 
-        display: none !important; 
-    }
-</style>
-
-    </head>
-
-<body class="font-sans text-lg antialiased overflow-x-hidden bg-transparent">
-
-
-
-<html 
+<html
     lang="{{ str_replace('_', '-', app()->getLocale()) }}"
     class="text-[14px]"
-
     x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }"
     x-init="$watch('darkMode', val => localStorage.setItem('darkMode', val))"
     :class="{ 'dark': darkMode }"
@@ -31,42 +11,57 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ $pageTitle ?: config('app.name') }}</title>
+        <title>{{ $pageTitle ?? config('app.name') }}</title>
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
+        <style>
+            html,
+            body {
+                background-color: #020617;
+            }
+
+            [x-cloak] {
+                display: none !important;
+            }
+
+            :root {
+                --brand-primary: #FF9521;
+            }
+        </style>
+
         <script>
-            // Si el usuario ya tenía activado darkMode, aplica la clase dark INMEDIATAMENTE
             if (localStorage.getItem('darkMode') === 'true') {
                 document.documentElement.classList.add('dark');
             }
         </script>
 
-
         <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @livewireStyles
-        {{-- FONDO GLOBAL FIJO DETRÁS DE TODO (para evitar el bloque negro) --}}
+    </head>
+
+    <body class="font-sans text-lg antialiased overflow-x-hidden bg-transparent">
+        {{-- FONDO GLOBAL FIJO DETRÁS DE TODO --}}
         <div
             class="fixed inset-0 -z-50
                    bg-gradient-to-br
                    from-slate-100 via-slate-200 to-slate-300
-                   dark:from-slate-900 dark:via-slate-950 dark:to-slate-900">
-        </div>
+                   dark:from-slate-900 dark:via-slate-950 dark:to-slate-900"
+        ></div>
 
         {{-- CONTENEDOR PRINCIPAL --}}
-        <div 
-            x-data="{ sidebarOpen: false }" 
+        <div
+            x-data="{ sidebarOpen: false }"
             class="relative min-h-screen flex bg-transparent"
         >
             @include('layouts.sidebar')
 
-            <div 
+            <div
                 class="flex-1 flex flex-col transition-all duration-300 ease-in-out"
                 :class="{ 'ml-64': sidebarOpen, 'ml-20': !sidebarOpen }"
             >
-                {{-- Header del slot, sin max-w ni fondos extra --}}
                 @if (isset($header))
                     <header class="w-full">
                         {{ $header }}
@@ -79,16 +74,8 @@
             </div>
         </div>
 
-        <style>
-            :root {
-                /* Modo claro */
-                --brand-primary: #FF9521;
-            }
-        </style>
-
-        @livewireScripts
-        <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-       <div
+        {{-- TOASTS --}}
+        <div
             x-data="{
                 items: [],
                 limit: 5,
@@ -114,13 +101,9 @@
                     const toast = {
                         id, type, title, message,
                         show: false,
-
-                        // progreso
                         duration: this.timeout,
                         remaining: this.timeout,
                         progress: 100,
-
-                        // control pausa / interval
                         paused: false,
                         timer: null,
                         lastTs: null,
@@ -168,7 +151,6 @@
                     const t = this.items.find(x => x.id === id);
                     if (!t) return;
 
-                    // parar timer
                     if (t.timer) { clearInterval(t.timer); t.timer = null; }
 
                     t.show = false;
@@ -198,23 +180,19 @@
                     @mouseenter="pause(t)"
                     @mouseleave="resume(t)"
                 >
-                    {{-- indicador --}}
                     <div class="mt-1 w-2.5 h-2.5 rounded-full shrink-0"
                         :class="t.type==='success'?'bg-emerald-400':t.type==='error'?'bg-rose-400':t.type==='warning'?'bg-amber-400':'bg-sky-400'"></div>
 
-                    {{-- texto --}}
                     <div class="flex-1 min-w-0">
                         <p class="text-lg font-semibold text-slate-100 leading-tight" x-text="t.title"></p>
                         <p class="text-sm text-slate-300 mt-0.5 leading-snug" x-text="t.message"></p>
                     </div>
 
-                    {{-- cerrar --}}
                     <button type="button"
                             class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10
                                 border border-white/10 text-slate-200 flex items-center justify-center shrink-0"
                             @click="hide(t.id)">✕</button>
 
-                    {{-- barra de tiempo --}}
                     <div class="absolute left-0 bottom-0 h-[3px] w-full bg-white/10">
                         <div class="h-full"
                             :class="t.type==='success'?'bg-emerald-400':t.type==='error'?'bg-rose-400':t.type==='warning'?'bg-amber-400':'bg-sky-400'"
@@ -225,10 +203,8 @@
             </template>
         </div>
 
-        
-@stack('scripts')
-
-
-
+        @livewireScripts
+        <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+        @stack('scripts')
     </body>
 </html>

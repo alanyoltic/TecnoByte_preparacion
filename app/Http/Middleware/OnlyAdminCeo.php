@@ -14,7 +14,7 @@ class OnlyAdminCeo
         }
 
         // Aquí definimos los roles permitidos
-        $rolesPermitidos = ['admin', 'ceo'];
+        $rolesPermitidos = ['admin', 'admin_sistema', 'ceo'];
 
         // Si el usuario no tiene rol o su rol NO está permitido → 403
         if (!Auth::user()->role || 

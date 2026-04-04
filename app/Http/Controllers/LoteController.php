@@ -11,7 +11,7 @@ class LoteController extends Controller
      */
         public function registrar()
         {
-            return view('lotes.registrarlote');
+            return view('preparacion.lotes.registrarlote');
         }
 
 }

@@ -1,4 +1,4 @@
-<x-tb-background poll="refreshDashboard" :glows="$glows">
+<x-tb-background :glows="$glows">
     
     
     <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10">
@@ -322,7 +322,7 @@
                                         </span>
                                     </div>
 
-                                    <div id="line-chart" class="mt-4 min-h-[260px]" wire:ignore></div>
+                                    <div id="line-chart" class="mt-4 min-h-[260px] overflow-hidden" wire:ignore></div>
                                 </div>
 
                                 {{-- Bar Chart --}}
@@ -334,7 +334,7 @@
                                         <span class="text-xs text-slate-500 dark:text-slate-400">Distribución de equipos</span>
                                     </div>
 
-                                    <div id="bar-chart" class="mt-4 min-h-[260px]" wire:ignore></div>
+                                    <div id="bar-chart" class="mt-4 min-h-[260px] overflow-hidden" wire:ignore></div>
                                 </div>
 
                             </div>
@@ -787,8 +787,6 @@
 </x-tb-background>
 
 @push('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-
     <script>
         (() => {
             if (window.__TB_DASH_CHARTS__) return;
@@ -797,8 +795,10 @@
             let lineChart = null;
             let barChart = null;
             let radialChart = null;
+            let lineRebuildTask = Promise.resolve();
 
             let bootAnimating = true;
+            let initializing = false;
             let lastPayload = null;
 
             const getTheme = () => {
@@ -813,16 +813,109 @@
             };
 
             const chartBase = {
+                redrawOnParentResize: true,
+                redrawOnWindowResize: true,
                 animations: {
                     enabled: true,
                     easing: "easeinout",
-                    speed: 900,
-                    animateGradually: { enabled: true, delay: 120 },
-                    dynamicAnimation: { enabled: true, speed: 650 }
+                    speed: 700,
+                    animateGradually: { enabled: true, delay: 90 },
+                    dynamicAnimation: { enabled: true, speed: 420 }
                 },
                 toolbar: { show: false },
                 background: "transparent",
                 dropShadow: { enabled: true, top: 4, left: 0, blur: 10, opacity: 0.18 }
+            };
+
+            const pruneTooltipNodes = () => {
+                const tips = Array.from(document.querySelectorAll('.apexcharts-tooltip'));
+                if (tips.length <= 3) return;
+                tips.slice(0, tips.length - 3).forEach((el) => el.remove());
+            };
+
+            const lineTooltip = (t) => ({
+                enabled: true,
+                theme: t.mode,
+                shared: false,
+                intersect: false,
+                followCursor: true,
+                y: { formatter: (v) => `${Math.round(Number(v || 0))} equipos` }
+            });
+
+            const escapeHtml = (val) => String(val ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+
+            const barTooltip = (t) => ({
+                enabled: true,
+                theme: t.mode,
+                shared: false,
+                intersect: true,
+                followCursor: true,
+                custom: ({ dataPointIndex, w }) => {
+                    const categories = w?.globals?.labels || w?.config?.xaxis?.categories || [];
+                    const label = categories[dataPointIndex] ?? '';
+
+                    const s0Name = w?.config?.series?.[0]?.name ?? 'Serie 1';
+                    const s1Name = w?.config?.series?.[1]?.name ?? 'Serie 2';
+
+                    const s0 = Number(w?.globals?.series?.[0]?.[dataPointIndex] ?? 0);
+                    const s1 = Number(w?.globals?.series?.[1]?.[dataPointIndex] ?? 0);
+
+                    const textColor = t.isDark ? '#E5E7EB' : '#1F2937';
+                    const muted = t.isDark ? '#94A3B8' : '#6B7280';
+                    const bg = t.isDark ? 'rgba(2,6,23,0.96)' : 'rgba(255,255,255,0.98)';
+                    const border = t.isDark ? 'rgba(148,163,184,0.35)' : 'rgba(100,116,139,0.25)';
+
+                    return `
+                        <div style="min-width:210px;padding:10px 12px;border-radius:10px;background:${bg};border:1px solid ${border};box-shadow:0 8px 30px rgba(0,0,0,.22);color:${textColor};font-size:12px;line-height:1.35;">
+                            <div style="margin-bottom:8px;font-weight:700;color:${muted};">${escapeHtml(label)}</div>
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0;">
+                                <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:999px;background:#2563EB;"></span>${escapeHtml(s0Name)}</span>
+                                <strong>${Math.round(s0)} equipos</strong>
+                            </div>
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0;">
+                                <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:999px;background:#FF9521;"></span>${escapeHtml(s1Name)}</span>
+                                <strong>${Math.round(s1)} equipos</strong>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            const resetChartIfDetached = (chart, expectedEl) => {
+                if (!chart) return null;
+                if (!expectedEl || !document.body.contains(expectedEl) || chart.el !== expectedEl) {
+                    try { chart.destroy(); } catch (e) {}
+                    return null;
+                }
+                return chart;
+            };
+
+            const rebuildLineChart = (payload, t) => {
+                lineRebuildTask = lineRebuildTask.then(async () => {
+                    const elLine = document.querySelector("#line-chart");
+                    if (!elLine) return;
+
+                    try { lineChart?.destroy?.(); } catch (e) {}
+
+                    lineChart = new ApexCharts(elLine, getLineOptions(t, payload.lineChart));
+                    await lineChart.render();
+
+                    const data = payload.lineChart?.data || [];
+                    await replaySeries(
+                        lineChart,
+                        [{ name: "Equipos", data: data.map(() => 0) }],
+                        [{ name: "Equipos", data }]
+                    );
+
+                    // resize manejado centralmente en initCharts
+                });
+
+                return lineRebuildTask;
             };
 
             const getLineOptions = (t, lineData) => {
@@ -853,7 +946,7 @@
                         labels: { style: { colors: t.text } }
                     },
                     yaxis: { labels: { style: { colors: t.text }, formatter: v => Math.round(v) } },
-                    tooltip: { theme: t.mode, y: { formatter: v => `${v} equipos` } },
+                    tooltip: lineTooltip(t),
                     legend: { labels: { colors: t.text } }
                 };
             };
@@ -881,7 +974,7 @@
                         labels: { style: { colors: t.text } }
                     },
                     yaxis: { labels: { style: { colors: t.text }, formatter: v => Math.round(v) } },
-                    tooltip: { theme: t.mode, y: { formatter: v => `${v} equipos` } },
+                    tooltip: barTooltip(t),
                     legend: { labels: { colors: t.text } }
                 };
             };
@@ -927,52 +1020,64 @@
 
             const initCharts = async (payload) => {
                 if (typeof ApexCharts === "undefined") return;
+                if (initializing) return;
 
                 const elLine = document.querySelector("#line-chart");
                 const elBar  = document.querySelector("#bar-chart");
                 const elRad  = document.querySelector("#radial-chart");
                 if (!elLine || !elBar || !elRad) return;
 
+                initializing = true;
+
                 const t = getTheme();
 
-                if (!lineChart) {
-                    lineChart = new ApexCharts(elLine, getLineOptions(t, payload.lineChart));
-                    await lineChart.render();
+                lineChart = resetChartIfDetached(lineChart, elLine);
+                barChart = resetChartIfDetached(barChart, elBar);
+                radialChart = resetChartIfDetached(radialChart, elRad);
 
-                    const data = payload.lineChart?.data || [];
-                    await replaySeries(
-                        lineChart,
-                        [{ name: "Equipos", data: data.map(() => 0) }],
-                        [{ name: "Equipos", data }]
-                    );
+                try {
+                    if (!lineChart) {
+                        await rebuildLineChart(payload, t);
+                    }
+
+                    if (!barChart) {
+                        barChart = new ApexCharts(elBar, getBarOptions(t, payload.tecnicoChart, payload.isTecnico));
+                        await barChart.render();
+
+                        const a = payload.tecnicoChart?.series?.actual || [];
+                        const b = payload.tecnicoChart?.series?.anterior || [];
+                        await replaySeries(
+                            barChart,
+                            [
+                                { name: payload.isTecnico ? "Este año (tú)" : "Este año (equipo)", data: a.map(() => 0) },
+                                { name: payload.isTecnico ? "Año anterior (tú)" : "Año anterior (equipo)", data: b.map(() => 0) }
+                            ],
+                            [
+                                { name: payload.isTecnico ? "Este año (tú)" : "Este año (equipo)", data: a },
+                                { name: payload.isTecnico ? "Año anterior (tú)" : "Año anterior (equipo)", data: b }
+                            ]
+                        );
+                    }
+
+                    if (!radialChart) {
+                        radialChart = new ApexCharts(elRad, getRadialOptions(t, payload.radialPercent));
+                        await radialChart.render();
+                        await replaySeries(radialChart, [0], [Number(payload.radialPercent || 0)]);
+                    }
+                } finally {
+                    initializing = false;
                 }
 
-                if (!barChart) {
-                    barChart = new ApexCharts(elBar, getBarOptions(t, payload.tecnicoChart, payload.isTecnico));
-                    await barChart.render();
-
-                    const a = payload.tecnicoChart?.series?.actual || [];
-                    const b = payload.tecnicoChart?.series?.anterior || [];
-                    await replaySeries(
-                        barChart,
-                        [
-                            { name: payload.isTecnico ? "Este año (tú)" : "Este año (equipo)", data: a.map(() => 0) },
-                            { name: payload.isTecnico ? "Año anterior (tú)" : "Año anterior (equipo)", data: b.map(() => 0) }
-                        ],
-                        [
-                            { name: payload.isTecnico ? "Este año (tú)" : "Este año (equipo)", data: a },
-                            { name: payload.isTecnico ? "Año anterior (tú)" : "Año anterior (equipo)", data: b }
-                        ]
-                    );
-                }
-
-                if (!radialChart) {
-                    radialChart = new ApexCharts(elRad, getRadialOptions(t, payload.radialPercent));
-                    await radialChart.render();
-                    await replaySeries(radialChart, [0], [Number(payload.radialPercent || 0)]);
-                }
+                pruneTooltipNodes();
 
                 bootAnimating = false;
+
+                // Forzar recálculo completo de la capa de eventos tras animaciones CSS
+                [150, 400, 750].forEach((ms) => {
+                    setTimeout(() => {
+                        try { window.dispatchEvent(new Event('resize')); } catch (e) {}
+                    }, ms);
+                });
 
                 // ✅ Helper global para re-ajustar charts (cuando el slide vuelve a mostrarse)
                 window.TB_DASH_RESIZE = () => {
@@ -983,13 +1088,23 @@
                     } catch(e) {}
                 };
 
-                if (lastPayload) {
-                    requestAnimationFrame(() => requestAnimationFrame(() => updateCharts(lastPayload)));
-                }
+                // No forzar update inmediato después de init para no cortar
+                // la animación de entrada de las gráficas.
             };
 
             const updateCharts = (payload) => {
-                if (!lineChart || !barChart || !radialChart) return;
+                const elLine = document.querySelector("#line-chart");
+                const elBar  = document.querySelector("#bar-chart");
+                const elRad  = document.querySelector("#radial-chart");
+
+                lineChart = resetChartIfDetached(lineChart, elLine);
+                barChart = resetChartIfDetached(barChart, elBar);
+                radialChart = resetChartIfDetached(radialChart, elRad);
+
+                if (!lineChart || !barChart || !radialChart) {
+                    initCharts(payload);
+                    return;
+                }
 
                 const t = getTheme();
 
@@ -998,8 +1113,8 @@
                     grid: { borderColor: t.grid, strokeDashArray: 3 },
                     xaxis: { categories: payload.lineChart?.labels || [], labels: { style: { colors: t.text } } },
                     yaxis: { labels: { style: { colors: t.text } } },
-                    tooltip: { theme: t.mode }
-                }, true, true);
+                    tooltip: lineTooltip(t)
+                }, false, false);
                 lineChart.updateSeries([{ name: "Equipos", data: payload.lineChart?.data || [] }], true);
 
                 barChart.updateOptions({
@@ -1007,14 +1122,20 @@
                     grid: { borderColor: t.grid, strokeDashArray: 3 },
                     xaxis: { categories: payload.tecnicoChart?.labels || [], labels: { style: { colors: t.text } } },
                     yaxis: { labels: { style: { colors: t.text } } },
-                    tooltip: { theme: t.mode }
-                }, true, true);
+                    tooltip: barTooltip(t)
+                }, false, false);
                 barChart.updateSeries([
                     { name: payload.isTecnico ? "Este año (tú)" : "Este año (equipo)", data: payload.tecnicoChart?.series?.actual || [] },
                     { name: payload.isTecnico ? "Año anterior (tú)" : "Año anterior (equipo)", data: payload.tecnicoChart?.series?.anterior || [] }
                 ], true);
 
                 radialChart.updateSeries([Number(payload.radialPercent || 0)], true);
+                pruneTooltipNodes();
+
+                // Mantiene activo el hover del chart de línea tras updates Livewire
+                requestAnimationFrame(() => {
+                    try { lineChart?.resize?.(); } catch (e) {}
+                });
             };
 
             const boot = () => {
@@ -1028,8 +1149,20 @@
                 initCharts(initial);
             };
 
+            boot();
+
             document.addEventListener("livewire:init", boot);
             document.addEventListener("livewire:navigated", boot);
+
+            window.addEventListener("focus", () => {
+                try { window.TB_DASH_RESIZE?.(); } catch (e) {}
+            });
+
+            document.addEventListener("visibilitychange", () => {
+                if (document.visibilityState === "visible") {
+                    try { window.TB_DASH_RESIZE?.(); } catch (e) {}
+                }
+            });
 
             window.addEventListener("dashboard-data-updated", (event) => {
                 lastPayload = event.detail;

@@ -18,7 +18,7 @@ class ProfileController extends Controller
     public function edit(Request $request)
     {
         $user = $request->user();
-        $soloPassword = ! in_array(strtolower((string) optional($user->role)->slug), ['admin', 'ceo'], true);
+        $soloPassword = ! in_array(strtolower((string) optional($user->role)->slug), ['admin', 'admin_sistema', 'ceo'], true);
 
         return view('profile.edit', [
             'user' => $user,
@@ -29,7 +29,7 @@ class ProfileController extends Controller
     public function update(Request $request)
     {
         $user = $request->user();
-        $esAdminOCeo = in_array(strtolower((string) optional($user->role)->slug), ['admin', 'ceo'], true);
+        $esAdminOCeo = in_array(strtolower((string) optional($user->role)->slug), ['admin', 'admin_sistema', 'ceo'], true);
 
         if ($esAdminOCeo) {
             $validated = $request->validate([

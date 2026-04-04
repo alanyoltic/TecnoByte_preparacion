@@ -159,7 +159,6 @@ class PermisosSeeder extends Seeder
             'sistema.usuarios.ver',
             'sistema.usuarios.crear',
             'sistema.usuarios.editar',
-            'sistema.avisos.ver',
             'sistema.reportes.ver',
             'sistema.reportes.exportar',
             'sistema.contabilidad.ver',
@@ -184,7 +183,6 @@ class PermisosSeeder extends Seeder
             'sistema.usuarios.ver',
             'sistema.usuarios.crear',
             'sistema.usuarios.editar',
-            'sistema.avisos.ver',
             'modulo.sistema',
         ]);
 
@@ -196,7 +194,6 @@ class PermisosSeeder extends Seeder
             'prep.equipos.crear',
             'prep.equipos.imprimir',
             'prep.inventario.ver',
-            'sistema.avisos.ver',
             'modulo.sistema',
         ]);
 

@@ -14,7 +14,7 @@ trait TieneRolTransferencias
 
     public function esCeoOAdmin(): bool
     {
-        return in_array($this->role?->slug, ['ceo', 'admin_sistema'], true);
+        return in_array($this->role?->slug, ['ceo', 'admin', 'admin_sistema'], true);
     }
 
     public function esGerente(): bool

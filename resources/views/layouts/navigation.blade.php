@@ -49,7 +49,7 @@
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
             
-            @if(in_array(auth()->user()->role?->slug, ['ceo', 'admin']))
+            @if(auth()->user()?->tienePermiso('sistema.usuarios.crear'))
                 <x-responsive-nav-link :href="route('register')" :active="request()->routeIs('register')">
                     {{ __('Registrar Usuario') }}
                 </x-responsive-nav-link>

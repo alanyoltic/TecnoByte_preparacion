@@ -10,7 +10,9 @@ class CatalogoPieza extends Model
     protected $table = 'catalogo_piezas';
 
     protected $fillable = [
-        'nombre', 'descripcion', 'categoria', 'requiere_serie', 'activo',
+        'nombre', 'descripcion', 'categoria',
+        'especificacion', 'notas_compatibilidad',
+        'requiere_serie', 'activo',
     ];
 
     protected $casts = [
@@ -19,14 +21,19 @@ class CatalogoPieza extends Model
     ];
 
     const CATEGORIAS = [
-        'RAM', 'SSD', 'HDD', 'Batería', 'Teclado',
-        'Bisagra', 'Pantalla', 'Cargador', 'Otro',
+        'RAM', 'SSD', 'HDD', 'Batería', 'Pantalla',
+        'Teclado', 'Carcasa', 'Palmrest', 'Bisagra',
+        'Cargador', 'Placa Base', 'Ventilador', 'Otro',
     ];
+
+    // ── Scopes ────────────────────────────────────────────────────────
 
     public function scopeActivos($query)
     {
         return $query->where('activo', true);
     }
+
+    // ── Relaciones ────────────────────────────────────────────────────
 
     public function inventario(): HasMany
     {
@@ -36,12 +43,20 @@ class CatalogoPieza extends Model
     public function inventarioDisponible(): HasMany
     {
         return $this->hasMany(InventarioPieza::class, 'catalogo_pieza_id')
-                    ->where('estatus', 'DISPONIBLE');
+                    ->where('cantidad_disponible', '>', 0);
     }
 
     public function solicitudes(): HasMany
     {
         return $this->hasMany(SolicitudPieza::class, 'catalogo_pieza_id');
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────
+
+    /** Stock disponible total sumando todas las entradas. */
+    public function stockDisponible(): int
+    {
+        return (int) $this->inventario()->sum('cantidad_disponible');
     }
 
     public static function paraSelect(): array
@@ -51,7 +66,7 @@ class CatalogoPieza extends Model
             ->orderBy('nombre')
             ->get()
             ->mapWithKeys(fn($p) => [
-                $p->id => "[{$p->categoria}] {$p->nombre}"
+                $p->id => "[{$p->categoria}] {$p->nombre}" . ($p->especificacion ? " — {$p->especificacion}" : '')
             ])
             ->toArray();
     }

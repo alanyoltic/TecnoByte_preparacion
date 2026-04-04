@@ -1,0 +1,213 @@
+================================================================================
+HISTORIAL DE CHAT - TecnoByte Preparación
+Fecha: 2026-03-24
+================================================================================
+
+--------------------------------------------------------------------------------
+[1] ERROR: Route [inventario.solicitudes.gestionar] not defined
+--------------------------------------------------------------------------------
+
+PROBLEMA:
+  Symfony\Component\Routing\Exception\RouteNotFoundException
+  vendor\laravel\framework\src\Illuminate\Routing\UrlGenerator.php:526
+  Route [inventario.solicitudes.gestionar] not defined.
+
+CAUSA:
+  El sidebar en resources/views/layouts/sidebar.blade.php referenciaba
+  route('inventario.solicitudes.gestionar') pero la ruta no existía en web.php.
+  El componente GestionSolicitudesPiezas.php (app/Livewire/Inventario/) ya existía.
+
+SOLUCIÓN (routes/web.php):
+  1. Agregado import: use App\Livewire\Inventario\GestionSolicitudesPiezas;
+  2. Agregada ruta:
+     Route::get('/inventario/piezas/gestionar', GestionSolicitudesPiezas::class)
+         ->name('inventario.solicitudes.gestionar')
+         ->middleware('permiso:prep.inventario.gestion');
+
+--------------------------------------------------------------------------------
+[2] PERMISOS: Solo gerente y lider de área para gestionar solicitudes
+--------------------------------------------------------------------------------
+
+CONTEXTO DB:
+  - gerente:  tiene prep.inventario.ver + prep.inventario.gestion
+  - lider:    tiene prep.inventario.ver + prep.inventario.gestion
+  - tecnico:  tiene prep.inventario.ver SOLAMENTE
+
+CAMBIOS:
+  routes/web.php:
+    - Ruta inventario.solicitudes.gestionar → middleware('permiso:prep.inventario.gestion')
+
+  resources/views/layouts/sidebar.blade.php:
+    - Item "Gestión Solicitudes" → 'perm' => 'prep.inventario.gestion'
+      (antes era 'prep.inventario.ver', lo que lo hacía visible para técnicos)
+
+--------------------------------------------------------------------------------
+[3] ERROR: View [livewire.inventario.gestion-solicitudes-piezas] not found
+--------------------------------------------------------------------------------
+
+CAUSA:
+  GestionSolicitudesPiezas.php hace render() hacia 'livewire.inventario.gestion-solicitudes-piezas'
+  pero el archivo no existía en resources/views/livewire/inventario/
+
+SOLUCIÓN:
+  Creado: resources/views/livewire/inventario/gestion-solicitudes-piezas.blade.php
+
+  La vista incluye:
+  - Topbar con x-tb-background y x-topbar
+  - Contadores por estatus (Pendientes, Surtidas, Pend.Compra, Compradas, Confirmadas, Canceladas)
+  - Filtros por estatus (clickeables)
+  - Búsqueda en tiempo real
+  - Tarjetas por solicitud con info de equipo, técnico y pieza
+  - Botones de acción para solicitudes PENDIENTE: Surtir, Pendiente de Compra, Cancelar
+  - Modal: Surtir del Inventario (selección de pieza disponible + notas)
+  - Modal: Pendiente de Compra (notas)
+  - Modal: Cancelar (motivo obligatorio)
+
+--------------------------------------------------------------------------------
+[4] ANÁLISIS COMPLETO DEL FLUJO Y CORRECCIONES MASIVAS
+--------------------------------------------------------------------------------
+
+BUGS CRÍTICOS ENCONTRADOS Y CORREGIDOS:
+
+  A) Sidebar - Sección "Operaciones" INVISIBLE para todos
+     CAUSA: Usaba permisos 'prep.equipos.trabajar' y 'prep.equipos.asignar'
+            que NO EXISTEN en la base de datos.
+     FIX (sidebar.blade.php):
+       - 'Mis Asignaciones'       → perm: 'prep.equipos.ver'
+       - 'Gestionar Asignaciones' → perm: 'prep.inventario.gestion'
+       - Agregado: 'Mis Solicitudes de Piezas' → perm: 'prep.equipos.ver'
+
+  B) Sidebar - "Transferencias" INVISIBLE
+     CAUSA: Usaba 'prep.inventario.transferencias' que no existe.
+     FIX: Cambiado a 'prep.transferencias.ver'
+
+  C) Sidebar - "Registrar Lote" INVISIBLE
+     CAUSA: Usaba 'prep.lotes.crear' que no existe.
+     FIX: Cambiado a 'prep.lotes.gestion'
+
+  D) SolicitudesPiezas.php (app/Livewire/Inventario/) - COMPLETAMENTE ROTO
+     CAUSA múltiple:
+       - Usaba campo 'estado' en lugar de 'estatus'
+       - Usaba estados 'SURTIDA' y 'RECHAZADA' que no existen
+         (los correctos son 'SURTIDA_INVENTARIO', no hay 'RECHAZADA')
+       - Llamaba métodos $solicitud->aprobar() y $solicitud->rechazar()
+         que NO EXISTEN en el modelo SolicitudPieza
+       - Mostraba TODAS las solicitudes (no filtradas por técnico)
+       - Eager loading incorrecto: usaba 'tecnico', 'piezaInventario', 'gerente'
+         (son accessors, no relaciones eager-loadables)
+     FIX: Reescrito completamente como vista del TÉCNICO:
+       - Filtra por solicitado_por_id = auth()->id()
+       - Usa nombres correctos de relaciones
+       - Permite confirmar instalación (método confirmarInstalacion())
+       - Muestra guía visual del flujo paso a paso
+
+  E) MiTrabajo.php - Falta equipo_id al crear SolicitudPieza
+     CAUSA: SolicitudPieza::create() no incluía 'equipo_id'
+     FIX: Agregado 'equipo_id' => $ae->equipo_id
+
+  F) Ruta asignaciones accesible por técnicos
+     CAUSA: preparacion.asignaciones usaba permiso:prep.equipos.ver
+     FIX: Cambiado a permiso:prep.inventario.gestion
+
+  G) Ruta solicitudes técnico usaba middleware incorrecto
+     CAUSA: inventario.piezas.solicitudes usaba 'can:prep.inventario.ver'
+     FIX: Cambiado a 'permiso:prep.equipos.ver'
+
+VISTA NUEVA CREADA:
+  resources/views/livewire/inventario/solicitudes-piezas.blade.php
+  - Para el técnico, muestra SOLO sus propias solicitudes
+  - Guía visual del flujo: Solicitas → En revisión → Pieza lista → Instalas → Listo
+  - Contadores por estatus con filtros clickeables
+  - Tarjeta de solicitud con: nombre pieza, equipo, fechas, nota de inventario,
+    pieza asignada (almacén, S/N), resultado si ya fue confirmada
+  - Botón "Confirmar instalación" (pulsante) cuando estatus = SURTIDA_INVENTARIO
+  - Modal de confirmación: ¿Funcionó? (Sí/No) + notas opcionales
+
+--------------------------------------------------------------------------------
+[5] ERROR: View [livewire.equipos._form] not found
+--------------------------------------------------------------------------------
+
+CAUSA:
+  Las vistas registrar-equipo.blade.php, editar-equipo.blade.php y
+  mi-trabajo.blade.php hacían @include('livewire.equipos._form', [...])
+  pero el archivo real está en livewire.preparacion.equipos._form
+
+SOLUCIÓN:
+  Corrección en 3 archivos:
+    resources/views/livewire/preparacion/equipos/registrar-equipo.blade.php
+    resources/views/livewire/preparacion/equipos/editar-equipo.blade.php
+    resources/views/livewire/preparacion/equipos/mi-trabajo.blade.php
+
+  Cambiado:
+    @include('livewire.equipos._form', [...])
+  Por:
+    @include('livewire.preparacion.equipos._form', [...])
+
+--------------------------------------------------------------------------------
+[6] DISCUSIÓN: ¿Es necesaria la vista "Mis Solicitudes" para técnicos?
+--------------------------------------------------------------------------------
+
+PREGUNTA: Si el técnico ya terminó el equipo, ¿necesita ver sus solicitudes?
+
+RESPUESTA:
+  Depende del flujo que se quiera:
+
+  - El equipo marcado como PIEZA_PENDIENTE queda en estatus_area = PENDIENTE_PIEZA
+    y NO avanza a CALIDAD hasta que alguien lo cierre.
+
+  - OPCIÓN A (con vista): El técnico confirma la instalación desde "Mis Solicitudes"
+    → flujo trazable, sabe si la pieza funcionó o no.
+
+  - OPCIÓN B (sin vista): Al surtir la pieza, el sistema automáticamente pasa
+    el equipo a CALIDAD → más simple, menos pasos, pero sin trazabilidad de
+    si la pieza funcionó.
+
+  Pendiente: Usuario debe decidir cuál opción prefiere.
+
+================================================================================
+RESUMEN DE ARCHIVOS MODIFICADOS
+================================================================================
+
+  MODIFICADOS:
+    routes/web.php
+    resources/views/layouts/sidebar.blade.php
+    app/Livewire/Preparacion/Equipos/MiTrabajo.php
+    app/Livewire/Inventario/SolicitudesPiezas.php
+    resources/views/livewire/preparacion/equipos/registrar-equipo.blade.php
+    resources/views/livewire/preparacion/equipos/editar-equipo.blade.php
+    resources/views/livewire/preparacion/equipos/mi-trabajo.blade.php
+
+  CREADOS:
+    resources/views/livewire/inventario/gestion-solicitudes-piezas.blade.php
+    resources/views/livewire/inventario/solicitudes-piezas.blade.php
+
+================================================================================
+ESTADO DE PERMISOS EN DB (verificado con artisan tinker)
+================================================================================
+
+  Permisos de inventario por rol:
+    gerente → prep.inventario.ver, prep.inventario.gestion
+    lider   → prep.inventario.ver, prep.inventario.gestion
+    tecnico → prep.inventario.ver  (SOLO VER)
+
+  Todos los permisos existentes en DB:
+    modulo.administracion, modulo.preparacion, modulo.rrhh, modulo.sistema,
+    modulo.soporte, modulo.ventas,
+    prep.equipos.crear, prep.equipos.editar, prep.equipos.eliminar,
+    prep.equipos.imprimir, prep.equipos.ver,
+    prep.inventario.gestion, prep.inventario.ver,
+    prep.lotes.gestion, prep.lotes.ver,
+    prep.transferencias.crear, prep.transferencias.ver,
+    sistema.admin.configuracion, sistema.admin.roles,
+    sistema.avisos.ver, sistema.contabilidad.ver, sistema.dashboard.ver,
+    sistema.reportes.exportar, sistema.reportes.ver,
+    sistema.usuarios.crear, sistema.usuarios.editar, sistema.usuarios.ver,
+    soporte.cobro.crear, soporte.garantia.validar, soporte.ticket.cerrar,
+    soporte.ticket.crear, soporte.ticket.editar, soporte.transferencias.ver,
+    soporte.ver, ventas.garantia.gestionar, ventas.margen.ver,
+    ventas.reporte.ver, ventas.transferencias.crear, ventas.transferencias.ver,
+    ventas.venta.crear, ventas.venta.editar, ventas.ver
+
+================================================================================
+FIN DEL HISTORIAL
+================================================================================

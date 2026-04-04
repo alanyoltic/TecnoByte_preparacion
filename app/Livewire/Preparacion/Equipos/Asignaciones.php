@@ -11,6 +11,7 @@ use App\Models\Lote;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 #[Layout('layouts.app', ['pageTitle' => 'Asignaciones'])]
 class Asignaciones extends Component
@@ -25,6 +26,11 @@ class Asignaciones extends Component
     // ── Búsqueda técnico ──────────────────────────────────────────────────
     public string $busquedaTecnico = '';
 
+    // ── Cancelar asignación ───────────────────────────────────────────────
+    public ?int $cancelarAsignacionId = null;
+    public string $motivoCancelacion = '';
+    public bool $modalCancelar = false;
+
     // ── Nueva asignación: selecciones ─────────────────────────────────────
     public ?int $tecnicoId = null;
     public array $seleccion = [];
@@ -32,6 +38,16 @@ class Asignaciones extends Component
 
     public string $notas = '';
     public string $error = '';
+
+    public function mount(): void
+    {
+        $this->autorizarGestionAsignaciones();
+    }
+
+    private function autorizarGestionAsignaciones(): void
+    {
+        abort_unless(auth()->user()?->tienePermiso('prep.inventario.gestion'), 403);
+    }
 
     // ── Computed: todas las asignaciones activas ──────────────────────────
     #[Computed]
@@ -67,33 +83,40 @@ class Asignaciones extends Component
     #[Computed]
     public function lotesDisponibles()
     {
-        return Lote::with(['modelosRecibidos' => fn($q) =>
-                $q->withCount([
-                    'equipos as total_equipos',
-                    'equipos as equipos_libres' => fn($q2) =>
-                        $q2->whereDoesntHave('asignacionEquipos', fn($q3) =>
-                            $q3->whereHas('asignacion', fn($q4) =>
-                                $q4->whereIn('estatus', [Asignacion::PENDIENTE, Asignacion::EN_PROCESO])
-                            )
-                        )
-                ])
-                // Solo modelos que tienen al menos 1 equipo libre
-                ->having('equipos_libres', '>', 0)
-            ])
+        return Lote::with(['modelosRecibidos' => function($q) {
+                $q->addSelect([
+                    'lote_modelos_recibidos.*',
+                    DB::raw("(
+                        SELECT COALESCE(SUM(cantidad), 0)
+                        FROM asignaciones
+                        WHERE asignaciones.lote_modelo_id = lote_modelos_recibidos.id
+                        AND asignaciones.estatus IN ('PENDIENTE', 'EN_PROCESO')
+                        AND asignaciones.deleted_at IS NULL
+                    ) as cantidad_asignada"),
+                ]);
+            }])
             ->whereHas('modelosRecibidos', fn($q) =>
-                $q->whereHas('equipos', fn($q2) =>
-                    $q2->whereDoesntHave('asignacionEquipos', fn($q3) =>
-                        $q3->whereHas('asignacion', fn($q4) =>
-                            $q4->whereIn('estatus', [Asignacion::PENDIENTE, Asignacion::EN_PROCESO])
-                        )
-                    )
-                )
+                $q->whereRaw("cantidad_recibida > (
+                    SELECT COALESCE(SUM(cantidad), 0)
+                    FROM asignaciones
+                    WHERE asignaciones.lote_modelo_id = lote_modelos_recibidos.id
+                    AND asignaciones.estatus IN ('PENDIENTE', 'EN_PROCESO')
+                    AND asignaciones.deleted_at IS NULL
+                )")
             )
             ->orderByDesc('fecha_llegada')
-            ->get();
+            ->get()
+            ->map(function($lote) {
+                $lote->modelosRecibidos = $lote->modelosRecibidos->filter(function($modelo) {
+                    $modelo->equipos_libres = $modelo->cantidad_recibida - ($modelo->cantidad_asignada ?? 0);
+                    return $modelo->equipos_libres > 0;
+                })->values();
+                return $lote;
+            })
+            ->filter(fn($lote) => $lote->modelosRecibidos->count() > 0)
+            ->values();
     }
 
-    // ── Computed: métricas del panel ──────────────────────────────────────
     #[Computed]
     public function metricas()
     {
@@ -178,6 +201,8 @@ class Asignaciones extends Component
     // ── Guardar asignación ────────────────────────────────────────────────
     public function guardarAsignacion(): void
     {
+        $this->autorizarGestionAsignaciones();
+
         $this->error = '';
 
         if (!$this->tecnicoId) {
@@ -188,6 +213,20 @@ class Asignaciones extends Component
         if (empty($this->seleccion)) {
             $this->error = 'Debes seleccionar al menos un modelo con cantidad mayor a 0.';
             return;
+        }
+
+        // Validar que ninguna cantidad supere los disponibles
+        foreach ($this->seleccion as $loteModeloId => $cantidad) {
+            $modelo = \App\Models\LoteModeloRecibido::find($loteModeloId);
+            $yaAsignado = Asignacion::where('lote_modelo_id', $loteModeloId)
+                ->whereIn('estatus', [Asignacion::PENDIENTE, Asignacion::EN_PROCESO])
+                ->sum('cantidad');
+            $disponibles = ($modelo->cantidad_recibida ?? 0) - $yaAsignado;
+
+            if ($cantidad > $disponibles) {
+                $this->error = "La cantidad para {$modelo->marca} {$modelo->modelo} supera los disponibles ({$disponibles}).";
+                return;
+            }
         }
 
         foreach ($this->seleccion as $loteModeloId => $cantidad) {
@@ -209,6 +248,76 @@ class Asignaciones extends Component
         ]);
 
         $this->volverDesdeNueva();
+    }
+
+    // ── Abrir modal cancelar ─────────────────────────────────────────────
+    public function abrirModalCancelar(int $asignacionId): void
+    {
+        $this->autorizarGestionAsignaciones();
+
+        $asignacion = Asignacion::with('equipos')->find($asignacionId);
+
+        if (!$asignacion) return;
+
+        // Verificar que no tenga equipos escaneados
+        if ($asignacion->equipos->count() > 0) {
+            $this->dispatch('toast', [
+                'type'    => 'error',
+                'title'   => 'No se puede cancelar',
+                'message' => 'Esta asignación ya tiene equipos iniciados.',
+            ]);
+            return;
+        }
+
+        $this->cancelarAsignacionId = $asignacionId;
+        $this->motivoCancelacion = '';
+        $this->modalCancelar = true;
+    }
+
+    public function cerrarModalCancelar(): void
+    {
+        $this->modalCancelar = false;
+        $this->cancelarAsignacionId = null;
+        $this->motivoCancelacion = '';
+    }
+
+    public function confirmarCancelacion(): void
+    {
+        $this->autorizarGestionAsignaciones();
+
+        if (empty(trim($this->motivoCancelacion))) {
+            $this->addError('motivoCancelacion', 'El motivo es obligatorio.');
+            return;
+        }
+
+        $asignacion = Asignacion::with('equipos')->find($this->cancelarAsignacionId);
+
+        if (!$asignacion) return;
+
+        // Doble verificación
+        if ($asignacion->equipos->count() > 0) {
+            $this->dispatch('toast', [
+                'type'    => 'error',
+                'title'   => 'No se puede cancelar',
+                'message' => 'Esta asignación ya tiene equipos iniciados.',
+            ]);
+            $this->cerrarModalCancelar();
+            return;
+        }
+
+        $asignacion->update([
+            'estatus'        => Asignacion::CANCELADO,
+            'notas_entrega'  => 'CANCELADA — Motivo: ' . trim($this->motivoCancelacion),
+        ]);
+
+        $this->dispatch('toast', [
+            'type'    => 'success',
+            'title'   => 'Asignación cancelada',
+            'message' => 'La asignación fue cancelada correctamente.',
+        ]);
+
+        $this->cerrarModalCancelar();
+        unset($this->asignacionesActivas);
     }
 
     public function render()

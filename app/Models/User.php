@@ -90,7 +90,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isAdminCeo()
     {
-        return in_array($this->role?->slug, ['admin', 'ceo']);
+        return in_array($this->role?->slug, ['admin', 'admin_sistema', 'ceo'], true);
     }
 
     public function getNombreInicialAttribute()

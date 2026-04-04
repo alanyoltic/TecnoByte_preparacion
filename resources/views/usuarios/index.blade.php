@@ -35,19 +35,21 @@
                                 </p>
                             </div>
 
-                            <a
-                                href="{{ route('register') }}"
-                                class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium
-                                    bg-blue-600 hover:bg-blue-500
-                                    text-white shadow-md shadow-blue-800/30
-                                    transition-all duration-200 hover:-translate-y-0.5"
-                            >
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 4v16m8-8H4" />
-                                </svg>
-                                Nuevo usuario
-                            </a>
+                            @if(auth()->user()?->tienePermiso('sistema.usuarios.crear'))
+                                <a
+                                    href="{{ route('register') }}"
+                                    class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium
+                                        bg-blue-600 hover:bg-blue-500
+                                        text-white shadow-md shadow-blue-800/30
+                                        transition-all duration-200 hover:-translate-y-0.5"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Nuevo usuario
+                                </a>
+                            @endif
                         </div>
 
                         {{-- TABLA --}}
@@ -88,9 +90,9 @@
                                                 $roleName = $usuario->role?->nombre ?? 'Sin rol';
                                                 $roleSlug = $usuario->role?->slug ?? null;
 
-                                                if (in_array($roleSlug, ['ceo','admin'])) {
+                                                if (in_array($roleSlug, ['ceo','admin','admin_sistema'])) {
                                                     $chip = 'bg-rose-500/10 text-rose-300 border border-rose-400/40';
-                                                } elseif (in_array($roleSlug, ['supervisor','lider'])) {
+                                                } elseif (in_array($roleSlug, ['supervisor','lider','gerente'])) {
                                                     $chip = 'bg-amber-500/10 text-amber-300 border border-amber-400/40';
                                                 } elseif ($roleSlug) {
                                                     $chip = 'bg-emerald-500/10 text-emerald-300 border border-emerald-400/40';
@@ -117,6 +119,7 @@
 
                                                 <td class="px-6 py-3 text-right">
  {{-- BOTÓN DAR DE BAJA --}}
+    @if(auth()->user()?->tienePermiso('sistema.usuarios.editar'))
     <form action="{{ route('usuarios.baja', $usuario) }}" method="POST">
         @csrf
         @method('PATCH')
@@ -135,11 +138,13 @@
             Dar de baja
         </button>
     </form>
+    @endif
 
                                                 </td>
 
 
                                                 <td class="px-6 py-3 text-right">
+                                                    @if(auth()->user()?->tienePermiso('sistema.usuarios.editar'))
                                                     <a
                                                         href="{{ route('users.edit', $usuario) }}"
                                                         class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium
@@ -154,6 +159,7 @@
                                                         </svg>
                                                         Editar
                                                     </a>
+                                                    @endif
                                                 </td>
                                             </tr>
                                         @empty

@@ -16,7 +16,7 @@
 
                 {{-- CONTENEDOR PRINCIPAL DEL FORMULARIO --}}
                 <div class="">
-                    @livewire('inventario.resumen-inventario')
+                    @livewire('preparacion.inventario.resumen-inventario')
 
                 </div>
             </div>
