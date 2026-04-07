@@ -36,9 +36,9 @@ class MetaTecnico extends Model
      */
     public static function obtenerMeta(int $tecnicoId, string $periodo): float
     {
-        return (float) static::where('tecnico_id', $tecnicoId)
+        return (float) (static::where('tecnico_id', $tecnicoId)
             ->where('periodo', $periodo)
-            ->value('meta_puntos') ?? self::META_DEFAULT;
+            ->value('meta_puntos') ?? self::META_DEFAULT);
     }
 
     /**

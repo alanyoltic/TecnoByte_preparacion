@@ -574,7 +574,9 @@ if (!$metaRecord && $anio == now()->year && $mes == now()->month) {
                 : MetaTecnico::META_DEFAULT;
         } else {
             // Vista global: meta congelada del mes.
-            $metaTotal = $metaRecord->meta_total ?? 0;
+            // Si no existe registro para meses pasados, usar fallback: técnicos × META_DEFAULT
+            $metaTotal = $metaRecord->meta_total
+                ?? (max($colaboradoresCount, 1) * MetaTecnico::META_DEFAULT);
         }
 
 // Corte: desde 2026-04 se usa el nuevo sistema de puntos
