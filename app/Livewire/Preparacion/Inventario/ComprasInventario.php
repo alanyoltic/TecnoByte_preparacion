@@ -13,6 +13,7 @@ use App\Models\CatalogoPieza;
 use App\Models\Proveedor;
 use App\Models\Lote;
 use App\Models\Almacen;
+use App\Models\SolicitudPieza;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -40,6 +41,13 @@ class ComprasInventario extends Component
 
     // ── Búsqueda de pieza por ítem ────────────────────────────────────
     public array $busquedasPieza = []; // búsqueda por índice de ítem
+
+    // ── Modal proveedor ───────────────────────────────────────────────
+    public bool   $modalProveedor       = false;
+    public string $proveedorNombre      = '';
+    public string $proveedorAbreviacion = '';
+    public string $proveedorEmail       = '';
+    public string $proveedorTelefono    = '';
 
     // ── Error ─────────────────────────────────────────────────────────
     public string $error = '';
@@ -82,7 +90,7 @@ class ComprasInventario extends Component
     #[Computed]
     public function lotes()
     {
-        return Lote::orderByDesc('id')->limit(30)->get(['id', 'nombre']);
+        return Lote::orderByDesc('id')->limit(30)->get(['id', 'nombre_lote']);
     }
 
     #[Computed]
@@ -148,6 +156,7 @@ class ComprasInventario extends Component
     public function guardarCompra(): void
     {
         $this->error = '';
+        $solicitudesMarcadas = 0;
 
         $this->validate([
             'proveedorId'          => 'required|exists:proveedores,id',
@@ -169,12 +178,13 @@ class ComprasInventario extends Component
         ]);
 
         try {
-            DB::transaction(function () {
+            DB::transaction(function () use (&$solicitudesMarcadas) {
                 $compra = CompraInventario::create([
                     'proveedor_id'      => $this->proveedorId,
                     'lote_id'           => $this->loteId ?: null,
                     'fecha_compra'      => $this->fechaCompra,
                     'folio'             => trim($this->folio) ?: null,
+                    'total_estimado'    => $this->getTotalEstimado() ?: null,
                     'notas'             => trim($this->notasCompra) ?: null,
                     'registrado_por_id' => Auth::id(),
                 ]);
@@ -208,10 +218,21 @@ class ComprasInventario extends Component
                         'cantidad_baja'      => 0,
                         'notas'              => trim($item['notas']) ?: null,
                     ]);
+
+                    $solicitudesMarcadas += $this->marcarSolicitudesComoCompradas(
+                        (int) $item['catalogo_pieza_id'],
+                        $cantidad,
+                        $compra->folio
+                    );
                 }
             });
 
-            $this->dispatch('toast', ['type' => 'success', 'message' => 'Compra registrada correctamente.']);
+            $mensaje = 'Compra registrada correctamente.';
+            if ($solicitudesMarcadas > 0) {
+                $mensaje .= ' Se actualizaron ' . $solicitudesMarcadas . ' solicitud(es) pendientes de compra.';
+            }
+
+            $this->dispatch('toast', ['type' => 'success', 'message' => $mensaje]);
             $this->volver();
 
         } catch (\Exception $e) {
@@ -236,6 +257,31 @@ class ComprasInventario extends Component
         $this->resetErrorBag();
     }
 
+    private function marcarSolicitudesComoCompradas(int $catalogoPiezaId, int $cantidad, ?string $folio): int
+    {
+        if ($cantidad < 1) {
+            return 0;
+        }
+
+        $solicitudes = SolicitudPieza::where('catalogo_pieza_id', $catalogoPiezaId)
+            ->where('estatus', SolicitudPieza::PENDIENTE_COMPRA)
+            ->orderBy('created_at')
+            ->lockForUpdate()
+            ->limit($cantidad)
+            ->get();
+
+        foreach ($solicitudes as $solicitud) {
+            $mensajeCompra = 'Compra registrada' . ($folio ? ' (folio ' . $folio . ')' : '') . '. Ya puedes surtirla desde inventario.';
+            $nota = collect([$solicitud->notas_respuesta, $mensajeCompra])
+                ->filter()
+                ->implode("\n");
+
+            $solicitud->marcarComoComprada(Auth::id(), $nota);
+        }
+
+        return $solicitudes->count();
+    }
+
     /** Total estimado calculado de los ítems actuales. */
     public function getTotalEstimado(): float
     {
@@ -244,6 +290,61 @@ class ComprasInventario extends Component
             $cantidad = (int) ($item['cantidad'] ?? 0);
             return $precio * $cantidad;
         });
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // PROVEEDORES (modal inline)
+    // ══════════════════════════════════════════════════════════════════
+
+    public function abrirModalProveedor(): void
+    {
+        $this->proveedorNombre      = '';
+        $this->proveedorAbreviacion = '';
+        $this->proveedorEmail       = '';
+        $this->proveedorTelefono    = '';
+        $this->resetErrorBag(['proveedorNombre', 'proveedorEmail']);
+        $this->modalProveedor = true;
+    }
+
+    public function cerrarModalProveedor(): void
+    {
+        $this->modalProveedor = false;
+    }
+
+    public function guardarProveedor(): void
+    {
+        $this->validateOnly('proveedorNombre', [
+            'proveedorNombre' => 'required|string|max:200',
+        ], [
+            'proveedorNombre.required' => 'El nombre de la empresa es obligatorio.',
+        ]);
+
+        if (!empty($this->proveedorEmail)) {
+            $this->validateOnly('proveedorEmail', [
+                'proveedorEmail' => 'email|max:200',
+            ], [
+                'proveedorEmail.email' => 'El correo no tiene un formato válido.',
+            ]);
+        }
+
+        if (Proveedor::whereRaw('LOWER(TRIM(nombre_empresa)) = ?', [strtolower(trim($this->proveedorNombre))])->exists()) {
+            $this->addError('proveedorNombre', 'Ya existe un proveedor con ese nombre.');
+            return;
+        }
+
+        $proveedor = Proveedor::create([
+            'nombre_empresa'    => trim($this->proveedorNombre),
+            'abreviacion'       => trim($this->proveedorAbreviacion) ?: null,
+            'email_contacto'    => trim($this->proveedorEmail) ?: null,
+            'telefono_contacto' => trim($this->proveedorTelefono) ?: null,
+        ]);
+
+        // Auto-seleccionar el nuevo proveedor en el form
+        $this->proveedorId = $proveedor->id;
+
+        unset($this->proveedores);
+        $this->modalProveedor = false;
+        $this->dispatch('toast', ['type' => 'success', 'message' => "Proveedor \"{$proveedor->nombre_empresa}\" creado y seleccionado."]);
     }
 
     public function updatedBusqueda(): void { $this->resetPage(); }

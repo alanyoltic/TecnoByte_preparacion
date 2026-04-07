@@ -653,7 +653,15 @@ public function updatedFormRamExpansionMax($value): void
             }
 
             // Crear equipo
-            $equipo = Equipo::create($this->equipoPayload());
+            $payload = $this->equipoPayload();
+
+            // Heredar clasificación del lote_modelo_recibido si no está seteada
+            if (empty($payload['clasificacion_puntos_id']) && !empty($payload['lote_modelo_id'])) {
+                $payload['clasificacion_puntos_id'] = \App\Models\LoteModeloRecibido::where('id', $payload['lote_modelo_id'])
+                    ->value('clasificacion_puntos_id');
+            }
+
+            $equipo = Equipo::create($payload);
 
             // Relacionadas
             $this->guardarBaterias((int) $equipo->id);

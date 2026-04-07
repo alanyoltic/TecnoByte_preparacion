@@ -22,7 +22,7 @@
                     Nombre del lote <span class="text-red-400">*</span>
                 </label>
                 <input type="text"
-                       wire:model.defer="nombre_lote"
+                       wire:model="nombre_lote"
                        placeholder="Ej: A25"
                        class="w-full px-4 py-2 rounded-xl
                               bg-white/70 dark:bg-slate-900/40
@@ -40,7 +40,7 @@
                     Proveedor <span class="text-red-400">*</span>
                 </label>
                 <select
-                    wire:model.defer="proveedor_id"
+                    wire:model="proveedor_id"
                     class="w-full px-4 py-2 rounded-xl
                            bg-white/70 dark:bg-slate-900/40
                            border border-slate-300/80 dark:border-slate-700
@@ -64,7 +64,7 @@
                     Fecha de llegada
                 </label>
                 <input type="date"
-                       wire:model.defer="fecha_llegada"
+                       wire:model="fecha_llegada"
                        class="w-full px-4 py-2 rounded-xl
                               bg-white/70 dark:bg-slate-900/40
                               border border-slate-300/80 dark:border-slate-700
@@ -98,7 +98,7 @@
 
         <div class="space-y-4">
             @foreach($modelos as $index => $modelo)
-                <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1.7fr)_minmax(0,2.1fr)_120px_32px] gap-6"
+                <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.6fr)_90px_110px_minmax(0,1fr)_32px] gap-4"
                      wire:key="modelo-{{ $index }}">
 
                     {{-- Marca --}}
@@ -107,7 +107,7 @@
                             <label class="text-sm text-slate-300">Marca</label>
                         @endif
                         <input type="text"
-                               wire:model.defer="modelos.{{ $index }}.marca"
+                               wire:model="modelos.{{ $index }}.marca"
                                placeholder="Ej: Dell"
                                class="w-full px-4 py-2 rounded-xl
                                       bg-white/70 dark:bg-slate-900/40
@@ -126,7 +126,7 @@
                             <label class="text-sm text-slate-300">Modelo</label>
                         @endif
                         <input type="text"
-                               wire:model.defer="modelos.{{ $index }}.modelo"
+                               wire:model="modelos.{{ $index }}.modelo"
                                placeholder="Ej: Precision 5770"
                                class="w-full px-4 py-2 rounded-xl
                                       bg-white/70 dark:bg-slate-900/40
@@ -145,7 +145,7 @@
                             <label class="text-sm text-slate-300">Cantidad</label>
                         @endif
                         <input type="number"
-                               wire:model.defer="modelos.{{ $index }}.cantidad_recibida"
+                               wire:model="modelos.{{ $index }}.cantidad_recibida"
                                min="1"
                                class="w-full px-4 py-2 rounded-xl
                                       bg-white/70 dark:bg-slate-900/40
@@ -154,6 +154,49 @@
                                       text-sm
                                       focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none">
                         @error('modelos.'.$index.'.cantidad_recibida')
+                            <p class="text-[0.65rem] text-red-400 mt-0.5">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Valor unitario --}}
+                    <div class="space-y-1.5">
+                        @if($index === 0)
+                            <label class="text-sm text-slate-300">Valor unit. ($)</label>
+                        @endif
+                        <input type="number"
+                               wire:model="modelos.{{ $index }}.valor_unitario"
+                               min="0" step="0.01"
+                               placeholder="0.00"
+                               class="w-full px-3 py-2 rounded-xl
+                                      bg-white/70 dark:bg-slate-900/40
+                                      border border-slate-300/80 dark:border-slate-700
+                                      text-slate-900 dark:text-slate-100 text-sm
+                                      focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none">
+                        @error('modelos.'.$index.'.valor_unitario')
+                            <p class="text-[0.65rem] text-red-400 mt-0.5">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Clasificación --}}
+                    <div class="space-y-1.5">
+                        @if($index === 0)
+                            <label class="text-sm text-slate-300">Clasificación</label>
+                        @endif
+                        <select wire:model="modelos.{{ $index }}.clasificacion_puntos_id"
+                                class="w-full px-3 py-2 rounded-xl
+                                       bg-white/70 dark:bg-slate-900/40
+                                       border border-slate-300/80 dark:border-slate-700
+                                       text-slate-900 dark:text-slate-100
+                                       text-sm
+                                       focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none">
+                            <option value="">— sin clasificar —</option>
+                            @foreach($clasificaciones as $c)
+                                <option value="{{ $c->id }}">
+                                    Tipo {{ $c->clave }} ({{ $c->puntos_base }}pts)
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('modelos.'.$index.'.clasificacion_puntos_id')
                             <p class="text-[0.65rem] text-red-400 mt-0.5">{{ $message }}</p>
                         @enderror
                     </div>
@@ -170,6 +213,26 @@
                     </div>
                 </div>
             @endforeach
+        </div>
+
+        {{-- Total del lote (reactivo vía $wire.modelos) --}}
+        <div class="flex justify-end mt-3"
+             x-data="{
+                 get total() {
+                     const rows = $wire.modelos || [];
+                     const sum = rows.reduce((acc, r) => {
+                         const v = parseFloat(r.valor_unitario) || 0;
+                         const c = parseInt(r.cantidad_recibida) || 0;
+                         return acc + v * c;
+                     }, 0);
+                     return sum.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+                 }
+             }">
+            <div class="inline-flex items-center gap-3 px-4 py-2 rounded-xl
+                        bg-slate-800/60 border border-slate-700 text-sm">
+                <span class="text-slate-400">Valor neto estimado del lote:</span>
+                <span class="font-bold text-emerald-400" x-text="total"></span>
+            </div>
         </div>
 
     </div>

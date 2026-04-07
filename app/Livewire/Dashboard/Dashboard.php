@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Models\Aviso;
 use App\Models\EmpleadoDelMes;
+use App\Models\MetaTecnico;
 
 class Dashboard extends Component
 {
@@ -17,6 +18,12 @@ class Dashboard extends Component
 //fix
 
     public bool $esAdminCeo = false;
+    public bool $esLiderGerente = false;
+
+    // Modal edición de meta
+    public bool  $showModalMeta       = false;
+    public int   $editMetaTotal       = 0;
+    public array $editMetasTecnicos   = [];
 
     // ===== Roles =====
     public bool $isTecnico = false;
@@ -60,6 +67,7 @@ class Dashboard extends Component
     //Empleado del mes
     public ?array $empleadoMes = null;
     public bool $showEmpleadoModal = false;
+    public bool $viejoSistema = false;
     public ?string $empleadoMesUserId = null;
     public ?string $empleadoMesMensaje = null;
 
@@ -108,7 +116,8 @@ class Dashboard extends Component
         $roleSlug = strtolower(optional($user->role)->slug ?? '');
         $roleName = strtolower(optional($user->role)->nombre ?? '');
         $this->cargarAvisos();
-        $this->esAdminCeo = in_array($roleSlug, ['ceo', 'admin', 'admin_sistema'], true);
+        $this->esAdminCeo     = in_array($roleSlug, ['ceo', 'admin', 'admin_sistema'], true);
+        $this->esLiderGerente = in_array($roleSlug, ['ceo', 'gerente', 'lider'], true);
         
 
         $this->isTecnico = in_array($roleSlug, ['tecnico'])
@@ -554,39 +563,62 @@ if (!$metaRecord && $anio == now()->year && $mes == now()->month) {
 
 // Si es mes pasado y no existe, NO lo creamos automÃƒÂ¡ticamente
 // (opcionalmente despuÃƒÂ©s podemos hacer backfill)
-        $metaPorColaborador = 140;
         $isPersonalView = $this->isTecnico || !empty($selectedColaboradorId);
+        $periodoStr = $selectedDate->format('Y-m');
 
         if ($isPersonalView) {
-            // Vista personal: meta individual.
-            $metaTotal = $metaPorColaborador;
+            // Vista personal: meta individual del técnico (o default 140)
+            $tecnicoParaMeta = $this->isTecnico ? ($user?->id) : (int)$selectedColaboradorId;
+            $metaTotal = $tecnicoParaMeta
+                ? MetaTecnico::obtenerMeta($tecnicoParaMeta, $periodoStr)
+                : MetaTecnico::META_DEFAULT;
         } else {
             // Vista global: meta congelada del mes.
             $metaTotal = $metaRecord->meta_total ?? 0;
         }
 
-$equiposRealizadosMes = $equiposMes;
-$equiposFaltantes     = max($metaTotal - $equiposRealizadosMes, 0);
+// Corte: desde 2026-04 se usa el nuevo sistema de puntos
+$periodo        = $selectedDate->format('Y-m');
+$this->viejoSistema = ($periodo < '2026-04');
 
-$percentMeta = $metaTotal > 0
-    ? min(round(($equiposRealizadosMes / $metaTotal) * 100), 100)
-    : 0;
+if ($this->viejoSistema) {
+    // ── Sistema viejo: conteo de equipos (antes de abr-2026) ──────────
+    $realizadosMes        = $equiposMes;
+    $faltantesMes         = max($metaTotal - $realizadosMes, 0);
+    $percentMeta          = $metaTotal > 0 ? min(round(($realizadosMes / $metaTotal) * 100), 100) : 0;
+    $this->radialPercent  = (int) $percentMeta;
+    $breakdown_meta_lbl   = 'Meta mensual (equipos)';
+    $breakdown_real_lbl   = 'Equipos realizados (mes)';
+} else {
+    // ── Sistema nuevo: suma de puntos (desde abr-2026) ─────────────────
+    $puntosQuery = \DB::table('puntos_tecnicos')->where('periodo', $periodo);
+    if ($this->isTecnico && $user) {
+        $puntosQuery->where('tecnico_id', $user->id);
+    } elseif (!$this->isTecnico && !empty($selectedColaboradorId)) {
+        $puntosQuery->where('tecnico_id', $selectedColaboradorId);
+    }
+    $realizadosMes        = round((float)(clone $puntosQuery)->sum(\DB::raw('puntos_final + ajuste_manual')), 2);
+    $faltantesMes         = max($metaTotal - $realizadosMes, 0);
+    $percentMeta          = $metaTotal > 0 ? min(round(($realizadosMes / $metaTotal) * 100), 100) : 0;
+    $this->radialPercent  = (int) $percentMeta;
+    $breakdown_meta_lbl   = 'Meta mensual (puntos)';
+    $breakdown_real_lbl   = 'Puntos realizados (mes)';
+}
 
-$this->radialPercent = (int) $percentMeta;
 if ($metaRecord && $metaRecord->hubo_movimientos) {
     $this->breakdown[] = [
-        'label' => 'Ã¢Å¡Â  Hubo movimientos de personal este mes',
+        'label' => 'Hubo movimientos de personal este mes',
         'value' => '',
     ];
 }
 
-
 $this->breakdown = [
-    ['label' => 'Meta mensual total',       'value' => $metaTotal],
-    ['label' => 'Equipos realizados (mes)', 'value' => $equiposRealizadosMes],
-    ['label' => 'Faltantes para la meta',   'value' => $equiposFaltantes],
-    ['label' => 'TÃƒÂ©cnicos iniciales',       'value' => $isPersonalView ? 1 : ($metaRecord->tecnicos_iniciales ?? 0)],
+    ['label' => $breakdown_meta_lbl, 'value' => $metaTotal],
+    ['label' => $breakdown_real_lbl, 'value' => $realizadosMes],
+    ['label' => 'Faltantes para la meta', 'value' => $faltantesMes],
+    ['label' => 'Tecnicos iniciales', 'value' => $isPersonalView ? 1 : ($metaRecord->tecnicos_iniciales ?? 0)],
 ];
+
 
 
         // Ã¢Å“â€¦ Disparar evento para actualizar ApexCharts sin recargar
@@ -604,6 +636,74 @@ $this->breakdown = [
 
     }
     
+
+    // ── Edición de meta mensual ────────────────────────────────────────────
+
+    public function abrirModalMeta(): void
+    {
+        abort_unless($this->esLiderGerente, 403);
+
+        $periodo = $this->selectedMonthValue; // Y-m
+        [$anio, $mes] = explode('-', $periodo);
+
+        $metaRecord = PreparacionMetaMensual::where('anio', $anio)->where('mes', (int)$mes)->first();
+        $this->editMetaTotal = $metaRecord ? (int)$metaRecord->meta_total : 0;
+
+        // Cargar meta individual de cada técnico (o default)
+        $this->editMetasTecnicos = collect($this->colaboradores)
+            ->map(function ($c) use ($periodo) {
+                $meta = MetaTecnico::where('tecnico_id', $c['id'])
+                    ->where('periodo', $periodo)
+                    ->value('meta_puntos');
+                return [
+                    'tecnico_id'  => $c['id'],
+                    'nombre'      => $c['nombre'],
+                    'meta_puntos' => $meta !== null ? (float)$meta : MetaTecnico::META_DEFAULT,
+                ];
+            })->toArray();
+
+        $this->showModalMeta = true;
+    }
+
+    public function recalcularMetaTotal(): void
+    {
+        abort_unless($this->esLiderGerente, 403);
+        $this->editMetaTotal = (int) array_sum(array_column($this->editMetasTecnicos, 'meta_puntos'));
+    }
+
+    public function guardarMeta(): void
+    {
+        abort_unless($this->esLiderGerente, 403);
+
+        $this->validate([
+            'editMetaTotal'                    => ['required', 'numeric', 'min:1'],
+            'editMetasTecnicos.*.meta_puntos'  => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $periodo = $this->selectedMonthValue;
+        [$anio, $mes] = explode('-', $periodo);
+
+        DB::transaction(function () use ($anio, $mes, $periodo) {
+            PreparacionMetaMensual::updateOrCreate(
+                ['anio' => (int)$anio, 'mes' => (int)$mes],
+                ['meta_total' => $this->editMetaTotal]
+            );
+
+            foreach ($this->editMetasTecnicos as $item) {
+                MetaTecnico::updateOrCreate(
+                    ['tecnico_id' => $item['tecnico_id'], 'periodo' => $periodo],
+                    [
+                        'meta_puntos'     => $item['meta_puntos'],
+                        'asignada_por_id' => auth()->id(),
+                    ]
+                );
+            }
+        });
+
+        $this->showModalMeta = false;
+        $this->dispatch('toast', type: 'success', message: 'Meta mensual actualizada.');
+        $this->loadData();
+    }
 
     public function render()
     {

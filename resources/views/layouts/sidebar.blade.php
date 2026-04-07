@@ -316,7 +316,7 @@
             [
                 'label' => 'Mis Solicitudes de Piezas',
                 'href'  => route('inventario.piezas.solicitudes'),
-                'perm'  => 'prep.equipos.ver',
+                'visible' => $puedeVerMisAsignaciones,
             ],
             [
                 'label' => 'Gestionar Asignaciones',
@@ -496,11 +496,7 @@
                 'href'  => route('preparacion.catalogo-piezas'),
                 'perm'  => 'prep.inventario.gestion',
             ],
-            [
-                'label' => 'Compras de Piezas',
-                'href'  => route('inventario.compras'),
-                'perm'  => 'prep.inventario.gestion',
-            ],
+            // 'Compras de Piezas' se accede desde Catálogo Piezas (historial)
             [
                 'label' => 'Transferencias',
                 'href'  => route('inventario.transferencias'),

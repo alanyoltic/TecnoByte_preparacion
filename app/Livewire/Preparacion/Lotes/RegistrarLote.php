@@ -4,6 +4,8 @@ namespace App\Livewire\Preparacion\Lotes;
 
 use Livewire\Component;
 use App\Models\Proveedor;
+use App\Models\ClasificacionPuntos;
+use App\Models\LoteModeloRecibido;
 use Illuminate\Support\Facades\DB;
 
 class RegistrarLote extends Component
@@ -20,9 +22,11 @@ class RegistrarLote extends Component
         // Una fila por defecto
         $this->modelos = [
             [
-                'marca'             => '',
-                'modelo'            => '',
-                'cantidad_recibida' => 1,
+                'marca'                  => '',
+                'modelo'                 => '',
+                'cantidad_recibida'      => 1,
+                'valor_unitario'         => '',
+                'clasificacion_puntos_id'=> null,
             ],
         ];
     }
@@ -30,9 +34,10 @@ class RegistrarLote extends Component
     public function addModeloRow()
     {
         $this->modelos[] = [
-            'marca'             => '',
-            'modelo'            => '',
-            'cantidad_recibida' => 1,
+            'marca'                  => '',
+            'modelo'                 => '',
+            'cantidad_recibida'      => 1,
+            'clasificacion_puntos_id'=> null,
         ];
     }
 
@@ -54,10 +59,12 @@ class RegistrarLote extends Component
             'proveedor_id'  => 'required|exists:proveedores,id',
             'fecha_llegada' => 'nullable|date',
 
-            'modelos'                     => 'required|array|min:1',
-            'modelos.*.marca'             => 'required|string|max:100',
-            'modelos.*.modelo'            => 'required|string|max:255',
-            'modelos.*.cantidad_recibida' => 'required|integer|min:1',
+            'modelos'                              => 'required|array|min:1',
+            'modelos.*.marca'                      => 'required|string|max:100',
+            'modelos.*.modelo'                     => 'required|string|max:255',
+            'modelos.*.cantidad_recibida'           => 'required|integer|min:1',
+            'modelos.*.valor_unitario'              => 'nullable|numeric|min:0',
+            'modelos.*.clasificacion_puntos_id'     => 'nullable|exists:clasificaciones_puntos,id',
         ], [
             'modelos.required' => 'Debes agregar al menos un modelo al lote.',
         ]);
@@ -72,20 +79,20 @@ class RegistrarLote extends Component
                 'updated_at'    => now(),
             ]);
 
-            // Crear los modelos recibidos
-            $rows = [];
+            // Crear los modelos recibidos y propagar clasificación
             foreach ($this->modelos as $m) {
-                $rows[] = [
-                    'lote_id'           => $loteId,
-                    'marca'             => $m['marca'],
-                    'modelo'            => $m['modelo'],
-                    'cantidad_recibida' => $m['cantidad_recibida'],
-                    'created_at'        => now(),
-                    'updated_at'        => now(),
-                ];
-            }
+                $loteModelo = LoteModeloRecibido::create([
+                    'lote_id'                => $loteId,
+                    'marca'                  => $m['marca'],
+                    'modelo'                 => $m['modelo'],
+                    'cantidad_recibida'      => $m['cantidad_recibida'],
+                    'valor_unitario'         => is_numeric($m['valor_unitario'] ?? '') ? (float)$m['valor_unitario'] : null,
+                    'clasificacion_puntos_id'=> $m['clasificacion_puntos_id'] ?: null,
+                ]);
 
-            DB::table('lote_modelos_recibidos')->insert($rows);
+                // Los equipos de este lote aún no existen, pero la clasificación
+                // queda en lote_modelo_recibido para asignarse al registrar cada equipo.
+            }
         });
 
         $this->dispatch('toast', type: 'success', message: 'Lote y modelos registrados correctamente.');
@@ -96,19 +103,23 @@ class RegistrarLote extends Component
         $this->fecha_llegada = now()->toDateString();
         $this->modelos = [
             [
-                'marca'             => '',
-                'modelo'            => '',
-                'cantidad_recibida' => 1,
+                'marca'                  => '',
+                'modelo'                 => '',
+                'cantidad_recibida'      => 1,
+                'valor_unitario'         => '',
+                'clasificacion_puntos_id'=> null,
             ],
         ];
     }
 
     public function render()
     {
-        $proveedores = Proveedor::orderBy('nombre_empresa')->get();
+        $proveedores     = Proveedor::orderBy('nombre_empresa')->get();
+        $clasificaciones = ClasificacionPuntos::where('activo', true)->orderBy('clave')->get();
 
         return view('livewire.preparacion.lotes.registrar-lote', [
-            'proveedores' => $proveedores,
+            'proveedores'     => $proveedores,
+            'clasificaciones' => $clasificaciones,
         ]);
     }
 

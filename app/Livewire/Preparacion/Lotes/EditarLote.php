@@ -8,6 +8,7 @@ use Illuminate\Validation\ValidationException;
 use App\Models\Lote;
 use App\Models\Proveedor;
 use App\Models\LoteModeloRecibido;
+use App\Models\ClasificacionPuntos;
 
 class EditarLote extends Component
 {
@@ -40,21 +41,25 @@ class EditarLote extends Component
 
         $this->modelos = $this->lote->modelosRecibidos->map(function ($m) {
             return [
-                'id'               => $m->id,
-                'marca'            => $m->marca,
-                'modelo'           => $m->modelo,
-                'cantidad_recibida'=> (int) $m->cantidad_recibida,
-                'equipos_registrados' => (int) ($m->equipos_count ?? 0),
+                'id'                     => $m->id,
+                'marca'                  => $m->marca,
+                'modelo'                 => $m->modelo,
+                'cantidad_recibida'      => (int) $m->cantidad_recibida,
+                'valor_unitario'         => $m->valor_unitario !== null ? (string) $m->valor_unitario : '',
+                'clasificacion_puntos_id'=> $m->clasificacion_puntos_id,
+                'equipos_registrados'    => (int) ($m->equipos_count ?? 0),
             ];
         })->toArray();
 
         if (count($this->modelos) === 0) {
             $this->modelos = [[
-                'id' => null,
-                'marca' => '',
-                'modelo' => '',
-                'cantidad_recibida' => 1,
-                'equipos_registrados' => 0,
+                'id'                     => null,
+                'marca'                  => '',
+                'modelo'                 => '',
+                'cantidad_recibida'      => 1,
+                'valor_unitario'         => '',
+                'clasificacion_puntos_id'=> null,
+                'equipos_registrados'    => 0,
             ]];
         }
     }
@@ -70,17 +75,21 @@ class EditarLote extends Component
             'modelos.*.marca' => ['required', 'string', 'max:100'],
             'modelos.*.modelo' => ['required', 'string', 'max:255'],
             'modelos.*.cantidad_recibida' => ['required', 'integer', 'min:1'],
+            'modelos.*.valor_unitario'    => ['nullable', 'numeric', 'min:0'],
+            'modelos.*.clasificacion_puntos_id' => ['nullable', 'exists:clasificaciones_puntos,id'],
         ];
     }
 
     public function addModeloRow()
     {
         $this->modelos[] = [
-            'id' => null,
-            'marca' => '',
-            'modelo' => '',
-            'cantidad_recibida' => 1,
-            'equipos_registrados' => 0,
+            'id'                     => null,
+            'marca'                  => '',
+            'modelo'                 => '',
+            'cantidad_recibida'      => 1,
+            'valor_unitario'         => '',
+            'clasificacion_puntos_id'=> null,
+            'equipos_registrados'    => 0,
         ];
     }
 
@@ -179,25 +188,38 @@ class EditarLote extends Component
             // Upsert de modelos actuales
             foreach ($this->modelos as $m) {
 
+                $clasificacionId = $m['clasificacion_puntos_id'] ?: null;
+
                 if (!empty($m['id'])) {
                     // update
                     $registro = LoteModeloRecibido::where('lote_id', $lote->id)
                         ->where('id', (int)$m['id'])
                         ->firstOrFail();
 
+                    $clasificacionCambio = $registro->clasificacion_puntos_id != $clasificacionId;
+
                     $registro->update([
-                        'marca' => $m['marca'],
-                        'modelo' => $m['modelo'],
-                        'cantidad_recibida' => (int)$m['cantidad_recibida'],
+                        'marca'                  => $m['marca'],
+                        'modelo'                 => $m['modelo'],
+                        'cantidad_recibida'      => (int)$m['cantidad_recibida'],
+                        'valor_unitario'         => is_numeric($m['valor_unitario'] ?? '') ? (float)$m['valor_unitario'] : null,
+                        'clasificacion_puntos_id'=> $clasificacionId,
                     ]);
 
+                    // Solo propagar si cambió la clasificación
+                    if ($clasificacionCambio) {
+                        $registro->propagarClasificacion();
+                    }
+
                 } else {
-                    // create
+                    // create — no hay equipos aún, solo guardar el campo
                     LoteModeloRecibido::create([
-                        'lote_id' => $lote->id,
-                        'marca' => $m['marca'],
-                        'modelo' => $m['modelo'],
-                        'cantidad_recibida' => (int)$m['cantidad_recibida'],
+                        'lote_id'                => $lote->id,
+                        'marca'                  => $m['marca'],
+                        'modelo'                 => $m['modelo'],
+                        'cantidad_recibida'      => (int)$m['cantidad_recibida'],
+                        'valor_unitario'         => is_numeric($m['valor_unitario'] ?? '') ? (float)$m['valor_unitario'] : null,
+                        'clasificacion_puntos_id'=> $clasificacionId,
                     ]);
                 }
             }
@@ -209,6 +231,8 @@ class EditarLote extends Component
 
     public function render()
     {
-        return view('livewire.preparacion.lotes.editar-lote');
+        return view('livewire.preparacion.lotes.editar-lote', [
+            'clasificaciones' => ClasificacionPuntos::where('activo', true)->orderBy('clave')->get(),
+        ]);
     }
 }

@@ -567,7 +567,7 @@
                     <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
                 </div>
                 <textarea
-                    wire:model.defer="notas"
+                    wire:model="notas"
                     rows="2"
                     placeholder="Instrucciones especiales, prioridades, observaciones..."
                     class="w-full rounded-xl px-4 py-2.5 text-sm
@@ -969,7 +969,7 @@
                         Motivo de cancelación <span class="text-rose-500">*</span>
                     </label>
                     <textarea
-                        wire:model.defer="motivoCancelacion"
+                        wire:model="motivoCancelacion"
                         rows="3"
                         placeholder="Describe el motivo de la cancelación..."
                         class="w-full rounded-xl px-4 py-2.5 text-sm

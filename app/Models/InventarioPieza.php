@@ -117,8 +117,8 @@ class InventarioPieza extends Model
         if ($this->origen === self::DESHUESO) {
             $equipo = $this->equipoOrigen;
             return $equipo
-                ? "Deshueso — {$equipo->numero_serie}"
-                : 'Deshueso';
+                ? "Computadora Despiece — {$equipo->numero_serie}"
+                : 'Pendiente Despiece';
         }
 
         $compra = $this->compraItem?->compra;

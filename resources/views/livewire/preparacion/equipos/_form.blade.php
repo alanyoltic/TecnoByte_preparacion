@@ -101,7 +101,7 @@
                         </label>
                         <input
                             type="text"
-                            wire:model.defer="form.numero_serie"
+                            wire:model="form.numero_serie"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                 bg-slate-50 dark:bg-slate-900
                                 text-sm px-3 py-2
@@ -119,7 +119,7 @@
                         </label>
                         <input
                             type="text"
-                            wire:model.defer="form.marca"
+                            wire:model="form.marca"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                 bg-slate-100 dark:bg-slate-800
                                 text-sm px-3 py-2
@@ -197,7 +197,7 @@
                         </label>
 
                         <select
-                            wire:model.defer="form.sistema_operativo"
+                            wire:model="form.sistema_operativo"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                 bg-slate-50 dark:bg-slate-900
                                 text-sm px-3 py-2
@@ -240,7 +240,7 @@
                         </label>
                         <input
                             type="text"
-                            wire:model.defer="form.area_tienda"
+                            wire:model="form.area_tienda"
                             placeholder="Ej. Sucursal Querétaro"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                 bg-slate-50 dark:bg-slate-900
@@ -295,7 +295,7 @@
                     </label>
 
                     <select
-                        wire:model.defer="form.sistema_operativo"
+                        wire:model="form.sistema_operativo"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                             bg-slate-50 dark:bg-slate-900
                             text-sm px-3 py-2
@@ -335,7 +335,7 @@
                     </label>
                     <input
                         type="text"
-                        wire:model.defer="form.area_tienda"
+                        wire:model="form.area_tienda"
                         placeholder="Ej. Sucursal Querétaro"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                             bg-slate-50 dark:bg-slate-900
@@ -370,7 +370,7 @@
                         </label>
                         <input
                             type="text"
-                            wire:model.defer="form.procesador_modelo"
+                            wire:model="form.procesador_modelo"
                             placeholder="Ej. i5-8250U"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                 bg-slate-50 dark:bg-slate-900
@@ -389,7 +389,7 @@
                         </label>
                         <input
                             type="text"
-                            wire:model.defer="form.procesador_frecuencia"
+                            wire:model="form.procesador_frecuencia"
                             placeholder="Ej. 1.90 GHz"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                 bg-slate-50 dark:bg-slate-900
@@ -408,7 +408,7 @@
                         </label>
 
                         <select
-                            wire:model.defer="form.procesador_generacion"
+                            wire:model="form.procesador_generacion"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                 bg-slate-50 dark:bg-slate-900
                                 text-sm px-3 py-2
@@ -434,7 +434,7 @@
                         </label>
 
                         <select
-                            wire:model.defer="form.procesador_nucleos"
+                            wire:model="form.procesador_nucleos"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                 bg-slate-50 dark:bg-slate-900
                                 text-sm px-3 py-2
@@ -472,7 +472,7 @@
                         </label>
 
                         <select
-                            wire:model.defer="form.ram_total"
+                            wire:model="form.ram_total"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                 bg-slate-50 dark:bg-slate-900
                                 text-sm px-3 py-2
@@ -509,7 +509,7 @@
                         </label>
 
                         <select
-                            wire:model.defer="form.ram_tipo"
+                            wire:model="form.ram_tipo"
                             class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                 bg-slate-50 dark:bg-slate-900
                                 text-sm px-3 py-2
@@ -636,7 +636,7 @@
                                     Cantidad de RAM soldada
                                 </label>
                                 <select
-                                    wire:model.defer="form.ram_cantidad_soldada"
+                                    wire:model="form.ram_cantidad_soldada"
                                     class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                         bg-slate-50 dark:bg-slate-900
                                         text-sm px-3 py-2
@@ -705,7 +705,7 @@
                 Principal (capacidad)
             </label>
             <select
-                wire:model.defer="form.almacenamiento_principal_capacidad"
+                wire:model="form.almacenamiento_principal_capacidad"
                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                     bg-slate-50 dark:bg-slate-900
                     text-sm px-3 py-2
@@ -739,7 +739,7 @@
                 Principal (tipo de disco)
             </label>
             <select
-                wire:model.defer="form.almacenamiento_principal_tipo"
+                wire:model="form.almacenamiento_principal_tipo"
                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                     bg-slate-50 dark:bg-slate-900
                     text-sm px-3 py-2
@@ -764,7 +764,7 @@
                 Secundario (capacidad)
             </label>
             <select
-                wire:model.defer="form.almacenamiento_secundario_capacidad"
+                wire:model="form.almacenamiento_secundario_capacidad"
                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                     bg-slate-50 dark:bg-slate-900
                     text-sm px-3 py-2
@@ -798,7 +798,7 @@
                 Secundario (tipo de disco)
             </label>
             <select
-                wire:model.defer="form.almacenamiento_secundario_tipo"
+                wire:model="form.almacenamiento_secundario_tipo"
                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                     bg-slate-50 dark:bg-slate-900
                     text-sm px-3 py-2
@@ -1012,7 +1012,7 @@
             <label class="block text-sm font-medium mb-1">Dedicada (VRAM)</label>
 
             <div class="grid grid-cols-3 gap-2">
-                <input type="number" min="0" wire:model.defer="form.gpu_dedicada_vram" @disabled(! $form->gpu_dedicada_tiene)
+                <input type="number" min="0" wire:model="form.gpu_dedicada_vram" @disabled(! $form->gpu_dedicada_tiene)
                     class="col-span-2 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900
                         text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
                         disabled:cursor-not-allowed disabled:opacity-60"
@@ -1294,7 +1294,7 @@
                                 Batería 1 – tipo
                             </label>
                             <select
-                                wire:model.defer="form.bateria1_tipo"
+                                wire:model="form.bateria1_tipo"
                                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                     bg-slate-50 dark:bg-slate-900
                                     text-sm px-3 py-2
@@ -1318,7 +1318,7 @@
                                 type="number"
                                 min="0"
                                 max="100"
-                                wire:model.defer="form.bateria1_salud"
+                                wire:model="form.bateria1_salud"
                                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                     bg-slate-50 dark:bg-slate-900
                                     text-sm px-3 py-2
@@ -1360,7 +1360,7 @@
                                     Batería 2 – tipo
                                 </label>
                                 <select
-                                    wire:model.defer="form.bateria2_tipo"
+                                    wire:model="form.bateria2_tipo"
                                     class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                         bg-slate-50 dark:bg-slate-900
                                         text-sm px-3 py-2
@@ -1384,7 +1384,7 @@
                                     type="number"
                                     min="0"
                                     max="100"
-                                    wire:model.defer="form.bateria2_salud"
+                                    wire:model="form.bateria2_salud"
                                     class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                         bg-slate-50 dark:bg-slate-900
                                         text-sm px-3 py-2
@@ -1816,7 +1816,7 @@
                                 <div>
                                     <label class="block text-sm font-medium mb-1 text-slate-200">Otro (opcional)</label>
                                     <input type="text"
-                                        wire:model.defer="form.monitor_detalles_esteticos_otro"
+                                        wire:model="form.monitor_detalles_esteticos_otro"
                                         class="w-full rounded-lg border border-slate-700
                                                 bg-slate-900 text-sm px-3 py-2 text-slate-100
                                                 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -1989,7 +1989,7 @@
                                 <div>
                                     <label class="block text-sm font-medium mb-1 text-slate-200">Otro (opcional)</label>
                                     <input type="text"
-                                        wire:model.defer="form.monitor_detalles_funcionamiento_otro"
+                                        wire:model="form.monitor_detalles_funcionamiento_otro"
                                         class="w-full rounded-lg border border-slate-700
                                                 bg-slate-900 text-sm px-3 py-2 text-slate-100
                                                 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -2050,7 +2050,7 @@
                         Notas generales
                     </label>
                     <textarea
-                        wire:model.defer="form.notas_generales"
+                        wire:model="form.notas_generales"
                         rows="3"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                             bg-slate-50 dark:bg-slate-900
@@ -2720,7 +2720,7 @@
                                 <div>
                                     <label class="block text-sm font-medium mb-1 text-slate-200">Otro (opcional)</label>
                                     <input type="text"
-                                        wire:model.defer="form.detalles_esteticos_otro"
+                                        wire:model="form.detalles_esteticos_otro"
                                         :disabled="hasNA()"
                                         class="w-full rounded-lg border border-slate-700
                                                 bg-slate-900 text-sm px-3 py-2 text-slate-100
@@ -2960,7 +2960,7 @@
                     <div>
                         <label class="block text-sm font-medium mb-1 text-slate-200">Otro (opcional)</label>
                         <input type="text"
-                            wire:model.defer="form.detalles_funcionamiento_otro"
+                            wire:model="form.detalles_funcionamiento_otro"
                             :disabled="hasNA()"
                             class="w-full rounded-lg border border-slate-700
                                     bg-slate-900 text-sm px-3 py-2 text-slate-100
@@ -3115,7 +3115,7 @@
                             </label>
 
                             <select
-                                wire:model.defer="form.estatus_area"
+                                wire:model="form.estatus_area"
                                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700
                                     bg-slate-50 dark:bg-slate-900
                                     text-sm px-3 py-2

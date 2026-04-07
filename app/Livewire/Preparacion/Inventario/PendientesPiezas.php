@@ -2,11 +2,10 @@
 
 namespace App\Livewire\Preparacion\Inventario;
 
+use App\Models\Proveedor;
+use App\Models\SolicitudPieza;
 use Livewire\Component;
 use Livewire\WithPagination;
-use App\Models\Equipo;
-use App\Models\EquipoPiezaFaltante;
-use App\Models\Proveedor;
 
 class PendientesPiezas extends Component
 {
@@ -14,43 +13,46 @@ class PendientesPiezas extends Component
 
     protected $paginationTheme = 'tailwind';
 
-    public $search = '';
-    public $filtroEstatus = 'todos';
-    public $filtroProveedor = 'todos';
+    public string $search = '';
+    public string $filtroEstatus = 'todos';
+    public string $filtroProveedor = 'todos';
 
-    public function updatingSearch()
+    public function mount(): void
+    {
+        abort_unless(auth()->user()?->tienePermiso('prep.inventario.ver'), 403);
+    }
+
+    public function updatingSearch(): void
     {
         $this->resetPage();
     }
 
-    public function updatingFiltroEstatus()
+    public function updatingFiltroEstatus(): void
     {
         $this->resetPage();
     }
 
-    public function updatingFiltroProveedor()
+    public function updatingFiltroProveedor(): void
     {
         $this->resetPage();
     }
 
     public function render()
     {
-        // Proveedores para el filtro
         $proveedores = Proveedor::orderBy('nombre_empresa')->get();
 
-        // Query base: solo equipos con piezas faltantes
-        $query = EquipoPiezaFaltante::query()
+        $query = SolicitudPieza::query()
             ->with([
                 'equipo.loteModelo.lote.proveedor',
-                'equipo.registradoPor',
-                'pieza',
+                'asignacionEquipo.equipo.loteModelo.lote.proveedor',
+                'catalogoPieza',
+                'solicitadoPor',
+                'respondidaPor',
+                'reasignadoA',
             ])
-            ->whereHas('equipo', function ($q) {
-                $q->where('estatus_area', 'PENDIENTE_PIEZA');
-            });
+            ->whereNotIn('estatus', [SolicitudPieza::CONFIRMADA, SolicitudPieza::CANCELADA]);
 
-        // Filtro búsqueda (serie, marca, modelo, tipo, pieza)
-        if ($this->search) {
+        if ($this->search !== '') {
             $search = '%' . $this->search . '%';
 
             $query->where(function ($q) use ($search) {
@@ -59,39 +61,53 @@ class PendientesPiezas extends Component
                         ->orWhere('marca', 'like', $search)
                         ->orWhere('modelo', 'like', $search)
                         ->orWhere('tipo_equipo', 'like', $search);
-                })->orWhereHas('pieza', function ($qp) use ($search) {
+                })->orWhereHas('asignacionEquipo.equipo', function ($qe) use ($search) {
+                    $qe->where('numero_serie', 'like', $search)
+                        ->orWhere('marca', 'like', $search)
+                        ->orWhere('modelo', 'like', $search)
+                        ->orWhere('tipo_equipo', 'like', $search);
+                })->orWhereHas('catalogoPieza', function ($qp) use ($search) {
                     $qp->where('nombre', 'like', $search);
+                })->orWhere('descripcion_libre', 'like', $search);
+            });
+        }
+
+        if ($this->filtroEstatus !== 'todos') {
+            $query->where('estatus', $this->filtroEstatus);
+        }
+
+        if ($this->filtroProveedor !== 'todos') {
+            $proveedorId = $this->filtroProveedor;
+
+            $query->where(function ($q) use ($proveedorId) {
+                $q->whereHas('equipo.loteModelo.lote', function ($qe) use ($proveedorId) {
+                    $qe->where('proveedor_id', $proveedorId);
+                })->orWhereHas('asignacionEquipo.equipo.loteModelo.lote', function ($qe) use ($proveedorId) {
+                    $qe->where('proveedor_id', $proveedorId);
                 });
             });
         }
 
-        // Filtro estatus pieza
-        if ($this->filtroEstatus !== 'todos') {
-            $query->where('estatus_pieza', $this->filtroEstatus);
-        }
-
-        // Filtro proveedor
-        if ($this->filtroProveedor !== 'todos') {
-            $proveedorId = $this->filtroProveedor;
-            $query->whereHas('equipo.loteModelo.lote', function ($q) use ($proveedorId) {
-                $q->where('proveedor_id', $proveedorId);
-            });
-        }
-
-        $piezasPendientes = $query
-            ->orderBy('id', 'desc')
+        $solicitudes = (clone $query)
+            ->orderByRaw("FIELD(estatus, 'PENDIENTE', 'PENDIENTE_COMPRA', 'COMPRADA', 'SURTIDA_INVENTARIO')")
+            ->orderBy('created_at', 'desc')
             ->paginate(15);
 
-        // Stats sencillos
+        $registrosActivos = (clone $query)->get();
+
         $stats = [
-            'total_equipos' => (clone $query)->distinct('equipo_id')->count('equipo_id'),
-            'pendiente_compra' => (clone $query)->where('estatus_pieza', 'Pendiente Compra')->count(),
-            'compradas' => (clone $query)->where('estatus_pieza', 'Comprada')->count(),
-            'instaladas' => (clone $query)->where('estatus_pieza', 'Instalada')->count(),
+            'total_equipos' => $registrosActivos
+                ->map(fn (SolicitudPieza $solicitud) => $solicitud->equipo_relacionado?->id)
+                ->filter()
+                ->unique()
+                ->count(),
+            'pendiente_compra' => $registrosActivos->where('estatus', SolicitudPieza::PENDIENTE_COMPRA)->count(),
+            'compradas' => $registrosActivos->where('estatus', SolicitudPieza::COMPRADA)->count(),
+            'surtidas' => $registrosActivos->where('estatus', SolicitudPieza::SURTIDA_INVENTARIO)->count(),
         ];
 
         return view('livewire.preparacion.inventario.pendientes-piezas', [
-            'piezasPendientes' => $piezasPendientes,
+            'piezasPendientes' => $solicitudes,
             'stats' => $stats,
             'proveedores' => $proveedores,
         ]);

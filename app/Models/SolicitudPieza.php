@@ -179,6 +179,25 @@ class SolicitudPieza extends Model
         return $this->estatus === self::PENDIENTE;
     }
 
+    public function puedeSerSurtidaDesdeInventario(): bool
+    {
+        return in_array($this->estatus, [
+            self::PENDIENTE,
+            self::PENDIENTE_COMPRA,
+            self::COMPRADA,
+        ], true);
+    }
+
+    public function puedeCancelarse(): bool
+    {
+        return in_array($this->estatus, [
+            self::PENDIENTE,
+            self::PENDIENTE_COMPRA,
+            self::COMPRADA,
+            self::SURTIDA_INVENTARIO,
+        ], true);
+    }
+
     /**
      * Verificar si puede ser confirmada por técnico
      */
@@ -228,6 +247,16 @@ class SolicitudPieza extends Model
         ]);
     }
 
+    public function marcarComoComprada(int $gerenteId, ?string $notas = null): void
+    {
+        $this->update([
+            'estatus' => self::COMPRADA,
+            'respondida_por_id' => $gerenteId,
+            'respondida_en' => now(),
+            'notas_respuesta' => $notas,
+        ]);
+    }
+
     /**
      * Cancelar solicitud
      */
@@ -268,7 +297,7 @@ class SolicitudPieza extends Model
             ]);
 
             if ($this->inventario_pieza_id) {
-                $pieza = InventarioPieza::find($this->inventario_pieza_id);
+                $pieza = InventarioPieza::lockForUpdate()->find($this->inventario_pieza_id);
                 if ($pieza && $pieza->cantidad_reservada > 0) {
                     $pieza->decrement('cantidad_reservada');
 
@@ -285,6 +314,50 @@ class SolicitudPieza extends Model
 
                     $pieza->actualizarEstatus();
                 }
+            }
+        });
+    }
+
+    public function finalizarInstalacionPorTecnico(int $tecnicoId, bool $funciono, ?string $notas = null): void
+    {
+        DB::transaction(function () use ($tecnicoId, $funciono, $notas) {
+            if (!$this->iniciada_instalacion_en) {
+                $this->update(['iniciada_instalacion_en' => now()]);
+            }
+
+            $this->confirmarInstalacion($funciono, $notas);
+
+            $equipo = $this->equipo ?? $this->asignacionEquipo?->equipo;
+
+            if ($equipo && $funciono) {
+                $equipo->update([
+                    'estatus_ciclo' => 'CALIDAD',
+                    'estatus_area'  => 'LISTO',
+                ]);
+            } elseif ($equipo && !$funciono) {
+                self::create([
+                    'asignacion_equipo_id' => $this->asignacion_equipo_id,
+                    'equipo_id'            => $this->equipo_id,
+                    'solicitado_por_id'    => $tecnicoId,
+                    'catalogo_pieza_id'    => $this->catalogo_pieza_id,
+                    'descripcion_libre'    => $this->descripcion_libre ?: 'Reintento - pieza anterior defectuosa',
+                    'estatus'              => self::PENDIENTE,
+                ]);
+            }
+
+            if ($funciono && $this->asignacion_equipo_id) {
+                $clasificacionId = $equipo?->clasificacion_puntos_id;
+                $puntosBase = $clasificacionId
+                    ? (ClasificacionPuntos::find($clasificacionId)?->puntos_base ?? 1.0)
+                    : 1.0;
+
+                PuntoTecnico::registrar(
+                    tecnicoId: $tecnicoId,
+                    asignacionEquipoId: $this->asignacion_equipo_id,
+                    rol: PuntoTecnico::TERMINO_PIEZA,
+                    puntosBase: (float) $puntosBase,
+                    clasificacionId: $clasificacionId,
+                );
             }
         });
     }

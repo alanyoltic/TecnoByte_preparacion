@@ -8,8 +8,9 @@ use Livewire\Attributes\Computed;
 use App\Livewire\Preparacion\Forms\EquipoForm;
 use App\Models\{
     Asignacion, AsignacionEquipo, Equipo,
-    SolicitudPieza, CatalogoPieza, PuntoTecnico,
-    EquipoBateria, EquipoMonitor, EquipoGpu
+    SolicitudPieza, PuntoTecnico,
+    EquipoBateria, EquipoMonitor, EquipoGpu,
+    CatalogoPieza
 };
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -37,10 +38,13 @@ class MiTrabajo extends Component
     public string $errorSerie = '';
 
     // ── Fase 3: terminar ──────────────────────────────────────────────────
-    public string $camino              = 'COMPLETADO';
-    public string $notasTerminar       = '';
-    public ?int   $catalogoPiezaId     = null;
-    public string $descripcionPiezaLibre = '';
+    public string $camino                = 'COMPLETADO';
+    public string $notasTerminar         = '';
+    public ?int   $catalogoPiezaId       = null;  // pieza seleccionada del catálogo
+    public int    $cantidadPieza         = 1;     // cantidad que necesita
+    public string $busquedaPieza         = '';    // búsqueda en tiempo real
+    public string $filtroCategoriaPieza  = '';    // filtro por categoría
+    public string $descripcionPiezaLibre = '';    // notas / especificación adicional
 
     // ── Error general ─────────────────────────────────────────────────────
     public string $error = '';
@@ -178,6 +182,31 @@ class MiTrabajo extends Component
     }
 
     #[Computed]
+    public function catalogoPiezas()
+    {
+        return CatalogoPieza::activos()
+            ->when($this->filtroCategoriaPieza, fn($q) =>
+                $q->where('categoria', $this->filtroCategoriaPieza)
+            )
+            ->when($this->busquedaPieza, fn($q) =>
+                $q->where('nombre', 'like', '%' . $this->busquedaPieza . '%')
+            )
+            ->orderBy('categoria')
+            ->orderBy('nombre')
+            ->get(['id', 'nombre', 'categoria', 'especificacion']);
+    }
+
+    #[Computed]
+    public function categoriasDisponibles()
+    {
+        return CatalogoPieza::activos()
+            ->select('categoria')
+            ->distinct()
+            ->orderBy('categoria')
+            ->pluck('categoria');
+    }
+
+    #[Computed]
     public function equipoActual(): ?AsignacionEquipo
     {
         if (!$this->asignacionEquipoId) return null;
@@ -282,6 +311,9 @@ class MiTrabajo extends Component
         $this->camino                = 'COMPLETADO';
         $this->notasTerminar         = '';
         $this->catalogoPiezaId       = null;
+        $this->cantidadPieza         = 1;
+        $this->busquedaPieza         = '';
+        $this->filtroCategoriaPieza  = '';
         $this->descripcionPiezaLibre = '';
         $this->error                 = '';
         $this->vista                 = 'terminar';
@@ -634,7 +666,7 @@ class MiTrabajo extends Component
 
         if ($this->camino === 'PIEZA_PENDIENTE') {
             if (!$this->catalogoPiezaId && empty(trim($this->descripcionPiezaLibre))) {
-                $this->error = 'Debes especificar qué pieza falta.';
+                $this->error = 'Selecciona o describe la pieza que falta.';
                 return;
             }
         }
@@ -660,7 +692,7 @@ class MiTrabajo extends Component
                 'equipo_id'            => $ae->equipo_id,
                 'solicitado_por_id'    => Auth::id(),
                 'catalogo_pieza_id'    => $this->catalogoPiezaId ?: null,
-                'descripcion_libre'    => $this->descripcionPiezaLibre ?: null,
+                'descripcion_libre'    => trim($this->descripcionPiezaLibre) ?: null,
                 'estatus'              => SolicitudPieza::PENDIENTE,
             ]);
         }
@@ -979,8 +1011,9 @@ class MiTrabajo extends Component
     public function render()
     {
         return view('livewire.preparacion.equipos.mi-trabajo', [
-            'catalogoPiezas'       => CatalogoPieza::activos()->orderBy('categoria')->orderBy('nombre')->get(),
             'tipo_equipo'          => $this->form->tipo_equipo ?? null,
+            'catalogoPiezas'       => $this->catalogoPiezas,
+            'categoriasDisponibles'=> $this->categoriasDisponibles,
             'detallesFuncionamientoCatalogo' => [
                 'CAMARA NO FUNCIONA','NO FUNCIONA ENTRADA DE ETHERNET',
                 'NO FUNCIONA 1 PUERTO USB','NO FUNCIONAN 2 PUERTOS USB',

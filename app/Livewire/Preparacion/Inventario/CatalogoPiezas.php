@@ -13,6 +13,7 @@ use App\Models\CompraInventarioItem;
 use App\Models\Proveedor;
 use App\Models\Lote;
 use App\Models\Equipo;
+use App\Models\Almacen;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -45,22 +46,49 @@ class CatalogoPiezas extends Component
     public string $filtroEstatus     = '';
 
     // ── Form compra ───────────────────────────────────────────────────────
-    public ?int   $compraProveedorId = null;
-    public string $compraFecha       = '';
-    public string $compraFolio       = '';
-    public ?int   $compraLoteId      = null;
-    public string $compraNotas       = '';
-    public array  $compraItems       = [];
+    public ?int   $compraProveedorId    = null;
+    public string $compraFecha          = '';
+    public string $compraFechaRecibido  = ''; // puede ser igual a compraFecha
+    public string $compraFolio          = '';
+    public ?int   $compraLoteId         = null;
+    public string $compraNotas          = '';
+    public array  $compraItems          = [];
+    public ?int   $compraAlmacenId      = null;
 
     // ── Form deshueso ─────────────────────────────────────────────────────
-    public ?int   $deshuesoEquipoId      = null;
+    public ?int   $deshuesoEquipoId       = null;
     public string $deshuesoEquipoBusqueda = '';
-    public array  $deshuesoItems         = [];
+    public array  $deshuesoItems          = []; // piezas extraídas (nombre libre + categoría)
+    public array  $deshuesoRecuperar      = []; // IDs de InventarioPieza a recuperar del equipo
+    public int    $deshuesoAlmacenId      = 7;  // almacén destino (default: Piezas Pendientes)
 
     // ── Modal eliminar ────────────────────────────────────────────────────
     public bool   $modalEliminar = false;
     public ?int   $eliminandoId  = null;
     public string $tipoEliminar  = '';
+
+    // ── Modal proveedor ───────────────────────────────────────────────────
+    public bool   $modalProveedor       = false;
+    public string $proveedorNombre      = '';
+    public string $proveedorAbreviacion = '';
+    public string $proveedorEmail       = '';
+    public string $proveedorTelefono    = '';
+
+    // ── Modal lote ────────────────────────────────────────────────────────
+    public bool   $modalLote        = false;
+    public string $loteNombre       = '';
+    public string $loteFechaLlegada = '';
+
+    // ── Restock (agregar stock a pieza existente) ─────────────────────────
+    public ?int   $restockPiezaId           = null;
+    public string $restockOrigen            = ''; // '' | 'compra' | 'deshueso'
+    public ?int   $restockCompraProveedorId = null;
+    public string $restockCompraFecha       = '';
+    public string $restockCompraFolio       = '';
+    public ?int   $restockAlmacenId         = null;
+    public int    $restockCantidad          = 1;
+    public string $restockPrecio            = '';
+    public string $restockNotas             = '';
 
     // ── Error ─────────────────────────────────────────────────────────────
     public string $error = '';
@@ -70,6 +98,9 @@ class CatalogoPiezas extends Component
         'Teclado', 'Carcasa', 'Palmrest', 'Bisagra',
         'Cargador', 'Placa Base', 'Ventilador', 'Otro',
     ];
+
+    // Sólo estos almacenes son válidos para recibir piezas
+    const ALMACENES_PIEZAS = ['PREPARACION', 'PIEZAS_PEND'];
 
     public function mount(): void
     {
@@ -147,6 +178,33 @@ class CatalogoPiezas extends Component
             ->get(['id', 'numero_serie', 'marca', 'modelo']);
     }
 
+    /** Piezas del inventario que están actualmente aplicadas al equipo seleccionado. */
+    #[Computed]
+    public function piezasEquipoOrigen()
+    {
+        if (!$this->deshuesoEquipoId) return collect();
+        return InventarioPieza::with(['catalogoPieza', 'almacen'])
+            ->where('equipo_destino_id', $this->deshuesoEquipoId)
+            ->where('estatus', '!=', InventarioPieza::DADA_DE_BAJA)
+            ->get();
+    }
+
+    #[Computed]
+    public function almacenes()
+    {
+        return \App\Models\Almacen::whereIn('clave', self::ALMACENES_PIEZAS)
+            ->where('activo', true)
+            ->orderByRaw("FIELD(clave, 'PIEZAS_PEND', 'PREPARACION')")
+            ->get(['id', 'nombre']);
+    }
+
+    #[Computed]
+    public function restockPieza(): ?CatalogoPieza
+    {
+        if (!$this->restockPiezaId) return null;
+        return CatalogoPieza::find($this->restockPiezaId);
+    }
+
     #[Computed]
     public function proveedores()
     {
@@ -156,7 +214,7 @@ class CatalogoPiezas extends Component
     #[Computed]
     public function lotes()
     {
-        return Lote::orderByDesc('id')->limit(30)->get(['id', 'nombre']);
+        return Lote::orderByDesc('id')->limit(30)->get(['id', 'nombre_lote']);
     }
 
     #[Computed]
@@ -203,43 +261,57 @@ class CatalogoPiezas extends Component
         unset($this->piezaActual, $this->inventarioItems);
     }
 
-    public function irACompra(?int $piezaPreId = null): void
+    public function irACompra(): void
     {
         $this->resetFormCompra();
-        if ($piezaPreId) {
-            $this->compraItems[] = [
-                'catalogo_pieza_id' => $piezaPreId,
-                'cantidad'          => 1,
-                'precio_unitario'   => '',
-                'notas'             => '',
-            ];
-        } else {
-            $this->compraItems[] = $this->itemCompraVacio();
-        }
+        $this->compraItems[] = $this->itemCompraVacio();
         $this->vista = 'compra';
     }
 
-    public function irADeshueso(?int $piezaPreId = null): void
+    public function irADeshueso(): void
     {
         $this->resetFormDeshueso();
-        $this->deshuesoItems[] = [
-            'catalogo_pieza_id' => $piezaPreId ?? '',
-            'cantidad'          => 1,
-            'numero_serie'      => '',
-            'notas'             => '',
-        ];
+        $this->deshuesoItems[] = ['nombre' => '', 'categoria' => '', 'catalogo_pieza_id_sel' => null, 'cantidad' => 1, 'notas' => ''];
         $this->vista = 'deshueso';
+    }
+
+    public function iniciarRestock(int $piezaId): void
+    {
+        $this->restockPiezaId           = $piezaId;
+        $this->restockOrigen            = '';
+        $this->restockCompraProveedorId = null;
+        $this->restockCompraFecha       = now()->toDateString();
+        $this->restockCompraFolio       = '';
+        $this->restockAlmacenId         = 7; // Piezas Pendientes por defecto
+        $this->restockCantidad          = 1;
+        $this->restockPrecio            = '';
+        $this->restockNotas             = '';
+        $this->deshuesoEquipoId         = null;
+        $this->deshuesoEquipoBusqueda   = '';
+        $this->error                    = '';
+        $this->resetErrorBag();
+        $this->vista = 'restock';
+        unset($this->restockPieza, $this->equiposBusqueda, $this->piezasEquipoOrigen);
+    }
+
+    public function seleccionarRestockOrigen(string $origen): void
+    {
+        $this->restockOrigen = in_array($origen, ['compra', 'deshueso']) ? $origen : '';
+        $this->error         = '';
+        $this->resetErrorBag();
     }
 
     public function volverALista(): void
     {
         $this->vista             = 'lista';
         $this->piezaInventarioId = null;
+        $this->restockPiezaId    = null;
+        $this->restockOrigen     = '';
         $this->error             = '';
         $this->resetFormCatalogo();
         $this->resetFormCompra();
         $this->resetFormDeshueso();
-        unset($this->piezas);
+        unset($this->piezas, $this->restockPieza);
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -256,6 +328,17 @@ class CatalogoPiezas extends Component
             'nombre.required'    => 'El nombre es obligatorio.',
             'categoria.required' => 'Selecciona una categoría.',
         ]);
+
+        // Verificar duplicado exacto (nombre + categoría, sin importar mayúsculas)
+        $existe = CatalogoPieza::whereRaw('LOWER(TRIM(nombre)) = ?', [strtolower(trim($this->nombre))])
+            ->where('categoria', $this->categoria)
+            ->when($this->editandoId, fn($q) => $q->where('id', '!=', $this->editandoId))
+            ->exists();
+
+        if ($existe) {
+            $this->addError('nombre', 'Ya existe una pieza con el mismo nombre en esa categoría.');
+            return;
+        }
 
         $data = [
             'nombre'               => trim($this->nombre),
@@ -327,6 +410,218 @@ class CatalogoPiezas extends Component
         $this->tipoEliminar  = '';
     }
 
+    // ══════════════════════════════════════════════════════════════════════
+    // PROVEEDORES (modal inline)
+    // ══════════════════════════════════════════════════════════════════════
+
+    public function abrirModalProveedor(): void
+    {
+        $this->proveedorNombre      = '';
+        $this->proveedorAbreviacion = '';
+        $this->proveedorEmail       = '';
+        $this->proveedorTelefono    = '';
+        $this->resetErrorBag(['proveedorNombre', 'proveedorEmail', 'proveedorTelefono']);
+        $this->modalProveedor = true;
+    }
+
+    public function cerrarModalProveedor(): void
+    {
+        $this->modalProveedor = false;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // MODAL LOTE (crear lote de compra inline)
+    // ══════════════════════════════════════════════════════════════════════
+
+    public function abrirModalLote(): void
+    {
+        if (!$this->compraProveedorId) {
+            $this->addError('compraProveedorId', 'Selecciona primero un proveedor para crear el lote.');
+            return;
+        }
+        $this->loteNombre       = '';
+        $this->loteFechaLlegada = now()->toDateString();
+        $this->resetErrorBag(['loteNombre', 'loteFechaLlegada']);
+        $this->modalLote = true;
+    }
+
+    public function cerrarModalLote(): void
+    {
+        $this->modalLote = false;
+    }
+
+    public function guardarLote(): void
+    {
+        $this->validateOnly('loteNombre', [
+            'loteNombre' => 'required|string|max:255',
+        ], [
+            'loteNombre.required' => 'El nombre del lote es obligatorio.',
+        ]);
+
+        $lote = Lote::create([
+            'nombre_lote'   => trim($this->loteNombre),
+            'proveedor_id'  => $this->compraProveedorId,
+            'fecha_llegada' => $this->loteFechaLlegada ?: null,
+        ]);
+
+        $this->compraLoteId = $lote->id;
+        unset($this->lotes);
+        $this->modalLote = false;
+        $this->dispatch('toast', ['type' => 'success', 'message' => "Lote \"{$lote->nombre_lote}\" creado y seleccionado."]);
+    }
+
+    public function guardarProveedor(): void
+    {
+        $this->validate([
+            'proveedorNombre'      => 'required|string|max:200',
+            'proveedorAbreviacion' => 'required|string|max:20',
+            'proveedorEmail'       => 'nullable|email|max:200',
+        ], [
+            'proveedorNombre.required'      => 'El nombre de la empresa es obligatorio.',
+            'proveedorAbreviacion.required' => 'La abreviación es obligatoria.',
+            'proveedorAbreviacion.max'      => 'Máximo 20 caracteres.',
+            'proveedorEmail.email'          => 'El correo no tiene un formato válido.',
+        ]);
+
+        // Verificar duplicado de nombre
+        if (Proveedor::whereRaw('LOWER(TRIM(nombre_empresa)) = ?', [strtolower(trim($this->proveedorNombre))])->exists()) {
+            $this->addError('proveedorNombre', 'Ya existe un proveedor con ese nombre.');
+            return;
+        }
+
+        // Verificar duplicado de abreviación
+        if (Proveedor::whereRaw('LOWER(TRIM(abreviacion)) = ?', [strtolower(trim($this->proveedorAbreviacion))])->exists()) {
+            $this->addError('proveedorAbreviacion', 'Ya existe un proveedor con esa abreviación.');
+            return;
+        }
+
+        $proveedor = Proveedor::create([
+            'nombre_empresa'    => trim($this->proveedorNombre),
+            'abreviacion'       => trim($this->proveedorAbreviacion),
+            'email_contacto'    => trim($this->proveedorEmail) ?: null,
+            'telefono_contacto' => trim($this->proveedorTelefono) ?: null,
+        ]);
+
+        // Auto-seleccionar el nuevo proveedor en el form de compra
+        $this->compraProveedorId = $proveedor->id;
+
+        unset($this->proveedores);
+        $this->modalProveedor = false;
+        $this->dispatch('toast', ['type' => 'success', 'message' => "Proveedor \"{$proveedor->nombre_empresa}\" creado y seleccionado."]);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // RESTOCK
+    // ══════════════════════════════════════════════════════════════════════
+
+    public function guardarRestock(): void
+    {
+        $this->error = '';
+
+        if (!$this->restockOrigen) {
+            $this->error = 'Selecciona el origen del restock (compra o despiece).';
+            return;
+        }
+
+        $pieza = CatalogoPieza::findOrFail($this->restockPiezaId);
+
+        if ($this->restockOrigen === 'compra') {
+            $this->validate([
+                'restockCompraProveedorId' => 'required|exists:proveedores,id',
+                'restockCompraFecha'       => 'required|date',
+                'restockAlmacenId'         => 'required|exists:almacenes,id',
+                'restockCantidad'          => 'required|integer|min:1',
+                'restockPrecio'            => 'nullable|numeric|min:0',
+            ], [
+                'restockCompraProveedorId.required' => 'Selecciona un proveedor.',
+                'restockCompraFecha.required'       => 'La fecha es obligatoria.',
+                'restockAlmacenId.required'         => 'Selecciona el almacén destino.',
+                'restockCantidad.min'               => 'La cantidad mínima es 1.',
+            ]);
+
+            try {
+                DB::transaction(function () use ($pieza) {
+                    $precio = is_numeric($this->restockPrecio) ? (float) $this->restockPrecio : null;
+
+                    $compra = CompraInventario::create([
+                        'proveedor_id'      => $this->restockCompraProveedorId,
+                        'fecha_compra'      => $this->restockCompraFecha,
+                        'folio'             => trim($this->restockCompraFolio) ?: null,
+                        'notas'             => trim($this->restockNotas) ?: null,
+                        'registrado_por_id' => Auth::id(),
+                    ]);
+
+                    $compraItem = CompraInventarioItem::create([
+                        'compra_inventario_id' => $compra->id,
+                        'catalogo_pieza_id'    => $pieza->id,
+                        'cantidad'             => $this->restockCantidad,
+                        'precio_unitario'      => $precio,
+                        'almacen_id'           => $this->restockAlmacenId,
+                        'notas'                => trim($this->restockNotas) ?: null,
+                    ]);
+
+                    InventarioPieza::create([
+                        'catalogo_pieza_id'   => $pieza->id,
+                        'origen'              => InventarioPieza::COMPRA,
+                        'compra_item_id'      => $compraItem->id,
+                        'almacen_id'          => $this->restockAlmacenId,
+                        'costo'               => $precio,
+                        'registrado_por_id'   => Auth::id(),
+                        'estatus'             => InventarioPieza::DISPONIBLE,
+                        'fecha_ingreso'       => $this->restockCompraFecha,
+                        'notas'               => trim($this->restockNotas) ?: null,
+                        'cantidad_inicial'    => $this->restockCantidad,
+                        'cantidad_disponible' => $this->restockCantidad,
+                        'cantidad_reservada'  => 0,
+                        'cantidad_usada'      => 0,
+                        'cantidad_baja'       => 0,
+                    ]);
+                });
+
+                $this->dispatch('toast', ['type' => 'success', 'message' => "Stock agregado: {$this->restockCantidad} × {$pieza->nombre}."]);
+                $this->volverALista();
+            } catch (\Exception $e) {
+                $this->error = 'Error al guardar: ' . $e->getMessage();
+            }
+
+        } elseif ($this->restockOrigen === 'deshueso') {
+            $this->validate([
+                'deshuesoEquipoId' => 'required|exists:equipos,id',
+                'restockAlmacenId' => 'required|exists:almacenes,id',
+                'restockCantidad'  => 'required|integer|min:1',
+            ], [
+                'deshuesoEquipoId.required' => 'Selecciona el equipo origen.',
+                'restockAlmacenId.required' => 'Selecciona el almacén destino.',
+                'restockCantidad.min'       => 'La cantidad mínima es 1.',
+            ]);
+
+            try {
+                DB::transaction(function () use ($pieza) {
+                    InventarioPieza::create([
+                        'catalogo_pieza_id'   => $pieza->id,
+                        'origen'              => InventarioPieza::DESHUESO,
+                        'equipo_origen_id'    => $this->deshuesoEquipoId,
+                        'almacen_id'          => $this->restockAlmacenId,
+                        'registrado_por_id'   => Auth::id(),
+                        'estatus'             => InventarioPieza::DISPONIBLE,
+                        'fecha_ingreso'       => now()->toDateString(),
+                        'notas'               => trim($this->restockNotas) ?: null,
+                        'cantidad_inicial'    => $this->restockCantidad,
+                        'cantidad_disponible' => $this->restockCantidad,
+                        'cantidad_reservada'  => 0,
+                        'cantidad_usada'      => 0,
+                        'cantidad_baja'       => 0,
+                    ]);
+                });
+
+                $this->dispatch('toast', ['type' => 'success', 'message' => "Stock agregado: {$this->restockCantidad} × {$pieza->nombre}."]);
+                $this->volverALista();
+            } catch (\Exception $e) {
+                $this->error = 'Error al guardar: ' . $e->getMessage();
+            }
+        }
+    }
+
     public function cambiarEstatusInventario(int $id, string $estatus): void
     {
         $item = InventarioPieza::findOrFail($id);
@@ -367,23 +662,30 @@ class CatalogoPiezas extends Component
     {
         $this->error = '';
         $this->validate([
-            'compraProveedorId'                 => 'required|exists:proveedores,id',
-            'compraFecha'                       => 'required|date',
-            'compraFolio'                       => 'nullable|string|max:100',
-            'compraItems'                       => 'required|array|min:1',
-            'compraItems.*.catalogo_pieza_id'   => 'required|exists:catalogo_piezas,id',
-            'compraItems.*.cantidad'            => 'required|integer|min:1',
-            'compraItems.*.precio_unitario'     => 'nullable|numeric|min:0',
+            'compraProveedorId'              => 'required|exists:proveedores,id',
+            'compraFecha'                    => 'required|date',
+            'compraFechaRecibido'            => 'nullable|date',
+            'compraAlmacenId'                => 'required|exists:almacenes,id',
+            'compraFolio'                    => 'nullable|string|max:100',
+            'compraItems'                    => 'required|array|min:1',
+            'compraItems.*.nombre'           => 'required|string|max:255',
+            'compraItems.*.categoria'        => 'required|string',
+            'compraItems.*.cantidad'         => 'required|integer|min:1',
+            'compraItems.*.precio_unitario'  => 'nullable|numeric|min:0',
         ], [
-            'compraProveedorId.required'              => 'Selecciona un proveedor.',
-            'compraFecha.required'                    => 'La fecha es obligatoria.',
-            'compraItems.min'                         => 'Agrega al menos una pieza.',
-            'compraItems.*.catalogo_pieza_id.required'=> 'Selecciona el tipo de pieza.',
-            'compraItems.*.cantidad.min'              => 'La cantidad mínima es 1.',
+            'compraProveedorId.required'         => 'Selecciona un proveedor.',
+            'compraFecha.required'               => 'La fecha de compra es obligatoria.',
+            'compraAlmacenId.required'           => 'Selecciona el almacén destino.',
+            'compraItems.min'                    => 'Agrega al menos una pieza.',
+            'compraItems.*.nombre.required'      => 'Escribe el nombre de la pieza.',
+            'compraItems.*.categoria.required'   => 'Selecciona la categoría.',
+            'compraItems.*.cantidad.min'         => 'La cantidad mínima es 1.',
         ]);
 
         try {
             DB::transaction(function () {
+                $fechaRecibido = $this->compraFechaRecibido ?: $this->compraFecha;
+
                 $compra = CompraInventario::create([
                     'proveedor_id'      => $this->compraProveedorId,
                     'lote_id'           => $this->compraLoteId ?: null,
@@ -394,27 +696,28 @@ class CatalogoPiezas extends Component
                 ]);
 
                 foreach ($this->compraItems as $item) {
-                    $precio   = is_numeric($item['precio_unitario'] ?? '') ? (float) $item['precio_unitario'] : null;
-                    $cantidad = (int) $item['cantidad'];
+                    $precio    = is_numeric($item['precio_unitario'] ?? '') ? (float) $item['precio_unitario'] : null;
+                    $cantidad  = (int) $item['cantidad'];
+                    $catalogo  = $this->encontrarOCrearCatalogo($item['nombre'], $item['categoria'], $item['catalogo_pieza_id_sel'] ?? null);
 
                     $compraItem = CompraInventarioItem::create([
                         'compra_inventario_id' => $compra->id,
-                        'catalogo_pieza_id'    => $item['catalogo_pieza_id'],
+                        'catalogo_pieza_id'    => $catalogo->id,
                         'cantidad'             => $cantidad,
                         'precio_unitario'      => $precio,
-                        'almacen_id'           => 7,
+                        'almacen_id'           => $this->compraAlmacenId,
                         'notas'                => trim($item['notas'] ?? '') ?: null,
                     ]);
 
                     InventarioPieza::create([
-                        'catalogo_pieza_id'   => $item['catalogo_pieza_id'],
+                        'catalogo_pieza_id'   => $catalogo->id,
                         'origen'              => InventarioPieza::COMPRA,
                         'compra_item_id'      => $compraItem->id,
-                        'almacen_id'          => 7,
+                        'almacen_id'          => $this->compraAlmacenId,
                         'costo'               => $precio,
                         'registrado_por_id'   => Auth::id(),
                         'estatus'             => InventarioPieza::DISPONIBLE,
-                        'fecha_ingreso'       => $this->compraFecha,
+                        'fecha_ingreso'       => $fechaRecibido,
                         'notas'               => trim($item['notas'] ?? '') ?: null,
                         'cantidad_inicial'    => $cantidad,
                         'cantidad_disponible' => $cantidad,
@@ -425,8 +728,7 @@ class CatalogoPiezas extends Component
                 }
             });
 
-            $total = count($this->compraItems);
-            $this->dispatch('toast', ['type' => 'success', 'message' => "Compra registrada ({$total} tipo(s) de pieza)."]);
+            $this->dispatch('toast', ['type' => 'success', 'message' => 'Compra registrada correctamente.']);
             $this->volverALista();
 
         } catch (\Exception $e) {
@@ -442,19 +744,21 @@ class CatalogoPiezas extends Component
     {
         $equipo = Equipo::find($id);
         if ($equipo) {
-            $this->deshuesoEquipoId      = $id;
+            $this->deshuesoEquipoId       = $id;
             $this->deshuesoEquipoBusqueda = "{$equipo->numero_serie} — {$equipo->marca} {$equipo->modelo}";
+            $this->deshuesoRecuperar      = []; // reset selección de recuperación
         }
-        unset($this->equiposBusqueda);
+        unset($this->equiposBusqueda, $this->piezasEquipoOrigen);
     }
 
     public function agregarItemDeshueso(): void
     {
         $this->deshuesoItems[] = [
-            'catalogo_pieza_id' => '',
-            'cantidad'          => 1,
-            'numero_serie'      => '',
-            'notas'             => '',
+            'nombre'               => '',
+            'categoria'            => '',
+            'catalogo_pieza_id_sel'=> null,
+            'cantidad'             => 1,
+            'notas'                => '',
         ];
     }
 
@@ -473,33 +777,63 @@ class CatalogoPiezas extends Component
             return;
         }
 
-        $this->validate([
-            'deshuesoItems'                       => 'required|array|min:1',
-            'deshuesoItems.*.catalogo_pieza_id'   => 'required|exists:catalogo_piezas,id',
-            'deshuesoItems.*.cantidad'            => 'required|integer|min:1',
-        ], [
-            'deshuesoItems.min'                         => 'Agrega al menos una pieza.',
-            'deshuesoItems.*.catalogo_pieza_id.required'=> 'Selecciona el tipo de pieza.',
-            'deshuesoItems.*.cantidad.min'              => 'La cantidad mínima es 1.',
-        ]);
+        $tieneRecuperacion = !empty($this->deshuesoRecuperar);
+        $itemsConNombre    = array_values(array_filter(
+            $this->deshuesoItems,
+            fn($i) => !empty(trim($i['nombre'] ?? ''))
+        ));
+
+        if (!$tieneRecuperacion && empty($itemsConNombre)) {
+            $this->error = 'Agrega al menos una pieza o selecciona piezas a recuperar.';
+            return;
+        }
+
+        // Validar items con nombre
+        foreach ($itemsConNombre as $idx => $item) {
+            if (empty(trim($item['categoria'] ?? ''))) {
+                $this->error = 'Selecciona la categoría de la pieza "' . $item['nombre'] . '".';
+                return;
+            }
+            if ((int)($item['cantidad'] ?? 0) < 1) {
+                $this->error = 'La cantidad de "' . $item['nombre'] . '" debe ser al menos 1.';
+                return;
+            }
+        }
 
         try {
-            DB::transaction(function () {
-                foreach ($this->deshuesoItems as $item) {
-                    $pieza    = CatalogoPieza::findOrFail($item['catalogo_pieza_id']);
-                    $cantidad = (int) $item['cantidad'];
-                    $serie    = trim($item['numero_serie'] ?? '') ?: null;
+            DB::transaction(function () use ($itemsConNombre) {
+                $recuperadas = 0;
+                $nuevas      = 0;
 
-                    if ($pieza->requiere_serie && $cantidad > 1) {
-                        throw new \Exception("La pieza \"{$pieza->nombre}\" requiere serie — agrega 1 a la vez.");
+                // ── Flujo A: recuperar piezas ya registradas en el equipo ─
+                if (!empty($this->deshuesoRecuperar)) {
+                    $piezas = InventarioPieza::lockForUpdate()
+                        ->whereIn('id', $this->deshuesoRecuperar)
+                        ->where('equipo_destino_id', $this->deshuesoEquipoId)
+                        ->get();
+
+                    foreach ($piezas as $p) {
+                        $p->update([
+                            'equipo_destino_id'   => null,
+                            'estatus'             => InventarioPieza::DISPONIBLE,
+                            'cantidad_disponible' => $p->cantidad_disponible + 1,
+                            'cantidad_usada'      => max(0, $p->cantidad_usada - 1),
+                            'almacen_id'          => $this->deshuesoAlmacenId,
+                        ]);
+                        $recuperadas++;
                     }
+                }
+
+                // ── Flujo B: registrar piezas físicas extraídas ───────────
+                foreach ($itemsConNombre as $item) {
+                    $cantidad = (int) $item['cantidad'];
+                    $catalogo = $this->encontrarOCrearCatalogo($item['nombre'], $item['categoria'], $item['catalogo_pieza_id_sel'] ?? null);
 
                     InventarioPieza::create([
-                        'catalogo_pieza_id'   => $item['catalogo_pieza_id'],
+                        'catalogo_pieza_id'   => $catalogo->id,
                         'origen'              => InventarioPieza::DESHUESO,
                         'equipo_origen_id'    => $this->deshuesoEquipoId,
-                        'almacen_id'          => 7,
-                        'numero_serie'        => $pieza->requiere_serie ? $serie : null,
+                        'almacen_id'          => $this->deshuesoAlmacenId,
                         'registrado_por_id'   => Auth::id(),
                         'estatus'             => InventarioPieza::DISPONIBLE,
                         'fecha_ingreso'       => now()->toDateString(),
@@ -510,11 +844,16 @@ class CatalogoPiezas extends Component
                         'cantidad_usada'      => 0,
                         'cantidad_baja'       => 0,
                     ]);
+                    $nuevas++;
                 }
+
+                $partes = [];
+                if ($recuperadas > 0) $partes[] = "{$recuperadas} pieza(s) recuperada(s)";
+                if ($nuevas > 0)      $partes[] = "{$nuevas} pieza(s) registrada(s) del deshueso";
+                $this->_deshuesoMsg = implode(' y ', $partes) . '.';
             });
 
-            $total = count($this->deshuesoItems);
-            $this->dispatch('toast', ['type' => 'success', 'message' => "{$total} pieza(s) de deshueso registrada(s)."]);
+            $this->dispatch('toast', ['type' => 'success', 'message' => $this->_deshuesoMsg]);
             $this->volverALista();
 
         } catch (\Exception $e) {
@@ -522,13 +861,45 @@ class CatalogoPiezas extends Component
         }
     }
 
+    private string $_deshuesoMsg = '';
+
     // ══════════════════════════════════════════════════════════════════════
     // HELPERS PRIVADOS
     // ══════════════════════════════════════════════════════════════════════
 
     private function itemCompraVacio(): array
     {
-        return ['catalogo_pieza_id' => '', 'cantidad' => 1, 'precio_unitario' => '', 'notas' => ''];
+        // catalogo_pieza_id_sel: se rellena al elegir sugerencia; null = crear nuevo si no existe
+        return ['nombre' => '', 'categoria' => '', 'catalogo_pieza_id_sel' => null, 'cantidad' => 1, 'precio_unitario' => '', 'notas' => ''];
+    }
+
+    /**
+     * Busca una entrada en catálogo_piezas por nombre+categoría (sin importar mayúsculas).
+     * Si no existe la crea automáticamente.
+     */
+    private function encontrarOCrearCatalogo(string $nombre, string $categoria, ?int $idSeleccionado = null): CatalogoPieza
+    {
+        // Si el usuario eligió una pieza existente explícitamente, usarla directo
+        if ($idSeleccionado) {
+            $found = CatalogoPieza::find($idSeleccionado);
+            if ($found) return $found;
+        }
+
+        $nombre = trim($nombre);
+
+        $existing = CatalogoPieza::whereRaw('LOWER(TRIM(nombre)) = ?', [strtolower($nombre)])
+            ->where('categoria', $categoria)
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        return CatalogoPieza::create([
+            'nombre'    => $nombre,
+            'categoria' => $categoria,
+            'activo'    => true,
+        ]);
     }
 
     private function resetFormCatalogo(): void
@@ -548,13 +919,15 @@ class CatalogoPiezas extends Component
 
     private function resetFormCompra(): void
     {
-        $this->compraProveedorId = null;
-        $this->compraFecha       = now()->toDateString();
-        $this->compraFolio       = '';
-        $this->compraLoteId      = null;
-        $this->compraNotas       = '';
-        $this->compraItems       = [];
-        $this->error             = '';
+        $this->compraProveedorId   = null;
+        $this->compraFecha         = now()->toDateString();
+        $this->compraFechaRecibido = '';
+        $this->compraFolio         = '';
+        $this->compraLoteId        = null;
+        $this->compraNotas         = '';
+        $this->compraItems         = [];
+        $this->compraAlmacenId     = 7; // Piezas Pendientes por defecto
+        $this->error               = '';
         $this->resetErrorBag();
     }
 
@@ -563,16 +936,18 @@ class CatalogoPiezas extends Component
         $this->deshuesoEquipoId       = null;
         $this->deshuesoEquipoBusqueda = '';
         $this->deshuesoItems          = [];
+        $this->deshuesoRecuperar      = [];
+        $this->deshuesoAlmacenId      = 7; // Piezas Pendientes por defecto
         $this->error                  = '';
         $this->resetErrorBag();
-        unset($this->equiposBusqueda);
+        unset($this->equiposBusqueda, $this->piezasEquipoOrigen);
     }
 
     public function updatedBusqueda(): void { $this->resetPage(); }
     public function updatedFiltroCategoria(): void { $this->resetPage(); }
     public function updatedFiltroStock(): void { $this->resetPage(); }
     public function updatedNombre(): void { unset($this->piezasSimilares); }
-    public function updatedDeshuesoEquipoBusqueda(): void { unset($this->equiposBusqueda); }
+    public function updatedDeshuesoEquipoBusqueda(): void { unset($this->equiposBusqueda, $this->piezasEquipoOrigen); }
 
     public function render()
     {

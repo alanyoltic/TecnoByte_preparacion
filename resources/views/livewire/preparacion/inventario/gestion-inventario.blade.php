@@ -810,7 +810,7 @@
                 </p>
 
                 <textarea
-                    wire:model.defer="motivo_eliminacion"
+                    wire:model="motivo_eliminacion"
                     rows="4"
                     class="mt-4 w-full rounded-xl bg-slate-800 border border-slate-700 text-white p-3 focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
                     placeholder="Describe el motivo (mínimo 8 caracteres)..."

@@ -305,7 +305,7 @@
                                     Título
                                 </label>
                                 <input
-                                    wire:model.defer="titulo"
+                                    wire:model="titulo"
                                     type="text"
                                     class="w-full text-sm rounded-xl
                                         border border-slate-300/80 dark:border-white/15
@@ -324,7 +324,7 @@
                                     Icono (emoji)
                                 </label>
                                 <input
-                                    wire:model.defer="icono"
+                                    wire:model="icono"
                                     type="text"
                                     placeholder="💡"
                                     class="w-full text-sm rounded-xl
@@ -344,7 +344,7 @@
                                     Tag
                                 </label>
                                 <select
-                                    wire:model.defer="tag"
+                                    wire:model="tag"
                                     class="w-full text-sm rounded-xl
                                         border border-slate-300/80 dark:border-white/15
                                         bg-white/80 text-slate-800
@@ -367,7 +367,7 @@
                                     Color
                                 </label>
                                 <select
-                                    wire:model.defer="color"
+                                    wire:model="color"
                                     class="w-full text-sm rounded-xl
                                         border border-slate-300/80 dark:border-white/15
                                         bg-white/80 text-slate-800
@@ -392,7 +392,7 @@
                                 Texto
                             </label>
                             <textarea
-                                wire:model.defer="texto"
+                                wire:model="texto"
                                 rows="4"
                                 class="w-full text-sm rounded-xl
                                     border border-slate-300/80 dark:border-white/15
@@ -412,7 +412,7 @@
                                     Mostrar desde (opcional)
                                 </label>
                                 <input
-                                    wire:model.defer="starts_at"
+                                    wire:model="starts_at"
                                     type="datetime-local"
                                     class="w-full text-sm rounded-xl
                                         border border-slate-300/80 dark:border-white/15
@@ -431,7 +431,7 @@
                                     Mostrar hasta (opcional)
                                 </label>
                                 <input
-                                    wire:model.defer="ends_at"
+                                    wire:model="ends_at"
                                     type="datetime-local"
                                     class="w-full text-sm rounded-xl
                                         border border-slate-300/80 dark:border-white/15
@@ -449,12 +449,12 @@
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
                             <div class="flex items-center gap-4">
                                 <label class="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                                    <input type="checkbox" wire:model.defer="is_active" class="rounded border-slate-300 dark:border-white/20">
+                                    <input type="checkbox" wire:model="is_active" class="rounded border-slate-300 dark:border-white/20">
                                     Publicado
                                 </label>
 
                                 <label class="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                                    <input type="checkbox" wire:model.defer="pinned" class="rounded border-slate-300 dark:border-white/20">
+                                    <input type="checkbox" wire:model="pinned" class="rounded border-slate-300 dark:border-white/20">
                                     Fijado
                                 </label>
                             </div>

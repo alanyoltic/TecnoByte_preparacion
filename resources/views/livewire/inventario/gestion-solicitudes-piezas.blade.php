@@ -187,23 +187,29 @@
                         </div>
 
                         {{-- Acciones --}}
-                        @if($solicitud->puedeSerGestionada())
+                        @if($solicitud->puedeSerSurtidaDesdeInventario() || $solicitud->puedeSerGestionada() || $solicitud->puedeCancelarse())
                             <div class="flex flex-col gap-2 shrink-0">
-                                <button wire:click="abrirModalSurtir({{ $solicitud->id }})"
-                                        class="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600
-                                               text-white text-sm font-medium shadow-lg shadow-amber-500/30 transition-all">
-                                    Reasignar con pieza
-                                </button>
-                                <button wire:click="abrirModalCompra({{ $solicitud->id }})"
-                                        class="px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600
-                                               text-white text-sm font-medium shadow-lg shadow-orange-500/30 transition-all">
-                                    Pend. de Compra
-                                </button>
-                                <button wire:click="abrirModalCancelar({{ $solicitud->id }})"
-                                        class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-red-100
-                                               text-slate-700 hover:text-red-700 text-sm font-medium transition-all">
-                                    Cancelar
-                                </button>
+                                @if($solicitud->puedeSerSurtidaDesdeInventario())
+                                    <button wire:click="abrirModalSurtir({{ $solicitud->id }})"
+                                            class="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600
+                                                   text-white text-sm font-medium shadow-lg shadow-amber-500/30 transition-all">
+                                        {{ $solicitud->estatus === 'COMPRADA' ? 'Surtir compra' : 'Reasignar con pieza' }}
+                                    </button>
+                                @endif
+                                @if($solicitud->puedeSerGestionada())
+                                    <button wire:click="abrirModalCompra({{ $solicitud->id }})"
+                                            class="px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600
+                                                   text-white text-sm font-medium shadow-lg shadow-orange-500/30 transition-all">
+                                        Pend. de Compra
+                                    </button>
+                                @endif
+                                @if($solicitud->puedeCancelarse())
+                                    <button wire:click="abrirModalCancelar({{ $solicitud->id }})"
+                                            class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-red-100
+                                                   text-slate-700 hover:text-red-700 text-sm font-medium transition-all">
+                                        Cancelar
+                                    </button>
+                                @endif
                             </div>
                         @endif
 
@@ -228,7 +234,7 @@
     {{-- Modal: Reasignar con pieza --}}
     @if($modalSurtir)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-             wire:click.self="$set('modalSurtir', false)">
+             wire:click.self="cerrarModales">
             <div class="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 shadow-2xl">
 
                 <div class="p-6 border-b border-slate-200 dark:border-slate-700">
@@ -256,9 +262,14 @@
                     {{-- Seleccionar pieza --}}
                     @if($piezasDisponibles && count($piezasDisponibles) > 0)
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                                 Entrada de stock <span class="text-red-500">*</span>
                             </label>
+                            @if(!$solicitudSeleccionada?->catalogo_pieza_id)
+                                <p class="text-xs text-amber-600 dark:text-amber-400 mb-2">
+                                    Solicitud libre — elige la pieza que mejor corresponda al pedido del técnico.
+                                </p>
+                            @endif
                             <select wire:model="piezaSeleccionada"
                                     class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800
                                            border border-slate-200 dark:border-slate-700
@@ -267,8 +278,10 @@
                                 <option value="">-- Selecciona una entrada --</option>
                                 @foreach($piezasDisponibles as $pieza)
                                     <option value="{{ $pieza->id }}">
-                                        {{ $pieza->origen_descripcion }}
-                                        — {{ $pieza->almacen->nombre ?? 'Sin almacén' }}
+                                        @if($pieza->catalogoPieza)
+                                            [{{ $pieza->catalogoPieza->categoria }}] {{ $pieza->catalogoPieza->nombre }} —
+                                        @endif
+                                        {{ $pieza->almacen->nombre ?? 'Sin almacén' }}
                                         · {{ $pieza->cantidad_disponible }} disp.
                                         @if($pieza->numero_serie) · S/N: {{ $pieza->numero_serie }} @endif
                                     </option>
@@ -280,7 +293,7 @@
                         </div>
                     @else
                         <div class="p-3 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-sm text-yellow-700 dark:text-yellow-300">
-                            No hay stock disponible. Considera marcarla como pendiente de compra.
+                            No hay stock disponible en inventario. Registra la compra primero o marca como pendiente de compra.
                         </div>
                     @endif
 
@@ -322,18 +335,18 @@
                 </div>
 
                 <div class="p-6 border-t border-slate-200 dark:border-slate-700 flex gap-3 justify-end">
-                    <button wire:click="$set('modalSurtir', false)"
+                    <button wire:click="cerrarModales"
                             class="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800
                                    text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-sm transition-all">
                         Cancelar
                     </button>
-                    @if($piezasDisponibles && count($piezasDisponibles) > 0)
-                        <button wire:click="surtirDeInventario"
-                                class="px-6 py-2 rounded-lg bg-amber-500 hover:bg-amber-600
-                                       text-white font-medium shadow-lg shadow-amber-500/30 text-sm transition-all">
-                            Reasignar
-                        </button>
-                    @endif
+                    <button wire:click="surtirDeInventario"
+                            @if(!$piezasDisponibles || count($piezasDisponibles) === 0) disabled @endif
+                            class="px-6 py-2 rounded-lg bg-amber-500 hover:bg-amber-600
+                                   text-white font-medium shadow-lg shadow-amber-500/30 text-sm transition-all
+                                   disabled:opacity-40 disabled:cursor-not-allowed">
+                        Reasignar con pieza
+                    </button>
                 </div>
             </div>
         </div>
@@ -342,7 +355,7 @@
     {{-- Modal: Pendiente de Compra --}}
     @if($modalCompra)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-             wire:click.self="$set('modalCompra', false)">
+             wire:click.self="cerrarModales">
             <div class="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 shadow-2xl">
 
                 <div class="p-6 border-b border-slate-200 dark:border-slate-700">
@@ -366,7 +379,7 @@
                 </div>
 
                 <div class="p-6 border-t border-slate-200 dark:border-slate-700 flex gap-3 justify-end">
-                    <button wire:click="$set('modalCompra', false)"
+                    <button wire:click="cerrarModales"
                             class="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800
                                    text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-sm transition-all">
                         Cancelar
@@ -384,7 +397,7 @@
     {{-- Modal: Cancelar --}}
     @if($modalCancelar)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-             wire:click.self="$set('modalCancelar', false)">
+             wire:click.self="cerrarModales">
             <div class="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 shadow-2xl">
 
                 <div class="p-6 border-b border-slate-200 dark:border-slate-700">
@@ -411,7 +424,7 @@
                 </div>
 
                 <div class="p-6 border-t border-slate-200 dark:border-slate-700 flex gap-3 justify-end">
-                    <button wire:click="$set('modalCancelar', false)"
+                    <button wire:click="cerrarModales"
                             class="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800
                                    text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-sm transition-all">
                         Volver

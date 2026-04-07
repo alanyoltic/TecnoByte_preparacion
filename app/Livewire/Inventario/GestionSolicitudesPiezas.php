@@ -2,61 +2,65 @@
 
 namespace App\Livewire\Inventario;
 
+use App\Models\InventarioPieza;
+use App\Models\SolicitudPieza;
+use App\Models\User;
 use Livewire\Component;
 use Livewire\WithPagination;
-use App\Models\SolicitudPieza;
-use App\Models\InventarioPieza;
-use App\Models\User;
-use Illuminate\Support\Facades\DB;
 
 class GestionSolicitudesPiezas extends Component
 {
     use WithPagination;
 
-    public $filtroEstatus = 'PENDIENTE';
-    public $busqueda = '';
-    
-    // Modal de surtir del inventario
-    public $modalSurtir = false;
-    public $solicitudSeleccionada = null;
+    public string $filtroEstatus = 'PENDIENTE';
+    public string $busqueda = '';
+
+    public bool $modalSurtir = false;
+    public ?SolicitudPieza $solicitudSeleccionada = null;
     public $piezasDisponibles = [];
-    public $piezaSeleccionada = null;
-    public $notasRespuesta = '';
-    public $tecnicoReasignadoId = null;
-    public $tecnicos = [];
-    
-    // Modal de pendiente de compra
-    public $modalCompra = false;
-    
-    // Modal de cancelar
-    public $modalCancelar = false;
-    public $motivoCancelacion = '';
+    public ?int $piezaSeleccionada = null;
+    public string $notasRespuesta = '';
+    public ?int $tecnicoReasignadoId = null;
+    public array $tecnicos = [];
+
+    public bool $modalCompra = false;
+
+    public bool $modalCancelar = false;
+    public string $motivoCancelacion = '';
 
     protected $queryString = ['filtroEstatus', 'busqueda'];
 
+    public function mount(): void
+    {
+        $this->autorizarGestion();
+    }
+
     public function render()
     {
+        $this->autorizarGestion();
+
         $solicitudes = SolicitudPieza::query()
             ->with([
                 'asignacionEquipo.equipo',
                 'equipo',
                 'catalogoPieza',
                 'solicitadoPor',
+                'reasignadoA',
                 'inventarioPieza.almacen',
-                'respondidaPor'
+                'respondidaPor',
             ])
-            ->when($this->filtroEstatus !== 'TODAS', function ($query) {
-                $query->where('estatus', $this->filtroEstatus);
-            })
+            ->when($this->filtroEstatus !== 'TODAS', fn ($query) =>
+                $query->where('estatus', $this->filtroEstatus)
+            )
             ->when($this->busqueda, function ($query) {
                 $query->where(function ($q) {
                     $q->whereHas('asignacionEquipo.equipo', function ($eq) {
                         $eq->where('numero_serie', 'like', '%' . $this->busqueda . '%')
-                           ->orWhere('modelo', 'like', '%' . $this->busqueda . '%');
+                            ->orWhere('modelo', 'like', '%' . $this->busqueda . '%');
                     })
                     ->orWhereHas('equipo', function ($eq) {
                         $eq->where('numero_serie', 'like', '%' . $this->busqueda . '%')
-                           ->orWhere('modelo', 'like', '%' . $this->busqueda . '%');
+                            ->orWhere('modelo', 'like', '%' . $this->busqueda . '%');
                     })
                     ->orWhereHas('solicitadoPor', function ($tec) {
                         $tec->where('nombre', 'like', '%' . $this->busqueda . '%')
@@ -68,7 +72,7 @@ class GestionSolicitudesPiezas extends Component
                     ->orWhere('descripcion_libre', 'like', '%' . $this->busqueda . '%');
                 });
             })
-            ->orderByRaw("FIELD(estatus, 'PENDIENTE', 'SURTIDA_INVENTARIO', 'PENDIENTE_COMPRA') DESC")
+            ->orderByRaw("FIELD(estatus, 'PENDIENTE', 'PENDIENTE_COMPRA', 'COMPRADA', 'SURTIDA_INVENTARIO', 'CONFIRMADA', 'CANCELADA')")
             ->orderBy('created_at', 'desc')
             ->paginate(15);
 
@@ -87,79 +91,77 @@ class GestionSolicitudesPiezas extends Component
         ])->layout('layouts.app');
     }
 
-    public function abrirModalSurtir($solicitudId)
+    public function abrirModalSurtir(int $solicitudId): void
     {
         $this->solicitudSeleccionada = SolicitudPieza::with([
             'catalogoPieza',
             'asignacionEquipo.equipo',
             'equipo',
-            'solicitadoPor'
+            'solicitadoPor',
         ])->findOrFail($solicitudId);
 
-        if (!$this->solicitudSeleccionada->puedeSerGestionada()) {
-            session()->flash('error', 'Esta solicitud ya fue procesada.');
+        if (!$this->solicitudSeleccionada->puedeSerSurtidaDesdeInventario()) {
+            session()->flash('error', 'Esta solicitud ya no puede surtirse desde inventario.');
             return;
         }
 
-        // Buscar piezas disponibles del mismo tipo (si hay catálogo)
         if ($this->solicitudSeleccionada->catalogo_pieza_id) {
+            // Solicitud vinculada a catálogo: mostrar solo ese tipo de pieza
             $this->piezasDisponibles = InventarioPieza::where('catalogo_pieza_id', $this->solicitudSeleccionada->catalogo_pieza_id)
                 ->where('cantidad_disponible', '>', 0)
-                ->with(['almacen', 'compraItem.compra.proveedor', 'equipoOrigen'])
+                ->with(['almacen', 'catalogoPieza', 'compraItem.compra.proveedor', 'equipoOrigen'])
                 ->get();
-
-            if ($this->piezasDisponibles->isEmpty()) {
-                session()->flash('warning', 'No hay piezas disponibles en stock. Marca como pendiente de compra.');
-            } else {
-                $this->piezaSeleccionada = $this->piezasDisponibles->first()->id;
-            }
         } else {
-            $this->piezasDisponibles = collect();
-            session()->flash('info', 'Solicitud con descripción libre. Busca la pieza manualmente o marca como pendiente de compra.');
+            // Solicitud libre (categoría + descripción): mostrar todo el inventario disponible
+            $this->piezasDisponibles = InventarioPieza::where('cantidad_disponible', '>', 0)
+                ->with(['almacen', 'catalogoPieza', 'compraItem.compra.proveedor', 'equipoOrigen'])
+                ->orderBy('catalogo_pieza_id')
+                ->get();
         }
 
-        // Cargar técnicos activos para reasignar
-        $this->tecnicos = User::whereHas('role', fn($q) => $q->whereIn('slug', ['tecnico', 'lider']))
+        if ($this->piezasDisponibles->isNotEmpty()) {
+            $this->piezaSeleccionada = (int) $this->piezasDisponibles->first()->id;
+        }
+
+        $this->tecnicos = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['tecnico', 'lider']))
             ->where('is_active', true)
             ->orderBy('nombre')
             ->get(['id', 'nombre', 'apellido_paterno'])
             ->toArray();
 
-        // Preseleccionar el técnico que hizo la solicitud
-        $this->tecnicoReasignadoId = $this->solicitudSeleccionada->solicitado_por_id;
+        $this->tecnicoReasignadoId = $this->solicitudSeleccionada->reasignado_a_id
+            ?: $this->solicitudSeleccionada->solicitado_por_id;
 
         $this->notasRespuesta = '';
         $this->modalSurtir = true;
     }
 
-    public function surtirDeInventario()
+    public function surtirDeInventario(): void
     {
         $this->validate([
-            'piezaSeleccionada'   => 'required|exists:inventario_piezas,id',
-            'notasRespuesta'      => 'nullable|string|max:500',
+            'piezaSeleccionada' => 'required|exists:inventario_piezas,id',
+            'notasRespuesta' => 'nullable|string|max:500',
             'tecnicoReasignadoId' => 'required|exists:users,id',
         ], [
-            'tecnicoReasignadoId.required' => 'Debes seleccionar a quién se reasigna la instalación.',
+            'tecnicoReasignadoId.required' => 'Debes seleccionar a quien se reasigna la instalacion.',
         ]);
 
         try {
-            $this->solicitudSeleccionada->surtirDeInventario(
+            $this->solicitudSeleccionada?->surtirDeInventario(
                 $this->piezaSeleccionada,
                 auth()->id(),
-                $this->notasRespuesta,
+                $this->notasRespuesta ?: null,
                 $this->tecnicoReasignadoId
             );
 
-            session()->flash('success', 'Pieza reasignada correctamente. El técnico la verá en su lista de trabajo.');
-
+            session()->flash('success', 'Pieza asignada correctamente. El tecnico ya puede instalarla.');
             $this->cerrarModales();
-
-        } catch (\Exception $e) {
-            session()->flash('error', 'Error al reasignar: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Error al surtir: ' . $e->getMessage());
         }
     }
 
-    public function abrirModalCompra($solicitudId)
+    public function abrirModalCompra(int $solicitudId): void
     {
         $this->solicitudSeleccionada = SolicitudPieza::findOrFail($solicitudId);
 
@@ -172,33 +174,31 @@ class GestionSolicitudesPiezas extends Component
         $this->modalCompra = true;
     }
 
-    public function marcarPendienteCompra()
+    public function marcarPendienteCompra(): void
     {
         $this->validate([
             'notasRespuesta' => 'nullable|string|max:500',
         ]);
 
         try {
-            $this->solicitudSeleccionada->marcarPendienteCompra(
+            $this->solicitudSeleccionada?->marcarPendienteCompra(
                 auth()->id(),
-                $this->notasRespuesta
+                $this->notasRespuesta ?: null
             );
 
             session()->flash('success', 'Solicitud marcada como pendiente de compra.');
-            
             $this->cerrarModales();
-
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             session()->flash('error', 'Error: ' . $e->getMessage());
         }
     }
 
-    public function abrirModalCancelar($solicitudId)
+    public function abrirModalCancelar(int $solicitudId): void
     {
         $this->solicitudSeleccionada = SolicitudPieza::findOrFail($solicitudId);
 
-        if (!$this->solicitudSeleccionada->puedeSerGestionada()) {
-            session()->flash('error', 'Esta solicitud ya fue procesada.');
+        if (!$this->solicitudSeleccionada->puedeCancelarse()) {
+            session()->flash('error', 'Esta solicitud ya no puede cancelarse.');
             return;
         }
 
@@ -206,39 +206,37 @@ class GestionSolicitudesPiezas extends Component
         $this->modalCancelar = true;
     }
 
-    public function cancelarSolicitud()
+    public function cancelarSolicitud(): void
     {
         $this->validate([
             'motivoCancelacion' => 'required|string|max:500',
         ]);
 
         try {
-            $this->solicitudSeleccionada->cancelar(
+            $this->solicitudSeleccionada?->cancelar(
                 auth()->id(),
                 $this->motivoCancelacion
             );
 
-            session()->flash('success', 'Solicitud cancelada.');
-            
+            session()->flash('success', 'Solicitud cancelada correctamente.');
             $this->cerrarModales();
-
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             session()->flash('error', 'Error: ' . $e->getMessage());
         }
     }
 
-    public function cambiarFiltro($estatus)
+    public function cambiarFiltro(string $estatus): void
     {
         $this->filtroEstatus = $estatus;
         $this->resetPage();
     }
 
-    public function updatingBusqueda()
+    public function updatingBusqueda(): void
     {
         $this->resetPage();
     }
 
-    private function cerrarModales()
+    public function cerrarModales(): void
     {
         $this->modalSurtir = false;
         $this->modalCompra = false;
@@ -252,5 +250,10 @@ class GestionSolicitudesPiezas extends Component
             'tecnicoReasignadoId',
             'tecnicos',
         ]);
+    }
+
+    private function autorizarGestion(): void
+    {
+        abort_unless(auth()->user()?->tienePermiso('prep.inventario.gestion'), 403);
     }
 }

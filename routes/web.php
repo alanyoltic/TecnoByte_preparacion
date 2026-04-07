@@ -139,7 +139,7 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
             ->name('equipos.create');
 
         Route::get('/piezas-pendientes', fn () => view('preparacion.equipos.pendientes-piezas'))
-            ->middleware('permiso:prep.equipos.ver')
+            ->middleware('permiso:prep.inventario.ver')
             ->name('equipos.piezas-pendientes');
 
         Route::view('/caracteristicas', 'preparacion.inventario.resumen')

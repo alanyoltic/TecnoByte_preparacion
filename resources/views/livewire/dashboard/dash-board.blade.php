@@ -6,7 +6,7 @@
             <x-topbar
                 title="Dashboard General"
                 chip="Mes de {{ $currentMonthName }}"
-                description="Meta mensual cumplida: {{ $radialPercent }}% · Equipos este mes: {{ $kpis['equiposMes'] ?? 0 }}"
+                description="Meta mensual cumplida: {{ $radialPercent }}% · {{ $viejoSistema ? 'Equipos: '.(($kpis['equiposMes'] ?? 0)) : 'Puntos: '.($breakdown[1]['value'] ?? 0) }}"
             >
                 <x-slot:right>
                     <div class="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3">
@@ -184,6 +184,65 @@
 
                     {{-- ===================== SLIDE 1: DASHBOARD ACTUAL ===================== --}}
                     <section class="w-full shrink-0">
+
+                        {{-- ACCESOS RÁPIDOS (solo gerentes/gestión inventario) --}}
+                        @if(auth()->user()?->tienePermiso('prep.inventario.gestion'))
+                        <div class="mb-6 rounded-2xl bg-white/80 dark:bg-slate-950/60
+                                    border border-slate-200/80 dark:border-white/10
+                                    backdrop-blur-xl shadow-md px-5 py-4">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-3">
+                                Accesos rápidos · Inventario
+                            </p>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+
+                                <a href="{{ route('preparacion.catalogo-piezas') }}"
+                                   class="flex flex-col items-center justify-center gap-1.5 rounded-xl px-3 py-4
+                                          bg-blue-50 dark:bg-blue-900/20 border border-blue-200/70 dark:border-blue-700/40
+                                          text-blue-700 dark:text-blue-300
+                                          hover:bg-blue-100 dark:hover:bg-blue-900/40 hover:-translate-y-0.5
+                                          transition-all duration-200 text-center">
+                                    <span class="text-xl">📦</span>
+                                    <span class="text-xs font-semibold leading-tight">Catálogo &amp; Compras</span>
+                                    <span class="text-[0.65rem] text-blue-500 dark:text-blue-400">Registrar entradas</span>
+                                </a>
+
+                                <a href="{{ route('inventario.compras') }}"
+                                   class="flex flex-col items-center justify-center gap-1.5 rounded-xl px-3 py-4
+                                          bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/70 dark:border-indigo-700/40
+                                          text-indigo-700 dark:text-indigo-300
+                                          hover:bg-indigo-100 dark:hover:bg-indigo-900/40 hover:-translate-y-0.5
+                                          transition-all duration-200 text-center">
+                                    <span class="text-xl">🧾</span>
+                                    <span class="text-xs font-semibold leading-tight">Historial Compras</span>
+                                    <span class="text-[0.65rem] text-indigo-500 dark:text-indigo-400">Ver registros</span>
+                                </a>
+
+                                <a href="{{ route('inventario.gestion') }}"
+                                   class="flex flex-col items-center justify-center gap-1.5 rounded-xl px-3 py-4
+                                          bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200/70 dark:border-emerald-700/40
+                                          text-emerald-700 dark:text-emerald-300
+                                          hover:bg-emerald-100 dark:hover:bg-emerald-900/40 hover:-translate-y-0.5
+                                          transition-all duration-200 text-center">
+                                    <span class="text-xl">🗄️</span>
+                                    <span class="text-xs font-semibold leading-tight">Gestión General</span>
+                                    <span class="text-[0.65rem] text-emerald-500 dark:text-emerald-400">Stock y piezas</span>
+                                </a>
+
+                                <a href="{{ route('inventario.solicitudes.gestionar') }}"
+                                   class="flex flex-col items-center justify-center gap-1.5 rounded-xl px-3 py-4
+                                          bg-amber-50 dark:bg-amber-900/20 border border-amber-200/70 dark:border-amber-700/40
+                                          text-amber-700 dark:text-amber-300
+                                          hover:bg-amber-100 dark:hover:bg-amber-900/40 hover:-translate-y-0.5
+                                          transition-all duration-200 text-center">
+                                    <span class="text-xl">🔧</span>
+                                    <span class="text-xs font-semibold leading-tight">Solicitudes Piezas</span>
+                                    <span class="text-[0.65rem] text-amber-500 dark:text-amber-400">Gestionar técnicos</span>
+                                </a>
+
+                            </div>
+                        </div>
+                        @endif
+
                         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                             <div class="lg:col-span-2 space-y-6">
@@ -343,11 +402,26 @@
                             <div class="lg:col-span-1 space-y-6">
 
                                 <div class="{{ $panelClass }} {{ $panelGlow }} {{ $panelGlow2 }} p-5 lg:p-6">
-                                    <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50 mb-1">
-                                        Avance de Meta Mensual
-                                    </h3>
+                                    <div class="flex items-start justify-between mb-1">
+                                        <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
+                                            Avance de Meta Mensual
+                                        </h3>
+                                        @if($esLiderGerente && !$viejoSistema)
+                                        <button wire:click="abrirModalMeta"
+                                                title="Editar meta mensual"
+                                                class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg
+                                                       bg-slate-700/60 hover:bg-[#FF9521]/20
+                                                       border border-slate-600/60 hover:border-[#FF9521]/50
+                                                       text-slate-400 hover:text-[#FF9521] text-xs transition">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.5-6.5a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-.707.464l-3.5 1 1-3.5a2 2 0 01.464-.707z"/>
+                                            </svg>
+                                            Editar meta
+                                        </button>
+                                        @endif
+                                    </div>
                                     <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">
-                                        Progreso general de la cuota mensual de equipos.
+                                        Progreso general de la cuota mensual.
                                     </p>
 
                                     <div id="radial-chart" class="mt-2 min-h-[290px]" wire:ignore></div>
@@ -357,6 +431,12 @@
                                     <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50 mb-3">
                                         Detalle de Meta Mensual
                                     </h3>
+
+                                    @if($viejoSistema)
+                                    <div class="mb-3 px-3 py-2 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs leading-snug">
+                                        Datos históricos — este periodo usa el sistema anterior (conteo de equipos). Desde abril 2026 se mide en puntos por clasificación.
+                                    </div>
+                                    @endif
 
                                     <div class="space-y-3">
                                         @foreach($breakdown as $item)
@@ -718,6 +798,125 @@
 
     </div>
 
+
+    {{-- ── Modal: Editar Meta Mensual ──────────────────────────────────── --}}
+    @if($showModalMeta)
+    <div class="fixed inset-0 z-[998] flex items-center justify-center px-4">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+             wire:click="$set('showModalMeta', false)"></div>
+
+        <div class="relative w-full max-w-2xl rounded-2xl
+                    bg-white/90 dark:bg-slate-950/70
+                    border border-slate-200/80 dark:border-white/10
+                    shadow-2xl shadow-black/40 flex flex-col max-h-[90vh]">
+
+            {{-- Header --}}
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200/60 dark:border-white/10 shrink-0">
+                <div>
+                    <h3 class="text-base font-semibold text-slate-900 dark:text-slate-50">
+                        Editar meta mensual
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Periodo: {{ $selectedMonthValue }}
+                    </p>
+                </div>
+                <button wire:click="$set('showModalMeta', false)"
+                        class="w-8 h-8 rounded-full border border-slate-300/60 dark:border-white/10
+                               flex items-center justify-center text-slate-500 hover:text-red-400 transition text-sm">
+                    ✕
+                </button>
+            </div>
+
+            {{-- Body --}}
+            <div class="overflow-y-auto px-6 py-5 space-y-5">
+
+                {{-- Meta total global --}}
+                <div class="p-4 rounded-xl bg-slate-800/40 border border-slate-700/60 space-y-3">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        Meta total del periodo
+                    </p>
+                    <div class="flex items-center gap-3">
+                        <input type="number"
+                               wire:model="editMetaTotal"
+                               min="1"
+                               class="w-40 px-4 py-2 rounded-xl
+                                      bg-slate-900/60 border border-slate-600
+                                      text-slate-100 text-sm font-semibold
+                                      focus:ring-2 focus:ring-[#FF9521] outline-none">
+                        <button wire:click="recalcularMetaTotal"
+                                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl
+                                       bg-slate-700/80 hover:bg-slate-600/80 border border-slate-600
+                                       text-slate-300 text-xs transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582M20 20v-5h-.581M4.582 9A8 8 0 0120 15M19.418 15A8 8 0 014 9"/>
+                            </svg>
+                            Recalcular desde individuales
+                        </button>
+                    </div>
+                    @error('editMetaTotal')
+                        <p class="text-xs text-red-400">{{ $message }}</p>
+                    @enderror
+                    <p class="text-[0.7rem] text-slate-500">
+                        Puedes editar la meta total directamente, o ajustar las metas individuales y presionar "Recalcular".
+                    </p>
+                </div>
+
+                {{-- Metas individuales por técnico --}}
+                @if(count($editMetasTecnicos) > 0)
+                <div class="space-y-2">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        Meta individual por técnico
+                    </p>
+                    <div class="space-y-2 max-h-64 overflow-y-auto pr-1">
+                        @foreach($editMetasTecnicos as $idx => $tec)
+                        <div class="flex items-center justify-between gap-4 px-4 py-2.5 rounded-xl
+                                    bg-slate-800/30 border border-slate-700/40">
+                            <span class="text-sm text-slate-300 flex-1 truncate">
+                                {{ $tec['nombre'] }}
+                            </span>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <input type="number"
+                                       wire:model="editMetasTecnicos.{{ $idx }}.meta_puntos"
+                                       min="0" step="0.5"
+                                       class="w-24 px-3 py-1.5 rounded-lg text-sm text-center
+                                              bg-slate-900/60 border border-slate-600
+                                              text-slate-100
+                                              focus:ring-2 focus:ring-[#FF9521] outline-none">
+                                <span class="text-[0.65rem] text-slate-500">pts</span>
+                            </div>
+                        </div>
+                        @error('editMetasTecnicos.'.$idx.'.meta_puntos')
+                            <p class="text-xs text-red-400 px-4">{{ $message }}</p>
+                        @enderror
+                        @endforeach
+                    </div>
+                </div>
+                @else
+                <p class="text-sm text-slate-500 text-center py-4">
+                    No hay técnicos activos en este periodo.
+                </p>
+                @endif
+
+            </div>
+
+            {{-- Footer --}}
+            <div class="flex items-center justify-end gap-3 px-6 py-4
+                        border-t border-slate-200/60 dark:border-white/10 shrink-0">
+                <button wire:click="$set('showModalMeta', false)"
+                        class="px-4 py-2 rounded-xl text-sm text-slate-400
+                               border border-slate-600/60 hover:border-slate-500 transition">
+                    Cancelar
+                </button>
+                <button wire:click="guardarMeta"
+                        class="inline-flex items-center gap-2 px-5 py-2 rounded-xl
+                               bg-[#FF9521] hover:bg-orange-500 text-white text-sm font-semibold
+                               shadow-lg shadow-orange-900/40 transition">
+                    Guardar meta
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
 
      @if($showEmpleadoModal)
 <div class="fixed inset-0 z-[999] flex items-center justify-center px-4">

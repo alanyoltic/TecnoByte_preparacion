@@ -793,27 +793,90 @@
                             </span>
                             <div class="h-px flex-1 bg-amber-300/40"></div>
                         </div>
+
+                        {{-- Filtros de búsqueda --}}
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div class="space-y-1.5">
-                                <label class="text-xs text-slate-600 dark:text-slate-300">Del catálogo</label>
-                                <select wire:model="catalogoPiezaId"
-                                    class="w-full rounded-xl px-4 py-2.5 text-sm bg-white/70 dark:bg-slate-900/40
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">Categoría</label>
+                                <select wire:model.live="filtroCategoriaPieza"
+                                    class="w-full rounded-xl px-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
                                            border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
                                            focus:ring-2 focus:ring-[#FF9521] outline-none">
-                                    <option value="">Selecciona pieza...</option>
-                                    @foreach($catalogoPiezas as $pieza)
-                                        <option value="{{ $pieza->id }}">[{{ $pieza->categoria }}] {{ $pieza->nombre }}</option>
+                                    <option value="">Todas las categorías</option>
+                                    @foreach($categoriasDisponibles as $cat)
+                                        <option value="{{ $cat }}">{{ $cat }}</option>
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="space-y-1.5">
-                                <label class="text-xs text-slate-600 dark:text-slate-300">O descríbela</label>
-                                <input type="text" wire:model.defer="descripcionPiezaLibre"
-                                    placeholder="Ej. Batería 45Wh..."
-                                    class="w-full rounded-xl px-4 py-2.5 text-sm bg-white/70 dark:bg-slate-900/40
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">Buscar por nombre</label>
+                                <input type="text" wire:model.live.debounce.300ms="busquedaPieza"
+                                    placeholder="Ej. RAM, SSD, Batería..."
+                                    class="w-full rounded-xl px-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
                                            border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
                                            focus:ring-2 focus:ring-[#FF9521] outline-none">
                             </div>
+                        </div>
+
+                        {{-- Lista de piezas del catálogo --}}
+                        @if($catalogoPiezas->count() > 0)
+                            <div class="max-h-48 overflow-y-auto space-y-1 rounded-xl border border-slate-200/80 dark:border-slate-700/50 bg-white/50 dark:bg-slate-900/20 p-2">
+                                @foreach($catalogoPiezas as $pieza)
+                                    <button type="button"
+                                        wire:click="$set('catalogoPiezaId', {{ $pieza->id }})"
+                                        @class([
+                                            'w-full text-left rounded-lg px-3 py-2 text-sm transition-all duration-150',
+                                            'bg-amber-100 dark:bg-amber-900/30 border border-amber-400/60 text-amber-800 dark:text-amber-300' => $catalogoPiezaId == $pieza->id,
+                                            'hover:bg-slate-100 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300' => $catalogoPiezaId != $pieza->id,
+                                        ])>
+                                        <div class="flex items-center justify-between gap-2">
+                                            <div>
+                                                <span class="font-medium">{{ $pieza->nombre }}</span>
+                                                @if($pieza->especificacion)
+                                                    <span class="text-xs text-slate-500 dark:text-slate-400 ml-1">— {{ $pieza->especificacion }}</span>
+                                                @endif
+                                            </div>
+                                            <span class="text-[0.65rem] px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 shrink-0">
+                                                {{ $pieza->categoria }}
+                                            </span>
+                                        </div>
+                                    </button>
+                                @endforeach
+                            </div>
+                            @if($catalogoPiezaId)
+                                @php $piezaSel = \App\Models\CatalogoPieza::find($catalogoPiezaId); @endphp
+                                <p class="text-xs text-amber-700 dark:text-amber-400">
+                                    Pieza seleccionada: <strong>{{ $piezaSel?->nombre ?? 'ID ' . $catalogoPiezaId }}</strong>
+                                    @if($piezaSel) <span class="text-amber-500">({{ $piezaSel->categoria }})</span> @endif
+                                    <button type="button" wire:click="$set('catalogoPiezaId', null)"
+                                        class="ml-2 text-slate-400 hover:text-rose-500 transition-colors">&times; quitar</button>
+                                </p>
+                            @endif
+                        @else
+                            <p class="text-xs text-slate-500 dark:text-slate-400 italic py-2 text-center">
+                                No hay piezas en el catálogo
+                                @if($busquedaPieza || $filtroCategoriaPieza) que coincidan con el filtro @endif.
+                                Usa las notas para describir la pieza.
+                            </p>
+                        @endif
+
+                        @if($error && $camino === 'PIEZA_PENDIENTE')
+                            <p class="text-xs text-rose-500">{{ $error }}</p>
+                        @endif
+
+                        {{-- Notas adicionales de la pieza --}}
+                        <div class="space-y-1">
+                            <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                Especificaciones adicionales <span class="text-slate-400 font-normal">(opcional)</span>
+                            </label>
+                            <input type="text" wire:model="descripcionPiezaLibre"
+                                placeholder="Ej. 8GB DDR4, 256GB SATA, 45Wh, color negro..."
+                                class="w-full rounded-xl px-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
+                                       border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
+                                       focus:ring-2 focus:ring-[#FF9521] outline-none">
+                            <p class="text-[0.65rem] text-slate-400 dark:text-slate-500">
+                                Capacidad, tipo, generación, voltaje u otros detalles relevantes.
+                            </p>
                         </div>
                     </div>
                 @endif
@@ -825,7 +888,7 @@
                         <span class="text-[0.65rem] text-slate-400">(opcional)</span>
                         <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
                     </div>
-                    <textarea wire:model.defer="notasTerminar" rows="2"
+                    <textarea wire:model="notasTerminar" rows="2"
                         placeholder="Observaciones finales del equipo..."
                         class="w-full rounded-xl px-4 py-2.5 text-sm bg-white/70 dark:bg-slate-900/40
                                border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
