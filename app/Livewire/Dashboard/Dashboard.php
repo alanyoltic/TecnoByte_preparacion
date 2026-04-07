@@ -325,6 +325,23 @@ private function calcularCambio($actual, $anterior)
 
         $selectedColaboradorId = $this->selectedColaboradorId;
 
+        $isPersonalView    = $this->isTecnico || !empty($selectedColaboradorId);
+        $tecnicoIdPersonal = $isPersonalView
+            ? ($this->isTecnico ? ($user?->id) : (int)$selectedColaboradorId)
+            : null;
+
+        // Para vista personal: contar equipos COMPLETADOS por el técnico en un rango
+        $completadosTecnico = function (Carbon $start, Carbon $end) use ($tecnicoIdPersonal): int {
+            if (!$tecnicoIdPersonal) return 0;
+            return (int) DB::table('asignacion_equipos')
+                ->join('asignaciones', 'asignacion_equipos.asignacion_id', '=', 'asignaciones.id')
+                ->where('asignaciones.tecnico_id', $tecnicoIdPersonal)
+                ->where('asignacion_equipos.camino', 'COMPLETADO')
+                ->whereBetween('asignacion_equipos.fin_en', [$start, $end])
+                ->count();
+        };
+
+        // Para vista global: filtrar equipos registrados por usuario (gerente sin técnico seleccionado)
         $aplicarFiltro = function ($query) use ($user, $selectedColaboradorId) {
             if ($this->isTecnico && $user) {
                 $query->where('registrado_por_user_id', $user->id);
@@ -335,19 +352,16 @@ private function calcularCambio($actual, $anterior)
         };
 
         // ===== 2. KPIs =====
-        $today = Carbon::today();
-
-        $equiposHoy = $aplicarFiltro(
-            Equipo::whereDate('created_at', $today)
-        )->count();
-        $hoy = $selectedDate->copy()->day(Carbon::now()->day);
+        $hoy  = $selectedDate->copy()->day(Carbon::now()->day);
         $ayer = $hoy->copy()->subDay();
-        $equiposHoy = $aplicarFiltro(
-            Equipo::whereDate('created_at', $hoy)
-        )->count();
-        $equiposAyer = $aplicarFiltro(
-            Equipo::whereDate('created_at', $ayer)
-        )->count();
+
+        if ($isPersonalView) {
+            $equiposHoy  = $completadosTecnico($hoy->copy()->startOfDay(), $hoy->copy()->endOfDay());
+            $equiposAyer = $completadosTecnico($ayer->copy()->startOfDay(), $ayer->copy()->endOfDay());
+        } else {
+            $equiposHoy  = $aplicarFiltro(Equipo::whereDate('created_at', $hoy))->count();
+            $equiposAyer = $aplicarFiltro(Equipo::whereDate('created_at', $ayer))->count();
+        }
 
         $hoyChange = $this->calcularCambio($equiposHoy, $equiposAyer);
 
@@ -382,17 +396,16 @@ private function calcularCambio($actual, $anterior)
             $weekEnd = $endOfMonth->copy();
         }
 
-        $equiposSemana = $aplicarFiltro(
-            Equipo::whereBetween('created_at', [$weekStart, $weekEnd])
-        )->count();
-
-        // Semana anterior
         $prevWeekStart = $weekStart->copy()->subWeek();
         $prevWeekEnd   = $weekEnd->copy()->subWeek();
 
-        $equiposSemanaAnterior = $aplicarFiltro(
-            Equipo::whereBetween('created_at', [$prevWeekStart, $prevWeekEnd])
-        )->count();
+        if ($isPersonalView) {
+            $equiposSemana         = $completadosTecnico($weekStart, $weekEnd);
+            $equiposSemanaAnterior = $completadosTecnico($prevWeekStart, $prevWeekEnd);
+        } else {
+            $equiposSemana         = $aplicarFiltro(Equipo::whereBetween('created_at', [$weekStart, $weekEnd]))->count();
+            $equiposSemanaAnterior = $aplicarFiltro(Equipo::whereBetween('created_at', [$prevWeekStart, $prevWeekEnd]))->count();
+        }
 
         $semanaChange = $this->calcularCambio($equiposSemana, $equiposSemanaAnterior);
 
@@ -412,20 +425,18 @@ $this->labelMes = $selectedDate->locale('es')->translatedFormat('F Y');
 
 
 
-        $equiposMes = $aplicarFiltro(
-            Equipo::whereBetween('created_at', [$startOfMonth, $endOfMonth])
-        )->count();
-        $inicioMes = $selectedDate->copy()->startOfMonth();
-        $finMes = $selectedDate->copy()->endOfMonth();
-
+        $inicioMes         = $selectedDate->copy()->startOfMonth();
+        $finMes            = $selectedDate->copy()->endOfMonth();
         $inicioMesAnterior = $selectedDate->copy()->subMonth()->startOfMonth();
-        $finMesAnterior = $selectedDate->copy()->subMonth()->endOfMonth();
-        $equiposMes = $aplicarFiltro(
-            Equipo::whereBetween('created_at', [$inicioMes, $finMes])
-        )->count();
-        $equiposMesAnterior = $aplicarFiltro(
-            Equipo::whereBetween('created_at', [$inicioMesAnterior, $finMesAnterior])
-        )->count();
+        $finMesAnterior    = $selectedDate->copy()->subMonth()->endOfMonth();
+
+        if ($isPersonalView) {
+            $equiposMes         = $completadosTecnico($inicioMes, $finMes);
+            $equiposMesAnterior = $completadosTecnico($inicioMesAnterior, $finMesAnterior);
+        } else {
+            $equiposMes         = $aplicarFiltro(Equipo::whereBetween('created_at', [$inicioMes, $finMes]))->count();
+            $equiposMesAnterior = $aplicarFiltro(Equipo::whereBetween('created_at', [$inicioMesAnterior, $finMesAnterior]))->count();
+        }
 
         $mesChange = $this->calcularCambio($equiposMes, $equiposMesAnterior);
 
@@ -449,23 +460,26 @@ $this->labelMes = $selectedDate->locale('es')->translatedFormat('F Y');
         $lineDataLabels = ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4', 'Semana 5'];
         $lineDataCounts = [0, 0, 0, 0, 0];
 
-        $equiposDelMes = $aplicarFiltro(
-            Equipo::whereBetween('created_at', [$startOfMonth, $endOfMonth])
-        )->get(['created_at']);
+        if ($isPersonalView) {
+            // Vista personal: completaciones por semana del mes
+            $semanas = [[1,7],[8,14],[15,21],[22,28],[29,$endOfMonth->day]];
+            foreach ($semanas as $i => [$dIni, $dFin]) {
+                $s = $startOfMonth->copy()->day($dIni)->startOfDay();
+                $e = $startOfMonth->copy()->day(min($dFin, $endOfMonth->day))->endOfDay();
+                $lineDataCounts[$i] = $completadosTecnico($s, $e);
+            }
+        } else {
+            $equiposDelMes = $aplicarFiltro(
+                Equipo::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            )->get(['created_at']);
 
-        foreach ($equiposDelMes as $equipo) {
-            $diaDelMes = $equipo->created_at->day;
-
-            if ($diaDelMes <= 7) {
-                $lineDataCounts[0]++;
-            } elseif ($diaDelMes <= 14) {
-                $lineDataCounts[1]++;
-            } elseif ($diaDelMes <= 21) {
-                $lineDataCounts[2]++;
-            } elseif ($diaDelMes <= 28) {
-                $lineDataCounts[3]++;
-            } else {
-                $lineDataCounts[4]++;
+            foreach ($equiposDelMes as $equipo) {
+                $diaDelMes = $equipo->created_at->day;
+                if ($diaDelMes <= 7)      $lineDataCounts[0]++;
+                elseif ($diaDelMes <= 14) $lineDataCounts[1]++;
+                elseif ($diaDelMes <= 21) $lineDataCounts[2]++;
+                elseif ($diaDelMes <= 28) $lineDataCounts[3]++;
+                else                      $lineDataCounts[4]++;
             }
         }
 
@@ -486,20 +500,33 @@ $this->labelMes = $selectedDate->locale('es')->translatedFormat('F Y');
 
             $currentYearStart = $monthDate->copy()->startOfMonth();
             $currentYearEnd   = $monthDate->copy()->endOfMonth();
+            $prevYearStart    = $monthDate->copy()->subYear()->startOfMonth();
+            $prevYearEnd      = $monthDate->copy()->subYear()->endOfMonth();
+            $periodoBar       = $monthDate->format('Y-m');
+            $esViejoBar       = ($periodoBar < '2026-04');
 
-            $prevYearStart = $monthDate->copy()->subYear()->startOfMonth();
-            $prevYearEnd   = $monthDate->copy()->subYear()->endOfMonth();
-
-            $queryCurrent = $aplicarFiltro(
-                Equipo::whereBetween('created_at', [$currentYearStart, $currentYearEnd])
-            );
-
-            $queryPrev = $aplicarFiltro(
-                Equipo::whereBetween('created_at', [$prevYearStart, $prevYearEnd])
-            );
-
-            $serieActualAno[]   = $queryCurrent->count();
-            $serieAnoAnterior[] = $queryPrev->count();
+            if ($isPersonalView) {
+                if ($esViejoBar) {
+                    // Meses viejos: equipos completados
+                    $serieActualAno[]   = $completadosTecnico($currentYearStart, $currentYearEnd);
+                    $serieAnoAnterior[] = $completadosTecnico($prevYearStart, $prevYearEnd);
+                } else {
+                    // Meses nuevos (abril+): puntos acumulados
+                    $serieActualAno[]   = (float) DB::table('puntos_tecnicos')
+                        ->where('tecnico_id', $tecnicoIdPersonal)
+                        ->where('periodo', $periodoBar)
+                        ->sum(DB::raw('puntos_final + ajuste_manual'));
+                    // Año anterior en puntos (probablemente 0, no existía el sistema)
+                    $prevPeriodoBar = $monthDate->copy()->subYear()->format('Y-m');
+                    $serieAnoAnterior[] = (float) DB::table('puntos_tecnicos')
+                        ->where('tecnico_id', $tecnicoIdPersonal)
+                        ->where('periodo', $prevPeriodoBar)
+                        ->sum(DB::raw('puntos_final + ajuste_manual'));
+                }
+            } else {
+                $serieActualAno[]   = $aplicarFiltro(Equipo::whereBetween('created_at', [$currentYearStart, $currentYearEnd]))->count();
+                $serieAnoAnterior[] = $aplicarFiltro(Equipo::whereBetween('created_at', [$prevYearStart, $prevYearEnd]))->count();
+            }
         }
 
         $this->tecnicoChart = [
@@ -561,16 +588,13 @@ if (!$metaRecord && $anio == now()->year && $mes == now()->month) {
     ]);
 }
 
-// Si es mes pasado y no existe, NO lo creamos automÃƒÂ¡ticamente
-// (opcionalmente despuÃƒÂ©s podemos hacer backfill)
-        $isPersonalView = $this->isTecnico || !empty($selectedColaboradorId);
+// Si es mes pasado y no existe, NO lo creamos automáticamente
         $periodoStr = $selectedDate->format('Y-m');
 
         if ($isPersonalView) {
             // Vista personal: meta individual del técnico (o default 140)
-            $tecnicoParaMeta = $this->isTecnico ? ($user?->id) : (int)$selectedColaboradorId;
-            $metaTotal = $tecnicoParaMeta
-                ? MetaTecnico::obtenerMeta($tecnicoParaMeta, $periodoStr)
+            $metaTotal = $tecnicoIdPersonal
+                ? MetaTecnico::obtenerMeta($tecnicoIdPersonal, $periodoStr)
                 : MetaTecnico::META_DEFAULT;
         } else {
             // Vista global: meta congelada del mes.
@@ -584,8 +608,12 @@ $periodo        = $selectedDate->format('Y-m');
 $this->viejoSistema = ($periodo < '2026-04');
 
 if ($this->viejoSistema) {
-    // ── Sistema viejo: conteo de equipos (antes de abr-2026) ──────────
-    $realizadosMes        = $equiposMes;
+    // ── Sistema viejo: conteo de equipos completados (antes de abr-2026) ──
+    // Para vista personal: usar equipos completados por el técnico (asignacion_equipos)
+    // Para vista global: usar equipos registrados en el sistema
+    $realizadosMes        = $isPersonalView
+        ? $completadosTecnico($startOfMonth, $endOfMonth)
+        : $equiposMes;
     $faltantesMes         = max($metaTotal - $realizadosMes, 0);
     $percentMeta          = $metaTotal > 0 ? min(round(($realizadosMes / $metaTotal) * 100), 100) : 0;
     $this->radialPercent  = (int) $percentMeta;
