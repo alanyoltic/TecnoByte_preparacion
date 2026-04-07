@@ -29,12 +29,12 @@ class PuntoTecnico extends Model
     const TERMINO_PIEZA  = 'TERMINO_PIEZA';
     const GARANTIA       = 'GARANTIA';
 
-    // ── Porcentajes por rol — CAMBIAR AQUÍ cuando se ajusten las reglas ──
+    // ── Porcentajes por rol — todos los caminos otorgan el 100% del equipo ──
     const PORCENTAJES = [
         self::COMPLETO      => 100.00, // Terminó el equipo completo
-        self::INICIO_PIEZA  =>  40.00, // Inició pero mandó a pieza pendiente
-        self::TERMINO_PIEZA =>  60.00, // Recibió de pieza pendiente y terminó
-        self::GARANTIA      =>  30.00, // Detectó falla y mandó a garantía
+        self::INICIO_PIEZA  => 100.00, // Detectó pieza faltante y la solicitó
+        self::TERMINO_PIEZA => 100.00, // Instaló la pieza y confirmó funcionamiento
+        self::GARANTIA      => 100.00, // Detectó falla y canalizó a garantía
     ];
 
     // ── Relaciones ────────────────────────────────────────────────────────
@@ -125,10 +125,10 @@ class PuntoTecnico extends Model
     public static function labelsRol(): array
     {
         return [
-            self::COMPLETO      => 'Completo (100%)',
-            self::INICIO_PIEZA  => 'Inició — Pieza Pendiente (40%)',
-            self::TERMINO_PIEZA => 'Terminó tras Pieza (60%)',
-            self::GARANTIA      => 'Mandó a Garantía (30%)',
+            self::COMPLETO      => 'Equipo completado (100%)',
+            self::INICIO_PIEZA  => 'Pieza solicitada (100%)',
+            self::TERMINO_PIEZA => 'Pieza instalada (100%)',
+            self::GARANTIA      => 'Canalizado a garantía (100%)',
         ];
     }
 }

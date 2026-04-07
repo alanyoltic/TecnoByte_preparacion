@@ -410,6 +410,7 @@ class MiTrabajo extends Component
                     $equipo->update([
                         'estatus_ciclo' => 'CALIDAD',
                         'estatus_area'  => 'LISTO',
+                        'almacen_id'    => 5, // almacén Calidad
                     ]);
                 } elseif ($equipo && !$funciono) {
                     // Pieza no funcionó → crear nueva solicitud automáticamente
@@ -675,16 +676,20 @@ class MiTrabajo extends Component
         $equipo = $ae?->equipo;
         if (!$ae || !$equipo) return;
 
-        [$estatusCiclo, $estatusArea] = match($this->camino) {
-            'COMPLETADO'       => ['CALIDAD',     'LISTO'],
-            'PIEZA_PENDIENTE'  => ['PREPARACION', 'PENDIENTE_PIEZA'],
-            'GARANTIA_INTERNA' => ['PREPARACION', 'PENDIENTE_GARANTIA'],
-            'GARANTIA_EXTERNA' => ['PREPARACION', 'PENDIENTE_GARANTIA'],
-            default            => ['PREPARACION', 'EN_PROCESO'],
+        [$estatusCiclo, $estatusArea, $almacenId] = match($this->camino) {
+            'COMPLETADO'       => ['CALIDAD',     'LISTO',               5], // almacén Calidad
+            'PIEZA_PENDIENTE'  => ['PREPARACION', 'PENDIENTE_PIEZA',     7], // almacén Piezas Pend.
+            'GARANTIA_INTERNA' => ['PREPARACION', 'PENDIENTE_GARANTIA',  3], // almacén Garantías Int.
+            'GARANTIA_EXTERNA' => ['PREPARACION', 'PENDIENTE_GARANTIA',  4], // almacén Garantías Ext.
+            default            => ['PREPARACION', 'EN_PROCESO',          2], // almacén Preparación
         };
 
         $ae->update(['fin_en' => now(), 'camino' => $this->camino, 'notas' => $this->notasTerminar ?: null]);
-        $equipo->update(['estatus_ciclo' => $estatusCiclo, 'estatus_area' => $estatusArea]);
+        $equipo->update([
+            'estatus_ciclo' => $estatusCiclo,
+            'estatus_area'  => $estatusArea,
+            'almacen_id'    => $almacenId,
+        ]);
 
         if ($this->camino === 'PIEZA_PENDIENTE') {
             SolicitudPieza::create([

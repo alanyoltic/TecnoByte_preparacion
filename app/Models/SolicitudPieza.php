@@ -333,6 +333,7 @@ class SolicitudPieza extends Model
                 $equipo->update([
                     'estatus_ciclo' => 'CALIDAD',
                     'estatus_area'  => 'LISTO',
+                    'almacen_id'    => 5, // almacén Calidad
                 ]);
             } elseif ($equipo && !$funciono) {
                 self::create([
