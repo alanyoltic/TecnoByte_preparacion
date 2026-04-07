@@ -409,7 +409,7 @@ class MiTrabajo extends Component
                     // Pieza funcionó → el equipo queda listo para calidad
                     $equipo->update([
                         'estatus_ciclo' => 'CALIDAD',
-                        'estatus_area'  => 'LISTO',
+                        'estatus_area'  => 'EN_CALIDAD',
                         'almacen_id'    => 5, // almacén Calidad
                     ]);
                 } elseif ($equipo && !$funciono) {
@@ -677,7 +677,7 @@ class MiTrabajo extends Component
         if (!$ae || !$equipo) return;
 
         [$estatusCiclo, $estatusArea, $almacenId] = match($this->camino) {
-            'COMPLETADO'       => ['CALIDAD',     'LISTO',               5], // almacén Calidad
+            'COMPLETADO'       => ['CALIDAD',     'EN_CALIDAD',          5], // almacén Calidad
             'PIEZA_PENDIENTE'  => ['PREPARACION', 'PENDIENTE_PIEZA',     7], // almacén Piezas Pend.
             'GARANTIA_INTERNA' => ['PREPARACION', 'PENDIENTE_GARANTIA',  3], // almacén Garantías Int.
             'GARANTIA_EXTERNA' => ['PREPARACION', 'PENDIENTE_GARANTIA',  4], // almacén Garantías Ext.

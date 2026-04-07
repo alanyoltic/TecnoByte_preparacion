@@ -501,8 +501,8 @@ public function cerrarEliminarSeleccion()
         $stats = [
             'total'        => Equipo::count(),
             'en_revision' => Equipo::where('estatus_area', 'EN_PROCESO')->count(),
-            'aprobados'    => Equipo::where('estatus_area', 'LISTO')->count(),
-            'finalizados'  => Equipo::where('estatus_area', 'TRANSFERIDO')->count(),
+            'aprobados'    => Equipo::where('estatus_area', 'EN_CALIDAD')->count(),
+            'finalizados'  => Equipo::where('estatus_area', 'FINALIZADO')->count(),
         ];
 
         return view('livewire.preparacion.inventario.gestion-inventario', [

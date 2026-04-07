@@ -100,8 +100,8 @@ public function mount()
         // Totales globales (sin filtros) – solo para las tarjetas de arriba
         $this->stats['total']        = Equipo::count();
         $this->stats['en_revision']  = Equipo::where('estatus_area', 'EN_PROCESO')->count();
-        $this->stats['aprobados']    = Equipo::where('estatus_area', 'LISTO')->count();
-        $this->stats['finalizados']  = Equipo::where('estatus_area', 'TRANSFERIDO')->count();
+        $this->stats['aprobados']    = Equipo::where('estatus_area', 'EN_CALIDAD')->count();
+        $this->stats['finalizados']  = Equipo::where('estatus_area', 'FINALIZADO')->count();
     }
 
     public function render()

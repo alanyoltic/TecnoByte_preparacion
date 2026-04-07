@@ -181,12 +181,14 @@
                            focus:outline-none focus:ring-2 focus:ring-blue-500/70"
                 >
                     <option value="todos">Todos</option>
-                    <option value="En Revisión">En Revisión</option>
-                    <option value="LISTO">Listo</option>
-                    <option value="PENDIENTE_PIEZA">Pendiente Pieza</option>
-                    <option value="Pendiente Garantía">Pendiente Garantía</option>
-                    <option value="Pendiente Deshueso">Pendiente Deshueso</option>
-                    <option value="TRANSFERIDO">Finalizado</option>
+                    <option value="EN_ESPERA">En espera</option>
+                    <option value="EN_PROCESO">En proceso</option>
+                    <option value="EN_CALIDAD">En calidad</option>
+                    <option value="FINALIZADO">Finalizado</option>
+                    <option value="PENDIENTE_PIEZA">Pendiente pieza</option>
+                    <option value="PENDIENTE_GARANTIA">Pendiente garantía</option>
+                    <option value="PENDIENTE_DESARME">Pendiente desarme</option>
+                    <option value="TRANSFERIDO">Transferido</option>
                 </select>
             </div>
 
@@ -359,13 +361,15 @@
                             @php
                                 $estado = $equipo->estatus_area ?? 'Sin estatus';
                                 $badge = match ($estado) {
-                                    'En Revisión'        => 'bg-amber-100 text-amber-900 border-amber-300',
-                                    'LISTO'           => 'bg-emerald-100 text-emerald-900 border-emerald-300',
-                                    'PENDIENTE_PIEZA'    => 'bg-yellow-100 text-yellow-900 border-yellow-300',
-                                    'Pendiente Garantía' => 'bg-blue-100 text-blue-900 border-blue-300',
-                                    'Pendiente Deshueso' => 'bg-purple-100 text-purple-900 border-purple-300',
+                                    'EN_ESPERA'           => 'bg-slate-100 text-slate-700 border-slate-300',
+                                    'EN_PROCESO'          => 'bg-amber-100 text-amber-900 border-amber-300',
+                                    'EN_CALIDAD'          => 'bg-emerald-100 text-emerald-900 border-emerald-300',
+                                    'FINALIZADO'          => 'bg-green-200 text-green-900 border-green-400',
+                                    'PENDIENTE_PIEZA'     => 'bg-yellow-100 text-yellow-900 border-yellow-300',
+                                    'PENDIENTE_GARANTIA'  => 'bg-blue-100 text-blue-900 border-blue-300',
+                                    'PENDIENTE_DESARME'   => 'bg-purple-100 text-purple-900 border-purple-300',
                                     'TRANSFERIDO'         => 'bg-slate-200 text-slate-900 border-slate-400',
-                                    default              => 'bg-slate-100 text-slate-900 border-slate-300',
+                                    default               => 'bg-slate-100 text-slate-900 border-slate-300',
                                 };
                             @endphp
 

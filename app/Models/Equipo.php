@@ -34,14 +34,16 @@ class Equipo extends Model
      * estatus_area — detalle interno dentro del área que lo tiene.
      * Preparación lo usa para saber en qué etapa está el trabajo.
      */
+    const AREA_EN_ESPERA          = 'EN_ESPERA';
     const AREA_SIN_ASIGNAR        = 'SIN_ASIGNAR';
     const AREA_ASIGNADO           = 'ASIGNADO';
     const AREA_EN_PROCESO         = 'EN_PROCESO';
-    const AREA_LISTO              = 'LISTO';
+    const AREA_EN_CALIDAD         = 'EN_CALIDAD';
+    const AREA_FINALIZADO         = 'FINALIZADO';
     const AREA_TRANSFERIDO        = 'TRANSFERIDO';
     const AREA_PENDIENTE_PIEZA    = 'PENDIENTE_PIEZA';
     const AREA_PENDIENTE_GARANTIA = 'PENDIENTE_GARANTIA';
-    const AREA_PENDIENTE_DESHUESO = 'PENDIENTE_DESHUESO';
+    const AREA_PENDIENTE_DESARME  = 'PENDIENTE_DESARME';
     const AREA_GARANTIA_INT       = 'GARANTIA_INT';
     const AREA_GARANTIA_EXT       = 'GARANTIA_EXT';
 
@@ -69,21 +71,23 @@ class Equipo extends Model
      * Transiciones válidas para estatus_area dentro de preparación.
      */
     private array $transicionesArea = [
-        self::AREA_SIN_ASIGNAR        => [self::AREA_ASIGNADO],
+        self::AREA_EN_ESPERA          => [self::AREA_ASIGNADO, self::AREA_EN_PROCESO],
+        self::AREA_SIN_ASIGNAR        => [self::AREA_ASIGNADO, self::AREA_EN_PROCESO],
         self::AREA_ASIGNADO           => [self::AREA_EN_PROCESO],
         self::AREA_EN_PROCESO         => [
-            self::AREA_LISTO,
+            self::AREA_EN_CALIDAD,
             self::AREA_PENDIENTE_PIEZA,
             self::AREA_PENDIENTE_GARANTIA,
-            self::AREA_PENDIENTE_DESHUESO,
+            self::AREA_PENDIENTE_DESARME,
             self::AREA_GARANTIA_INT,
             self::AREA_GARANTIA_EXT,
         ],
-        self::AREA_LISTO              => [self::AREA_TRANSFERIDO],
-        self::AREA_TRANSFERIDO        => [], // Final para preparación
+        self::AREA_EN_CALIDAD         => [self::AREA_FINALIZADO],
+        self::AREA_FINALIZADO         => [self::AREA_TRANSFERIDO],
+        self::AREA_TRANSFERIDO        => [], // Final para preparacion
         self::AREA_PENDIENTE_PIEZA    => [self::AREA_EN_PROCESO],
         self::AREA_PENDIENTE_GARANTIA => [self::AREA_EN_PROCESO],
-        self::AREA_PENDIENTE_DESHUESO => [self::AREA_EN_PROCESO],
+        self::AREA_PENDIENTE_DESARME  => [self::AREA_EN_PROCESO],
         self::AREA_GARANTIA_INT       => [self::AREA_EN_PROCESO],
         self::AREA_GARANTIA_EXT       => [self::AREA_EN_PROCESO],
     ];
@@ -179,7 +183,7 @@ class Equipo extends Model
         return in_array($this->estatus_area, [
             self::AREA_PENDIENTE_PIEZA,
             self::AREA_PENDIENTE_GARANTIA,
-            self::AREA_PENDIENTE_DESHUESO,
+            self::AREA_PENDIENTE_DESARME,
             self::AREA_GARANTIA_INT,
             self::AREA_GARANTIA_EXT,
         ], true);
@@ -205,14 +209,16 @@ class Equipo extends Model
     public static function labelsArea(): array
     {
         return [
+            self::AREA_EN_ESPERA          => 'En espera',
             self::AREA_SIN_ASIGNAR        => 'Sin asignar',
             self::AREA_ASIGNADO           => 'Asignado',
             self::AREA_EN_PROCESO         => 'En proceso',
-            self::AREA_LISTO              => 'Listo',
+            self::AREA_EN_CALIDAD         => 'En calidad',
+            self::AREA_FINALIZADO         => 'Finalizado',
             self::AREA_TRANSFERIDO        => 'Transferido',
             self::AREA_PENDIENTE_PIEZA    => 'Pendiente pieza',
             self::AREA_PENDIENTE_GARANTIA => 'Pendiente garantía',
-            self::AREA_PENDIENTE_DESHUESO => 'Pendiente deshueso',
+            self::AREA_PENDIENTE_DESARME  => 'Pendiente desarme',
             self::AREA_GARANTIA_INT       => 'Garantía interna',
             self::AREA_GARANTIA_EXT       => 'Garantía externa',
         ];

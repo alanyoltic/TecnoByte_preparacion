@@ -332,7 +332,7 @@ class SolicitudPieza extends Model
             if ($equipo && $funciono) {
                 $equipo->update([
                     'estatus_ciclo' => 'CALIDAD',
-                    'estatus_area'  => 'LISTO',
+                    'estatus_area'  => 'EN_CALIDAD',
                     'almacen_id'    => 5, // almacén Calidad
                 ]);
             } elseif ($equipo && !$funciono) {

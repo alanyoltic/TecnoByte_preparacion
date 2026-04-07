@@ -377,9 +377,10 @@ class EquipoForm extends Form
                 'nullable',
                 'string',
                 Rule::in([
-                    'SIN_ASIGNAR', 'ASIGNADO', 'EN_PROCESO', 'LISTO',
-                    'TRANSFERIDO', 'PENDIENTE_PIEZA', 'PENDIENTE_GARANTIA',
-                    'PENDIENTE_DESHUESO', 'GARANTIA_INT', 'GARANTIA_EXT',
+                    'EN_ESPERA', 'SIN_ASIGNAR', 'ASIGNADO', 'EN_PROCESO',
+                    'EN_CALIDAD', 'FINALIZADO', 'TRANSFERIDO',
+                    'PENDIENTE_PIEZA', 'PENDIENTE_GARANTIA',
+                    'PENDIENTE_DESARME', 'GARANTIA_INT', 'GARANTIA_EXT',
                 ]),
             ],
 
