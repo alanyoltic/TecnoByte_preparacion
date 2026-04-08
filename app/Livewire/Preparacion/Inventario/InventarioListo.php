@@ -117,11 +117,13 @@ public function mount()
         if (trim($this->search) !== '') {
             $search = '%' . trim($this->search) . '%';
 
-            $query->where(function ($q) use ($search) {
+            $rawId = trim($this->search);
+            $query->where(function ($q) use ($search, $rawId) {
                 $q->where('numero_serie', 'like', $search)
                   ->orWhere('marca', 'like', $search)
                   ->orWhere('modelo', 'like', $search)
-                  ->orWhere('tipo_equipo', 'like', $search);
+                  ->orWhere('tipo_equipo', 'like', $search)
+                  ->orWhere('id', is_numeric($rawId) ? (int)$rawId : -1);
             });
         }
 

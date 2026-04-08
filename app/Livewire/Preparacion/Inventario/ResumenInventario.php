@@ -169,7 +169,8 @@ class ResumenInventario extends Component
                     $q->where('numero_serie', 'like', "%{$s}%")
                         ->orWhere('marca', 'like', "%{$s}%")
                         ->orWhere('modelo', 'like', "%{$s}%")
-                        ->orWhere('tipo_equipo', 'like', "%{$s}%");
+                        ->orWhere('tipo_equipo', 'like', "%{$s}%")
+                        ->orWhere('id', is_numeric($s) ? (int)$s : -1);
                 });
             })
             ->when($this->filtroEstado !== 'todos', fn($q) => $q->where('estatus_area', $this->filtroEstado))

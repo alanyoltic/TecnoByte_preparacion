@@ -53,14 +53,18 @@ class SolicitudesPiezas extends Component
                         $c->where('nombre', 'like', '%' . $this->busqueda . '%')
                     )
                     ->orWhere('descripcion_libre', 'like', '%' . $this->busqueda . '%')
-                    ->orWhereHas('equipo', fn ($e) =>
+                    ->orWhereHas('equipo', function ($e) {
+                        $bId = is_numeric(trim($this->busqueda)) ? (int)trim($this->busqueda) : -1;
                         $e->where('numero_serie', 'like', '%' . $this->busqueda . '%')
                             ->orWhere('modelo', 'like', '%' . $this->busqueda . '%')
-                    )
-                    ->orWhereHas('asignacionEquipo.equipo', fn ($e) =>
+                            ->orWhere('id', $bId);
+                    })
+                    ->orWhereHas('asignacionEquipo.equipo', function ($e) {
+                        $bId = is_numeric(trim($this->busqueda)) ? (int)trim($this->busqueda) : -1;
                         $e->where('numero_serie', 'like', '%' . $this->busqueda . '%')
                             ->orWhere('modelo', 'like', '%' . $this->busqueda . '%')
-                    );
+                            ->orWhere('id', $bId);
+                    });
                 });
             })
             ->orderByRaw("FIELD(estatus, 'SURTIDA_INVENTARIO', 'COMPRADA', 'PENDIENTE', 'PENDIENTE_COMPRA', 'CONFIRMADA', 'CANCELADA')")

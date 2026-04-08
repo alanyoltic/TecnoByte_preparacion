@@ -54,13 +54,16 @@ class GestionSolicitudesPiezas extends Component
             )
             ->when($this->busqueda, function ($query) {
                 $query->where(function ($q) {
-                    $q->whereHas('asignacionEquipo.equipo', function ($eq) {
+                    $bId = is_numeric(trim($this->busqueda)) ? (int)trim($this->busqueda) : -1;
+                    $q->whereHas('asignacionEquipo.equipo', function ($eq) use ($bId) {
                         $eq->where('numero_serie', 'like', '%' . $this->busqueda . '%')
-                            ->orWhere('modelo', 'like', '%' . $this->busqueda . '%');
+                            ->orWhere('modelo', 'like', '%' . $this->busqueda . '%')
+                            ->orWhere('id', $bId);
                     })
-                    ->orWhereHas('equipo', function ($eq) {
+                    ->orWhereHas('equipo', function ($eq) use ($bId) {
                         $eq->where('numero_serie', 'like', '%' . $this->busqueda . '%')
-                            ->orWhere('modelo', 'like', '%' . $this->busqueda . '%');
+                            ->orWhere('modelo', 'like', '%' . $this->busqueda . '%')
+                            ->orWhere('id', $bId);
                     })
                     ->orWhereHas('solicitadoPor', function ($tec) {
                         $tec->where('nombre', 'like', '%' . $this->busqueda . '%')

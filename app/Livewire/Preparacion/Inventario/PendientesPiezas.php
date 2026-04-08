@@ -56,16 +56,19 @@ class PendientesPiezas extends Component
             $search = '%' . $this->search . '%';
 
             $query->where(function ($q) use ($search) {
-                $q->whereHas('equipo', function ($qe) use ($search) {
+                $rawId = is_numeric(trim($this->search)) ? (int)trim($this->search) : -1;
+                $q->whereHas('equipo', function ($qe) use ($search, $rawId) {
                     $qe->where('numero_serie', 'like', $search)
                         ->orWhere('marca', 'like', $search)
                         ->orWhere('modelo', 'like', $search)
-                        ->orWhere('tipo_equipo', 'like', $search);
-                })->orWhereHas('asignacionEquipo.equipo', function ($qe) use ($search) {
+                        ->orWhere('tipo_equipo', 'like', $search)
+                        ->orWhere('id', $rawId);
+                })->orWhereHas('asignacionEquipo.equipo', function ($qe) use ($search, $rawId) {
                     $qe->where('numero_serie', 'like', $search)
                         ->orWhere('marca', 'like', $search)
                         ->orWhere('modelo', 'like', $search)
-                        ->orWhere('tipo_equipo', 'like', $search);
+                        ->orWhere('tipo_equipo', 'like', $search)
+                        ->orWhere('id', $rawId);
                 })->orWhereHas('catalogoPieza', function ($qp) use ($search) {
                     $qp->where('nombre', 'like', $search);
                 })->orWhere('descripcion_libre', 'like', $search);

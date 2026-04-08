@@ -1361,7 +1361,7 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
             'lote_modelo_id' => $f->lote_modelo_id,
             'proveedor_id'   => $f->proveedor_id,
 
-            'estatus_area' => $f->estatus_area,
+            // estatus_area NO se incluye: solo el sistema puede cambiar el estatus
 
             'marca'             => $f->marca,
             'modelo'            => $f->modelo,

@@ -84,32 +84,31 @@ class Asignaciones extends Component
     public function lotesDisponibles()
     {
         return Lote::with(['modelosRecibidos' => function($q) {
+                // Contar equipos físicos registrados (fuente de verdad)
+                // Una vez que un equipo existe en la tabla, ese cupo está ocupado
                 $q->addSelect([
                     'lote_modelos_recibidos.*',
                     DB::raw("(
-                        SELECT COALESCE(SUM(cantidad), 0)
-                        FROM asignaciones
-                        WHERE asignaciones.lote_modelo_id = lote_modelos_recibidos.id
-                        AND asignaciones.estatus IN ('PENDIENTE', 'EN_PROCESO')
-                        AND asignaciones.deleted_at IS NULL
-                    ) as cantidad_asignada"),
+                        SELECT COUNT(*)
+                        FROM equipos
+                        WHERE equipos.lote_modelo_id = lote_modelos_recibidos.id
+                        AND equipos.deleted_at IS NULL
+                    ) as equipos_registrados"),
                 ]);
             }])
             ->whereHas('modelosRecibidos', fn($q) =>
-                $q->whereRaw("cantidad_recibida > (
-                    SELECT COALESCE(SUM(cantidad), 0)
-                    FROM asignaciones
-                    WHERE asignaciones.lote_modelo_id = lote_modelos_recibidos.id
-                    AND asignaciones.estatus IN ('PENDIENTE', 'EN_PROCESO')
-                    AND asignaciones.deleted_at IS NULL
-                )")
+                // Solo lotes que tengan al menos un modelo con capacidad > 0
+                $q->whereColumn('cantidad_recibida', '>', DB::raw('0'))
             )
             ->orderByDesc('fecha_llegada')
             ->get()
             ->map(function($lote) {
-                $lote->modelosRecibidos = $lote->modelosRecibidos->filter(function($modelo) {
-                    $modelo->equipos_libres = $modelo->cantidad_recibida - ($modelo->cantidad_asignada ?? 0);
-                    return $modelo->equipos_libres > 0;
+                $lote->modelosRecibidos = $lote->modelosRecibidos->map(function($modelo) {
+                    $modelo->equipos_libres = max(
+                        (int)$modelo->cantidad_recibida - (int)($modelo->equipos_registrados ?? 0),
+                        0
+                    );
+                    return $modelo;
                 })->values();
                 return $lote;
             })
@@ -216,12 +215,11 @@ class Asignaciones extends Component
         }
 
         // Validar que ninguna cantidad supere los disponibles
+        // Fuente de verdad: equipos físicos registrados con ese lote_modelo_id
         foreach ($this->seleccion as $loteModeloId => $cantidad) {
             $modelo = \App\Models\LoteModeloRecibido::find($loteModeloId);
-            $yaAsignado = Asignacion::where('lote_modelo_id', $loteModeloId)
-                ->whereIn('estatus', [Asignacion::PENDIENTE, Asignacion::EN_PROCESO])
-                ->sum('cantidad');
-            $disponibles = ($modelo->cantidad_recibida ?? 0) - $yaAsignado;
+            $registrados = \App\Models\Equipo::where('lote_modelo_id', $loteModeloId)->count();
+            $disponibles = max((int)($modelo->cantidad_recibida ?? 0) - $registrados, 0);
 
             if ($cantidad > $disponibles) {
                 $this->error = "La cantidad para {$modelo->marca} {$modelo->modelo} supera los disponibles ({$disponibles}).";

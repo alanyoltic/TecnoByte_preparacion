@@ -500,17 +500,23 @@
                                 {{-- Modelos del lote --}}
                                 <div x-show="open" x-transition>
                                     @foreach($lote->modelosRecibidos as $modelo)
+                                        @php $agotado = ($modelo->equipos_libres ?? 0) <= 0; @endphp
                                         <div class="flex items-center justify-between gap-4 px-4 py-2.5
                                                     border-t border-slate-200/60 dark:border-slate-700/40
-                                                    {{ isset($seleccion[$modelo->id]) && $seleccion[$modelo->id] > 0
-                                                        ? 'bg-[#FF9521]/5 dark:bg-[#FF9521]/5'
-                                                        : 'bg-white/60 dark:bg-slate-950/20' }}">
+                                                    {{ $agotado
+                                                        ? 'opacity-50 bg-slate-100/60 dark:bg-slate-900/30'
+                                                        : (isset($seleccion[$modelo->id]) && $seleccion[$modelo->id] > 0
+                                                            ? 'bg-[#FF9521]/5 dark:bg-[#FF9521]/5'
+                                                            : 'bg-white/60 dark:bg-slate-950/20') }}">
                                             <div>
-                                                <p class="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                                <p class="text-sm font-medium {{ $agotado ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-slate-100' }}">
                                                     {{ $modelo->marca }} {{ $modelo->modelo }}
+                                                    @if($agotado)
+                                                        <span class="ml-1 text-xs font-normal text-slate-400">(agotado)</span>
+                                                    @endif
                                                 </p>
                                                 <p class="text-xs text-slate-400">
-                                                    <span class="font-semibold text-emerald-600 dark:text-emerald-400">
+                                                    <span class="font-semibold {{ $agotado ? 'text-slate-400' : 'text-emerald-600 dark:text-emerald-400' }}">
                                                         {{ $modelo->equipos_libres ?? 0 }} disponibles
                                                     </span>
                                                     de {{ $modelo->cantidad_recibida ?? 0 }} recibidos
@@ -520,13 +526,15 @@
                                                 type="number"
                                                 min="0"
                                                 max="{{ $modelo->equipos_libres ?? 0 }}"
-                                                value="{{ $seleccion[$modelo->id] ?? 0 }}"
+                                                value="{{ $agotado ? 0 : ($seleccion[$modelo->id] ?? 0) }}"
+                                                @disabled($agotado)
                                                 wire:change="actualizarCantidad({{ $modelo->id }}, $event.target.value)"
                                                 class="w-20 rounded-xl px-3 py-1.5 text-sm text-center
                                                        bg-white/70 dark:bg-slate-900/40
                                                        border border-slate-300/80 dark:border-slate-700
                                                        text-slate-900 dark:text-slate-100
-                                                       focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none">
+                                                       focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none
+                                                       disabled:opacity-40 disabled:cursor-not-allowed">
                                         </div>
                                     @endforeach
                                 </div>
