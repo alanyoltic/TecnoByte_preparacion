@@ -487,11 +487,6 @@
                 'perm'  => 'prep.inventario.ver',
             ],
             [
-                'label' => 'Pendientes Piezas',
-                'href'  => route('equipos.piezas-pendientes'),
-                'perm'  => 'prep.inventario.ver',
-            ],
-            [
                 'label' => 'Catálogo Piezas',
                 'href'  => route('preparacion.catalogo-piezas'),
                 'perm'  => 'prep.inventario.gestion',

@@ -104,7 +104,7 @@
     <div class="flex flex-col lg:flex-row gap-6">
 
         {{-- TARJETAS RESUMEN — ESTILO GLOW REAL --}}
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 flex-1">
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 flex-1">
 
             {{-- TOTAL EQUIPOS — Glow azul --}}
             <div
@@ -196,6 +196,30 @@
                 <p class="mt-2 text-2xl font-bold text-indigo-800 dark:text-indigo-100">
                     {{ $stats['finalizados'] ?? 0 }}
                 </p>
+            </div>
+
+            {{-- SIN ASIGNAR — Glow violeta --}}
+            <div
+                class="rounded-2xl
+                       bg-violet-50/90 dark:bg-violet-950/40
+                       border border-violet-200/80 dark:border-violet-500/70
+                       backdrop-blur-xl dark:backdrop-blur-2xl
+                       px-4 py-3
+                       shadow-md shadow-violet-900/10
+                       dark:shadow-lg dark:shadow-violet-900/30
+                       transition-all duration-300
+                       hover:-translate-y-1
+                       hover:shadow-lg hover:shadow-violet-500/40
+                       dark:hover:shadow-2xl dark:hover:shadow-violet-400/50
+                       hover:border-violet-400/70"
+            >
+                <p class="text-xs sm:text-sm font-semibold text-violet-700 dark:text-violet-200 uppercase tracking-wide">
+                    Sin asignar
+                </p>
+                <p class="mt-2 text-2xl font-bold text-violet-800 dark:text-violet-100">
+                    {{ $stats['sin_asignar'] ?? 0 }}
+                </p>
+                <p class="text-[0.65rem] text-violet-600 dark:text-violet-400 mt-1">Pendientes de asignar</p>
             </div>
 
         </div>

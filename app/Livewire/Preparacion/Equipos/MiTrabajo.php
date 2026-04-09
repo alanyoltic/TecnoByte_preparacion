@@ -253,7 +253,11 @@ class MiTrabajo extends Component
         $this->asignacionEquipoId = $asignacionEquipoId;
         $this->equipoTerminado    = $ae->camino !== AsignacionEquipo::EN_PROCESO;
 
-        // Cargar datos del equipo en el form
+        // ── Reset COMPLETO antes de cargar el nuevo equipo ────────────────
+        // Evita que datos del equipo anterior persistan en pantalla
+        $this->resetFormParaEquipo();
+
+        // Cargar datos del equipo en el form (columnas de la tabla equipos)
         $this->form->fillFromModel($equipo);
 
         // Pre-llenar campos de solo lectura
@@ -262,20 +266,32 @@ class MiTrabajo extends Component
         $this->form->modelo         = $equipo->modelo;
         $this->form->lote_modelo_id = $equipo->lote_modelo_id;
 
+        // Reconstruir filas UI (puertos, lectores, slots) desde columnas DB
+        $this->reconstructUiArraysFromModel($equipo);
+
+        // Reconstruir checks de detalles desde texto guardado en DB
+        $est = $this->parseChecksText((string) ($equipo->detalles_esteticos ?? ''));
+        $this->form->detalles_esteticos_checks = $est['checks'];
+        $this->form->detalles_esteticos_otro   = $est['otro'];
+
+        $fun = $this->parseChecksText((string) ($equipo->detalles_funcionamiento ?? ''));
+        $this->form->detalles_funcionamiento_checks = $fun['checks'];
+        $this->form->detalles_funcionamiento_otro   = $fun['otro'];
+
         // Cargar GPU desde equipo_gpus
         $gpuInt = EquipoGpu::where('equipo_id', $equipo->id)->where('tipo', 'INTEGRADA')->first();
         $gpuDed = EquipoGpu::where('equipo_id', $equipo->id)->where('tipo', 'DEDICADA')->first();
 
-        $this->form->gpu_integrada_tiene  = (bool) $gpuInt;
-        $this->form->gpu_integrada_marca  = $gpuInt?->marca;
-        $this->form->gpu_integrada_modelo = $gpuInt?->modelo;
-        $this->form->gpu_integrada_vram   = $gpuInt?->vram;
+        $this->form->gpu_integrada_tiene       = (bool) $gpuInt;
+        $this->form->gpu_integrada_marca       = $gpuInt?->marca;
+        $this->form->gpu_integrada_modelo      = $gpuInt?->modelo;
+        $this->form->gpu_integrada_vram        = $gpuInt?->vram;
         $this->form->gpu_integrada_vram_unidad = $gpuInt?->vram_unidad ?: 'GB';
 
-        $this->form->gpu_dedicada_tiene  = (bool) $gpuDed;
-        $this->form->gpu_dedicada_marca  = $gpuDed?->marca;
-        $this->form->gpu_dedicada_modelo = $gpuDed?->modelo;
-        $this->form->gpu_dedicada_vram   = $gpuDed?->vram;
+        $this->form->gpu_dedicada_tiene       = (bool) $gpuDed;
+        $this->form->gpu_dedicada_marca       = $gpuDed?->marca;
+        $this->form->gpu_dedicada_modelo      = $gpuDed?->modelo;
+        $this->form->gpu_dedicada_vram        = $gpuDed?->vram;
         $this->form->gpu_dedicada_vram_unidad = $gpuDed?->vram_unidad ?: 'GB';
 
         // Cargar batería
@@ -289,7 +305,7 @@ class MiTrabajo extends Component
         $this->form->bateria2_tipo  = $bat2?->tipo;
         $this->form->bateria2_salud = $bat2?->salud_percent;
 
-        // Cargar monitor
+        // Cargar monitor (los campos ya están en null por resetFormParaEquipo)
         $monitor = EquipoMonitor::where('equipo_id', $equipo->id)->first();
         if ($monitor) {
             $this->form->monitor_incluido   = $monitor->incluido ? 'SI' : 'NO';
@@ -298,6 +314,8 @@ class MiTrabajo extends Component
             $this->form->pantalla_pulgadas  = $monitor->pulgadas;
             $this->form->pantalla_resolucion = $monitor->resolucion;
             $this->form->pantalla_es_touch  = (bool) $monitor->es_touch;
+            // Reconstruir filas de entradas del monitor
+            $this->form->monitor_entradas_rows = $this->reconstructMonitorEntradas($monitor);
         }
 
         $this->setDefaultsEnForm();
@@ -756,47 +774,55 @@ class MiTrabajo extends Component
             default            => ['PREPARACION', 'EN_PROCESO',          2], // almacén Preparación
         };
 
-        $ae->update(['fin_en' => now(), 'camino' => $this->camino, 'notas' => $this->notasTerminar ?: null]);
-        $equipo->update([
-            'estatus_ciclo' => $estatusCiclo,
-            'estatus_area'  => $estatusArea,
-            'almacen_id'    => $almacenId,
-        ]);
+        try {
+            DB::transaction(function () use ($ae, $equipo, $estatusCiclo, $estatusArea, $almacenId) {
+                $ae->update(['fin_en' => now(), 'camino' => $this->camino, 'notas' => $this->notasTerminar ?: null]);
+                $equipo->update([
+                    'estatus_ciclo' => $estatusCiclo,
+                    'estatus_area'  => $estatusArea,
+                    'almacen_id'    => $almacenId,
+                ]);
 
-        if ($this->camino === 'PIEZA_PENDIENTE') {
-            SolicitudPieza::create([
-                'asignacion_equipo_id' => $ae->id,
-                'equipo_id'            => $ae->equipo_id,
-                'solicitado_por_id'    => Auth::id(),
-                'catalogo_pieza_id'    => $this->catalogoPiezaId ?: null,
-                'descripcion_libre'    => trim($this->descripcionPiezaLibre) ?: null,
-                'estatus'              => SolicitudPieza::PENDIENTE,
-            ]);
-        }
+                if ($this->camino === 'PIEZA_PENDIENTE') {
+                    SolicitudPieza::create([
+                        'asignacion_equipo_id' => $ae->id,
+                        'equipo_id'            => $ae->equipo_id,
+                        'solicitado_por_id'    => Auth::id(),
+                        'catalogo_pieza_id'    => $this->catalogoPiezaId ?: null,
+                        'descripcion_libre'    => trim($this->descripcionPiezaLibre) ?: null,
+                        'estatus'              => SolicitudPieza::PENDIENTE,
+                    ]);
+                }
 
-        $clasificacionId = $equipo->clasificacion_puntos_id;
-        $puntosBase      = $clasificacionId
-            ? (\App\Models\ClasificacionPuntos::find($clasificacionId)?->puntos_base ?? 1.0)
-            : 1.0;
+                $clasificacionId = $equipo->clasificacion_puntos_id;
+                $puntosBase      = $clasificacionId
+                    ? (\App\Models\ClasificacionPuntos::find($clasificacionId)?->puntos_base ?? 1.0)
+                    : 1.0;
 
-        $rol = match($this->camino) {
-            'COMPLETADO'                           => PuntoTecnico::COMPLETO,
-            'PIEZA_PENDIENTE'                      => PuntoTecnico::INICIO_PIEZA,
-            'GARANTIA_INTERNA', 'GARANTIA_EXTERNA' => PuntoTecnico::GARANTIA,
-            default                                => PuntoTecnico::COMPLETO,
-        };
+                $rol = match($this->camino) {
+                    'COMPLETADO'                           => PuntoTecnico::COMPLETO,
+                    'PIEZA_PENDIENTE'                      => PuntoTecnico::INICIO_PIEZA,
+                    'GARANTIA_INTERNA', 'GARANTIA_EXTERNA' => PuntoTecnico::GARANTIA,
+                    default                                => PuntoTecnico::COMPLETO,
+                };
 
-        PuntoTecnico::registrar(
-            tecnicoId: Auth::id(), asignacionEquipoId: $ae->id,
-            rol: $rol, puntosBase: (float) $puntosBase, clasificacionId: $clasificacionId,
-        );
+                PuntoTecnico::registrar(
+                    tecnicoId: Auth::id(), asignacionEquipoId: $ae->id,
+                    rol: $rol, puntosBase: (float) $puntosBase, clasificacionId: $clasificacionId,
+                );
 
-        $asignacion = $ae->asignacion;
-        $terminados = AsignacionEquipo::where('asignacion_id', $asignacion->id)
-            ->where('camino', '!=', AsignacionEquipo::EN_PROCESO)->count();
+                $asignacion = $ae->asignacion;
+                $terminados = AsignacionEquipo::where('asignacion_id', $asignacion->id)
+                    ->where('camino', '!=', AsignacionEquipo::EN_PROCESO)->count();
 
-        if ($terminados >= $asignacion->cantidad) {
-            $asignacion->update(['estatus' => Asignacion::ENTREGADO, 'fecha_entrega' => now()->toDateString()]);
+                if ($terminados >= $asignacion->cantidad) {
+                    $asignacion->update(['estatus' => Asignacion::ENTREGADO, 'fecha_entrega' => now()->toDateString()]);
+                }
+            });
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'No se pudo terminar el equipo: ' . $e->getMessage());
+            \Log::error('terminarEquipo error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return;
         }
 
         $this->dispatch('toast', type: 'success', title: 'Equipo terminado', message: 'El equipo fue marcado como terminado.');
@@ -1019,15 +1045,149 @@ class MiTrabajo extends Component
         return $payload;
     }
 
+    /**
+     * Reset completo de los campos del form que NO vienen de equipo->toArray().
+     * Debe llamarse siempre antes de cargar un nuevo equipo para evitar residuos.
+     */
+    private function resetFormParaEquipo(): void
+    {
+        $f = $this->form;
+        // Arrays UI (nunca están en equipos->toArray, requieren reset explícito)
+        $f->puertos_usb           = [];
+        $f->puertos_video         = [];
+        $f->lectores              = [];
+        $f->slots_almacenamiento  = [];
+        $f->monitor_entradas_rows = [];
+        // Chips de detalles
+        $f->detalles_esteticos_checks          = [];
+        $f->detalles_esteticos_otro            = null;
+        $f->detalles_funcionamiento_checks     = [];
+        $f->detalles_funcionamiento_otro       = null;
+        // GPU
+        $f->gpu_integrada_tiene       = false;
+        $f->gpu_integrada_marca       = null;
+        $f->gpu_integrada_modelo      = null;
+        $f->gpu_integrada_vram        = null;
+        $f->gpu_integrada_vram_unidad = 'GB';
+        $f->gpu_dedicada_tiene        = false;
+        $f->gpu_dedicada_marca        = null;
+        $f->gpu_dedicada_modelo       = null;
+        $f->gpu_dedicada_vram         = null;
+        $f->gpu_dedicada_vram_unidad  = 'GB';
+        $f->gpu_integrada_marca_mode  = 'LISTA';
+        $f->gpu_dedicada_marca_mode   = 'LISTA';
+        // Batería
+        $f->bateria_tiene  = true;
+        $f->bateria1_tipo  = null;
+        $f->bateria1_salud = null;
+        $f->bateria2_tiene = false;
+        $f->bateria2_tipo  = null;
+        $f->bateria2_salud = null;
+        // Monitor / pantalla
+        $f->monitor_incluido                          = 'NO';
+        $f->monitor_pulgadas                          = null;
+        $f->monitor_resolucion                        = null;
+        $f->monitor_es_touch                          = false;
+        $f->monitor_tipo_panel                        = null;
+        $f->monitor_detalles_esteticos_checks         = '';
+        $f->monitor_detalles_esteticos_otro           = '';
+        $f->monitor_detalles_funcionamiento_checks    = '';
+        $f->monitor_detalles_funcionamiento_otro      = '';
+        $f->pantalla_pulgadas   = null;
+        $f->pantalla_resolucion = null;
+        $f->pantalla_es_touch   = false;
+        $f->pantalla_tipo       = null;
+    }
+
+    /**
+     * Reconstruye los arrays UI de puertos/lectores/slots desde las columnas
+     * de la tabla equipos. Así el técnico ve los datos ya guardados al editar.
+     */
+    private function reconstructUiArraysFromModel(Equipo $equipo): void
+    {
+        $f = $this->form;
+
+        $f->puertos_usb = [];
+        foreach (self::MAP_USB as $label => $col) {
+            $val = (int) ($equipo->{$col} ?? 0);
+            if ($val > 0) $f->puertos_usb[] = ['tipo' => $label, 'cantidad' => $val];
+        }
+
+        $f->puertos_video = [];
+        foreach (self::MAP_VIDEO as $label => $col) {
+            $val = (int) ($equipo->{$col} ?? 0);
+            if ($val > 0) $f->puertos_video[] = ['tipo' => $label, 'cantidad' => $val];
+        }
+
+        $f->lectores = [];
+        foreach (self::MAP_LECTORES as $label => $col) {
+            $val = (int) ($equipo->{$col} ?? 0);
+            if ($val > 0) $f->lectores[] = ['tipo' => $label, 'cantidad' => $val];
+        }
+
+        $f->slots_almacenamiento = [];
+        foreach (self::MAP_SLOTS as $label => $col) {
+            $val = (int) ($equipo->{$col} ?? 0);
+            if ($val > 0) $f->slots_almacenamiento[] = ['tipo' => $label, 'cantidad' => $val];
+        }
+    }
+
+    /**
+     * Reconstruye los arrays UI de entradas del monitor desde las columnas
+     * del modelo EquipoMonitor.
+     */
+    private function reconstructMonitorEntradas(EquipoMonitor $monitor): array
+    {
+        $rows = [];
+        foreach (self::MAP_MONITOR_IN as $label => $col) {
+            $val = (int) ($monitor->{$col} ?? 0);
+            if ($val > 0) $rows[] = ['tipo' => $label, 'cantidad' => $val];
+        }
+        return $rows;
+    }
+
+    /**
+     * Parsea el texto guardado en detalles_esteticos / detalles_funcionamiento
+     * y lo convierte de vuelta a checks[] + otro para mostrar los chips en la UI.
+     * Formato esperado: "CHECK1, CHECK2 | Otro: descripcion"
+     */
+    private function parseChecksText(string $text): array
+    {
+        if ($text === '') return ['checks' => [], 'otro' => null];
+
+        $otro = null;
+        if (str_contains($text, ' | Otro: ')) {
+            [$checksPart, $otro] = explode(' | Otro: ', $text, 2);
+        } else {
+            $checksPart = $text;
+        }
+
+        $checks = $checksPart !== ''
+            ? array_values(array_filter(array_map('trim', explode(', ', $checksPart))))
+            : [];
+
+        return ['checks' => $checks, 'otro' => $otro ?: null];
+    }
+
     private function applyAggregatesToEquipoColumns(): void
     {
         $f = $this->form;
-        $usbCounts   = $this->aggregateCounters($f->puertos_usb ?? [], 'tipo', 'cantidad');
-        $this->applyMapCountsToEquipo($usbCounts, self::MAP_USB);
-        $videoCounts = $this->aggregateCounters($f->puertos_video ?? [], 'tipo', 'cantidad');
-        $this->applyMapCountsToEquipo($videoCounts, self::MAP_VIDEO);
-        $lectorCounts = $this->aggregateCounters($f->lectores ?? [], 'tipo', 'cantidad');
-        $this->applyMapCountsToEquipo($lectorCounts, self::MAP_LECTORES);
+
+        // Null-reset todas las columnas primero (igual que mapSlotsToDbColumns con slots)
+        // Así si el técnico elimina un puerto, el cambio se persiste correctamente
+        foreach (self::MAP_USB     as $col) $f->{$col} = null;
+        foreach (self::MAP_VIDEO   as $col) $f->{$col} = null;
+        foreach (self::MAP_LECTORES as $col) $f->{$col} = null;
+
+        foreach ($this->aggregateCounters($f->puertos_usb ?? [], 'tipo', 'cantidad') as $label => $count) {
+            if (isset(self::MAP_USB[$label]) && $count > 0) $f->{self::MAP_USB[$label]} = (string) $count;
+        }
+        foreach ($this->aggregateCounters($f->puertos_video ?? [], 'tipo', 'cantidad') as $label => $count) {
+            if (isset(self::MAP_VIDEO[$label]) && $count > 0) $f->{self::MAP_VIDEO[$label]} = (string) $count;
+        }
+        foreach ($this->aggregateCounters($f->lectores ?? [], 'tipo', 'cantidad') as $label => $count) {
+            if (isset(self::MAP_LECTORES[$label]) && $count > 0) $f->{self::MAP_LECTORES[$label]} = (string) $count;
+        }
     }
 
     private function aggregateCounters(array $rows, string $keyField, ?string $qtyField): array

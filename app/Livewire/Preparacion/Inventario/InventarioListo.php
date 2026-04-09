@@ -8,6 +8,7 @@ use App\Models\Equipo;
 use App\Models\Lote;
 use App\Models\Proveedor;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 class InventarioListo extends Component
 {
@@ -102,6 +103,24 @@ public function mount()
         $this->stats['en_revision']  = Equipo::where('estatus_area', 'EN_PROCESO')->count();
         $this->stats['aprobados']    = Equipo::where('estatus_area', 'EN_CALIDAD')->count();
         $this->stats['finalizados']  = Equipo::where('estatus_area', 'FINALIZADO')->count();
+        $this->stats['sin_asignar']  = (int) DB::selectOne("
+            SELECT COALESCE(SUM(GREATEST(
+                CAST(lmr.cantidad_recibida AS SIGNED)
+                - (SELECT COUNT(*) FROM equipos e WHERE e.lote_modelo_id = lmr.id AND e.deleted_at IS NULL)
+                - COALESCE((
+                    SELECT SUM(GREATEST(
+                        CAST(a.cantidad AS SIGNED) - (SELECT COUNT(*) FROM asignacion_equipos ae WHERE ae.asignacion_id = a.id),
+                        0
+                    ))
+                    FROM asignaciones a
+                    WHERE a.lote_modelo_id = lmr.id
+                      AND a.estatus IN ('PENDIENTE','EN_PROCESO')
+                      AND a.deleted_at IS NULL
+                ), 0),
+                0
+            )), 0) as total
+            FROM lote_modelos_recibidos lmr
+        ")->total;
     }
 
     public function render()

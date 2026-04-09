@@ -425,7 +425,6 @@ Sobre `Gate` y `Policy`:
 | Ruta | Vista o componente | Control actual | Estado |
 | --- | --- | --- | --- |
 | `/equipos/registrar` | `preparacion.equipos.registrar` -> `preparacion.equipos.registrar-equipo` | `permiso:prep.equipos.ver` | Incorrecto, deberia ser `prep.equipos.crear` |
-| `/equipos/piezas-pendientes` | `preparacion.equipos.pendientes-piezas` -> `preparacion.inventario.pendientes-piezas` | `permiso:prep.equipos.ver` | Aceptable |
 | `/equipos/caracteristicas` | `preparacion.inventario.resumen` -> `preparacion.inventario.resumen-inventario` | `permiso:prep.equipos.ver` | Ruta correcta, vista con slug interno incorrecto |
 | `/equipos/{equipo}/editar` | `preparacion.equipos.editar-equipo` | `permiso:prep.equipos.editar` | Correcto |
 | `/preparacion/mi-trabajo` | `Preparacion\\Equipos\\MiTrabajo` | `permiso:prep.equipos.ver` | Aceptable |

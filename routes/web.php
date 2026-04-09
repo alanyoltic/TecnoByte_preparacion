@@ -16,7 +16,6 @@ use App\Livewire\Preparacion\Equipos\EditarEquipo;
 use App\Livewire\Preparacion\Equipos\RegistrarEquipo;
 use App\Livewire\Preparacion\Inventario\GestionInventario;
 use App\Livewire\Preparacion\Inventario\InventarioListo;
-use App\Livewire\Preparacion\Inventario\PendientesPiezas;
 use App\Livewire\Preparacion\Inventario\Transferencias;
 use App\Livewire\Preparacion\Inventario\TransferenciasCrear;
 use App\Livewire\Preparacion\Lotes\EditarLote;
@@ -137,10 +136,6 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
         Route::get('/registrar', fn () => view('preparacion.equipos.registrar'))
             ->middleware('permiso:prep.equipos.crear')
             ->name('equipos.create');
-
-        Route::get('/piezas-pendientes', fn () => view('preparacion.equipos.pendientes-piezas'))
-            ->middleware('permiso:prep.inventario.ver')
-            ->name('equipos.piezas-pendientes');
 
         Route::view('/caracteristicas', 'preparacion.inventario.resumen')
             ->middleware('permiso:prep.equipos.ver')
