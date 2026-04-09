@@ -73,7 +73,7 @@
         @if($vista === 'panel')
 
             {{-- MÉTRICAS --}}
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
 
                 {{-- Técnicos activos --}}
                 <div class="rounded-2xl bg-white/80 dark:bg-slate-950/60
@@ -172,6 +172,23 @@
                         {{ $this->metricas['garantias'] }}
                     </p>
                     <p class="text-[0.65rem] text-rose-600 dark:text-rose-400 mt-1">Interna o externa</p>
+                </div>
+
+                {{-- Sin asignar --}}
+                <div class="rounded-2xl bg-violet-50/90 dark:bg-violet-950/40
+                            border border-violet-200/80 dark:border-violet-500/70
+                            backdrop-blur-xl dark:backdrop-blur-2xl px-4 py-3
+                            shadow-md shadow-violet-900/10 dark:shadow-violet-900/30
+                            transition-all duration-300 hover:-translate-y-1
+                            hover:shadow-lg hover:shadow-violet-500/40 dark:hover:shadow-violet-400/50
+                            hover:border-violet-400/70">
+                    <p class="text-xs font-semibold text-violet-700 dark:text-violet-200 uppercase tracking-wide">
+                        Sin asignar
+                    </p>
+                    <p class="mt-2 text-2xl font-bold text-violet-800 dark:text-violet-100">
+                        {{ $this->metricas['sin_asignar'] }}
+                    </p>
+                    <p class="text-[0.65rem] text-violet-600 dark:text-violet-400 mt-1">Pendientes de asignar</p>
                 </div>
 
             </div>
@@ -464,16 +481,32 @@
                         <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
                     </div>
 
+                    {{-- Buscador de lotes --}}
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">🔍</span>
+                        <input
+                            type="text"
+                            wire:model.live.debounce.300ms="busquedaLote"
+                            placeholder="Buscar lote..."
+                            class="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl
+                                   bg-white/70 dark:bg-slate-900/40
+                                   border border-slate-300/80 dark:border-slate-700
+                                   text-slate-900 dark:text-slate-100
+                                   placeholder:text-slate-400
+                                   focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none">
+                    </div>
+
                     <div class="space-y-3 max-h-[420px] overflow-y-auto pr-1">
                         @forelse($this->lotesDisponibles as $lote)
+                            @php $loteAgotado = $lote->modelosRecibidos->sum('equipos_libres') <= 0; @endphp
                             {{-- Acordeón por lote --}}
-                            <div x-data="{ open: true }"
+                            <div x-data="{ open: {{ $loteAgotado ? 'false' : 'false' }} }"
                                  class="rounded-xl border border-slate-200/80 dark:border-slate-700/60 overflow-hidden">
 
                                 {{-- Header lote --}}
                                 <button type="button" @click="open = !open"
                                     class="w-full flex items-center justify-between px-4 py-3
-                                           bg-slate-50/80 dark:bg-slate-900/60
+                                           {{ $loteAgotado ? 'bg-slate-100/60 dark:bg-slate-900/30' : 'bg-slate-50/80 dark:bg-slate-900/60' }}
                                            hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition">
                                     <div class="flex items-center gap-2">
                                         <svg class="w-4 h-4 text-slate-400 transition-transform duration-200"
@@ -483,7 +516,7 @@
                                                   d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
                                                   clip-rule="evenodd"/>
                                         </svg>
-                                        <span class="text-sm font-semibold text-slate-900 dark:text-slate-50">
+                                        <span class="text-sm font-semibold {{ $loteAgotado ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-slate-50' }}">
                                             Lote {{ $lote->nombre_lote }}
                                         </span>
                                         @if($lote->fecha_llegada)
@@ -491,9 +524,14 @@
                                                 · {{ \Carbon\Carbon::parse($lote->fecha_llegada)->format('d/m/Y') }}
                                             </span>
                                         @endif
+                                        @if($loteAgotado)
+                                            <span class="text-xs text-slate-400 bg-slate-200/80 dark:bg-slate-700/60 px-2 py-0.5 rounded-full">
+                                                sin disponibles
+                                            </span>
+                                        @endif
                                     </div>
-                                    <span class="text-xs text-slate-400">
-                                        {{ $lote->modelosRecibidos->count() }} modelo(s)
+                                    <span class="text-xs {{ $loteAgotado ? 'text-slate-400' : 'text-emerald-600 dark:text-emerald-400 font-semibold' }}">
+                                        {{ $lote->modelosRecibidos->sum('equipos_libres') }} disp · {{ $lote->modelosRecibidos->count() }} modelo(s)
                                     </span>
                                 </button>
 

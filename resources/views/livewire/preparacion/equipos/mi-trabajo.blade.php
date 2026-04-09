@@ -389,6 +389,60 @@
 
             <div class="space-y-4">
 
+                {{-- Equipos pre-registrados desde lote --}}
+                @if($this->equiposPreRegistrados->isNotEmpty())
+                    <div class="rounded-2xl bg-white/80 dark:bg-slate-950/60
+                                border border-amber-300/60 dark:border-amber-500/30
+                                backdrop-blur-xl dark:backdrop-blur-2xl
+                                shadow-md shadow-slate-900/10 dark:shadow-slate-900/30
+                                px-5 py-5 space-y-3">
+
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                                Equipos pre-registrados ({{ $this->equiposPreRegistrados->count() }})
+                            </span>
+                            <div class="h-px flex-1 bg-gradient-to-r from-amber-300/50 to-transparent"></div>
+                        </div>
+
+                        <p class="text-[0.65rem] text-slate-500 dark:text-slate-400">
+                            Estos equipos ya tienen número de serie asignado desde el lote. Haz clic en "Iniciar" para comenzar a trabajar en ellos.
+                        </p>
+
+                        @if($errorSerie)
+                            <div class="rounded-xl border border-rose-500/40 bg-rose-50/80 dark:bg-rose-950/30
+                                        px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
+                                {{ $errorSerie }}
+                            </div>
+                        @endif
+
+                        <div class="space-y-2">
+                            @foreach($this->equiposPreRegistrados as $pre)
+                                <div class="flex items-center justify-between gap-3 rounded-xl px-4 py-2.5
+                                            bg-amber-50/80 dark:bg-amber-950/20
+                                            border border-amber-200/50 dark:border-amber-700/30">
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-mono font-medium text-slate-800 dark:text-slate-100 truncate">
+                                            {{ $pre->numero_serie }}
+                                        </p>
+                                        <p class="text-[0.65rem] text-slate-400">{{ $pre->marca }} {{ $pre->modelo }}</p>
+                                    </div>
+                                    <button wire:click="iniciarEquipoPreRegistrado({{ $pre->id }})"
+                                        wire:loading.attr="disabled"
+                                        wire:target="iniciarEquipoPreRegistrado({{ $pre->id }})"
+                                        class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl
+                                               text-xs font-semibold
+                                               bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow
+                                               hover:shadow-amber-500/40 hover:-translate-y-0.5
+                                               disabled:opacity-60 transition-all duration-200">
+                                        <span wire:loading.remove wire:target="iniciarEquipoPreRegistrado({{ $pre->id }})">Iniciar</span>
+                                        <span wire:loading wire:target="iniciarEquipoPreRegistrado({{ $pre->id }})">...</span>
+                                    </button>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
                 {{-- Iniciar equipos --}}
                 @if(($a?->equipos?->count() ?? 0) < ($a?->cantidad ?? 0))
                     <div class="rounded-2xl bg-white/80 dark:bg-slate-950/60
@@ -473,6 +527,22 @@
 
                 {{-- Lista de equipos --}}
                 @if($a?->equipos?->count() > 0)
+
+                    {{-- Buscador por serie --}}
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">🔍</span>
+                        <input
+                            wire:model.live.debounce.200ms="busquedaSerie"
+                            type="text"
+                            placeholder="Buscar equipo por número de serie..."
+                            class="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl
+                                   bg-white/70 dark:bg-slate-900/40
+                                   border border-slate-300/80 dark:border-slate-700
+                                   text-slate-900 dark:text-slate-100
+                                   placeholder:text-slate-400
+                                   focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none">
+                    </div>
+
                     <div class="rounded-2xl bg-white/80 dark:bg-slate-950/80
                                 border border-slate-200/80 dark:border-white/10
                                 backdrop-blur-xl dark:backdrop-blur-2xl
@@ -485,7 +555,7 @@
                         </div>
 
                         <div class="divide-y divide-slate-200/60 dark:divide-slate-800/60">
-                            @foreach($a->equipos as $ae)
+                            @foreach($a->equipos->filter(fn($ae) => !$busquedaSerie || str_contains(strtolower($ae->equipo?->numero_serie ?? ''), strtolower($busquedaSerie))) as $ae)
                                 @php
                                     $terminado = $ae->camino !== \App\Models\AsignacionEquipo::EN_PROCESO;
                                     $destino   = match($ae->camino) {

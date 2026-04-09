@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Preparacion\Lotes;
 
+use App\Models\Equipo;
 use Livewire\Component;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use App\Models\Lote;
@@ -22,8 +24,11 @@ class EditarLote extends Component
 
     public $proveedores = [];
 
-    public array $modelos = [];
+    public array $modelos        = [];
     public array $deleteModeloIds = [];
+
+    public bool $modalSeries   = false;
+    public int  $serialesIndex = -1;
 
     public function mount($loteId)
     {
@@ -41,25 +46,27 @@ class EditarLote extends Component
 
         $this->modelos = $this->lote->modelosRecibidos->map(function ($m) {
             return [
-                'id'                     => $m->id,
-                'marca'                  => $m->marca,
-                'modelo'                 => $m->modelo,
-                'cantidad_recibida'      => (int) $m->cantidad_recibida,
-                'valor_unitario'         => $m->valor_unitario !== null ? (string) $m->valor_unitario : '',
-                'clasificacion_puntos_id'=> $m->clasificacion_puntos_id,
-                'equipos_registrados'    => (int) ($m->equipos_count ?? 0),
+                'id'                      => $m->id,
+                'marca'                   => $m->marca,
+                'modelo'                  => $m->modelo,
+                'cantidad_recibida'       => (int) $m->cantidad_recibida,
+                'valor_unitario'          => $m->valor_unitario !== null ? (string) $m->valor_unitario : '',
+                'clasificacion_puntos_id' => $m->clasificacion_puntos_id,
+                'equipos_registrados'     => (int) ($m->equipos_count ?? 0),
+                'numeros_serie'           => [],
             ];
         })->toArray();
 
         if (count($this->modelos) === 0) {
             $this->modelos = [[
-                'id'                     => null,
-                'marca'                  => '',
-                'modelo'                 => '',
-                'cantidad_recibida'      => 1,
-                'valor_unitario'         => '',
-                'clasificacion_puntos_id'=> null,
-                'equipos_registrados'    => 0,
+                'id'                      => null,
+                'marca'                   => '',
+                'modelo'                  => '',
+                'cantidad_recibida'       => 1,
+                'valor_unitario'          => '',
+                'clasificacion_puntos_id' => null,
+                'equipos_registrados'     => 0,
+                'numeros_serie'           => [],
             ]];
         }
     }
@@ -71,25 +78,26 @@ class EditarLote extends Component
             'proveedor_id'  => ['required', 'integer', 'exists:proveedores,id'],
             'fecha_llegada' => ['nullable', 'date'],
 
-            'modelos' => ['required', 'array', 'min:1'],
-            'modelos.*.marca' => ['required', 'string', 'max:100'],
-            'modelos.*.modelo' => ['required', 'string', 'max:255'],
-            'modelos.*.cantidad_recibida' => ['required', 'integer', 'min:1'],
-            'modelos.*.valor_unitario'    => ['nullable', 'numeric', 'min:0'],
-            'modelos.*.clasificacion_puntos_id' => ['nullable', 'exists:clasificaciones_puntos,id'],
+            'modelos'                             => ['required', 'array', 'min:1'],
+            'modelos.*.marca'                     => ['required', 'string', 'max:100'],
+            'modelos.*.modelo'                    => ['required', 'string', 'max:255'],
+            'modelos.*.cantidad_recibida'         => ['required', 'integer', 'min:1'],
+            'modelos.*.valor_unitario'            => ['nullable', 'numeric', 'min:0'],
+            'modelos.*.clasificacion_puntos_id'   => ['nullable', 'exists:clasificaciones_puntos,id'],
         ];
     }
 
     public function addModeloRow()
     {
         $this->modelos[] = [
-            'id'                     => null,
-            'marca'                  => '',
-            'modelo'                 => '',
-            'cantidad_recibida'      => 1,
-            'valor_unitario'         => '',
-            'clasificacion_puntos_id'=> null,
-            'equipos_registrados'    => 0,
+            'id'                      => null,
+            'marca'                   => '',
+            'modelo'                  => '',
+            'cantidad_recibida'       => 1,
+            'valor_unitario'          => '',
+            'clasificacion_puntos_id' => null,
+            'equipos_registrados'     => 0,
+            'numeros_serie'           => [],
         ];
     }
 
@@ -99,14 +107,12 @@ class EditarLote extends Component
 
         $row = $this->modelos[$index];
 
-        // Si ya existe en BD y tiene equipos, no se puede borrar
-        if (!empty($row['id']) && ((int)($row['equipos_registrados'] ?? 0) > 0)) {
+        if (!empty($row['id']) && ((int) ($row['equipos_registrados'] ?? 0) > 0)) {
             throw ValidationException::withMessages([
                 'modelos' => 'No puedes eliminar un modelo que ya tiene equipos registrados.',
             ]);
         }
 
-        // Si existe en BD, marcar para eliminar
         if (!empty($row['id'])) {
             $this->deleteModeloIds[] = (int) $row['id'];
         }
@@ -119,11 +125,60 @@ class EditarLote extends Component
         }
     }
 
+    // ── Modal de series ───────────────────────────────────────────────────
+
+    public function abrirModalSeries(int $index): void
+    {
+        $this->serialesIndex = $index;
+        if (empty($this->modelos[$index]['numeros_serie'])) {
+            $this->modelos[$index]['numeros_serie'] = [''];
+        }
+        $this->modalSeries = true;
+    }
+
+    public function cerrarModalSeries(): void
+    {
+        $this->modalSeries   = false;
+        $this->serialesIndex = -1;
+    }
+
+    public function agregarSerieModal(): void
+    {
+        if ($this->serialesIndex < 0) return;
+        $this->modelos[$this->serialesIndex]['numeros_serie'][] = '';
+    }
+
+    public function quitarSerieModal(int $si): void
+    {
+        $idx = $this->serialesIndex;
+        if ($idx < 0 || !isset($this->modelos[$idx]['numeros_serie'][$si])) return;
+        array_splice($this->modelos[$idx]['numeros_serie'], $si, 1);
+        $this->modelos[$idx]['numeros_serie'] = array_values($this->modelos[$idx]['numeros_serie']);
+        if (empty($this->modelos[$idx]['numeros_serie'])) {
+            $this->modelos[$idx]['numeros_serie'] = [''];
+        }
+    }
+
+    /** Series ya en DB para el modelo actualmente abierto (read-only en modal). */
+    public function seriesExistentes(): array
+    {
+        if ($this->serialesIndex < 0) return [];
+        $modeloId = $this->modelos[$this->serialesIndex]['id'] ?? null;
+        if (!$modeloId) return [];
+
+        return Equipo::where('lote_modelo_id', $modeloId)
+            ->where('estatus_area', Equipo::AREA_EN_ESPERA)
+            ->pluck('numero_serie')
+            ->toArray();
+    }
+
+    // ── Validaciones ──────────────────────────────────────────────────────
+
     private function validarCantidadesVsRegistrados()
     {
         foreach ($this->modelos as $i => $m) {
-            $registrados = (int)($m['equipos_registrados'] ?? 0);
-            $cantidad    = (int)($m['cantidad_recibida'] ?? 0);
+            $registrados = (int) ($m['equipos_registrados'] ?? 0);
+            $cantidad    = (int) ($m['cantidad_recibida'] ?? 0);
 
             if ($cantidad < $registrados) {
                 throw ValidationException::withMessages([
@@ -134,34 +189,27 @@ class EditarLote extends Component
         }
     }
 
-
-
     public function updatedModelos($value, $name): void
-{
-    // Ej: "2.cantidad_recibida"
-    if (!str_ends_with($name, 'cantidad_recibida')) {
-        return;
+    {
+        if (!str_ends_with($name, 'cantidad_recibida')) {
+            return;
+        }
+
+        $index = (int) explode('.', $name)[0];
+
+        $registrados = (int) ($this->modelos[$index]['equipos_registrados'] ?? 0);
+        $cantidad    = (int) ($this->modelos[$index]['cantidad_recibida'] ?? 0);
+
+        if ($cantidad < $registrados) {
+            $this->modelos[$index]['cantidad_recibida'] = $registrados;
+            $this->addError("modelos.$index.cantidad_recibida",
+                "Mínimo permitido: $registrados (ya registrados)."
+            );
+            $this->dispatch('toast', type: 'error', message: "No puedes bajar de $registrados porque ya hay equipos registrados.");
+        }
     }
 
-    $index = (int) explode('.', $name)[0];
-
-    $registrados = (int)($this->modelos[$index]['equipos_registrados'] ?? 0);
-    $cantidad    = (int)($this->modelos[$index]['cantidad_recibida'] ?? 0);
-
-    if ($cantidad < $registrados) {
-        // Revertir al mínimo permitido
-        $this->modelos[$index]['cantidad_recibida'] = $registrados;
-
-        // Error visible en el campo
-        $this->addError("modelos.$index.cantidad_recibida",
-            "Mínimo permitido: $registrados (ya registrados)."
-        );
-
-        // Toast/alerta (usa el nombre que manejes en tu x-toast)
-        $this->dispatch('toast', type: 'error', message: "No puedes bajar de $registrados porque ya hay equipos registrados.");
-    }
-}
-
+    // ── Actualizar ────────────────────────────────────────────────────────
 
     public function actualizarLote()
     {
@@ -178,48 +226,64 @@ class EditarLote extends Component
                 'fecha_llegada' => $this->fecha_llegada,
             ]);
 
-            // Eliminar modelos marcados
             if (!empty($this->deleteModeloIds)) {
                 LoteModeloRecibido::where('lote_id', $lote->id)
                     ->whereIn('id', $this->deleteModeloIds)
                     ->delete();
             }
 
-            // Upsert de modelos actuales
             foreach ($this->modelos as $m) {
 
                 $clasificacionId = $m['clasificacion_puntos_id'] ?: null;
 
                 if (!empty($m['id'])) {
-                    // update
                     $registro = LoteModeloRecibido::where('lote_id', $lote->id)
-                        ->where('id', (int)$m['id'])
+                        ->where('id', (int) $m['id'])
                         ->firstOrFail();
 
                     $clasificacionCambio = $registro->clasificacion_puntos_id != $clasificacionId;
 
                     $registro->update([
-                        'marca'                  => $m['marca'],
-                        'modelo'                 => $m['modelo'],
-                        'cantidad_recibida'      => (int)$m['cantidad_recibida'],
-                        'valor_unitario'         => is_numeric($m['valor_unitario'] ?? '') ? (float)$m['valor_unitario'] : null,
-                        'clasificacion_puntos_id'=> $clasificacionId,
+                        'marca'                   => $m['marca'],
+                        'modelo'                  => $m['modelo'],
+                        'cantidad_recibida'       => (int) $m['cantidad_recibida'],
+                        'valor_unitario'          => is_numeric($m['valor_unitario'] ?? '') ? (float) $m['valor_unitario'] : null,
+                        'clasificacion_puntos_id' => $clasificacionId,
                     ]);
 
-                    // Solo propagar si cambió la clasificación
                     if ($clasificacionCambio) {
                         $registro->propagarClasificacion();
                     }
-
                 } else {
-                    // create — no hay equipos aún, solo guardar el campo
-                    LoteModeloRecibido::create([
-                        'lote_id'                => $lote->id,
+                    $registro = LoteModeloRecibido::create([
+                        'lote_id'                 => $lote->id,
+                        'marca'                   => $m['marca'],
+                        'modelo'                  => $m['modelo'],
+                        'cantidad_recibida'       => (int) $m['cantidad_recibida'],
+                        'valor_unitario'          => is_numeric($m['valor_unitario'] ?? '') ? (float) $m['valor_unitario'] : null,
+                        'clasificacion_puntos_id' => $clasificacionId,
+                    ]);
+                }
+
+                // Pre-registrar nuevas series
+                $seriesTrimmed = array_values(array_filter(
+                    array_map('trim', $m['numeros_serie'] ?? []), fn ($s) => $s !== ''
+                ));
+
+                foreach ($seriesTrimmed as $serie) {
+                    if (Equipo::where('numero_serie', $serie)->exists()) continue;
+
+                    Equipo::create([
+                        'numero_serie'           => $serie,
+                        'lote_modelo_id'         => $registro->id,
                         'marca'                  => $m['marca'],
                         'modelo'                 => $m['modelo'],
-                        'cantidad_recibida'      => (int)$m['cantidad_recibida'],
-                        'valor_unitario'         => is_numeric($m['valor_unitario'] ?? '') ? (float)$m['valor_unitario'] : null,
-                        'clasificacion_puntos_id'=> $clasificacionId,
+                        'estatus_ciclo'          => 'PREPARACION',
+                        'estatus_area'           => 'EN_ESPERA',
+                        'registrado_por_user_id' => Auth::id(),
+                        'proveedor_id'           => $lote->proveedor_id,
+                        'almacen_id'             => 2,
+                        'sucursal_id'            => Auth::user()->sucursal_id ?? 1,
                     ]);
                 }
             }

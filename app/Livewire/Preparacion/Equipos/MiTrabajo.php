@@ -46,6 +46,9 @@ class MiTrabajo extends Component
     public string $filtroCategoriaPieza  = '';    // filtro por categoría
     public string $descripcionPiezaLibre = '';    // notas / especificación adicional
 
+    // ── Búsqueda de equipo por serie ─────────────────────────────────────
+    public string $busquedaSerie = '';
+
     // ── Error general ─────────────────────────────────────────────────────
     public string $error = '';
 
@@ -325,6 +328,7 @@ class MiTrabajo extends Component
         $this->asignacionId       = null;
         $this->asignacionEquipoId = null;
         $this->error              = '';
+        $this->busquedaSerie      = '';
         unset($this->asignaciones, $this->asignacionActual);
     }
 
@@ -531,6 +535,15 @@ class MiTrabajo extends Component
                           ->whereIn('estatus', [Asignacion::PENDIENTE, Asignacion::EN_PROCESO])
                     )->exists();
                 if ($enOtra) { $errores[] = "{$serie}: en uso por otro técnico."; continue; }
+
+                // Si estaba pre-registrado (EN_ESPERA), activarlo
+                if ($equipo->estatus_area === Equipo::AREA_EN_ESPERA) {
+                    $equipo->update([
+                        'estatus_ciclo'          => 'PREPARACION',
+                        'estatus_area'           => 'EN_PROCESO',
+                        'registrado_por_user_id' => Auth::id(),
+                    ]);
+                }
             } else {
                 $equipo = Equipo::create([
                     'numero_serie'           => $serie,
@@ -564,6 +577,65 @@ class MiTrabajo extends Component
         }
 
         unset($this->asignacionActual);
+    }
+
+    // ── Equipos pre-registrados (EN_ESPERA) del lote actual ───────────────
+
+    #[Computed]
+    public function equiposPreRegistrados(): \Illuminate\Database\Eloquent\Collection
+    {
+        $asignacion = $this->asignacionActual;
+        if (!$asignacion) return collect();
+
+        return Equipo::where('lote_modelo_id', $asignacion->lote_modelo_id)
+            ->where('estatus_area', Equipo::AREA_EN_ESPERA)
+            ->whereDoesntHave('asignacionEquipos', fn ($q) =>
+                $q->where('camino', AsignacionEquipo::EN_PROCESO)
+            )
+            ->get(['id', 'numero_serie', 'marca', 'modelo']);
+    }
+
+    public function iniciarEquipoPreRegistrado(int $equipoId): void
+    {
+        $this->autorizarTrabajo();
+        $this->errorSerie = '';
+
+        $asignacion = $this->asignacionActual;
+        $equipo     = Equipo::findOrFail($equipoId);
+
+        if ($equipo->lote_modelo_id !== $asignacion->lote_modelo_id) {
+            $this->errorSerie = 'Este equipo no pertenece al modelo de esta asignación.';
+            return;
+        }
+        if ($asignacion->equipos->count() >= $asignacion->cantidad) {
+            $this->errorSerie = 'La asignación ya alcanzó su capacidad máxima.';
+            return;
+        }
+        $yaEnEsta = AsignacionEquipo::where('asignacion_id', $asignacion->id)
+            ->where('equipo_id', $equipoId)
+            ->exists();
+        if ($yaEnEsta) {
+            $this->errorSerie = 'Este equipo ya fue iniciado en esta asignación.';
+            return;
+        }
+
+        DB::transaction(function () use ($equipo, $asignacion) {
+            $equipo->update([
+                'estatus_ciclo'          => 'PREPARACION',
+                'estatus_area'           => 'EN_PROCESO',
+                'registrado_por_user_id' => Auth::id(),
+            ]);
+            AsignacionEquipo::create([
+                'asignacion_id' => $asignacion->id,
+                'equipo_id'     => $equipo->id,
+                'inicio_en'     => now(),
+                'camino'        => AsignacionEquipo::EN_PROCESO,
+            ]);
+            $asignacion->update(['estatus' => Asignacion::EN_PROCESO]);
+        });
+
+        $this->dispatch('toast', type: 'success', message: 'Equipo iniciado correctamente.');
+        unset($this->asignacionActual, $this->equiposPreRegistrados);
     }
 
     // ══════════════════════════════════════════════════════════════════════
