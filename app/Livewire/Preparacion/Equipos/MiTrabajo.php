@@ -319,6 +319,12 @@ class MiTrabajo extends Component
         }
 
         $this->setDefaultsEnForm();
+
+        // Reconstruir ram_sin_slots (campo UI puro, no existe en DB)
+        // Debe ser true solo cuando la RAM es soldada y no hay slots físicos
+        $this->form->ram_sin_slots = (bool) $this->form->ram_es_soldada
+            && ($this->form->ram_slots_totales === '0' || $this->form->ram_slots_totales === 0);
+
         $this->error = '';
         $this->vista = 'caracteristicas';
         unset($this->equipoActual);
@@ -327,6 +333,11 @@ class MiTrabajo extends Component
     public function verTerminar(int $asignacionEquipoId): void
     {
         $this->autorizarTrabajo();
+
+        // Auto-guardar características si venimos de esa vista con el mismo equipo
+        if ($this->vista === 'caracteristicas' && $this->asignacionEquipoId === $asignacionEquipoId) {
+            $this->guardarAvanceSilencioso();
+        }
 
         $this->asignacionEquipoId    = $asignacionEquipoId;
         $this->camino                = 'COMPLETADO';
@@ -663,7 +674,17 @@ class MiTrabajo extends Component
     public function guardarAvance(): void
     {
         $this->autorizarTrabajo();
+        $this->ejecutarGuardadoCaracteristicas();
+        $this->dispatch('toast', type: 'success', title: 'Avance guardado', message: 'Los datos del equipo se guardaron.');
+    }
 
+    private function guardarAvanceSilencioso(): void
+    {
+        $this->ejecutarGuardadoCaracteristicas();
+    }
+
+    private function ejecutarGuardadoCaracteristicas(): void
+    {
         $ae     = $this->equipoActual;
         $equipo = $ae?->equipo;
         if (!$equipo) return;
@@ -737,8 +758,6 @@ class MiTrabajo extends Component
                 $this->guardarMonitor($equipo->id);
                 $this->guardarGpus($equipo->id);
             });
-
-            $this->dispatch('toast', type: 'success', title: 'Avance guardado', message: 'Los datos del equipo se guardaron.');
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', title: 'Error al guardar', message: $e->getMessage());
             \Log::error('guardarAvance error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);

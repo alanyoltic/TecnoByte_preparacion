@@ -548,16 +548,35 @@
                                 backdrop-blur-xl dark:backdrop-blur-2xl
                                 shadow-md shadow-slate-900/10 dark:shadow-slate-900/30 overflow-hidden">
 
-                        <div class="px-5 py-3 border-b border-slate-200/60 dark:border-slate-800/80">
+                        <div class="px-5 py-3 border-b border-slate-200/60 dark:border-slate-800/80 flex items-center justify-between gap-4 flex-wrap">
                             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                                 Equipos iniciados · {{ $a->equipos->count() }} de {{ $a->cantidad }}
                             </p>
+                            {{-- Leyenda de estados --}}
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <span class="flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500">
+                                    <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse inline-block"></span>Recién iniciado
+                                </span>
+                                <span class="flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500">
+                                    <span class="w-2 h-2 rounded-full bg-teal-400 inline-block"></span>Con avance
+                                </span>
+                                <span class="flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>Terminado
+                                </span>
+                            </div>
                         </div>
 
                         <div class="divide-y divide-slate-200/60 dark:divide-slate-800/60">
                             @foreach($a->equipos->filter(fn($ae) => !$busquedaSerie || str_contains(strtolower($ae->equipo?->numero_serie ?? ''), strtolower($busquedaSerie))) as $ae)
                                 @php
                                     $terminado = $ae->camino !== \App\Models\AsignacionEquipo::EN_PROCESO;
+                                    $eq        = $ae->equipo;
+                                    $tieneAvance = !$terminado && (
+                                        filled($eq?->tipo_equipo) ||
+                                        filled($eq?->procesador_modelo) ||
+                                        filled($eq?->ram_total) ||
+                                        filled($eq?->sistema_operativo)
+                                    );
                                     $destino   = match($ae->camino) {
                                         'COMPLETADO'       => ['label' => 'Calidad',      'color' => 'emerald'],
                                         'PIEZA_PENDIENTE'  => ['label' => 'Pieza pend.',  'color' => 'amber'],
@@ -567,29 +586,50 @@
                                     };
                                 @endphp
 
-                                <div class="px-5 py-3 flex items-center justify-between gap-4
-                                            hover:bg-slate-50/60 dark:hover:bg-slate-800/20 transition-colors">
+                                <div class="px-5 py-3 flex items-center justify-between gap-4 transition-colors
+                                            {{ $tieneAvance
+                                                ? 'bg-teal-50/40 dark:bg-teal-900/10 hover:bg-teal-50/70 dark:hover:bg-teal-900/20'
+                                                : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/20' }}">
                                     <div class="flex items-center gap-3">
-                                        <div class="w-2.5 h-2.5 rounded-full shrink-0
-                                            {{ match($ae->camino) {
-                                                'COMPLETADO'       => 'bg-emerald-400',
-                                                'EN_PROCESO'       => 'bg-blue-400 animate-pulse',
-                                                'PIEZA_PENDIENTE'  => 'bg-amber-400',
-                                                'GARANTIA_INTERNA',
-                                                'GARANTIA_EXTERNA' => 'bg-rose-400',
-                                                default            => 'bg-slate-400'
-                                            } }}"></div>
+                                        {{-- Dot de estado --}}
+                                        @if($terminado)
+                                            <div class="w-2.5 h-2.5 rounded-full shrink-0
+                                                {{ match($ae->camino) {
+                                                    'COMPLETADO'                        => 'bg-emerald-400',
+                                                    'PIEZA_PENDIENTE'                   => 'bg-amber-400',
+                                                    'GARANTIA_INTERNA','GARANTIA_EXTERNA'=> 'bg-rose-400',
+                                                    default                             => 'bg-slate-400',
+                                                } }}"></div>
+                                        @elseif($tieneAvance)
+                                            {{-- En proceso y ya tiene datos guardados --}}
+                                            <div class="w-2.5 h-2.5 rounded-full shrink-0 bg-teal-400"></div>
+                                        @else
+                                            {{-- Recién iniciado, sin datos --}}
+                                            <div class="w-2.5 h-2.5 rounded-full shrink-0 bg-blue-400 animate-pulse"></div>
+                                        @endif
+
                                         <div>
                                             <p class="text-sm font-semibold font-mono text-slate-900 dark:text-slate-50">
-                                                {{ $ae->equipo?->numero_serie ?? '—' }}
+                                                {{ $eq?->numero_serie ?? '—' }}
                                             </p>
                                             <div class="flex items-center gap-2 mt-0.5">
                                                 @if($terminado && $destino)
                                                     <span class="text-xs font-semibold text-{{ $destino['color'] }}-600 dark:text-{{ $destino['color'] }}-400">
                                                         ✓ Terminado → {{ $destino['label'] }}
                                                     </span>
+                                                @elseif($tieneAvance)
+                                                    <span class="text-xs font-medium text-teal-600 dark:text-teal-400">En proceso</span>
+                                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md
+                                                                 bg-teal-100 dark:bg-teal-900/40
+                                                                 text-teal-700 dark:text-teal-300
+                                                                 text-[10px] font-semibold leading-none">
+                                                        <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
+                                                        Con avance
+                                                    </span>
                                                 @else
-                                                    <span class="text-xs text-blue-500 dark:text-blue-400">En proceso</span>
+                                                    <span class="text-xs text-blue-500 dark:text-blue-400">Recién iniciado</span>
                                                 @endif
                                             </div>
                                         </div>
