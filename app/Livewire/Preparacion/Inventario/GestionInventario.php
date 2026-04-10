@@ -499,28 +499,11 @@ public function cerrarEliminarSeleccion()
 
         // Stats para las tarjetas (son counts, ligeros)
         $stats = [
-            'total'        => Equipo::count(),
-            'en_revision' => Equipo::where('estatus_area', 'EN_PROCESO')->count(),
-            'aprobados'    => Equipo::where('estatus_area', 'EN_CALIDAD')->count(),
-            'finalizados'  => Equipo::where('estatus_area', 'FINALIZADO')->count(),
-            'sin_asignar'  => (int) DB::selectOne("
-                SELECT COALESCE(SUM(GREATEST(
-                    CAST(lmr.cantidad_recibida AS SIGNED)
-                    - (SELECT COUNT(*) FROM equipos e WHERE e.lote_modelo_id = lmr.id AND e.deleted_at IS NULL)
-                    - COALESCE((
-                        SELECT SUM(GREATEST(
-                            CAST(a.cantidad AS SIGNED) - (SELECT COUNT(*) FROM asignacion_equipos ae WHERE ae.asignacion_id = a.id),
-                            0
-                        ))
-                        FROM asignaciones a
-                        WHERE a.lote_modelo_id = lmr.id
-                          AND a.estatus IN ('PENDIENTE','EN_PROCESO')
-                          AND a.deleted_at IS NULL
-                    ), 0),
-                    0
-                )), 0) as total
-                FROM lote_modelos_recibidos lmr
-            ")->total,
+            'total'          => Equipo::count(),
+            'sin_asignar'    => Equipo::whereDoesntHave('asignacionEquipos')->count(),
+            'en_preparacion' => Equipo::whereHas('asignacionEquipos', fn($q) => $q->where('camino', 'EN_PROCESO'))->count(),
+            'en_calidad'     => Equipo::where('estatus_area', 'EN_CALIDAD')->count(),
+            'finalizado'     => Equipo::where('estatus_area', 'FINALIZADO')->count(),
         ];
 
         return view('livewire.preparacion.inventario.gestion-inventario', [

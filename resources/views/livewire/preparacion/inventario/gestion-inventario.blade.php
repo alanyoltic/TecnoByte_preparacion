@@ -145,10 +145,10 @@
                        hover:border-amber-400/70"
             >
                 <p class="text-xs sm:text-sm font-semibold text-amber-700 dark:text-amber-200 uppercase tracking-wide">
-                    En revisión
+                    En preparación
                 </p>
                 <p class="mt-2 text-2xl font-bold text-amber-800 dark:text-amber-100">
-                    {{ $stats['en_revision'] ?? 0 }}
+                    {{ $stats['en_preparacion'] ?? 0 }}
                 </p>
             </div>
 
@@ -168,10 +168,10 @@
                        hover:border-emerald-400/70"
             >
                 <p class="text-xs sm:text-sm font-semibold text-emerald-700 dark:text-emerald-200 uppercase tracking-wide">
-                    Aprobados
+                    En calidad
                 </p>
                 <p class="mt-2 text-2xl font-bold text-emerald-800 dark:text-emerald-100">
-                    {{ $stats['aprobados'] ?? 0 }}
+                    {{ $stats['en_calidad'] ?? 0 }}
                 </p>
             </div>
 
@@ -191,10 +191,10 @@
                        hover:border-indigo-400/70"
             >
                 <p class="text-xs sm:text-sm font-semibold text-indigo-700 dark:text-indigo-200 uppercase tracking-wide">
-                    Finalizados
+                    Finalizado
                 </p>
                 <p class="mt-2 text-2xl font-bold text-indigo-800 dark:text-indigo-100">
-                    {{ $stats['finalizados'] ?? 0 }}
+                    {{ $stats['finalizado'] ?? 0 }}
                 </p>
             </div>
 

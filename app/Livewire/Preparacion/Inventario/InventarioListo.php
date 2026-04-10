@@ -31,10 +31,11 @@ class InventarioListo extends Component
 
     // Tarjetas de totales
     public $stats = [
-        'total'        => 0,
-        'en_revision'  => 0,
-        'aprobados'    => 0,
-        'finalizados'  => 0,
+        'total'          => 0,
+        'sin_asignar'    => 0,
+        'en_preparacion' => 0,
+        'en_calidad'     => 0,
+        'finalizado'     => 0,
     ];
 
     // (Opcional pero útil) mantener filtros en la URL
@@ -98,29 +99,11 @@ public function mount()
 
     protected function calcularStats(): void
     {
-        // Totales globales (sin filtros) – solo para las tarjetas de arriba
-        $this->stats['total']        = Equipo::count();
-        $this->stats['en_revision']  = Equipo::where('estatus_area', 'EN_PROCESO')->count();
-        $this->stats['aprobados']    = Equipo::where('estatus_area', 'EN_CALIDAD')->count();
-        $this->stats['finalizados']  = Equipo::where('estatus_area', 'FINALIZADO')->count();
-        $this->stats['sin_asignar']  = (int) DB::selectOne("
-            SELECT COALESCE(SUM(GREATEST(
-                CAST(lmr.cantidad_recibida AS SIGNED)
-                - (SELECT COUNT(*) FROM equipos e WHERE e.lote_modelo_id = lmr.id AND e.deleted_at IS NULL)
-                - COALESCE((
-                    SELECT SUM(GREATEST(
-                        CAST(a.cantidad AS SIGNED) - (SELECT COUNT(*) FROM asignacion_equipos ae WHERE ae.asignacion_id = a.id),
-                        0
-                    ))
-                    FROM asignaciones a
-                    WHERE a.lote_modelo_id = lmr.id
-                      AND a.estatus IN ('PENDIENTE','EN_PROCESO')
-                      AND a.deleted_at IS NULL
-                ), 0),
-                0
-            )), 0) as total
-            FROM lote_modelos_recibidos lmr
-        ")->total;
+        $this->stats['total']          = Equipo::count();
+        $this->stats['sin_asignar']    = Equipo::whereDoesntHave('asignacionEquipos')->count();
+        $this->stats['en_preparacion'] = Equipo::whereHas('asignacionEquipos', fn($q) => $q->where('camino', 'EN_PROCESO'))->count();
+        $this->stats['en_calidad']     = Equipo::where('estatus_area', 'EN_CALIDAD')->count();
+        $this->stats['finalizado']     = Equipo::where('estatus_area', 'FINALIZADO')->count();
     }
 
     public function render()
@@ -128,7 +111,9 @@ public function mount()
          $query = Equipo::query()
         ->with([
             'loteModelo.lote.proveedor',
-            'registradoPor' => fn($q) => $q->withoutGlobalScopes(), // ← y aquí
+            'registradoPor' => fn($q) => $q->withoutGlobalScopes(),
+            'monitor',
+            'gpus',
             ])
             ->orderByDesc('created_at');
 

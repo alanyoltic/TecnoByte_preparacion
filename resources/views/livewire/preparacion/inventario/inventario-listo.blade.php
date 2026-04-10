@@ -38,75 +38,6 @@
                 </p>
             </div>
 
-            {{-- EN REVISIÓN — Glow amarillo --}}
-            <div
-                class="rounded-2xl
-                       bg-amber-50/90 dark:bg-amber-950/40
-                       border border-amber-200/80 dark:border-amber-500/70
-                       backdrop-blur-xl dark:backdrop-blur-2xl
-                       px-4 py-3
-                       shadow-md shadow-amber-900/10
-                       dark:shadow-lg dark:shadow-amber-900/30
-                       transition-all duration-300
-                       hover:-translate-y-1
-                       hover:shadow-lg hover:shadow-amber-500/40
-                       dark:hover:shadow-2xl dark:hover:shadow-amber-400/50
-                       hover:border-amber-400/70"
-            >
-                <p class="text-xs sm:text-sm font-semibold text-amber-700 dark:text-amber-200 uppercase tracking-wide">
-                    En revisión
-                </p>
-                <p class="mt-2 text-2xl font-bold text-amber-800 dark:text-amber-100">
-                    {{ $stats['en_revision'] ?? 0 }}
-                </p>
-            </div>
-
-            {{-- APROBADOS — Glow verde --}}
-            <div
-                class="rounded-2xl
-                       bg-emerald-50/90 dark:bg-emerald-950/40
-                       border border-emerald-200/80 dark:border-emerald-500/70
-                       backdrop-blur-xl dark:backdrop-blur-2xl
-                       px-4 py-3
-                       shadow-md shadow-emerald-900/10
-                       dark:shadow-lg dark:shadow-emerald-900/30
-                       transition-all duration-300
-                       hover:-translate-y-1
-                       hover:shadow-lg hover:shadow-emerald-500/40
-                       dark:hover:shadow-2xl dark:hover:shadow-emerald-400/50
-                       hover:border-emerald-400/70"
-            >
-                <p class="text-xs sm:text-sm font-semibold text-emerald-700 dark:text-emerald-200 uppercase tracking-wide">
-                    Aprobados
-                </p>
-                <p class="mt-2 text-2xl font-bold text-emerald-800 dark:text-emerald-100">
-                    {{ $stats['aprobados'] ?? 0 }}
-                </p>
-            </div>
-
-            {{-- FINALIZADOS — Glow morado --}}
-            <div
-                class="rounded-2xl
-                       bg-indigo-50/90 dark:bg-indigo-950/40
-                       border border-indigo-200/80 dark:border-indigo-500/70
-                       backdrop-blur-xl dark:backdrop-blur-2xl
-                       px-4 py-3
-                       shadow-md shadow-indigo-900/10
-                       dark:shadow-lg dark:shadow-indigo-900/30
-                       transition-all duration-300
-                       hover:-translate-y-1
-                       hover:shadow-lg hover:shadow-indigo-500/40
-                       dark:hover:shadow-2xl dark:hover:shadow-indigo-400/50
-                       hover:border-indigo-400/70"
-            >
-                <p class="text-xs sm:text-sm font-semibold text-indigo-700 dark:text-indigo-200 uppercase tracking-wide">
-                    Finalizados
-                </p>
-                <p class="mt-2 text-2xl font-bold text-indigo-800 dark:text-indigo-100">
-                    {{ $stats['finalizados'] ?? 0 }}
-                </p>
-            </div>
-
             {{-- SIN ASIGNAR — Glow violeta --}}
             <div
                 class="rounded-2xl
@@ -128,7 +59,77 @@
                 <p class="mt-2 text-2xl font-bold text-violet-800 dark:text-violet-100">
                     {{ $stats['sin_asignar'] ?? 0 }}
                 </p>
-                <p class="text-[0.65rem] text-violet-600 dark:text-violet-400 mt-1">Pendientes de asignar</p>
+                <p class="text-[0.65rem] text-violet-500 dark:text-violet-400 mt-1">Sin técnico asignado</p>
+            </div>
+
+            {{-- EN PREPARACIÓN — Glow amarillo --}}
+            <div
+                class="rounded-2xl
+                       bg-amber-50/90 dark:bg-amber-950/40
+                       border border-amber-200/80 dark:border-amber-500/70
+                       backdrop-blur-xl dark:backdrop-blur-2xl
+                       px-4 py-3
+                       shadow-md shadow-amber-900/10
+                       dark:shadow-lg dark:shadow-amber-900/30
+                       transition-all duration-300
+                       hover:-translate-y-1
+                       hover:shadow-lg hover:shadow-amber-500/40
+                       dark:hover:shadow-2xl dark:hover:shadow-amber-400/50
+                       hover:border-amber-400/70"
+            >
+                <p class="text-xs sm:text-sm font-semibold text-amber-700 dark:text-amber-200 uppercase tracking-wide">
+                    En preparación
+                </p>
+                <p class="mt-2 text-2xl font-bold text-amber-800 dark:text-amber-100">
+                    {{ $stats['en_preparacion'] ?? 0 }}
+                </p>
+                <p class="text-[0.65rem] text-amber-600 dark:text-amber-400 mt-1">Con técnico activo</p>
+            </div>
+
+            {{-- EN CALIDAD — Glow verde --}}
+            <div
+                class="rounded-2xl
+                       bg-emerald-50/90 dark:bg-emerald-950/40
+                       border border-emerald-200/80 dark:border-emerald-500/70
+                       backdrop-blur-xl dark:backdrop-blur-2xl
+                       px-4 py-3
+                       shadow-md shadow-emerald-900/10
+                       dark:shadow-lg dark:shadow-emerald-900/30
+                       transition-all duration-300
+                       hover:-translate-y-1
+                       hover:shadow-lg hover:shadow-emerald-500/40
+                       dark:hover:shadow-2xl dark:hover:shadow-emerald-400/50
+                       hover:border-emerald-400/70"
+            >
+                <p class="text-xs sm:text-sm font-semibold text-emerald-700 dark:text-emerald-200 uppercase tracking-wide">
+                    En calidad
+                </p>
+                <p class="mt-2 text-2xl font-bold text-emerald-800 dark:text-emerald-100">
+                    {{ $stats['en_calidad'] ?? 0 }}
+                </p>
+            </div>
+
+            {{-- FINALIZADO — Glow morado --}}
+            <div
+                class="rounded-2xl
+                       bg-indigo-50/90 dark:bg-indigo-950/40
+                       border border-indigo-200/80 dark:border-indigo-500/70
+                       backdrop-blur-xl dark:backdrop-blur-2xl
+                       px-4 py-3
+                       shadow-md shadow-indigo-900/10
+                       dark:shadow-lg dark:shadow-indigo-900/30
+                       transition-all duration-300
+                       hover:-translate-y-1
+                       hover:shadow-lg hover:shadow-indigo-500/40
+                       dark:hover:shadow-2xl dark:hover:shadow-indigo-400/50
+                       hover:border-indigo-400/70"
+            >
+                <p class="text-xs sm:text-sm font-semibold text-indigo-700 dark:text-indigo-200 uppercase tracking-wide">
+                    Finalizado
+                </p>
+                <p class="mt-2 text-2xl font-bold text-indigo-800 dark:text-indigo-100">
+                    {{ $stats['finalizado'] ?? 0 }}
+                </p>
             </div>
 
         </div>
@@ -297,7 +298,6 @@
             backdrop-blur-xl dark:backdrop-blur-2xl
             shadow-md shadow-slate-900/10
             dark:shadow-lg dark:shadow-slate-900/30
-            overflow-hidden
             transition-all duration-300
             hover:-translate-y-1
             hover:shadow-lg hover:shadow-indigo-500/20
@@ -430,11 +430,11 @@
 <td class="px-3 py-3 align-top text-right">
 
     @php
-        // 1) SMART ID (igual que antes)
+        // 1) SMART ID — fecha de registro del equipo, no la de impresión
         $iniNom = $usuario ? substr($usuario->nombre, 0, 1) : 'X';
         $iniApe = $usuario ? substr($usuario->apellido_paterno, 0, 1) : 'X';
         $iniciales = strtoupper($iniNom . $iniApe);
-        $fechaSmart = now()->format('dmY');
+        $fechaSmart = ($equipo->created_at ?? now())->format('dmY');
         $provSmart = isset($proveedor) && $proveedor->abreviacion
             ? $proveedor->abreviacion
             : substr($proveedor->nombre_empresa ?? 'XX', 0, 2);
@@ -474,7 +474,7 @@
             class="origin-top-right absolute right-0 mt-1 w-40
                    rounded-xl bg-white dark:bg-slate-900
                    border border-slate-200/80 dark:border-slate-700/80
-                   shadow-lg shadow-slate-900/20 z-30"
+                   shadow-lg shadow-slate-900/20 z-[9999]"
         >
             <div class="py-1 text-xs text-slate-700 dark:text-slate-200">
 
@@ -567,8 +567,8 @@
                       @php
                         // ===== CPU =====
                         $cpuRaw     = strtoupper(trim($equipo->procesador_modelo ?? ''));
-                        $freqManual = strtoupper(trim($equipo->procesador_frecuencia ?? '')); // ← NUEVO
-                        $textoCpu   = 'I5- 8265U 1.60 GHz'; // fallback
+                        $freqManual = strtoupper(trim($equipo->procesador_frecuencia ?? ''));
+                        $textoCpu   = ''; // sin fallback genérico
 
                         $segmento = null;
                         $freq     = null;
@@ -608,7 +608,7 @@
                         } elseif ($capacidad) {
                             $textoDisco = $capacidad;
                         } else {
-                            $textoDisco = '256 GB M2';
+                            $textoDisco = '';
                         }
 
                         // ===== RAM: cantidad + RAM + tipo =====
@@ -623,26 +623,18 @@
                         } elseif ($ramCant) {
                             $textoRam = "$ramCant RAM";
                         } else {
-                            $textoRam = "8 GB RAM DDR3";
+                            $textoRam = '';
                         }
 
                         // ===== SISTEMA OPERATIVO =====
-                        $textoSO = strtoupper($equipo->sistema_operativo ?? 'WINDOWS 10 PRO');
+                        $textoSO = strtoupper(trim($equipo->sistema_operativo ?? ''));
 
-                        // ===== TOUCH SOLO SI SÍ ES =====
-                        // ===== TOUCH (FUENTE DE VERDAD: equipo_monitores) =====
-                        $monitor = \App\Models\EquipoMonitor::query()
-                            ->where('equipo_id', $equipo->id)
-                            ->orderByDesc('id') // por si existen varios registros, toma el más reciente
-                            ->first();
-
+                        // ===== TOUCH (desde relación eager-loaded) =====
+                        $monitor = $equipo->monitor;
                         $mostrarTouch = (bool) ($monitor?->es_touch ?? false);
 
-
-
-                        // ===== GPU DEDICADA (NUEVO: desde equipo_gpus) =====
-                        $gpuDedicada = \App\Models\EquipoGpu::query()
-                            ->where('equipo_id', $equipo->id)
+                        // ===== GPU DEDICADA (desde relación eager-loaded) =====
+                        $gpuDedicada = $equipo->gpus
                             ->where('tipo', 'DEDICADA')
                             ->where('activo', 1)
                             ->first();
@@ -694,17 +686,12 @@
                                 "
                         >
 
-                        <p class="spec-line">{{ Str::limit($textoCpu, 32) }}</p>
-                        <p class="spec-line">{{ Str::limit($textoDisco, 32) }}</p>
-                        <p class="spec-line">{{ Str::limit($textoRam, 32) }}</p>
-                        <p class="spec-line">{{ Str::limit($textoSO, 32) }}</p>
-                        @if($mostrarGPU)
-                            <p class="spec-line">{{ $textoGPU }}</p>
-                        @endif
-
-                        @if($mostrarTouch)
-                            <p class="spec-line">TOUCH</p>
-                        @endif
+                        @if($textoCpu)   <p class="spec-line">{{ Str::limit($textoCpu,  32) }}</p> @endif
+                        @if($textoDisco) <p class="spec-line">{{ Str::limit($textoDisco, 32) }}</p> @endif
+                        @if($textoRam)   <p class="spec-line">{{ Str::limit($textoRam,   32) }}</p> @endif
+                        @if($textoSO)    <p class="spec-line">{{ Str::limit($textoSO,    32) }}</p> @endif
+                        @if($mostrarGPU)   <p class="spec-line">{{ $textoGPU }}</p> @endif
+                        @if($mostrarTouch) <p class="spec-line">TOUCH</p> @endif
 
                         </div>
 
@@ -726,9 +713,16 @@
                             {{ $smartID }}
                         </p>
 
+                    @if($lote?->nombre_lote)
+                    <p class="text-gray-500 leading-none mt-0.5"
+                       style="font-size: 7px; font-family: 'Century Gothic', 'Gothic', sans-serif; letter-spacing: 0.3px;">
+                        {{ $lote->nombre_lote }}
+                    </p>
+                    @endif
+
                     <p class="text-[8px] font-bold text-orange-500 leading-none mt-0.5"
                        style="-webkit-print-color-adjust: exact; print-color-adjust: exact;">
-                                
+
                     </p>
                 </div>
 
