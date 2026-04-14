@@ -79,6 +79,11 @@ class CatalogoPiezas extends Component
     public string $loteNombre       = '';
     public string $loteFechaLlegada = '';
 
+    // ── Modal categoría ───────────────────────────────────────────────────
+    public bool   $modalCategoria       = false;
+    public string $nuevaCategoriaNombre = '';
+    public int    $categoriaItemIndex   = 0;
+
     // ── Restock (agregar stock a pieza existente) ─────────────────────────
     public ?int   $restockPiezaId           = null;
     public string $restockOrigen            = ''; // '' | 'compra' | 'deshueso'
@@ -468,6 +473,38 @@ class CatalogoPiezas extends Component
         unset($this->lotes);
         $this->modalLote = false;
         $this->dispatch('toast', ['type' => 'success', 'message' => "Lote \"{$lote->nombre_lote}\" creado y seleccionado."]);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // MODAL CATEGORÍA (categoría personalizada por ítem)
+    // ══════════════════════════════════════════════════════════════════════
+
+    public function abrirModalCategoria(int $index): void
+    {
+        $this->categoriaItemIndex   = $index;
+        $this->nuevaCategoriaNombre = '';
+        $this->resetErrorBag(['nuevaCategoriaNombre']);
+        $this->modalCategoria = true;
+    }
+
+    public function cerrarModalCategoria(): void
+    {
+        $this->modalCategoria = false;
+    }
+
+    public function aplicarNuevaCategoria(): void
+    {
+        $this->validateOnly('nuevaCategoriaNombre', [
+            'nuevaCategoriaNombre' => 'required|string|max:50',
+        ], [
+            'nuevaCategoriaNombre.required' => 'El nombre de la categoría es obligatorio.',
+            'nuevaCategoriaNombre.max'      => 'Máximo 50 caracteres.',
+        ]);
+
+        $nombre = ucfirst(trim($this->nuevaCategoriaNombre));
+        $this->compraItems[$this->categoriaItemIndex]['categoria'] = $nombre;
+        $this->modalCategoria = false;
+        $this->dispatch('toast', ['type' => 'success', 'message' => "Categoría \"{$nombre}\" aplicada al ítem."]);
     }
 
     public function guardarProveedor(): void

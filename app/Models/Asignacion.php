@@ -38,12 +38,12 @@ class Asignacion extends Model
 
     public function tecnico(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'tecnico_id');
+        return $this->belongsTo(User::class, 'tecnico_id')->withoutGlobalScopes();
     }
 
     public function asignadoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'asignado_por_id');
+        return $this->belongsTo(User::class, 'asignado_por_id')->withoutGlobalScopes();
     }
 
     public function loteModelo(): BelongsTo

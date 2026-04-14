@@ -129,6 +129,20 @@ class Equipo extends Model
         return $this->transicionesArea[$this->estatus_area] ?? [];
     }
 
+    /**
+     * Dado un estatus_area, retorna el estatus_ciclo que le corresponde.
+     * Centraliza el mapeo para que cualquier parte del sistema lo use.
+     */
+    public static function cicloParaArea(string $estatusArea): string
+    {
+        return match ($estatusArea) {
+            self::AREA_EN_CALIDAD,
+            self::AREA_FINALIZADO,
+            self::AREA_TRANSFERIDO  => self::CICLO_CALIDAD,
+            default                 => self::CICLO_PREPARACION,
+        };
+    }
+
     public function asignacionEquipos(): HasMany
     {
         return $this->hasMany(\App\Models\AsignacionEquipo::class, 'equipo_id');
@@ -246,7 +260,7 @@ class Equipo extends Model
 
     public function registradoPor()
     {
-        return $this->belongsTo(User::class, 'registrado_por_user_id');
+        return $this->belongsTo(User::class, 'registrado_por_user_id')->withoutGlobalScopes();
     }
 
     public function proveedor()

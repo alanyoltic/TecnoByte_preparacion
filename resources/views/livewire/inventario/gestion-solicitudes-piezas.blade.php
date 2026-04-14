@@ -319,6 +319,27 @@
                         @enderror
                     </div>
 
+                    {{-- Puntos para el técnico --}}
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                            Puntos para el técnico <span class="text-red-500">*</span>
+                        </label>
+                        <p class="text-xs text-slate-400 dark:text-slate-500 mb-2">
+                            Define cuántos puntos recibirá el técnico al instalar esta pieza correctamente.
+                        </p>
+                        <input type="number" wire:model="puntosOverride"
+                               min="0.01" step="0.01"
+                               placeholder="Ej: 1.5"
+                               class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800
+                                      border border-slate-200 dark:border-slate-700
+                                      text-slate-900 dark:text-slate-100
+                                      placeholder:text-slate-400
+                                      focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm" />
+                        @error('puntosOverride')
+                            <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     {{-- Notas --}}
                     <div>
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">

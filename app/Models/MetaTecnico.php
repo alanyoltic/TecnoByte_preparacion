@@ -22,12 +22,12 @@ class MetaTecnico extends Model
 
     public function tecnico(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'tecnico_id');
+        return $this->belongsTo(User::class, 'tecnico_id')->withoutGlobalScopes();
     }
 
     public function asignadaPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'asignada_por_id');
+        return $this->belongsTo(User::class, 'asignada_por_id')->withoutGlobalScopes();
     }
 
     /**

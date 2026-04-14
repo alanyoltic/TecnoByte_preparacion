@@ -21,6 +21,7 @@ class SolicitudPieza extends Model
         'respondida_por_id',
         'respondida_en',
         'notas_respuesta',
+        'puntos_override',
         'reasignado_a_id',
         'reasignada_en',
         'iniciada_instalacion_en',
@@ -64,7 +65,7 @@ class SolicitudPieza extends Model
 
     public function solicitadoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'solicitado_por_id');
+        return $this->belongsTo(User::class, 'solicitado_por_id')->withoutGlobalScopes();
     }
 
     public function catalogoPieza(): BelongsTo
@@ -79,12 +80,12 @@ class SolicitudPieza extends Model
 
     public function respondidaPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'respondida_por_id');
+        return $this->belongsTo(User::class, 'respondida_por_id')->withoutGlobalScopes();
     }
 
     public function reasignadoA(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'reasignado_a_id');
+        return $this->belongsTo(User::class, 'reasignado_a_id')->withoutGlobalScopes();
     }
 
     /** Minutos que tardó la instalación (inicio → confirmación). */
@@ -209,9 +210,9 @@ class SolicitudPieza extends Model
     /**
      * Surtir pieza del inventario
      */
-    public function surtirDeInventario(int $inventarioPiezaId, int $gerenteId, ?string $notas = null, ?int $tecnicoReasignadoId = null): void
+    public function surtirDeInventario(int $inventarioPiezaId, int $gerenteId, ?string $notas = null, ?int $tecnicoReasignadoId = null, ?float $puntosOverride = null): void
     {
-        DB::transaction(function () use ($inventarioPiezaId, $gerenteId, $notas, $tecnicoReasignadoId) {
+        DB::transaction(function () use ($inventarioPiezaId, $gerenteId, $notas, $tecnicoReasignadoId, $puntosOverride) {
             $pieza = InventarioPieza::lockForUpdate()->findOrFail($inventarioPiezaId);
 
             if ($pieza->cantidad_disponible < 1) {
@@ -224,6 +225,7 @@ class SolicitudPieza extends Model
                 'respondida_por_id'   => $gerenteId,
                 'respondida_en'       => now(),
                 'notas_respuesta'     => $notas,
+                'puntos_override'     => $puntosOverride > 0 ? $puntosOverride : null,
                 'reasignado_a_id'     => $tecnicoReasignadoId,
                 'reasignada_en'       => $tecnicoReasignadoId ? now() : null,
             ]);
@@ -347,18 +349,17 @@ class SolicitudPieza extends Model
             }
 
             if ($funciono && $this->asignacion_equipo_id) {
-                $clasificacionId = $equipo?->clasificacion_puntos_id;
-                $puntosBase = $clasificacionId
-                    ? (ClasificacionPuntos::find($clasificacionId)?->puntos_base ?? 1.0)
-                    : 1.0;
-
-                PuntoTecnico::registrar(
-                    tecnicoId: $tecnicoId,
-                    asignacionEquipoId: $this->asignacion_equipo_id,
-                    rol: PuntoTecnico::TERMINO_PIEZA,
-                    puntosBase: (float) $puntosBase,
-                    clasificacionId: $clasificacionId,
-                );
+                // Los puntos de pieza siempre los define el gerente al asignarla.
+                // Si por alguna razón no se definieron, no se registran puntos.
+                if ($this->puntos_override > 0) {
+                    PuntoTecnico::registrar(
+                        tecnicoId: $tecnicoId,
+                        asignacionEquipoId: $this->asignacion_equipo_id,
+                        rol: PuntoTecnico::TERMINO_PIEZA,
+                        puntosBase: (float) $this->puntos_override,
+                        clasificacionId: null,
+                    );
+                }
             }
         });
     }

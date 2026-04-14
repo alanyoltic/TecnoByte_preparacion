@@ -36,12 +36,12 @@ class Transferencia extends Model
 
     public function creador(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'created_by')->withoutGlobalScopes();
     }
 
     public function aprobador(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'approved_by');
+        return $this->belongsTo(User::class, 'approved_by')->withoutGlobalScopes();
     }
 
     public function detalles(): HasMany

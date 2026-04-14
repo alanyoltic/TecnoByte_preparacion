@@ -23,6 +23,8 @@ class RegistrarLote extends Component
 
     public function mount()
     {
+        abort_unless(auth()->user()?->tienePermiso('prep.lotes.gestion'), 403);
+
         $this->fecha_llegada = now()->toDateString();
 
         $this->modelos = [

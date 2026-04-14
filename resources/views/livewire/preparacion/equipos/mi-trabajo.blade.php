@@ -286,6 +286,20 @@
                                 </div>
                             </div>
 
+                            {{-- Nota del gerente/líder --}}
+                            @if($asignacion->notas)
+                                <div class="flex items-start gap-2 rounded-xl bg-amber-50/80 dark:bg-amber-900/20
+                                            border border-amber-200/70 dark:border-amber-600/30 px-3 py-2">
+                                    <svg class="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <p class="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+                                        {{ $asignacion->notas }}
+                                    </p>
+                                </div>
+                            @endif
+
                             <button wire:click="verEquipos({{ $asignacion->id }})"
                                 class="w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5
                                        text-xs font-semibold

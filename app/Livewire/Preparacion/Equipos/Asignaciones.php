@@ -71,7 +71,7 @@ class Asignaciones extends Component
     #[Computed]
     public function tecnicos()
     {
-        return User::whereHas('role', fn($q) => $q->where('slug', 'tecnico'))
+        return User::whereHas('role', fn($q) => $q->whereIn('slug', ['tecnico', 'lider']))
             ->where('is_active', true)
             ->when($this->busquedaTecnico, fn($q) =>
                 $q->where(fn($q2) =>

@@ -3,6 +3,7 @@
 namespace App\Livewire\Preparacion\Equipos;
 
 use Livewire\Component;
+use App\Livewire\Concerns\EquipoPortMaps;
 use App\Livewire\Preparacion\Forms\EquipoForm;
 use App\Models\{
     Equipo,
@@ -52,58 +53,6 @@ public $almacenesDisponibles = [];
     // =======================
     public array $baseline = [];
     public bool $hasChanges = false;
-
-    // =======================
-    // MAPS (UI -> columnas DB)
-    // =======================
-    private const MAP_USB = [
-        'USB 2.0'    => 'puertos_usb_2',
-        'USB 3.0'    => 'puertos_usb_30',
-        'USB 3.1'    => 'puertos_usb_31',
-        'USB 3.2'    => 'puertos_usb_32',
-        'USB-C'      => 'puertos_usb_c',
-        
-    ];
-
-    private const MAP_VIDEO = [
-        'HDMI'             => 'puertos_hdmi',
-        'Mini HDMI'        => 'puertos_mini_hdmi',
-        'VGA'              => 'puertos_vga',
-        'DVI'              => 'puertos_dvi',
-        'DisplayPort'      => 'puertos_displayport',
-        'Mini DisplayPort' => 'puertos_mini_dp',
-    ];
-
-    private const MAP_LECTORES = [
-        'SD'        => 'lectores_sd',
-        'microSD'   => 'lectores_microsd',
-        'SmartCard' => 'lectores_sc',
-        'eSATA'     => 'lectores_esata',
-        'SIM'       => 'lectores_sim',
-    ];
-
-    private const MAP_SLOTS = [
-        'SSD'       => 'slots_alm_ssd',
-        'M.2'       => 'slots_alm_m2',
-        'M.2 MICRO' => 'slots_alm_m2_micro',
-        'HDD'       => 'slots_alm_hdd',
-        'MSATA'     => 'slots_alm_msata',
-    ];
-
-    // Entradas monitor -> columnas equipo_monitores (ajusta si tu tabla difiere)
-    private const MAP_MONITOR_IN = [
-        'HDMI'             => 'in_hdmi',
-        'Mini HDMI'        => 'in_mini_hdmi',
-        'VGA'              => 'in_vga',
-        'DVI'              => 'in_dvi',
-        'DisplayPort'      => 'in_displayport',
-        'Mini DisplayPort' => 'in_mini_displayport',
-        'USB 2.0'          => 'in_usb_2',
-        'USB 3.0'          => 'in_usb_3',
-        'USB 3.1'          => 'in_usb_31',
-        'USB 3.2'          => 'in_usb_32',
-        'USB-C'            => 'in_usb_c',
-    ];
 
     // =======================
     // Lifecycle
@@ -291,7 +240,7 @@ public $almacenesDisponibles = [];
 
                 // Entradas in_* -> rows
                 $rows = [];
-                foreach (self::MAP_MONITOR_IN as $label => $col) {
+                foreach (EquipoPortMaps::MAP_MONITOR_IN as $label => $col) {
                     $qty = (int)($m->{$col} ?? 0);
                     if ($qty > 0) $rows[] = ['tipo' => $label, 'cantidad' => $qty];
                 }
@@ -362,9 +311,9 @@ public $almacenesDisponibles = [];
     private function hidratarDinamicosDesdeEquipo(): void
     {
         // 1) Reconstruir filas dinámicas de puertos/lectores/slots desde columnas del equipo
-        $this->form->puertos_usb = $this->buildRowsFromMap(self::MAP_USB);
-        $this->form->puertos_video = $this->buildRowsFromMap(self::MAP_VIDEO);
-        $this->form->lectores = $this->buildRowsFromMap(self::MAP_LECTORES);
+        $this->form->puertos_usb = $this->buildRowsFromMap(EquipoPortMaps::MAP_USB);
+        $this->form->puertos_video = $this->buildRowsFromMap(EquipoPortMaps::MAP_VIDEO);
+        $this->form->lectores = $this->buildRowsFromMap(EquipoPortMaps::MAP_LECTORES);
 
         $this->form->slots_almacenamiento = $this->buildRowsFromSlots([
             'SSD'       => 'slots_alm_ssd',
@@ -896,13 +845,13 @@ public $almacenesDisponibles = [];
         $f = $this->form;
 
         // Reset a 0/null primero (MUY IMPORTANTE para detectar borrados)
-        foreach (self::MAP_USB as $label => $col) {
+        foreach (EquipoPortMaps::MAP_USB as $label => $col) {
             $f->{$col} = null;
         }
-        foreach (self::MAP_VIDEO as $label => $col) {
+        foreach (EquipoPortMaps::MAP_VIDEO as $label => $col) {
             $f->{$col} = null;
         }
-        foreach (self::MAP_LECTORES as $label => $col) {
+        foreach (EquipoPortMaps::MAP_LECTORES as $label => $col) {
             $f->{$col} = null;
         }
 
@@ -1578,7 +1527,7 @@ private function guardarBaterias(int $equipoId): void
     private function monitorInputsPayload(array $countsByLabel): array
     {
         $payload = [];
-        foreach (self::MAP_MONITOR_IN as $label => $col) {
+        foreach (EquipoPortMaps::MAP_MONITOR_IN as $label => $col) {
             $qty = (int) ($countsByLabel[$label] ?? 0);
             $payload[$col] = $qty > 0 ? $qty : null;
         }
@@ -1641,13 +1590,13 @@ private function guardarGpus(int $equipoId): void
         $f = $this->form;
 
         $usbCounts = $this->aggregateCounters($f->puertos_usb ?? [], 'tipo', 'cantidad');
-        $this->applyMapCountsToEquipo($usbCounts, self::MAP_USB);
+        $this->applyMapCountsToEquipo($usbCounts, EquipoPortMaps::MAP_USB);
 
         $videoCounts = $this->aggregateCounters($f->puertos_video ?? [], 'tipo', 'cantidad');
-        $this->applyMapCountsToEquipo($videoCounts, self::MAP_VIDEO);
+        $this->applyMapCountsToEquipo($videoCounts, EquipoPortMaps::MAP_VIDEO);
 
         $lectorCounts = $this->aggregateCounters($f->lectores ?? [], 'tipo', 'cantidad');
-        $this->applyMapCountsToEquipo($lectorCounts, self::MAP_LECTORES);
+        $this->applyMapCountsToEquipo($lectorCounts, EquipoPortMaps::MAP_LECTORES);
     }
 
     private function aggregateCounters(array $rows, string $keyField, ?string $qtyField): array
@@ -1697,12 +1646,12 @@ private function applyMapCountsToEquipo(array $countsByLabel, array $mapLabelToE
 
         foreach (($f->slots_almacenamiento ?? []) as $row) {
             $tipo = trim((string) ($row['tipo'] ?? ''));
-            if ($tipo === '' || !isset(self::MAP_SLOTS[$tipo])) continue;
+            if ($tipo === '' || !isset(EquipoPortMaps::MAP_SLOTS[$tipo])) continue;
 
             $cant = $row['cantidad'] ?? null;
             $valor = (is_numeric($cant) && (int) $cant > 0) ? (string) ((int) $cant) : null;
 
-            $col = self::MAP_SLOTS[$tipo];
+            $col = EquipoPortMaps::MAP_SLOTS[$tipo];
             $f->{$col} = $valor;
         }
     }

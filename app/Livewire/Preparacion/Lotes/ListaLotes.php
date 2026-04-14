@@ -31,6 +31,8 @@ class ListaLotes extends Component
 
     public function mount(): void
     {
+        abort_unless(auth()->user()?->tienePermiso('prep.lotes.ver'), 403);
+
         $this->proveedores = Proveedor::orderBy('nombre_empresa')->get();
     }
 

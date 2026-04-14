@@ -20,6 +20,7 @@ class GestionSolicitudesPiezas extends Component
     public $piezasDisponibles = [];
     public ?int $piezaSeleccionada = null;
     public string $notasRespuesta = '';
+    public ?float $puntosOverride = null;
     public ?int $tecnicoReasignadoId = null;
     public array $tecnicos = [];
 
@@ -104,7 +105,7 @@ class GestionSolicitudesPiezas extends Component
         ])->findOrFail($solicitudId);
 
         if (!$this->solicitudSeleccionada->puedeSerSurtidaDesdeInventario()) {
-            session()->flash('error', 'Esta solicitud ya no puede surtirse desde inventario.');
+            $this->dispatch('toast', type: 'error', message: 'Esta solicitud ya no puede surtirse desde inventario.');
             return;
         }
 
@@ -142,11 +143,14 @@ class GestionSolicitudesPiezas extends Component
     public function surtirDeInventario(): void
     {
         $this->validate([
-            'piezaSeleccionada' => 'required|exists:inventario_piezas,id',
-            'notasRespuesta' => 'nullable|string|max:500',
+            'piezaSeleccionada'   => 'required|exists:inventario_piezas,id',
+            'puntosOverride'      => 'required|numeric|min:0.01',
             'tecnicoReasignadoId' => 'required|exists:users,id',
+            'notasRespuesta'      => 'nullable|string|max:500',
         ], [
-            'tecnicoReasignadoId.required' => 'Debes seleccionar a quien se reasigna la instalacion.',
+            'puntosOverride.required' => 'Debes definir los puntos que recibirá el técnico por instalar la pieza.',
+            'puntosOverride.min'      => 'Los puntos deben ser mayor a 0.',
+            'tecnicoReasignadoId.required' => 'Debes seleccionar a quien se reasigna la instalación.',
         ]);
 
         try {
@@ -154,13 +158,14 @@ class GestionSolicitudesPiezas extends Component
                 $this->piezaSeleccionada,
                 auth()->id(),
                 $this->notasRespuesta ?: null,
-                $this->tecnicoReasignadoId
+                $this->tecnicoReasignadoId,
+                $this->puntosOverride > 0 ? (float) $this->puntosOverride : null,
             );
 
-            session()->flash('success', 'Pieza asignada correctamente. El tecnico ya puede instalarla.');
+            $this->dispatch('toast', type: 'success', message: 'Pieza asignada correctamente. El tecnico ya puede instalarla.');
             $this->cerrarModales();
         } catch (\Throwable $e) {
-            session()->flash('error', 'Error al surtir: ' . $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: 'Error al surtir: ' . $e->getMessage());
         }
     }
 
@@ -169,7 +174,7 @@ class GestionSolicitudesPiezas extends Component
         $this->solicitudSeleccionada = SolicitudPieza::findOrFail($solicitudId);
 
         if (!$this->solicitudSeleccionada->puedeSerGestionada()) {
-            session()->flash('error', 'Esta solicitud ya fue procesada.');
+            $this->dispatch('toast', type: 'error', message: 'Esta solicitud ya fue procesada.');
             return;
         }
 
@@ -189,10 +194,10 @@ class GestionSolicitudesPiezas extends Component
                 $this->notasRespuesta ?: null
             );
 
-            session()->flash('success', 'Solicitud marcada como pendiente de compra.');
+            $this->dispatch('toast', type: 'success', message: 'Solicitud marcada como pendiente de compra.');
             $this->cerrarModales();
         } catch (\Throwable $e) {
-            session()->flash('error', 'Error: ' . $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: 'Error: ' . $e->getMessage());
         }
     }
 
@@ -201,7 +206,7 @@ class GestionSolicitudesPiezas extends Component
         $this->solicitudSeleccionada = SolicitudPieza::findOrFail($solicitudId);
 
         if (!$this->solicitudSeleccionada->puedeCancelarse()) {
-            session()->flash('error', 'Esta solicitud ya no puede cancelarse.');
+            $this->dispatch('toast', type: 'error', message: 'Esta solicitud ya no puede cancelarse.');
             return;
         }
 
@@ -221,10 +226,10 @@ class GestionSolicitudesPiezas extends Component
                 $this->motivoCancelacion
             );
 
-            session()->flash('success', 'Solicitud cancelada correctamente.');
+            $this->dispatch('toast', type: 'success', message: 'Solicitud cancelada correctamente.');
             $this->cerrarModales();
         } catch (\Throwable $e) {
-            session()->flash('error', 'Error: ' . $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: 'Error: ' . $e->getMessage());
         }
     }
 
@@ -248,6 +253,7 @@ class GestionSolicitudesPiezas extends Component
             'solicitudSeleccionada',
             'piezaSeleccionada',
             'notasRespuesta',
+            'puntosOverride',
             'motivoCancelacion',
             'piezasDisponibles',
             'tecnicoReasignadoId',

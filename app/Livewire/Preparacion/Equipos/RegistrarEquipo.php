@@ -3,6 +3,7 @@
 namespace App\Livewire\Preparacion\Equipos;
 
 use Livewire\Component;
+use App\Livewire\Concerns\EquipoPortMaps;
 use App\Livewire\Preparacion\Forms\EquipoForm;
 use App\Models\{
     Equipo,
@@ -38,58 +39,6 @@ class RegistrarEquipo extends Component
         'HDMI', 'Mini HDMI', 'VGA', 'DVI',
         'DisplayPort', 'Mini DisplayPort',
         'USB 2.0', 'USB 3.0', 'USB 3.1', 'USB 3.2', 'USB-C',
-    ];
-
-    // =======================
-    // MAPS (UI -> columnas DB)
-    // =======================
-    private const MAP_USB = [
-        'USB 2.0'    => 'puertos_usb_2',
-        'USB 3.0'    => 'puertos_usb_30',
-        'USB 3.1'    => 'puertos_usb_31',
-        'USB 3.2'    => 'puertos_usb_32',
-        'USB-C'      => 'puertos_usb_c',
-        'USB tipo C' => 'puertos_usb_c',
-    ];
-
-    private const MAP_VIDEO = [
-        'HDMI'             => 'puertos_hdmi',
-        'Mini HDMI'        => 'puertos_mini_hdmi',
-        'VGA'              => 'puertos_vga',
-        'DVI'              => 'puertos_dvi',
-        'DisplayPort'      => 'puertos_displayport',
-        'Mini DisplayPort' => 'puertos_mini_dp',
-    ];
-
-    private const MAP_LECTORES = [
-        'SD'        => 'lectores_sd',
-        'microSD'   => 'lectores_microsd',
-        'SmartCard' => 'lectores_sc',
-        'eSATA'     => 'lectores_esata',
-        'SIM'       => 'lectores_sim',
-    ];
-
-    private const MAP_SLOTS = [
-        'SSD'       => 'slots_alm_ssd',
-        'M.2'       => 'slots_alm_m2',
-        'M.2 MICRO' => 'slots_alm_m2_micro',
-        'HDD'       => 'slots_alm_hdd',
-        'MSATA'     => 'slots_alm_msata',
-    ];
-
-    // Entradas monitor -> columnas equipo_monitores (ajusta si tu tabla difiere)
-    private const MAP_MONITOR_IN = [
-        'HDMI'             => 'in_hdmi',
-        'Mini HDMI'        => 'in_mini_hdmi',
-        'VGA'              => 'in_vga',
-        'DVI'              => 'in_dvi',
-        'DisplayPort'      => 'in_displayport',
-        'Mini DisplayPort' => 'in_mini_displayport',
-        'USB 2.0'          => 'in_usb_2',
-        'USB 3.0'          => 'in_usb_3',
-        'USB 3.1'          => 'in_usb_31',
-        'USB 3.2'          => 'in_usb_32',
-        'USB-C'            => 'in_usb_c',
     ];
 
     // =======================
@@ -885,7 +834,7 @@ public function updatedFormRamExpansionMax($value): void
     private function monitorInputsPayload(array $countsByLabel): array
     {
         $payload = [];
-        foreach (self::MAP_MONITOR_IN as $label => $col) {
+        foreach (EquipoPortMaps::MAP_MONITOR_IN as $label => $col) {
             $qty = (int) ($countsByLabel[$label] ?? 0);
             $payload[$col] = $qty > 0 ? $qty : null;
         }
@@ -943,13 +892,13 @@ public function updatedFormRamExpansionMax($value): void
 
 
         $usbCounts = $this->aggregateCounters($f->puertos_usb ?? [], 'tipo', 'cantidad');
-        $this->applyMapCountsToEquipo($usbCounts, self::MAP_USB);
+        $this->applyMapCountsToEquipo($usbCounts, EquipoPortMaps::MAP_USB);
 
         $videoCounts = $this->aggregateCounters($f->puertos_video ?? [], 'tipo', 'cantidad');
-        $this->applyMapCountsToEquipo($videoCounts, self::MAP_VIDEO);
+        $this->applyMapCountsToEquipo($videoCounts, EquipoPortMaps::MAP_VIDEO);
 
         $lectorCounts = $this->aggregateCounters($f->lectores ?? [], 'tipo', 'cantidad');
-        $this->applyMapCountsToEquipo($lectorCounts, self::MAP_LECTORES);
+        $this->applyMapCountsToEquipo($lectorCounts, EquipoPortMaps::MAP_LECTORES);
     }
 
     private function aggregateCounters(array $rows, string $keyField, ?string $qtyField): array
@@ -1001,12 +950,12 @@ public function updatedFormRamExpansionMax($value): void
 
         foreach (($f->slots_almacenamiento ?? []) as $row) {
             $tipo = trim((string) ($row['tipo'] ?? ''));
-            if ($tipo === '' || !isset(self::MAP_SLOTS[$tipo])) continue;
+            if ($tipo === '' || !isset(EquipoPortMaps::MAP_SLOTS[$tipo])) continue;
 
             $cant = $row['cantidad'] ?? null;
             $valor = (is_numeric($cant) && (int) $cant > 0) ? (string) ((int) $cant) : null;
 
-            $col = self::MAP_SLOTS[$tipo];
+            $col = EquipoPortMaps::MAP_SLOTS[$tipo];
             $f->{$col} = $valor;
         }
     }

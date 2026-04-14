@@ -40,7 +40,7 @@ class PuntoTecnico extends Model
     // ── Relaciones ────────────────────────────────────────────────────────
     public function tecnico(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'tecnico_id');
+        return $this->belongsTo(User::class, 'tecnico_id')->withoutGlobalScopes();
     }
 
     public function asignacionEquipo(): BelongsTo
@@ -55,7 +55,7 @@ class PuntoTecnico extends Model
 
     public function ajustadoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'ajustado_por_id');
+        return $this->belongsTo(User::class, 'ajustado_por_id')->withoutGlobalScopes();
     }
 
     // ── Scopes ────────────────────────────────────────────────────────────

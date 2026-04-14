@@ -32,6 +32,8 @@ class EditarLote extends Component
 
     public function mount($loteId)
     {
+        abort_unless(auth()->user()?->tienePermiso('prep.lotes.gestion'), 403);
+
         $this->loteId = (int) $loteId;
 
         $this->proveedores = Proveedor::orderBy('abreviacion')->get();

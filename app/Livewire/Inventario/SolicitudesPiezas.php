@@ -104,12 +104,12 @@ class SolicitudesPiezas extends Component
         $solicitud = SolicitudPieza::findOrFail($id);
 
         if (!$this->esResponsableDeSolicitud($solicitud)) {
-            session()->flash('error', 'Solo el tecnico responsable puede confirmar esta instalacion.');
+            $this->dispatch('toast', type: 'error', message: 'Solo el tecnico responsable puede confirmar esta instalacion.');
             return;
         }
 
         if (!$solicitud->puedeSerConfirmada()) {
-            session()->flash('error', 'Esta solicitud no puede confirmarse todavia. Inventario aun no ha surtido la pieza.');
+            $this->dispatch('toast', type: 'error', message: 'Esta solicitud no puede confirmarse todavia. Inventario aun no ha surtido la pieza.');
             return;
         }
 
@@ -126,7 +126,7 @@ class SolicitudesPiezas extends Component
         ]);
 
         if (!$this->solicitudSeleccionada || !$this->esResponsableDeSolicitud($this->solicitudSeleccionada)) {
-            session()->flash('error', 'No tienes permiso para cerrar esta solicitud.');
+            $this->dispatch('toast', type: 'error', message: 'No tienes permiso para cerrar esta solicitud.');
             $this->cerrarModal();
             return;
         }
@@ -138,14 +138,14 @@ class SolicitudesPiezas extends Component
                 $this->notasConfirmacion ?: null
             );
 
-            session()->flash('success', $this->funciono
+            $this->dispatch('toast', type: 'success', message: $this->funciono
                 ? 'Instalacion confirmada. El equipo volvio al flujo de calidad.'
                 : 'Se registro la falla de la pieza y se genero una nueva solicitud.'
             );
 
             $this->cerrarModal();
         } catch (\Throwable $e) {
-            session()->flash('error', 'Error al confirmar: ' . $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: 'Error al confirmar: ' . $e->getMessage());
         }
     }
 

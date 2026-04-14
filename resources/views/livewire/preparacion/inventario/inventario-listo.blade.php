@@ -13,7 +13,7 @@
     <div class="flex flex-col lg:flex-row gap-6">
 
         {{-- TARJETAS RESUMEN — ESTILO GLOW REAL --}}
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 flex-1">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 flex-1">
 
             {{-- TOTAL EQUIPOS — Glow azul --}}
             <div
@@ -59,31 +59,29 @@
                 <p class="mt-2 text-2xl font-bold text-violet-800 dark:text-violet-100">
                     {{ $stats['sin_asignar'] ?? 0 }}
                 </p>
-                <p class="text-[0.65rem] text-violet-500 dark:text-violet-400 mt-1">Sin técnico asignado</p>
             </div>
 
-            {{-- EN PREPARACIÓN — Glow amarillo --}}
+            {{-- POR HACER — Glow naranja --}}
             <div
                 class="rounded-2xl
-                       bg-amber-50/90 dark:bg-amber-950/40
-                       border border-amber-200/80 dark:border-amber-500/70
+                       bg-orange-50/90 dark:bg-orange-950/40
+                       border border-orange-200/80 dark:border-orange-500/70
                        backdrop-blur-xl dark:backdrop-blur-2xl
                        px-4 py-3
-                       shadow-md shadow-amber-900/10
-                       dark:shadow-lg dark:shadow-amber-900/30
+                       shadow-md shadow-orange-900/10
+                       dark:shadow-lg dark:shadow-orange-900/30
                        transition-all duration-300
                        hover:-translate-y-1
-                       hover:shadow-lg hover:shadow-amber-500/40
-                       dark:hover:shadow-2xl dark:hover:shadow-amber-400/50
-                       hover:border-amber-400/70"
+                       hover:shadow-lg hover:shadow-orange-500/40
+                       dark:hover:shadow-2xl dark:hover:shadow-orange-400/50
+                       hover:border-orange-400/70"
             >
-                <p class="text-xs sm:text-sm font-semibold text-amber-700 dark:text-amber-200 uppercase tracking-wide">
-                    En preparación
+                <p class="text-xs sm:text-sm font-semibold text-orange-700 dark:text-orange-200 uppercase tracking-wide">
+                    Por hacer
                 </p>
-                <p class="mt-2 text-2xl font-bold text-amber-800 dark:text-amber-100">
-                    {{ $stats['en_preparacion'] ?? 0 }}
+                <p class="mt-2 text-2xl font-bold text-orange-800 dark:text-orange-100">
+                    {{ $stats['por_hacer'] ?? 0 }}
                 </p>
-                <p class="text-[0.65rem] text-amber-600 dark:text-amber-400 mt-1">Con técnico activo</p>
             </div>
 
             {{-- EN CALIDAD — Glow verde --}}

@@ -122,6 +122,7 @@ $equipos = Equipo::with([
         $this->tecnicos = User::withoutGlobalScopes()
             ->select('id', 'nombre')
             ->whereNull('deleted_at')
+            ->where('is_active', true)
             ->where('role_id', $rolTecnicoId)
             ->orderBy('nombre')
             ->get()
@@ -420,13 +421,25 @@ public function cerrarEliminarSeleccion()
             return;
         }
 
+        $permitidos = [
+            Equipo::AREA_EN_ESPERA,
+            Equipo::AREA_EN_PROCESO,
+            Equipo::AREA_EN_CALIDAD,
+        ];
+
+        if (!in_array($nuevoEstatus, $permitidos, true)) {
+            $this->dispatch('toast', type: 'error', message: 'Estatus no válido.');
+            return;
+        }
+
         Equipo::whereIn('id', $this->selected)->update([
-            'estatus_area' => $nuevoEstatus,
+            'estatus_area'  => $nuevoEstatus,
+            'estatus_ciclo' => Equipo::cicloParaArea($nuevoEstatus),
         ]);
 
         $this->resetSelection();
 
-        session()->flash('success', 'Se actualizó el estatus de los equipos seleccionados.');
+        $this->dispatch('toast', type: 'success', message: 'Se actualizó el estatus de los equipos seleccionados.');
     }
 
 
@@ -458,7 +471,7 @@ public function cerrarEliminarSeleccion()
 
         $this->resetSelection();
 
-        session()->flash('success', 'Se actualizó el área/tienda de los equipos seleccionados.');
+        $this->dispatch('toast', type: 'success', message: 'Se actualizó el área/tienda de los equipos seleccionados.');
     }
 
     /**
@@ -501,7 +514,9 @@ public function cerrarEliminarSeleccion()
         $stats = [
             'total'          => Equipo::count(),
             'sin_asignar'    => Equipo::whereDoesntHave('asignacionEquipos')->count(),
-            'en_preparacion' => Equipo::whereHas('asignacionEquipos', fn($q) => $q->where('camino', 'EN_PROCESO'))->count(),
+            'por_hacer'      => Equipo::whereHas('asignacionEquipos')
+                ->where('estatus_area', '!=', 'EN_CALIDAD')
+                ->count(),
             'en_calidad'     => Equipo::where('estatus_area', 'EN_CALIDAD')->count(),
             'finalizado'     => Equipo::where('estatus_area', 'FINALIZADO')->count(),
         ];

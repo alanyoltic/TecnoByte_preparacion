@@ -33,7 +33,7 @@ class InventarioListo extends Component
     public $stats = [
         'total'          => 0,
         'sin_asignar'    => 0,
-        'en_preparacion' => 0,
+        'por_hacer'      => 0,
         'en_calidad'     => 0,
         'finalizado'     => 0,
     ];
@@ -56,8 +56,10 @@ public function mount()
 
     $this->calcularStats();
 
-    $this->colaboradores = User::withoutGlobalScopes() // ← aquí
+    $this->colaboradores = User::withoutGlobalScopes()
         ->select('id', 'nombre')
+        ->whereNull('deleted_at')
+        ->where('is_active', true)
         ->orderBy('nombre')
         ->get()
         ->map(fn ($u) => ['id' => $u->id, 'nombre' => $u->nombre])
@@ -99,11 +101,22 @@ public function mount()
 
     protected function calcularStats(): void
     {
-        $this->stats['total']          = Equipo::count();
-        $this->stats['sin_asignar']    = Equipo::whereDoesntHave('asignacionEquipos')->count();
-        $this->stats['en_preparacion'] = Equipo::whereHas('asignacionEquipos', fn($q) => $q->where('camino', 'EN_PROCESO'))->count();
-        $this->stats['en_calidad']     = Equipo::where('estatus_area', 'EN_CALIDAD')->count();
-        $this->stats['finalizado']     = Equipo::where('estatus_area', 'FINALIZADO')->count();
+        // TODOS los equipos, sin importar estatus
+        $this->stats['total'] = Equipo::count();
+
+        // Equipos en lotes SIN asignar a ningún técnico
+        $this->stats['sin_asignar'] = Equipo::whereDoesntHave('asignacionEquipos')->count();
+
+        // Equipos en calidad
+        $this->stats['en_calidad'] = Equipo::where('estatus_area', 'EN_CALIDAD')->count();
+
+        // Equipos finalizados
+        $this->stats['finalizado'] = Equipo::where('estatus_area', 'FINALIZADO')->count();
+
+        // Equipos asignados a técnico pero que NO están en calidad (por hacer)
+        $this->stats['por_hacer'] = Equipo::whereHas('asignacionEquipos')
+            ->where('estatus_area', '!=', 'EN_CALIDAD')
+            ->count();
     }
 
     public function render()

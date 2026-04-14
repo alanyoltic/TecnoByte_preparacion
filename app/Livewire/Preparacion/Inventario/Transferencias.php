@@ -15,9 +15,7 @@ class Transferencias extends Component
 
     public function mount(): void
     {
-        if (!auth()->user()->puedeVerTransferencias()) {
-            abort(403);
-        }
+        abort_unless(auth()->user()?->tienePermiso('prep.transferencias.ver'), 403);
     }
 
     public function updatedSearch(): void

@@ -33,20 +33,6 @@ trait TieneRolTransferencias
     }
 
     // =========================================================
-    // PERMISOS DE TRANSFERENCIAS
-    // =========================================================
-
-    public function puedeVerTransferencias(): bool
-    {
-        return !$this->esTecnico();
-    }
-
-    public function puedeCriarTransferencias(): bool
-    {
-        return !$this->esTecnico();
-    }
-
-    // =========================================================
     // ALMACENES PERMITIDOS
     // =========================================================
 

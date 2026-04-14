@@ -3,6 +3,7 @@
 namespace App\Livewire\Preparacion\Equipos;
 
 use Livewire\Component;
+use App\Livewire\Concerns\EquipoPortMaps;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Computed;
 use App\Livewire\Preparacion\Forms\EquipoForm;
@@ -59,32 +60,6 @@ class MiTrabajo extends Component
         'USB 2.0', 'USB 3.0', 'USB 3.1', 'USB 3.2', 'USB-C',
     ];
 
-    // Maps UI -> columnas DB
-    private const MAP_USB = [
-        'USB 2.0' => 'puertos_usb_2', 'USB 3.0' => 'puertos_usb_30',
-        'USB 3.1' => 'puertos_usb_31', 'USB 3.2' => 'puertos_usb_32',
-        'USB-C' => 'puertos_usb_c', 'USB tipo C' => 'puertos_usb_c',
-    ];
-    private const MAP_VIDEO = [
-        'HDMI' => 'puertos_hdmi', 'Mini HDMI' => 'puertos_mini_hdmi',
-        'VGA' => 'puertos_vga', 'DVI' => 'puertos_dvi',
-        'DisplayPort' => 'puertos_displayport', 'Mini DisplayPort' => 'puertos_mini_dp',
-    ];
-    private const MAP_LECTORES = [
-        'SD' => 'lectores_sd', 'microSD' => 'lectores_microsd',
-        'SmartCard' => 'lectores_sc', 'eSATA' => 'lectores_esata', 'SIM' => 'lectores_sim',
-    ];
-    private const MAP_SLOTS = [
-        'SSD' => 'slots_alm_ssd', 'M.2' => 'slots_alm_m2',
-        'M.2 MICRO' => 'slots_alm_m2_micro', 'HDD' => 'slots_alm_hdd', 'MSATA' => 'slots_alm_msata',
-    ];
-    private const MAP_MONITOR_IN = [
-        'HDMI' => 'in_hdmi', 'Mini HDMI' => 'in_mini_hdmi',
-        'VGA' => 'in_vga', 'DVI' => 'in_dvi',
-        'DisplayPort' => 'in_displayport', 'Mini DisplayPort' => 'in_mini_displayport',
-        'USB 2.0' => 'in_usb_2', 'USB 3.0' => 'in_usb_3',
-        'USB 3.1' => 'in_usb_31', 'USB 3.2' => 'in_usb_32', 'USB-C' => 'in_usb_c',
-    ];
 
     // ══════════════════════════════════════════════════════════════════════
     // LIFECYCLE
@@ -459,19 +434,14 @@ class MiTrabajo extends Component
                     ]);
                 }
 
-                // 3. Registrar puntos de la mini-vida (solo si la pieza funcionó)
-                if ($funciono && $solicitud->asignacion_equipo_id) {
-                    $clasificacionId = $equipo?->clasificacion_puntos_id;
-                    $puntosBase      = $clasificacionId
-                        ? (\App\Models\ClasificacionPuntos::find($clasificacionId)?->puntos_base ?? 1.0)
-                        : 1.0;
-
+                // 3. Registrar puntos — siempre los define el gerente al asignar la pieza
+                if ($funciono && $solicitud->asignacion_equipo_id && $solicitud->puntos_override > 0) {
                     PuntoTecnico::registrar(
-                        tecnicoId:         Auth::id(),
+                        tecnicoId:          Auth::id(),
                         asignacionEquipoId: $solicitud->asignacion_equipo_id,
-                        rol:               PuntoTecnico::TERMINO_PIEZA,
-                        puntosBase:        (float) $puntosBase,
-                        clasificacionId:   $clasificacionId,
+                        rol:                PuntoTecnico::TERMINO_PIEZA,
+                        puntosBase:         (float) $solicitud->puntos_override,
+                        clasificacionId:    null,
                     );
                 }
             });
@@ -1003,10 +973,71 @@ class MiTrabajo extends Component
     private function guardarBaterias(int $equipoId): void
     {
         $f = $this->form;
-        EquipoBateria::where('equipo_id', $equipoId)->delete();
-        if (!$f->bateria_tiene) return;
-        if ($f->bateria1_tipo) EquipoBateria::create(['equipo_id' => $equipoId, 'tipo' => $f->bateria1_tipo, 'salud_percent' => $f->bateria1_salud ?: null, 'notas' => null]);
-        if ($f->bateria2_tiene && $f->bateria2_tipo) EquipoBateria::create(['equipo_id' => $equipoId, 'tipo' => $f->bateria2_tipo, 'salud_percent' => $f->bateria2_salud ?: null, 'notas' => null]);
+
+        $existentes = EquipoBateria::where('equipo_id', $equipoId)
+            ->orderBy('id')
+            ->get()
+            ->values();
+
+        if (!$f->bateria_tiene) {
+            if ($existentes->isNotEmpty()) {
+                EquipoBateria::where('equipo_id', $equipoId)->delete();
+            }
+            return;
+        }
+
+        // BATERÍA 1
+        if ($f->bateria1_tipo) {
+            if (isset($existentes[0])) {
+                $existentes[0]->update([
+                    'tipo'          => $f->bateria1_tipo,
+                    'salud_percent' => $f->bateria1_salud ?: null,
+                    'notas'         => null,
+                ]);
+            } else {
+                EquipoBateria::create([
+                    'equipo_id'     => $equipoId,
+                    'tipo'          => $f->bateria1_tipo,
+                    'salud_percent' => $f->bateria1_salud ?: null,
+                    'notas'         => null,
+                ]);
+            }
+        } else {
+            if (isset($existentes[0])) {
+                $existentes[0]->delete();
+            }
+        }
+
+        // BATERÍA 2
+        $quiereBateria2 = (bool) $f->bateria2_tiene && (bool) $f->bateria2_tipo;
+
+        if ($quiereBateria2) {
+            if (isset($existentes[1])) {
+                $existentes[1]->update([
+                    'tipo'          => $f->bateria2_tipo,
+                    'salud_percent' => $f->bateria2_salud ?: null,
+                    'notas'         => null,
+                ]);
+            } else {
+                EquipoBateria::create([
+                    'equipo_id'     => $equipoId,
+                    'tipo'          => $f->bateria2_tipo,
+                    'salud_percent' => $f->bateria2_salud ?: null,
+                    'notas'         => null,
+                ]);
+            }
+        } else {
+            if (isset($existentes[1])) {
+                $existentes[1]->delete();
+            }
+        }
+
+        // Limpiar excedentes por registros viejos
+        if ($existentes->count() > 2) {
+            EquipoBateria::where('equipo_id', $equipoId)
+                ->whereNotIn('id', $existentes->take(2)->pluck('id'))
+                ->delete();
+        }
     }
 
     private function guardarMonitor(int $equipoId): void
@@ -1044,20 +1075,49 @@ class MiTrabajo extends Component
     private function guardarGpus(int $equipoId): void
     {
         $f = $this->form;
-        EquipoGpu::where('equipo_id', $equipoId)->delete();
         $esLaptopLike = $this->isLaptopLikeTipo($f->tipo_equipo);
-        if ($f->gpu_integrada_tiene || $esLaptopLike) {
-            EquipoGpu::create(['equipo_id' => $equipoId, 'tipo' => 'INTEGRADA', 'activo' => 1, 'marca' => $f->gpu_integrada_marca ?: null, 'modelo' => $f->gpu_integrada_modelo ?: null, 'vram' => filled($f->gpu_integrada_vram) ? (int)$f->gpu_integrada_vram : null, 'vram_unidad' => filled($f->gpu_integrada_vram) ? ($f->gpu_integrada_vram_unidad ?: 'GB') : null, 'notas' => null]);
+
+        // INTEGRADA — actualiza si existe, crea si no; borra solo si ya no aplica
+        $debeTenerIntegrada = (bool) $f->gpu_integrada_tiene || $esLaptopLike;
+
+        if ($debeTenerIntegrada) {
+            EquipoGpu::updateOrCreate(
+                ['equipo_id' => $equipoId, 'tipo' => 'INTEGRADA'],
+                [
+                    'activo'      => 1,
+                    'marca'       => $f->gpu_integrada_marca ?: null,
+                    'modelo'      => $f->gpu_integrada_modelo ?: null,
+                    'vram'        => filled($f->gpu_integrada_vram) ? (int) $f->gpu_integrada_vram : null,
+                    'vram_unidad' => filled($f->gpu_integrada_vram) ? ($f->gpu_integrada_vram_unidad ?: 'GB') : null,
+                    'notas'       => null,
+                ]
+            );
+        } else {
+            EquipoGpu::where('equipo_id', $equipoId)->where('tipo', 'INTEGRADA')->delete();
         }
-        if ($f->gpu_dedicada_tiene) {
-            EquipoGpu::create(['equipo_id' => $equipoId, 'tipo' => 'DEDICADA', 'activo' => 1, 'marca' => $f->gpu_dedicada_marca, 'modelo' => $f->gpu_dedicada_modelo, 'vram' => filled($f->gpu_dedicada_vram) ? (int)$f->gpu_dedicada_vram : null, 'vram_unidad' => filled($f->gpu_dedicada_vram) ? ($f->gpu_dedicada_vram_unidad ?: 'GB') : null, 'notas' => null]);
+
+        // DEDICADA — igual
+        if ((bool) $f->gpu_dedicada_tiene) {
+            EquipoGpu::updateOrCreate(
+                ['equipo_id' => $equipoId, 'tipo' => 'DEDICADA'],
+                [
+                    'activo'      => 1,
+                    'marca'       => $f->gpu_dedicada_marca ?: null,
+                    'modelo'      => $f->gpu_dedicada_modelo ?: null,
+                    'vram'        => filled($f->gpu_dedicada_vram) ? (int) $f->gpu_dedicada_vram : null,
+                    'vram_unidad' => filled($f->gpu_dedicada_vram) ? ($f->gpu_dedicada_vram_unidad ?: 'GB') : null,
+                    'notas'       => null,
+                ]
+            );
+        } else {
+            EquipoGpu::where('equipo_id', $equipoId)->where('tipo', 'DEDICADA')->delete();
         }
     }
 
     private function monitorInputsPayload(array $countsByLabel): array
     {
         $payload = [];
-        foreach (self::MAP_MONITOR_IN as $label => $col) {
+        foreach (EquipoPortMaps::MAP_MONITOR_IN as $label => $col) {
             $qty = (int) ($countsByLabel[$label] ?? 0);
             $payload[$col] = $qty > 0 ? $qty : null;
         }
@@ -1127,25 +1187,25 @@ class MiTrabajo extends Component
         $f = $this->form;
 
         $f->puertos_usb = [];
-        foreach (self::MAP_USB as $label => $col) {
+        foreach (EquipoPortMaps::MAP_USB as $label => $col) {
             $val = (int) ($equipo->{$col} ?? 0);
             if ($val > 0) $f->puertos_usb[] = ['tipo' => $label, 'cantidad' => $val];
         }
 
         $f->puertos_video = [];
-        foreach (self::MAP_VIDEO as $label => $col) {
+        foreach (EquipoPortMaps::MAP_VIDEO as $label => $col) {
             $val = (int) ($equipo->{$col} ?? 0);
             if ($val > 0) $f->puertos_video[] = ['tipo' => $label, 'cantidad' => $val];
         }
 
         $f->lectores = [];
-        foreach (self::MAP_LECTORES as $label => $col) {
+        foreach (EquipoPortMaps::MAP_LECTORES as $label => $col) {
             $val = (int) ($equipo->{$col} ?? 0);
             if ($val > 0) $f->lectores[] = ['tipo' => $label, 'cantidad' => $val];
         }
 
         $f->slots_almacenamiento = [];
-        foreach (self::MAP_SLOTS as $label => $col) {
+        foreach (EquipoPortMaps::MAP_SLOTS as $label => $col) {
             $val = (int) ($equipo->{$col} ?? 0);
             if ($val > 0) $f->slots_almacenamiento[] = ['tipo' => $label, 'cantidad' => $val];
         }
@@ -1158,7 +1218,7 @@ class MiTrabajo extends Component
     private function reconstructMonitorEntradas(EquipoMonitor $monitor): array
     {
         $rows = [];
-        foreach (self::MAP_MONITOR_IN as $label => $col) {
+        foreach (EquipoPortMaps::MAP_MONITOR_IN as $label => $col) {
             $val = (int) ($monitor->{$col} ?? 0);
             if ($val > 0) $rows[] = ['tipo' => $label, 'cantidad' => $val];
         }
@@ -1194,18 +1254,18 @@ class MiTrabajo extends Component
 
         // Null-reset todas las columnas primero (igual que mapSlotsToDbColumns con slots)
         // Así si el técnico elimina un puerto, el cambio se persiste correctamente
-        foreach (self::MAP_USB     as $col) $f->{$col} = null;
-        foreach (self::MAP_VIDEO   as $col) $f->{$col} = null;
-        foreach (self::MAP_LECTORES as $col) $f->{$col} = null;
+        foreach (EquipoPortMaps::MAP_USB     as $col) $f->{$col} = null;
+        foreach (EquipoPortMaps::MAP_VIDEO   as $col) $f->{$col} = null;
+        foreach (EquipoPortMaps::MAP_LECTORES as $col) $f->{$col} = null;
 
         foreach ($this->aggregateCounters($f->puertos_usb ?? [], 'tipo', 'cantidad') as $label => $count) {
-            if (isset(self::MAP_USB[$label]) && $count > 0) $f->{self::MAP_USB[$label]} = (string) $count;
+            if (isset(EquipoPortMaps::MAP_USB[$label]) && $count > 0) $f->{EquipoPortMaps::MAP_USB[$label]} = (string) $count;
         }
         foreach ($this->aggregateCounters($f->puertos_video ?? [], 'tipo', 'cantidad') as $label => $count) {
-            if (isset(self::MAP_VIDEO[$label]) && $count > 0) $f->{self::MAP_VIDEO[$label]} = (string) $count;
+            if (isset(EquipoPortMaps::MAP_VIDEO[$label]) && $count > 0) $f->{EquipoPortMaps::MAP_VIDEO[$label]} = (string) $count;
         }
         foreach ($this->aggregateCounters($f->lectores ?? [], 'tipo', 'cantidad') as $label => $count) {
-            if (isset(self::MAP_LECTORES[$label]) && $count > 0) $f->{self::MAP_LECTORES[$label]} = (string) $count;
+            if (isset(EquipoPortMaps::MAP_LECTORES[$label]) && $count > 0) $f->{EquipoPortMaps::MAP_LECTORES[$label]} = (string) $count;
         }
     }
 
@@ -1237,10 +1297,10 @@ class MiTrabajo extends Component
         $f->slots_alm_ssd = $f->slots_alm_m2 = $f->slots_alm_m2_micro = $f->slots_alm_hdd = $f->slots_alm_msata = null;
         foreach (($f->slots_almacenamiento ?? []) as $row) {
             $tipo = trim((string) ($row['tipo'] ?? ''));
-            if ($tipo === '' || !isset(self::MAP_SLOTS[$tipo])) continue;
+            if ($tipo === '' || !isset(EquipoPortMaps::MAP_SLOTS[$tipo])) continue;
             $cant = $row['cantidad'] ?? null;
             $valor = (is_numeric($cant) && (int)$cant > 0) ? (string)((int)$cant) : null;
-            $f->{self::MAP_SLOTS[$tipo]} = $valor;
+            $f->{EquipoPortMaps::MAP_SLOTS[$tipo]} = $valor;
         }
     }
 

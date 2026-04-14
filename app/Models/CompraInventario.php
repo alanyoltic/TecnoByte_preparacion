@@ -32,7 +32,7 @@ class CompraInventario extends Model
 
     public function registradoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'registrado_por_id');
+        return $this->belongsTo(User::class, 'registrado_por_id')->withoutGlobalScopes();
     }
 
     public function items(): HasMany

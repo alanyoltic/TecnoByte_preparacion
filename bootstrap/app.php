@@ -12,12 +12,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->web(append: [
+            \App\Http\Middleware\VerificarUsuarioActivo::class,
+        ]);
+
         $middleware->alias([
             'role'         => \App\Http\Middleware\CheckRole::class,
             'onlyAdminCeo' => \App\Http\Middleware\OnlyAdminCeo::class,
             'role_depto'   => \App\Http\Middleware\EnsureUserHasRoleAndDepartamento::class,
-
-            // ✅ NUEVO
             'permiso'      => \App\Http\Middleware\PermisoMiddleware::class,
         ]);
     })

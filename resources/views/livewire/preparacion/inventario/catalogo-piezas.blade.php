@@ -951,18 +951,40 @@
                                     {{-- Categoría --}}
                                     <div class="md:col-span-3 space-y-1">
                                         <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Categoría *</label>
-                                        <select wire:model="compraItems.{{ $i }}.categoria"
-                                            :disabled="selected"
-                                            :class="selected ? 'opacity-60 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : 'bg-white/70 dark:bg-slate-900/60'"
-                                            class="w-full rounded-xl px-3 py-2 text-sm
-                                                   border border-slate-300/80 dark:border-slate-700
-                                                   text-slate-900 dark:text-slate-100
-                                                   focus:ring-2 focus:ring-emerald-500/70 outline-none">
-                                            <option value="">Categoría...</option>
-                                            @foreach(\App\Livewire\Preparacion\Inventario\CatalogoPiezas::CATEGORIAS as $cat)
-                                                <option value="{{ $cat }}">{{ $cat }}</option>
-                                            @endforeach
-                                        </select>
+                                        <div class="flex items-center gap-1.5">
+                                            <select wire:model="compraItems.{{ $i }}.categoria"
+                                                :disabled="selected"
+                                                :class="selected ? 'opacity-60 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : 'bg-white/70 dark:bg-slate-900/60'"
+                                                class="flex-1 rounded-xl px-3 py-2 text-sm
+                                                       border border-slate-300/80 dark:border-slate-700
+                                                       text-slate-900 dark:text-slate-100
+                                                       focus:ring-2 focus:ring-emerald-500/70 outline-none">
+                                                <option value="">Categoría...</option>
+                                                @foreach(\App\Livewire\Preparacion\Inventario\CatalogoPiezas::CATEGORIAS as $cat)
+                                                    <option value="{{ $cat }}"
+                                                        {{ ($compraItems[$i]['categoria'] ?? '') === $cat ? 'selected' : '' }}>
+                                                        {{ $cat }}
+                                                    </option>
+                                                @endforeach
+                                                {{-- Si la categoría actual es personalizada (no está en el listado), mostrarla --}}
+                                                @php $catActual = $compraItems[$i]['categoria'] ?? ''; @endphp
+                                                @if($catActual && !in_array($catActual, \App\Livewire\Preparacion\Inventario\CatalogoPiezas::CATEGORIAS))
+                                                    <option value="{{ $catActual }}" selected>{{ $catActual }}</option>
+                                                @endif
+                                            </select>
+                                            <button type="button"
+                                                wire:click="abrirModalCategoria({{ $i }})"
+                                                :disabled="selected"
+                                                title="Agregar categoría personalizada"
+                                                :class="selected ? 'opacity-40 cursor-not-allowed' : 'hover:bg-emerald-100 dark:hover:bg-emerald-900/40'"
+                                                class="shrink-0 w-8 h-8 rounded-xl
+                                                       bg-emerald-50 dark:bg-emerald-900/20
+                                                       border border-emerald-300/60 dark:border-emerald-600/40
+                                                       text-emerald-700 dark:text-emerald-300 text-base font-bold
+                                                       transition flex items-center justify-center">
+                                                +
+                                            </button>
+                                        </div>
                                         @error("compraItems.{$i}.categoria")
                                             <p class="text-xs text-rose-500">{{ $message }}</p>
                                         @enderror
@@ -1735,6 +1757,73 @@
 
         @endif
 
+
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        {{-- MODAL: NUEVA CATEGORÍA                                    --}}
+        {{-- ══════════════════════════════════════════════════════════ --}}
+        @if($modalCategoria)
+            <div class="fixed inset-0 z-50 flex items-center justify-center"
+                 x-data @keydown.escape.window="$wire.cerrarModalCategoria()">
+                <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+                     wire:click="cerrarModalCategoria"></div>
+
+                <div class="relative w-[94%] max-w-sm rounded-2xl border border-white/10
+                            bg-white/90 dark:bg-slate-950/90 backdrop-blur-2xl
+                            shadow-2xl shadow-slate-950/60 px-6 py-6 space-y-4">
+
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-base font-semibold text-slate-900 dark:text-slate-50">
+                            Nueva categoría
+                        </h4>
+                        <button wire:click="cerrarModalCategoria"
+                            class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition text-xl leading-none">×</button>
+                    </div>
+
+                    <div class="space-y-3">
+                        <p class="text-xs text-slate-500 dark:text-slate-400">
+                            Escribe el nombre de la categoría personalizada que quieres aplicar a esta pieza.
+                        </p>
+                        <div class="space-y-1">
+                            <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                Nombre de la categoría <span class="text-rose-500">*</span>
+                            </label>
+                            <input type="text"
+                                wire:model.live="nuevaCategoriaNombre"
+                                wire:keydown.enter="aplicarNuevaCategoria"
+                                placeholder="Ej: Cable SATA, Módulo Wi-Fi..."
+                                maxlength="50"
+                                class="w-full rounded-xl px-3 py-2.5 text-sm
+                                       bg-white/70 dark:bg-slate-900/40
+                                       border border-slate-300/80 dark:border-slate-700
+                                       text-slate-900 dark:text-slate-100 placeholder:text-slate-400
+                                       focus:ring-2 focus:ring-emerald-500/70 outline-none">
+                            @error('nuevaCategoriaNombre')
+                                <p class="text-xs text-rose-500 mt-0.5">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-1">
+                        <button wire:click="cerrarModalCategoria"
+                            class="inline-flex items-center rounded-xl px-4 py-2.5 text-sm font-medium
+                                   border border-slate-300/80 dark:border-slate-700
+                                   bg-white/60 dark:bg-slate-900/40 text-slate-600 dark:text-slate-300
+                                   hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                            Cancelar
+                        </button>
+                        <button wire:click="aplicarNuevaCategoria"
+                            wire:loading.attr="disabled" wire:target="aplicarNuevaCategoria"
+                            class="inline-flex items-center rounded-xl px-5 py-2.5 text-sm font-semibold
+                                   bg-emerald-600 hover:bg-emerald-500 text-white
+                                   shadow-md shadow-emerald-800/40 hover:shadow-emerald-500/60
+                                   hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-60">
+                            <span wire:loading.remove wire:target="aplicarNuevaCategoria">Aplicar categoría</span>
+                            <span wire:loading wire:target="aplicarNuevaCategoria">Aplicando...</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        @endif
 
         {{-- ══════════════════════════════════════════════════════════ --}}
         {{-- MODAL: NUEVO PROVEEDOR                                    --}}

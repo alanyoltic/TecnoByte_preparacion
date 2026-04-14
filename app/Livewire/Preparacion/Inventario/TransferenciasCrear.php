@@ -29,14 +29,9 @@ class TransferenciasCrear extends Component
 
     public function mount(): void
     {
-        $user = auth()->user();
+        abort_unless(auth()->user()?->tienePermiso('prep.transferencias.crear'), 403);
 
-        // Bloquear acceso si el rol no puede crear transferencias
-        if (!$user->puedeCriarTransferencias()) {
-            abort(403);
-        }
-
-        $this->almacenesOrigen = $user->almacenesPermitidosOrigen();
+        $this->almacenesOrigen = auth()->user()->almacenesPermitidosOrigen();
     }
 
     public function updatedAlmacenOrigenId(): void
@@ -174,9 +169,7 @@ class TransferenciasCrear extends Component
     // =========================================================================
     public function guardar(): void
     {
-        if (!auth()->user()->puedeCriarTransferencias()) {
-            abort(403);
-        }
+        abort_unless(auth()->user()?->tienePermiso('prep.transferencias.crear'), 403);
 
         $this->validate([
             'almacen_origen_id'  => 'required',
