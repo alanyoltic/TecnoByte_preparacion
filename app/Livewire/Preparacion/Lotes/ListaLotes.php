@@ -6,6 +6,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Lote;
 use App\Models\Proveedor;
+use Illuminate\Support\Facades\DB;
 
 class ListaLotes extends Component
 {
@@ -17,6 +18,13 @@ class ListaLotes extends Component
     public string $search = '';
     public int $perPage = 10;
     public string $filtroProveedor = 'todos';
+
+    // =======================
+    //  Eliminar lote
+    // =======================
+    public bool $modalEliminarLote   = false;
+    public ?int $loteEliminarId      = null;
+    public string $loteEliminarNombre = '';
 
     // =======================
     //  Catálogos / Stats
@@ -60,6 +68,60 @@ class ListaLotes extends Component
             'sin_fecha'   => Lote::whereNull('fecha_llegada')->count(),
             'proveedores' => Proveedor::count(),
         ];
+    }
+
+    public function abrirModalEliminarLote(int $id): void
+    {
+        abort_unless(auth()->user()?->tienePermiso('prep.lotes.ver'), 403);
+
+        $lote = Lote::findOrFail($id);
+
+        $this->loteEliminarId     = $id;
+        $this->loteEliminarNombre = $lote->nombre_lote ?? ('Lote #' . $id);
+        $this->modalEliminarLote  = true;
+    }
+
+    public function confirmarEliminarLote(): void
+    {
+        abort_unless(auth()->user()?->tienePermiso('prep.lotes.ver'), 403);
+
+        if (! $this->loteEliminarId) return;
+
+        $lote = Lote::with('modelosRecibidos.equipos')->findOrFail($this->loteEliminarId);
+
+        // Contar equipos registrados en este lote
+        $totalEquipos = $lote->modelosRecibidos
+            ->sum(fn ($m) => $m->equipos->count());
+
+        if ($totalEquipos > 0) {
+            $this->dispatch('toast', type: 'error',
+                message: "No se puede eliminar: el lote tiene {$totalEquipos} equipo(s) registrado(s). Elimínalos primero."
+            );
+            $this->cerrarModalEliminarLote();
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($lote) {
+                $lote->modelosRecibidos()->delete();
+                $lote->delete();
+            });
+
+            $this->dispatch('toast', type: 'success',
+                message: "Lote \"{$this->loteEliminarNombre}\" eliminado correctamente."
+            );
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Error al eliminar el lote: ' . $e->getMessage());
+        }
+
+        $this->cerrarModalEliminarLote();
+    }
+
+    public function cerrarModalEliminarLote(): void
+    {
+        $this->modalEliminarLote  = false;
+        $this->loteEliminarId     = null;
+        $this->loteEliminarNombre = '';
     }
 
     public function render()
