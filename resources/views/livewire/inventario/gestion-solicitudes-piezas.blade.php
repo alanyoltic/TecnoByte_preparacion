@@ -279,8 +279,19 @@
                                 Entrada de stock <span class="text-red-500">*</span>
                             </label>
                             @if(!$solicitudSeleccionada?->catalogo_pieza_id)
+                                @php
+                                    $descLibre        = $solicitudSeleccionada->descripcion_libre ?? '';
+                                    $catInferida      = str_contains($descLibre, ' — ')
+                                        ? trim(explode(' — ', $descLibre)[0])
+                                        : null;
+                                @endphp
                                 <p class="text-xs text-amber-600 dark:text-amber-400 mb-2">
-                                    Solicitud libre — elige la pieza que mejor corresponda al pedido del técnico.
+                                    Solicitud libre —
+                                    @if($catInferida)
+                                        mostrando stock de categoría <strong>{{ $catInferida }}</strong>.
+                                    @else
+                                        elige la pieza que mejor corresponda al pedido del técnico.
+                                    @endif
                                 </p>
                             @endif
                             <select wire:model="piezaSeleccionada"

@@ -41,17 +41,23 @@ class MiTrabajo extends Component
     // ── Fase 3: terminar ──────────────────────────────────────────────────
     public string $camino                = 'COMPLETADO';
     public string $notasTerminar         = '';
-    public ?int   $catalogoPiezaId       = null;  // pieza seleccionada del catálogo
+    public ?int   $catalogoPiezaId       = null;  // pieza seleccionada del catálogo (modo stock)
     public int    $cantidadPieza         = 1;     // cantidad que necesita
     public string $busquedaPieza         = '';    // búsqueda en tiempo real
     public string $filtroCategoriaPieza  = '';    // filtro por categoría
-    public string $descripcionPiezaLibre = '';    // notas / especificación adicional
+    public string $descripcionPiezaLibre = '';    // descripción libre (modo sin stock)
+    public string $fuentePieza           = 'stock'; // 'stock' | 'libre'
+    public string $categoriaPiezaLibre   = '';    // categoría seleccionada (modo sin stock)
 
     // ── Búsqueda de equipo por serie ─────────────────────────────────────
     public string $busquedaSerie = '';
 
     // ── Error general ─────────────────────────────────────────────────────
     public string $error = '';
+
+    // ── Modal eliminar registro ────────────────────────────────────────────
+    public bool $modalEliminar   = false;
+    public ?int $eliminarAeId    = null;
 
     // ── Catálogos UI (igual que RegistrarEquipo) ──────────────────────────
     public array $monitorEntradasOptions = [
@@ -162,6 +168,11 @@ class MiTrabajo extends Component
     #[Computed]
     public function catalogoPiezas()
     {
+        // No devolver nada si no hay filtro activo (evita listar todo el catálogo)
+        if (empty($this->filtroCategoriaPieza) && mb_strlen(trim($this->busquedaPieza)) < 2) {
+            return collect();
+        }
+
         return CatalogoPieza::activos()
             ->when($this->filtroCategoriaPieza, fn($q) =>
                 $q->where('categoria', $this->filtroCategoriaPieza)
@@ -169,7 +180,6 @@ class MiTrabajo extends Component
             ->when($this->busquedaPieza, fn($q) =>
                 $q->where('nombre', 'like', '%' . $this->busquedaPieza . '%')
             )
-            ->orderBy('categoria')
             ->orderBy('nombre')
             ->get(['id', 'nombre', 'categoria', 'especificacion']);
     }
@@ -322,8 +332,84 @@ class MiTrabajo extends Component
         $this->busquedaPieza         = '';
         $this->filtroCategoriaPieza  = '';
         $this->descripcionPiezaLibre = '';
+        $this->fuentePieza           = 'stock';
+        $this->categoriaPiezaLibre   = '';
         $this->error                 = '';
         $this->vista                 = 'terminar';
+    }
+
+    public function cambiarFuentePieza(string $fuente): void
+    {
+        $this->fuentePieza           = $fuente;
+        $this->catalogoPiezaId       = null;
+        $this->busquedaPieza         = '';
+        $this->filtroCategoriaPieza  = '';
+        $this->categoriaPiezaLibre   = '';
+        $this->descripcionPiezaLibre = '';
+        $this->cantidadPieza         = 1;
+        $this->error                 = '';
+    }
+
+    public function abrirModalEliminar(int $asignacionEquipoId): void
+    {
+        $this->eliminarAeId  = $asignacionEquipoId;
+        $this->modalEliminar = true;
+    }
+
+    public function eliminarAsignacionEquipo(int $asignacionEquipoId): void
+    {
+        $this->autorizarTrabajo();
+
+        $ae = AsignacionEquipo::with(['equipo', 'solicitudesPiezas'])->find($asignacionEquipoId);
+
+        if (!$ae || $ae->camino !== AsignacionEquipo::EN_PROCESO) {
+            $this->dispatch('toast', type: 'error', message: 'Solo se pueden eliminar registros que estén en proceso.');
+            return;
+        }
+
+        DB::transaction(function () use ($ae) {
+            // Liberar reservas de inventario de solicitudes pendientes
+            foreach ($ae->solicitudesPiezas as $sol) {
+                if ($sol->inventario_pieza_id && $sol->estatus === \App\Models\SolicitudPieza::SURTIDA_INVENTARIO) {
+                    $pieza    = \App\Models\InventarioPieza::find($sol->inventario_pieza_id);
+                    $cantidad = max(1, (int) $sol->cantidad);
+                    if ($pieza && $pieza->cantidad_reservada > 0) {
+                        $devolver = min($cantidad, $pieza->cantidad_reservada);
+                        $pieza->decrement('cantidad_reservada', $devolver);
+                        $pieza->increment('cantidad_disponible', $devolver);
+                        $pieza->actualizarEstatus();
+                    }
+                }
+            }
+
+            // Eliminar puntos y solicitudes vinculadas a este registro
+            \App\Models\PuntoTecnico::where('asignacion_equipo_id', $ae->id)->delete();
+            \App\Models\SolicitudPieza::where('asignacion_equipo_id', $ae->id)->delete();
+
+            $equipo = $ae->equipo;
+            $ae->delete();
+
+            // Si el equipo fue creado solo para esta asignación (sin más historia ni
+            // características cargadas), eliminarlo también para que el técnico pueda
+            // re-escanear el número de serie correcto.
+            if ($equipo) {
+                $otrosRegistros = AsignacionEquipo::where('equipo_id', $equipo->id)->exists();
+                $tieneCaract    = filled($equipo->tipo_equipo) || filled($equipo->procesador_modelo)
+                               || filled($equipo->ram_total)   || filled($equipo->sistema_operativo);
+
+                if (!$otrosRegistros && !$tieneCaract) {
+                    $equipo->forceDelete();
+                } else {
+                    // Equipo ya existía: devolverlo a EN_ESPERA para que pueda re-iniciarse
+                    $equipo->update(['estatus_area' => Equipo::AREA_EN_ESPERA]);
+                }
+            }
+        });
+
+        $this->modalEliminar = false;
+        $this->eliminarAeId  = null;
+        unset($this->asignaciones, $this->asignacionActual);
+        $this->dispatch('toast', type: 'success', message: 'Registro eliminado. El cupo sigue disponible en la asignación.');
     }
 
     public function volverALista(): void
@@ -746,14 +832,23 @@ class MiTrabajo extends Component
         $this->error = '';
 
         if ($this->camino === 'PIEZA_PENDIENTE') {
-            if (!$this->catalogoPiezaId && empty(trim($this->descripcionPiezaLibre))) {
-                $this->error = 'Selecciona o describe la pieza que falta.';
+            if ($this->fuentePieza === 'stock' && !$this->catalogoPiezaId) {
+                $this->error = 'Selecciona la pieza del catálogo.';
+                return;
+            }
+            if ($this->fuentePieza === 'libre' && empty(trim($this->categoriaPiezaLibre))) {
+                $this->error = 'Indica la categoría de la pieza que se necesita.';
                 return;
             }
             if ($this->cantidadPieza < 1 || $this->cantidadPieza > 99) {
                 $this->error = 'La cantidad debe ser entre 1 y 99.';
                 return;
             }
+        }
+
+        if ($this->camino === 'DESPIECE' && empty(trim($this->notasTerminar))) {
+            $this->error = 'Escribe el motivo por el que va a despiece.';
+            return;
         }
 
         $ae     = AsignacionEquipo::with(['asignacion', 'equipo'])->find($this->asignacionEquipoId);
@@ -765,7 +860,8 @@ class MiTrabajo extends Component
             'PIEZA_PENDIENTE'  => ['PREPARACION', 'PENDIENTE_PIEZA',    Almacen::PIEZAS_PENDIENTES],
             'GARANTIA_INTERNA' => ['PREPARACION', 'PENDIENTE_GARANTIA', Almacen::GARANTIAS_INTERNAS],
             'GARANTIA_EXTERNA' => ['PREPARACION', 'PENDIENTE_GARANTIA', Almacen::GARANTIAS_EXTERNAS],
-            default            => ['PREPARACION', 'EN_PROCESO',          2], // almacén Preparación
+            'DESPIECE'         => ['SCRAP',        'SCRAP',             Almacen::SCRAP],
+            default            => ['PREPARACION', 'EN_PROCESO',         Almacen::PREPARACION],
         };
 
         try {
@@ -778,12 +874,24 @@ class MiTrabajo extends Component
                 ]);
 
                 if ($this->camino === 'PIEZA_PENDIENTE') {
+                    if ($this->fuentePieza === 'stock') {
+                        $catalogoId   = $this->catalogoPiezaId;
+                        $descLibre    = null;
+                    } else {
+                        $catalogoId   = null;
+                        $partes       = [trim($this->categoriaPiezaLibre)];
+                        if (!empty(trim($this->descripcionPiezaLibre))) {
+                            $partes[] = trim($this->descripcionPiezaLibre);
+                        }
+                        $descLibre = implode(' — ', $partes);
+                    }
+
                     SolicitudPieza::create([
                         'asignacion_equipo_id' => $ae->id,
                         'equipo_id'            => $ae->equipo_id,
                         'solicitado_por_id'    => Auth::id(),
-                        'catalogo_pieza_id'    => $this->catalogoPiezaId ?: null,
-                        'descripcion_libre'    => trim($this->descripcionPiezaLibre) ?: null,
+                        'catalogo_pieza_id'    => $catalogoId,
+                        'descripcion_libre'    => $descLibre,
                         'cantidad'             => max(1, $this->cantidadPieza),
                         'estatus'              => SolicitudPieza::PENDIENTE,
                     ]);
@@ -794,12 +902,7 @@ class MiTrabajo extends Component
                     ? (\App\Models\ClasificacionPuntos::find($clasificacionId)?->puntos_base ?? 1.0)
                     : 1.0;
 
-                $rol = match($this->camino) {
-                    'COMPLETADO'                           => PuntoTecnico::COMPLETO,
-                    'PIEZA_PENDIENTE'                      => PuntoTecnico::INICIO_PIEZA,
-                    'GARANTIA_INTERNA', 'GARANTIA_EXTERNA' => PuntoTecnico::GARANTIA,
-                    default                                => PuntoTecnico::COMPLETO,
-                };
+                $rol = PuntoTecnico::COMPLETO;
 
                 PuntoTecnico::registrar(
                     tecnicoId: Auth::id(), asignacionEquipoId: $ae->id,

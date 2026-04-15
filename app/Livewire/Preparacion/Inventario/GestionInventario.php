@@ -168,6 +168,9 @@ $equipos = Equipo::with([
     public bool $modalEliminarSeleccion = false;
     public string $motivo_eliminacion = '';
 
+    public bool $modalCambiarEstatus = false;
+    public string $nuevoEstatusSeleccionado = '';
+
 public function abrirEliminarSeleccion()
 {
     $this->autorizarGestion();
@@ -266,6 +269,30 @@ public function confirmarEliminarSeleccion()
 public function cerrarEliminarSeleccion()
 {
     $this->modalEliminarSeleccion = false;
+}
+
+public function abrirModalCambiarEstatus(): void
+{
+    $this->autorizarGestion();
+
+    if (empty($this->selected) || $this->nuevoEstatusSeleccionado === '') return;
+
+    $this->modalCambiarEstatus = true;
+}
+
+public function confirmarCambiarEstatus(): void
+{
+    $this->autorizarGestion();
+
+    $this->actualizarEstatusSeleccionado($this->nuevoEstatusSeleccionado);
+    $this->nuevoEstatusSeleccionado = '';
+    $this->modalCambiarEstatus = false;
+}
+
+public function cerrarModalCambiarEstatus(): void
+{
+    $this->modalCambiarEstatus = false;
+    $this->nuevoEstatusSeleccionado = '';
 }
 
 

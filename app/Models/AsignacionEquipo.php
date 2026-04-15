@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AsignacionEquipo extends Model
 {
@@ -29,6 +30,7 @@ class AsignacionEquipo extends Model
     const PIEZA_PENDIENTE  = 'PIEZA_PENDIENTE';
     const GARANTIA_INTERNA = 'GARANTIA_INTERNA';
     const GARANTIA_EXTERNA = 'GARANTIA_EXTERNA';
+    const DESPIECE         = 'DESPIECE';
 
     // ── Relaciones ────────────────────────────────────────────────────────
     public function asignacion(): BelongsTo
@@ -39,6 +41,11 @@ class AsignacionEquipo extends Model
     public function equipo(): BelongsTo
     {
         return $this->belongsTo(Equipo::class, 'equipo_id');
+    }
+
+    public function solicitudesPiezas(): HasMany
+    {
+        return $this->hasMany(SolicitudPieza::class, 'asignacion_equipo_id');
     }
 
     // ── Scopes ────────────────────────────────────────────────────────────
@@ -85,6 +92,7 @@ class AsignacionEquipo extends Model
             self::PIEZA_PENDIENTE  => 'Pieza Pendiente',
             self::GARANTIA_INTERNA => 'Garantía Interna',
             self::GARANTIA_EXTERNA => 'Garantía Externa',
+            self::DESPIECE         => 'Para Despiece',
         ];
     }
 

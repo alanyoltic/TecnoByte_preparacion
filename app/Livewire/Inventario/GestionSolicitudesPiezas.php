@@ -118,8 +118,20 @@ class GestionSolicitudesPiezas extends Component
                 ->with(['almacen', 'catalogoPieza', 'compraItem.compra.proveedor', 'equipoOrigen'])
                 ->get();
         } else {
-            // Solicitud libre (categoría + descripción): mostrar todo el inventario disponible
+            // Solicitud libre: si la descripción tiene formato "Categoría — detalle",
+            // filtrar el inventario por esa categoría para no mostrar piezas de otro tipo.
+            $categoriaInferida = null;
+            $desc = $this->solicitudSeleccionada->descripcion_libre ?? '';
+            if (str_contains($desc, ' — ')) {
+                $categoriaInferida = trim(explode(' — ', $desc)[0]);
+            }
+
             $this->piezasDisponibles = InventarioPieza::where('cantidad_disponible', '>=', $cantidadRequerida)
+                ->when($categoriaInferida, fn ($q) =>
+                    $q->whereHas('catalogoPieza', fn ($q2) =>
+                        $q2->where('categoria', $categoriaInferida)
+                    )
+                )
                 ->with(['almacen', 'catalogoPieza', 'compraItem.compra.proveedor', 'equipoOrigen'])
                 ->orderBy('catalogo_pieza_id')
                 ->get();

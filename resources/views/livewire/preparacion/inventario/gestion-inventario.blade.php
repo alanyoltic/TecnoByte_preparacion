@@ -3,100 +3,127 @@
 
 
     {{-- BARRA DE ACCIONES MASIVAS --}}
-    <div
-        class="rounded-2xl
-               bg-slate-900/90
-               border border-slate-800/80
-               text-slate-50
-               px-4 py-3
-               flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-    >
-        <div class="flex items-center gap-3">
-            <div class="inline-flex items-center gap-2 text-xs sm:text-sm">
-                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span class="font-semibold">Gestión masiva activa</span>
-            </div>
-            <span class="text-xs text-slate-400">
-                @if (count($selected) > 0)
-                    {{ count($selected) }} equipo(s) seleccionado(s).
+    <div class="rounded-2xl border px-4 py-3 transition-all duration-200
+        {{ count($selected) > 0
+            ? 'bg-slate-900/90 border-slate-700/80 text-slate-50'
+            : 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800/60' }}">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+
+            {{-- Estado / contador --}}
+            <div class="flex items-center gap-3">
+                @if(count($selected) > 0)
+                    <div class="inline-flex items-center gap-2 text-xs sm:text-sm">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span class="font-semibold text-emerald-400">{{ count($selected) }} equipo(s) seleccionado(s)</span>
+                    </div>
+                    <button type="button" wire:click="resetSelection"
+                        class="text-xs text-slate-400 hover:text-slate-200 underline transition">
+                        Limpiar selecci&#xF3;n
+                    </button>
                 @else
-                    Selecciona equipos en la tabla para aplicar acciones masivas.
+                    <div class="inline-flex items-center gap-2 text-xs sm:text-sm">
+                        <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                        <span class="font-medium text-slate-500 dark:text-slate-400">
+                            Selecciona equipos en la tabla para activar acciones masivas.
+                        </span>
+                    </div>
                 @endif
-            </span>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2 sm:gap-3 justify-end">
-
-            {{-- Cambiar estatus masivo --}}
-            <div class="flex items-center gap-1.5">
-                <span class="text-xs text-slate-300">Cambiar estatus a:</span>
-                <select
-                    class="rounded-xl bg-slate-800 border border-slate-700 text-xs px-2 py-1.5"
-                    wire:change="actualizarEstatusSeleccionado($event.target.value)"
-                >
-                    <option value="">Selecciona…</option>
-                    <option value="EN_ESPERA">En espera</option>
-                    <option value="EN_PROCESO">En proceso</option>
-                    <option value="EN_CALIDAD">En calidad</option>
-                    <option value="FINALIZADO">Finalizado</option>
-                    <option value="PENDIENTE_PIEZA">Pendiente pieza</option>
-                    <option value="PENDIENTE_GARANTIA">Pendiente garantía</option>
-                    <option value="PENDIENTE_DESARME">Pendiente desarme</option>
-                    <option value="TRANSFERIDO">Transferido</option>
-                </select>
             </div>
 
+            {{-- Acciones --}}
+            <div class="flex flex-wrap items-center gap-2 sm:gap-3 justify-end">
 
-            
+                {{-- Cambiar estatus --}}
+                <div class="flex items-center gap-1.5">
+                    <select
+                        wire:model="nuevoEstatusSeleccionado"
+                        {{ count($selected) === 0 ? 'disabled' : '' }}
+                        class="rounded-xl text-xs px-2 py-1.5 border transition
+                            {{ count($selected) > 0
+                                ? 'bg-slate-800 border-slate-600 text-white'
+                                : 'bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed opacity-50' }}"
+                    >
+                        <option value="">Cambiar estatus&#x2026;</option>
+                        <option value="EN_ESPERA">En espera</option>
+                        <option value="EN_PROCESO">En proceso</option>
+                        <option value="EN_CALIDAD">En calidad</option>
+                        <option value="FINALIZADO">Finalizado</option>
+                        <option value="PENDIENTE_PIEZA">Pendiente pieza</option>
+                        <option value="PENDIENTE_GARANTIA">Pendiente garant&#xED;a</option>
+                        <option value="PENDIENTE_DESARME">Pendiente desarme</option>
+                        <option value="TRANSFERIDO">Transferido</option>
+                    </select>
+                    <button
+                        type="button"
+                        wire:click="abrirModalCambiarEstatus"
+                        {{ (count($selected) === 0 || $nuevoEstatusSeleccionado === '') ? 'disabled' : '' }}
+                        class="inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-semibold transition
+                            {{ count($selected) > 0 && $nuevoEstatusSeleccionado !== ''
+                                ? 'bg-amber-500 hover:bg-amber-400 text-white shadow-md shadow-amber-500/30'
+                                : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-50' }}"
+                    >
+                        Aplicar
+                    </button>
+                </div>
 
-            {{-- Exportar --}}
-            <button
-                type="button"
-                wire:click="exportarSeleccion"
-                class="inline-flex items-center gap-2 rounded-xl px-3 py-1.5
-                       bg-emerald-600 hover:bg-emerald-500
-                       text-xs sm:text-sm font-semibold text-white
-                       shadow-md shadow-emerald-500/30
-                       transition"
-            >
-                <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M3 3a1 1 0 011-1h4a1 1 0 010 2H5v12h10V4h-3a1 1 0 110-2h4a1 1 0 011 1v14a2 2 0 01-2 2H5a2 2 0 01-2-2V3z"/>
-                    <path d="M9 7a1 1 0 011-1h.01a1 1 0 011 1v3.586l1.293-1.293a1 1 0 111.414 1.414l-3.004 3.004a1 1 0 01-1.414 0L6.293 10.707a1 1 0 111.414-1.414L9 10.586V7z"/>
-                </svg>
-                <span class="hidden sm:inline">Exportar a Excel</span>
-                <span class="sm:hidden">Exportar</span>
-            </button>
-            <button 
-    wire:click="exportarReportePlaneacion"
-    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow"
->
-    Exportar Planeación Compras
-</button>
+                {{-- Exportar Excel --}}
+                <button
+                    type="button"
+                    wire:click="exportarSeleccion"
+                    class="inline-flex items-center gap-2 rounded-xl px-3 py-1.5
+                           bg-emerald-600 hover:bg-emerald-500
+                           text-xs sm:text-sm font-semibold text-white
+                           shadow-md shadow-emerald-500/30
+                           transition"
+                >
+                    <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M3 3a1 1 0 011-1h4a1 1 0 010 2H5v12h10V4h-3a1 1 0 110-2h4a1 1 0 011 1v14a2 2 0 01-2 2H5a2 2 0 01-2-2V3z"/>
+                        <path d="M9 7a1 1 0 011-1h.01a1 1 0 011 1v3.586l1.293-1.293a1 1 0 111.414 1.414l-3.004 3.004a1 1 0 01-1.414 0L6.293 10.707a1 1 0 111.414-1.414L9 10.586V7z"/>
+                    </svg>
+                    @if(count($selected) > 0)
+                        <span>Exportar ({{ count($selected) }})</span>
+                    @else
+                        <span class="hidden sm:inline">Exportar todo</span>
+                        <span class="sm:hidden">Exportar</span>
+                    @endif
+                </button>
 
+                {{-- Exportar Planeaci&#xF3;n --}}
+                <button
+                    type="button"
+                    wire:click="exportarReportePlaneacion"
+                    class="inline-flex items-center gap-2 rounded-xl px-3 py-1.5
+                           bg-blue-600 hover:bg-blue-500
+                           text-xs sm:text-sm font-semibold text-white
+                           shadow-md shadow-blue-500/30
+                           transition"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0120 9.414V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <span class="hidden sm:inline">Reporte Planeaci&#xF3;n</span>
+                    <span class="sm:hidden">Planeaci&#xF3;n</span>
+                </button>
 
+                {{-- Eliminar selecci&#xF3;n --}}
+                <button
+                    type="button"
+                    wire:click="abrirEliminarSeleccion"
+                    {{ count($selected) === 0 ? 'disabled' : '' }}
+                    class="inline-flex items-center gap-2 rounded-xl px-3 py-1.5
+                           text-xs sm:text-sm font-semibold text-white
+                           shadow-md transition
+                        {{ count($selected) > 0
+                            ? 'bg-red-600 hover:bg-red-500 shadow-red-500/30'
+                            : 'bg-slate-300 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-50' }}"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    <span>Eliminar</span>
+                </button>
 
-
-
-{{-- Eliminar --}}
-<button
-    type="button"
-    wire:click="abrirEliminarSeleccion"
-    class="inline-flex items-center gap-2 rounded-xl px-3 py-1.5
-           bg-red-600 hover:bg-red-500
-           text-xs sm:text-sm font-semibold text-white
-           shadow-md shadow-red-500/30
-           disabled:opacity-60 disabled:cursor-not-allowed
-           transition"
-    @if (count($selected) === 0) disabled @endif
->
-    <span>Eliminar selección</span>
-</button>
-
-
-
-
-
-
+            </div>
         </div>
     </div>
 
@@ -814,6 +841,65 @@
     </div>
 
 
+
+{{-- MODAL CAMBIAR ESTATUS --}}
+<div wire:key="container-modal-cambiar-estatus">
+    @if($modalCambiarEstatus)
+        <div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-black/70 backdrop-blur-sm"></div>
+            <div class="relative w-full max-w-md rounded-2xl bg-slate-900 border border-slate-700 p-6 shadow-2xl">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-white">Cambiar estatus masivo</h3>
+                </div>
+
+                @php
+                    $statusLabels = [
+                        'EN_ESPERA'           => 'En espera',
+                        'EN_PROCESO'          => 'En proceso',
+                        'EN_CALIDAD'          => 'En calidad',
+                        'FINALIZADO'          => 'Finalizado',
+                        'PENDIENTE_PIEZA'     => 'Pendiente pieza',
+                        'PENDIENTE_GARANTIA'  => 'Pendiente garant&#xED;a',
+                        'PENDIENTE_DESARME'   => 'Pendiente desarme',
+                        'TRANSFERIDO'         => 'Transferido',
+                    ];
+                @endphp
+
+                <p class="text-sm text-slate-300">
+                    &#xBF;Confirmas cambiar el estatus de
+                    <strong class="text-white">{{ count($selected) }} equipo(s)</strong>
+                    a
+                    <strong class="text-amber-400">{{ $statusLabels[$nuevoEstatusSeleccionado] ?? $nuevoEstatusSeleccionado }}</strong>?
+                </p>
+                <p class="mt-2 text-xs text-slate-400">
+                    Esta acci&#xF3;n es reversible; puedes cambiar el estatus nuevamente en cualquier momento.
+                </p>
+
+                <div class="mt-6 flex justify-end gap-3">
+                    <button
+                        type="button"
+                        class="px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors"
+                        wire:click="cerrarModalCambiarEstatus"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-semibold shadow-lg shadow-amber-900/20 transition-all"
+                        wire:click="confirmarCambiarEstatus"
+                    >
+                        Confirmar cambio
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+</div>
 
 {{-- MODAL ELIMINAR SELECCION --}}
 <div wire:key="container-modal-eliminar">

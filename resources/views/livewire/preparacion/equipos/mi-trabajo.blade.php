@@ -89,7 +89,7 @@
                 $stats       = $this->estadisticasMes;
                 $totalAsig   = $this->asignaciones->count();
                 $totalEq     = $this->asignaciones->sum('cantidad');
-                $completados = $this->asignaciones->sum(fn($a) => $a->equipos->where('camino','COMPLETADO')->count());
+                $completados = $this->asignaciones->sum(fn($a) => $a->equipos->where('camino','!=','EN_PROCESO')->count());
                 $enProceso   = $this->asignaciones->sum(fn($a) => $a->equipos->where('camino','EN_PROCESO')->count());
             @endphp
 
@@ -179,7 +179,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     @foreach($this->asignaciones as $asignacion)
                         @php
-                            $completadosA = $asignacion->equipos->where('camino','COMPLETADO')->count();
+                            $completadosA = $asignacion->equipos->where('camino','!=','EN_PROCESO')->count();
                             $enProcesoA   = $asignacion->equipos->where('camino','EN_PROCESO')->count();
                             $piezasA      = $asignacion->equipos->where('camino','PIEZA_PENDIENTE')->count();
                             $garantiaA    = $asignacion->equipos->whereIn('camino',['GARANTIA_INTERNA','GARANTIA_EXTERNA'])->count();
@@ -596,6 +596,7 @@
                                         'PIEZA_PENDIENTE'  => ['label' => 'Pieza pend.',  'color' => 'amber'],
                                         'GARANTIA_INTERNA' => ['label' => 'Gar. Interna', 'color' => 'rose'],
                                         'GARANTIA_EXTERNA' => ['label' => 'Gar. Externa', 'color' => 'rose'],
+                                        'DESPIECE'         => ['label' => 'Despiece',     'color' => 'slate'],
                                         default            => null,
                                     };
                                 @endphp
@@ -661,8 +662,8 @@
                                             📋 Características
                                         </button>
 
-                                        {{-- Terminar solo si está en proceso --}}
                                         @if(!$terminado)
+                                            {{-- Terminar --}}
                                             <button wire:click="verTerminar({{ $ae->id }})"
                                                 class="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5
                                                        bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6]
@@ -670,6 +671,21 @@
                                                        shadow-md shadow-blue-800/30
                                                        hover:shadow-blue-500/50 hover:-translate-y-0.5 transition-all duration-200">
                                                 Terminar
+                                            </button>
+
+                                            {{-- Eliminar registro --}}
+                                            <button
+                                                wire:click="abrirModalEliminar({{ $ae->id }})"
+                                                class="inline-flex items-center justify-center rounded-xl w-8 h-8
+                                                       bg-white/80 dark:bg-slate-900/60
+                                                       border border-rose-300/60 dark:border-rose-700/50
+                                                       text-rose-500 dark:text-rose-400
+                                                       hover:bg-rose-50 dark:hover:bg-rose-900/20
+                                                       hover:border-rose-400 transition"
+                                                title="Eliminar registro">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
                                             </button>
                                         @endif
                                     </div>
@@ -861,24 +877,25 @@
                         Independientemente de la opción, tu trabajo en este equipo quedará como <strong class="text-slate-600 dark:text-slate-300">terminado</strong>.
                     </p>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
                         @foreach([
-                            ['value' => 'COMPLETADO',       'label' => 'Listo — Calidad',   'desc' => 'El equipo quedó completo y pasa a revisión de calidad.', 'emoji' => '✅', 'color' => 'emerald'],
-                            ['value' => 'PIEZA_PENDIENTE',  'label' => 'Falta una pieza',   'desc' => 'El equipo necesita una pieza para completarse.', 'emoji' => '🔧', 'color' => 'amber'],
-                            ['value' => 'GARANTIA_INTERNA', 'label' => 'Garantía',          'desc' => 'El equipo tiene una falla que requiere garantía.', 'emoji' => '⚠️', 'color' => 'rose'],
+                            ['value' => 'COMPLETADO',       'label' => 'Listo',          'desc' => 'Pasa a calidad.',              'emoji' => '✅', 'active_color' => 'border-emerald-400 bg-emerald-50/80 dark:bg-emerald-900/20', 'active_text' => 'text-emerald-700 dark:text-emerald-300'],
+                            ['value' => 'PIEZA_PENDIENTE',  'label' => 'Falta una pieza','desc' => 'Necesita una pieza.',          'emoji' => '🔧', 'active_color' => 'border-amber-400 bg-amber-50/80 dark:bg-amber-900/20',   'active_text' => 'text-amber-700 dark:text-amber-300'],
+                            ['value' => 'GARANTIA_INTERNA', 'label' => 'Garantía',       'desc' => 'Requiere garantía.',           'emoji' => '⚠️', 'active_color' => 'border-rose-400 bg-rose-50/80 dark:bg-rose-900/20',     'active_text' => 'text-rose-700 dark:text-rose-300'],
+                            ['value' => 'DESPIECE',         'label' => 'Para despiece',  'desc' => 'Va a scrap / desarmado.',      'emoji' => '🗑️', 'active_color' => 'border-slate-500 bg-slate-100/80 dark:bg-slate-700/40', 'active_text' => 'text-slate-700 dark:text-slate-200'],
                         ] as $opcion)
                             <button type="button"
                                 wire:click="$set('camino', '{{ $opcion['value'] }}')"
-                                class="rounded-xl border px-4 py-4 text-left transition-all duration-200
-                                       {{ $camino === $opcion['value']
-                                           ? 'border-[#FF9521] bg-[#FF9521]/10 shadow-md shadow-[#FF9521]/20'
-                                           : 'border-slate-300/80 dark:border-slate-700 bg-white/60 dark:bg-slate-900/40
-                                              hover:border-slate-400 dark:hover:border-slate-600' }}">
-                                <span class="block text-2xl mb-2">{{ $opcion['emoji'] }}</span>
-                                <p class="text-sm font-semibold {{ $camino === $opcion['value'] ? 'text-[#FF9521]' : 'text-slate-800 dark:text-slate-100' }}">
+                                @class([
+                                    'rounded-xl border px-3 py-3 text-left transition-all duration-200',
+                                    $opcion['active_color'] . ' shadow-sm'  => $camino === $opcion['value'],
+                                    'border-slate-300/80 dark:border-slate-700 bg-white/60 dark:bg-slate-900/40 hover:border-slate-400 dark:hover:border-slate-600' => $camino !== $opcion['value'],
+                                ])>
+                                <span class="block text-xl mb-1.5 leading-none">{{ $opcion['emoji'] }}</span>
+                                <p @class(['text-sm font-semibold leading-tight', $opcion['active_text'] => $camino === $opcion['value'], 'text-slate-800 dark:text-slate-100' => $camino !== $opcion['value']])>
                                     {{ $opcion['label'] }}
                                 </p>
-                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ $opcion['desc'] }}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">{{ $opcion['desc'] }}</p>
                             </button>
                         @endforeach
                     </div>
@@ -907,134 +924,265 @@
                     </div>
                 @endif
 
+                {{-- Motivo despiece --}}
+                @if($camino === 'DESPIECE')
+                    <div class="rounded-xl border border-slate-400/30 bg-slate-100/60 dark:bg-slate-700/20 px-4 py-4 space-y-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg leading-none">🗑️</span>
+                            <span class="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                                Motivo de despiece
+                            </span>
+                            <div class="h-px flex-1 bg-slate-300/40"></div>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                ¿Por qué va a despiece? <span class="text-red-500">*</span>
+                            </label>
+                            <textarea wire:model="notasTerminar" rows="3"
+                                placeholder="Ej. Daño físico irreparable en la tarjeta madre, no enciende y no tiene arreglo viable..."
+                                class="w-full rounded-xl px-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
+                                       border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
+                                       focus:ring-2 focus:ring-slate-400 outline-none resize-none"></textarea>
+                            <p class="text-[0.65rem] text-slate-400 dark:text-slate-500">
+                                Este motivo quedará registrado en el historial del equipo.
+                            </p>
+                        </div>
+                        @if($error && $camino === 'DESPIECE')
+                            <p class="text-xs text-rose-500">{{ $error }}</p>
+                        @endif
+                    </div>
+                @endif
+
                 {{-- Pieza faltante --}}
                 @if($camino === 'PIEZA_PENDIENTE')
-                    <div class="rounded-xl border border-amber-400/30 bg-amber-50/60 dark:bg-amber-900/10
-                                px-4 py-4 space-y-3">
+                    <div class="rounded-xl border border-amber-400/30 bg-amber-50/60 dark:bg-amber-900/10 px-4 py-4 space-y-4">
+
+                        {{-- Título --}}
                         <div class="flex items-center gap-2">
                             <span class="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
-                                ¿Qué pieza falta?
+                                Pieza que falta
                             </span>
                             <div class="h-px flex-1 bg-amber-300/40"></div>
                         </div>
 
-                        {{-- Filtros de búsqueda --}}
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div class="space-y-1">
-                                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">Categoría</label>
-                                <select wire:model.live="filtroCategoriaPieza"
-                                    class="w-full rounded-xl px-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
-                                           border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
-                                           focus:ring-2 focus:ring-[#FF9521] outline-none">
-                                    <option value="">Todas las categorías</option>
-                                    @foreach($categoriasDisponibles as $cat)
-                                        <option value="{{ $cat }}">{{ $cat }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="space-y-1">
-                                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">Buscar por nombre</label>
-                                <input type="text" wire:model.live.debounce.300ms="busquedaPieza"
-                                    placeholder="Ej. RAM, SSD, Batería..."
-                                    class="w-full rounded-xl px-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
-                                           border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
-                                           focus:ring-2 focus:ring-[#FF9521] outline-none">
+                        {{-- Paso 1: ¿Hay en stock o hay que pedirla? --}}
+                        <div class="space-y-2">
+                            <p class="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                                ¿La pieza está disponible en el inventario actual?
+                            </p>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button"
+                                    wire:click="cambiarFuentePieza('stock')"
+                                    @class([
+                                        'flex flex-col items-center gap-1 rounded-xl border-2 px-3 py-3 text-sm font-semibold transition-all duration-150',
+                                        'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 ring-2 ring-emerald-300/50' => $fuentePieza === 'stock',
+                                        'border-slate-300/60 dark:border-slate-700 bg-white/60 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:border-emerald-300 hover:bg-emerald-50/50' => $fuentePieza !== 'stock',
+                                    ])>
+                                    <span class="text-lg leading-none">✅</span>
+                                    <span>Sí, hay en stock</span>
+                                    <span class="text-[0.65rem] font-normal opacity-70">La busco del inventario</span>
+                                </button>
+                                <button type="button"
+                                    wire:click="cambiarFuentePieza('libre')"
+                                    @class([
+                                        'flex flex-col items-center gap-1 rounded-xl border-2 px-3 py-3 text-sm font-semibold transition-all duration-150',
+                                        'border-rose-400 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 ring-2 ring-rose-300/50' => $fuentePieza === 'libre',
+                                        'border-slate-300/60 dark:border-slate-700 bg-white/60 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:border-rose-300 hover:bg-rose-50/50' => $fuentePieza !== 'libre',
+                                    ])>
+                                    <span class="text-lg leading-none">🛒</span>
+                                    <span>No, hay que pedirla</span>
+                                    <span class="text-[0.65rem] font-normal opacity-70">La describe para el encargado</span>
+                                </button>
                             </div>
                         </div>
 
-                        {{-- Lista de piezas del catálogo --}}
-                        @if($catalogoPiezas->count() > 0)
-                            <div class="max-h-48 overflow-y-auto space-y-1 rounded-xl border border-slate-200/80 dark:border-slate-700/50 bg-white/50 dark:bg-slate-900/20 p-2">
-                                @foreach($catalogoPiezas as $pieza)
-                                    <button type="button"
-                                        wire:click="$set('catalogoPiezaId', {{ $pieza->id }})"
-                                        @class([
-                                            'w-full text-left rounded-lg px-3 py-2 text-sm transition-all duration-150',
-                                            'bg-amber-100 dark:bg-amber-900/30 border border-amber-400/60 text-amber-800 dark:text-amber-300' => $catalogoPiezaId == $pieza->id,
-                                            'hover:bg-slate-100 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300' => $catalogoPiezaId != $pieza->id,
-                                        ])>
-                                        <div class="flex items-center justify-between gap-2">
-                                            <div>
-                                                <span class="font-medium">{{ $pieza->nombre }}</span>
-                                                @if($pieza->especificacion)
-                                                    <span class="text-xs text-slate-500 dark:text-slate-400 ml-1">— {{ $pieza->especificacion }}</span>
+                        {{-- Formulario modo STOCK --}}
+                        @if($fuentePieza === 'stock')
+                            <div class="space-y-4 border-t border-emerald-300/30 dark:border-emerald-700/30 pt-3">
+
+                                {{-- Pieza ya seleccionada: mostrar tarjeta y ocultar búsqueda --}}
+                                @if($catalogoPiezaId)
+                                    @php $piezaSel = \App\Models\CatalogoPieza::find($catalogoPiezaId); @endphp
+                                    <div class="rounded-xl border border-emerald-400/50 bg-emerald-50/80 dark:bg-emerald-900/20 px-4 py-3 space-y-3">
+                                        <div class="flex items-start gap-3">
+                                            <span class="text-emerald-500 dark:text-emerald-400 text-lg mt-0.5 shrink-0">✓</span>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-sm font-semibold text-emerald-800 dark:text-emerald-200 leading-tight">
+                                                    {{ $piezaSel?->nombre ?? 'ID '.$catalogoPiezaId }}
+                                                </p>
+                                                @if($piezaSel?->especificacion)
+                                                    <p class="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                                        {{ $piezaSel->especificacion }}
+                                                    </p>
+                                                @endif
+                                                @if($piezaSel?->categoria)
+                                                    <span class="inline-block mt-1 text-[0.65rem] px-1.5 py-0.5 rounded-md
+                                                                 bg-emerald-200/60 dark:bg-emerald-800/40
+                                                                 text-emerald-700 dark:text-emerald-300">
+                                                        {{ $piezaSel->categoria }}
+                                                    </span>
                                                 @endif
                                             </div>
-                                            <span class="text-[0.65rem] px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 shrink-0">
-                                                {{ $pieza->categoria }}
-                                            </span>
+                                            <button type="button"
+                                                wire:click="$set('catalogoPiezaId', null)"
+                                                class="shrink-0 text-slate-400 hover:text-rose-500 transition-colors text-xs underline">
+                                                Cambiar
+                                            </button>
                                         </div>
-                                    </button>
-                                @endforeach
+                                        {{-- Cantidad debajo de la tarjeta de selección --}}
+                                        @include('livewire.preparacion.equipos._cantidad-pieza-selector')
+                                    </div>
+
+                                @else
+                                    {{-- Paso 1: chips de categoría --}}
+                                    <div class="space-y-2">
+                                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">
+                                            1. Elige la categoría:
+                                        </p>
+                                        <div class="flex flex-wrap gap-2">
+                                            @foreach($categoriasDisponibles as $cat)
+                                                <button type="button"
+                                                    wire:click="$set('filtroCategoriaPieza', '{{ $cat }}')"
+                                                    @class([
+                                                        'px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-150',
+                                                        'bg-emerald-500 border-emerald-500 text-white shadow-sm' => $filtroCategoriaPieza === $cat,
+                                                        'bg-white/70 dark:bg-slate-800/60 border-slate-300/70 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400' => $filtroCategoriaPieza !== $cat,
+                                                    ])>
+                                                    {{ $cat }}
+                                                </button>
+                                            @endforeach
+                                        </div>
+                                    </div>
+
+                                    {{-- Paso 2: búsqueda por nombre (solo si hay categoría o quiere buscar directo) --}}
+                                    <div class="space-y-1">
+                                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">
+                                            2. Busca por nombre
+                                            @if(!$filtroCategoriaPieza)
+                                                <span class="font-normal opacity-70">(o selecciona categoría arriba)</span>
+                                            @endif
+                                            :
+                                        </p>
+                                        <div class="relative">
+                                            <input type="text" wire:model.live.debounce.300ms="busquedaPieza"
+                                                placeholder="Ej. RAM, SSD, Batería..."
+                                                class="w-full rounded-xl pl-8 pr-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
+                                                       border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
+                                                       focus:ring-2 focus:ring-emerald-400 outline-none">
+                                            <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">
+                                                &#128269;
+                                            </span>
+                                            @if($busquedaPieza)
+                                                <button type="button" wire:click="$set('busquedaPieza', '')"
+                                                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm">
+                                                    &times;
+                                                </button>
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    {{-- Resultados --}}
+                                    @if($filtroCategoriaPieza || mb_strlen(trim($busquedaPieza)) >= 2)
+                                        @if($catalogoPiezas->count() > 0)
+                                            <div class="space-y-1 rounded-xl border border-slate-200/80 dark:border-slate-700/50 bg-white/50 dark:bg-slate-900/20 p-2 max-h-52 overflow-y-auto">
+                                                @if($filtroCategoriaPieza && !$busquedaPieza)
+                                                    <p class="text-[0.65rem] text-slate-400 px-2 pb-1">
+                                                        {{ $catalogoPiezas->count() }} pieza(s) en <strong>{{ $filtroCategoriaPieza }}</strong>
+                                                    </p>
+                                                @endif
+                                                @foreach($catalogoPiezas as $pieza)
+                                                    <button type="button"
+                                                        wire:click="$set('catalogoPiezaId', {{ $pieza->id }})"
+                                                        class="w-full text-left rounded-lg px-3 py-2 text-sm transition-all duration-150
+                                                               hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:border-emerald-300
+                                                               border border-transparent text-slate-700 dark:text-slate-300 group">
+                                                        <div class="flex items-center justify-between gap-2">
+                                                            <div class="min-w-0">
+                                                                <span class="font-medium group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
+                                                                    {{ $pieza->nombre }}
+                                                                </span>
+                                                                @if($pieza->especificacion)
+                                                                    <span class="text-xs text-slate-400 ml-1 truncate">{{ $pieza->especificacion }}</span>
+                                                                @endif
+                                                            </div>
+                                                            @if(!$filtroCategoriaPieza)
+                                                                <span class="text-[0.65rem] px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 text-slate-500 shrink-0">
+                                                                    {{ $pieza->categoria }}
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                    </button>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <p class="text-xs text-slate-400 italic text-center py-3 rounded-xl border border-dashed border-slate-300/60 dark:border-slate-700">
+                                                Sin resultados. Intenta con otro término
+                                                @if($filtroCategoriaPieza)
+                                                    o
+                                                    <button type="button" wire:click="$set('filtroCategoriaPieza', '')"
+                                                        class="underline hover:text-emerald-600">quita el filtro de categoría</button>
+                                                @endif
+                                                .
+                                            </p>
+                                        @endif
+                                    @else
+                                        <p class="text-xs text-slate-400 italic text-center py-3 rounded-xl border border-dashed border-slate-300/40 dark:border-slate-700/60">
+                                            Selecciona una categoría o escribe al menos 2 letras para ver piezas.
+                                        </p>
+                                    @endif
+                                @endif
+
                             </div>
-                            @if($catalogoPiezaId)
-                                @php $piezaSel = \App\Models\CatalogoPieza::find($catalogoPiezaId); @endphp
-                                <p class="text-xs text-amber-700 dark:text-amber-400">
-                                    Pieza seleccionada: <strong>{{ $piezaSel?->nombre ?? 'ID ' . $catalogoPiezaId }}</strong>
-                                    @if($piezaSel) <span class="text-amber-500">({{ $piezaSel->categoria }})</span> @endif
-                                    <button type="button" wire:click="$set('catalogoPiezaId', null)"
-                                        class="ml-2 text-slate-400 hover:text-rose-500 transition-colors">&times; quitar</button>
-                                </p>
-                            @endif
-                        @else
-                            <p class="text-xs text-slate-500 dark:text-slate-400 italic py-2 text-center">
-                                No hay piezas en el catálogo
-                                @if($busquedaPieza || $filtroCategoriaPieza) que coincidan con el filtro @endif.
-                                Usa las notas para describir la pieza.
-                            </p>
                         @endif
 
+                        {{-- Formulario modo LIBRE (hay que pedirla) --}}
+                        @if($fuentePieza === 'libre')
+                            <div class="space-y-3 border-t border-rose-300/30 dark:border-rose-700/30 pt-3">
+                                <p class="text-xs text-slate-500 dark:text-slate-400">
+                                    Describe la pieza que necesitas para que el encargado la consiga:
+                                </p>
+
+                                {{-- Categoría (obligatoria) --}}
+                                <div class="space-y-1">
+                                    <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                        Categoría <span class="text-red-500">*</span>
+                                    </label>
+                                    <select wire:model.live="categoriaPiezaLibre"
+                                        class="w-full rounded-xl px-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
+                                               border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
+                                               focus:ring-2 focus:ring-rose-400 outline-none">
+                                        <option value="">Selecciona una categoría...</option>
+                                        @foreach($categoriasDisponibles as $cat)
+                                            <option value="{{ $cat }}">{{ $cat }}</option>
+                                        @endforeach
+                                        <option value="Otro">Otro / No está en la lista</option>
+                                    </select>
+                                </div>
+
+                                {{-- Descripción (opcional) --}}
+                                <div class="space-y-1">
+                                    <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                        Especificaciones <span class="text-slate-400 font-normal">(opcional)</span>
+                                    </label>
+                                    <input type="text" wire:model="descripcionPiezaLibre"
+                                        placeholder="Ej. 8GB DDR4, 256GB SATA, 45Wh, color negro..."
+                                        class="w-full rounded-xl px-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
+                                               border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
+                                               focus:ring-2 focus:ring-rose-400 outline-none">
+                                    <p class="text-[0.65rem] text-slate-400 dark:text-slate-500">
+                                        Capacidad, tipo, generación, voltaje u otros detalles que ayuden al encargado.
+                                    </p>
+                                </div>
+
+                                {{-- Cantidad --}}
+                                @include('livewire.preparacion.equipos._cantidad-pieza-selector')
+                            </div>
+                        @endif
+
+                        {{-- Error --}}
                         @if($error && $camino === 'PIEZA_PENDIENTE')
                             <p class="text-xs text-rose-500">{{ $error }}</p>
                         @endif
-
-                        {{-- Cantidad + Especificaciones --}}
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            {{-- Cantidad --}}
-                            <div class="space-y-1 sm:col-span-1">
-                                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                                    Cantidad <span class="text-red-500">*</span>
-                                </label>
-                                <div class="flex items-center gap-2">
-                                    <button type="button"
-                                        wire:click="$set('cantidadPieza', {{ max(1, $cantidadPieza - 1) }})"
-                                        class="w-8 h-8 rounded-lg flex items-center justify-center
-                                               bg-slate-200/80 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200
-                                               hover:bg-amber-100 dark:hover:bg-amber-900/30 text-base font-bold transition-colors">
-                                        −
-                                    </button>
-                                    <input type="number" wire:model.live="cantidadPieza"
-                                        min="1" max="99"
-                                        class="w-full rounded-xl px-3 py-2 text-sm text-center font-bold
-                                               bg-white/70 dark:bg-slate-900/40
-                                               border border-slate-300/80 dark:border-slate-700
-                                               text-slate-900 dark:text-slate-100
-                                               focus:ring-2 focus:ring-[#FF9521] outline-none">
-                                    <button type="button"
-                                        wire:click="$set('cantidadPieza', {{ min(99, $cantidadPieza + 1) }})"
-                                        class="w-8 h-8 rounded-lg flex items-center justify-center
-                                               bg-slate-200/80 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200
-                                               hover:bg-amber-100 dark:hover:bg-amber-900/30 text-base font-bold transition-colors">
-                                        +
-                                    </button>
-                                </div>
-                            </div>
-
-                            {{-- Especificaciones --}}
-                            <div class="space-y-1 sm:col-span-2">
-                                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                                    Especificaciones <span class="text-slate-400 font-normal">(opcional)</span>
-                                </label>
-                                <input type="text" wire:model="descripcionPiezaLibre"
-                                    placeholder="Ej. 8GB DDR4, 256GB SATA, 45Wh..."
-                                    class="w-full rounded-xl px-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
-                                           border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
-                                           focus:ring-2 focus:ring-[#FF9521] outline-none">
-                                <p class="text-[0.65rem] text-slate-400 dark:text-slate-500">
-                                    Capacidad, tipo, generación, voltaje u otros detalles relevantes.
-                                </p>
-                            </div>
-                        </div>
                     </div>
                 @endif
 
@@ -1229,4 +1377,70 @@
 
     </div>
 </x-tb-background>
+
+{{-- Modal: confirmar eliminación de registro --}}
+@if($modalEliminar)
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         x-data
+         x-init="$nextTick(() => $el.querySelector('[data-focus]')?.focus())">
+
+        {{-- Backdrop --}}
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+             wire:click="$set('modalEliminar', false)"></div>
+
+        {{-- Panel --}}
+        <div class="relative z-10 w-full max-w-sm rounded-2xl
+                    bg-white dark:bg-slate-900
+                    border border-slate-200 dark:border-slate-700
+                    shadow-2xl shadow-black/30 p-6 space-y-4">
+
+            {{-- Ícono + título --}}
+            <div class="flex items-start gap-4">
+                <div class="shrink-0 flex items-center justify-center w-11 h-11 rounded-full
+                            bg-rose-100 dark:bg-rose-900/40">
+                    <svg class="w-5 h-5 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900 dark:text-white leading-tight">
+                        Eliminar registro
+                    </h3>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400 leading-snug">
+                        Se eliminará este equipo de tu trabajo activo. El cupo sigue disponible
+                        en la asignación para que puedas re-escanear el número de serie correcto.
+                    </p>
+                </div>
+            </div>
+
+            {{-- Aviso si tiene avance --}}
+            <div class="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-300">
+                Si ya llenaste características, también se borrarán junto con el registro.
+            </div>
+
+            {{-- Acciones --}}
+            <div class="flex gap-3 pt-1">
+                <button wire:click="$set('modalEliminar', false)"
+                    data-focus
+                    class="flex-1 rounded-xl border border-slate-300 dark:border-slate-700
+                           bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200
+                           px-4 py-2.5 text-sm font-semibold
+                           hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                    Cancelar
+                </button>
+                <button wire:click="eliminarAsignacionEquipo({{ $eliminarAeId }})"
+                    wire:loading.attr="disabled"
+                    wire:target="eliminarAsignacionEquipo"
+                    class="flex-1 rounded-xl bg-rose-600 hover:bg-rose-700
+                           text-white px-4 py-2.5 text-sm font-semibold
+                           shadow-md shadow-rose-500/30
+                           disabled:opacity-60 transition">
+                    <span wire:loading.remove wire:target="eliminarAsignacionEquipo">Sí, eliminar</span>
+                    <span wire:loading wire:target="eliminarAsignacionEquipo">Eliminando...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+@endif
+
 </div>

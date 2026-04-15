@@ -177,8 +177,12 @@ class CatalogoPiezas extends Component
     public function equiposBusqueda()
     {
         if (strlen(trim($this->deshuesoEquipoBusqueda)) < 2) return collect();
-        return Equipo::where('numero_serie', 'like', '%' . trim($this->deshuesoEquipoBusqueda) . '%')
-            ->orWhere('modelo', 'like', '%' . trim($this->deshuesoEquipoBusqueda) . '%')
+        $busqueda = trim($this->deshuesoEquipoBusqueda);
+        return Equipo::where('estatus_ciclo', Equipo::CICLO_SCRAP)
+            ->where(fn ($q) => $q
+                ->where('numero_serie', 'like', "%{$busqueda}%")
+                ->orWhere('modelo',      'like', "%{$busqueda}%")
+            )
             ->limit(8)
             ->get(['id', 'numero_serie', 'marca', 'modelo']);
     }
@@ -597,21 +601,15 @@ class CatalogoPiezas extends Component
                         'notas'                => trim($this->restockNotas) ?: null,
                     ]);
 
-                    InventarioPieza::create([
-                        'catalogo_pieza_id'   => $pieza->id,
-                        'origen'              => InventarioPieza::COMPRA,
-                        'compra_item_id'      => $compraItem->id,
-                        'almacen_id'          => $this->restockAlmacenId,
-                        'costo'               => $precio,
-                        'registrado_por_id'   => Auth::id(),
-                        'estatus'             => InventarioPieza::DISPONIBLE,
-                        'fecha_ingreso'       => $this->restockCompraFecha,
-                        'notas'               => trim($this->restockNotas) ?: null,
-                        'cantidad_inicial'    => $this->restockCantidad,
-                        'cantidad_disponible' => $this->restockCantidad,
-                        'cantidad_reservada'  => 0,
-                        'cantidad_usada'      => 0,
-                        'cantidad_baja'       => 0,
+                    $this->consolidarOCrearInventario($pieza, $this->restockCantidad, [
+                        'origen'             => InventarioPieza::COMPRA,
+                        'compra_item_id'     => $compraItem->id,
+                        'almacen_id'         => $this->restockAlmacenId,
+                        'costo'              => $precio,
+                        'registrado_por_id'  => Auth::id(),
+                        'estatus'            => InventarioPieza::DISPONIBLE,
+                        'fecha_ingreso'      => $this->restockCompraFecha,
+                        'notas'              => trim($this->restockNotas) ?: null,
                     ]);
                 });
 
@@ -746,21 +744,15 @@ class CatalogoPiezas extends Component
                         'notas'                => trim($item['notas'] ?? '') ?: null,
                     ]);
 
-                    InventarioPieza::create([
-                        'catalogo_pieza_id'   => $catalogo->id,
-                        'origen'              => InventarioPieza::COMPRA,
-                        'compra_item_id'      => $compraItem->id,
-                        'almacen_id'          => $this->compraAlmacenId,
-                        'costo'               => $precio,
-                        'registrado_por_id'   => Auth::id(),
-                        'estatus'             => InventarioPieza::DISPONIBLE,
-                        'fecha_ingreso'       => $fechaRecibido,
-                        'notas'               => trim($item['notas'] ?? '') ?: null,
-                        'cantidad_inicial'    => $cantidad,
-                        'cantidad_disponible' => $cantidad,
-                        'cantidad_reservada'  => 0,
-                        'cantidad_usada'      => 0,
-                        'cantidad_baja'       => 0,
+                    $this->consolidarOCrearInventario($catalogo, $cantidad, [
+                        'origen'             => InventarioPieza::COMPRA,
+                        'compra_item_id'     => $compraItem->id,
+                        'almacen_id'         => $this->compraAlmacenId,
+                        'costo'              => $precio,
+                        'registrado_por_id'  => Auth::id(),
+                        'estatus'            => InventarioPieza::DISPONIBLE,
+                        'fecha_ingreso'      => $fechaRecibido,
+                        'notas'              => trim($item['notas'] ?? '') ?: null,
                     ]);
                 }
             });
@@ -866,20 +858,14 @@ class CatalogoPiezas extends Component
                     $cantidad = (int) $item['cantidad'];
                     $catalogo = $this->encontrarOCrearCatalogo($item['nombre'], $item['categoria'], $item['catalogo_pieza_id_sel'] ?? null);
 
-                    InventarioPieza::create([
-                        'catalogo_pieza_id'   => $catalogo->id,
-                        'origen'              => InventarioPieza::DESHUESO,
-                        'equipo_origen_id'    => $this->deshuesoEquipoId,
-                        'almacen_id'          => $this->deshuesoAlmacenId,
-                        'registrado_por_id'   => Auth::id(),
-                        'estatus'             => InventarioPieza::DISPONIBLE,
-                        'fecha_ingreso'       => now()->toDateString(),
-                        'notas'               => trim($item['notas'] ?? '') ?: null,
-                        'cantidad_inicial'    => $cantidad,
-                        'cantidad_disponible' => $cantidad,
-                        'cantidad_reservada'  => 0,
-                        'cantidad_usada'      => 0,
-                        'cantidad_baja'       => 0,
+                    $this->consolidarOCrearInventario($catalogo, $cantidad, [
+                        'origen'             => InventarioPieza::DESHUESO,
+                        'equipo_origen_id'   => $this->deshuesoEquipoId,
+                        'almacen_id'         => $this->deshuesoAlmacenId,
+                        'registrado_por_id'  => Auth::id(),
+                        'estatus'            => InventarioPieza::DISPONIBLE,
+                        'fecha_ingreso'      => now()->toDateString(),
+                        'notas'              => trim($item['notas'] ?? '') ?: null,
                     ]);
                     $nuevas++;
                 }
@@ -908,6 +894,37 @@ class CatalogoPiezas extends Component
     {
         // catalogo_pieza_id_sel: se rellena al elegir sugerencia; null = crear nuevo si no existe
         return ['nombre' => '', 'categoria' => '', 'catalogo_pieza_id_sel' => null, 'cantidad' => 1, 'precio_unitario' => '', 'notas' => ''];
+    }
+
+    /**
+     * Para piezas NO serializadas: suma el stock al registro activo existente
+     * del mismo catálogo + almacén. Si no existe ninguno, crea uno nuevo.
+     * Para piezas serializadas: siempre crea un registro independiente.
+     */
+    private function consolidarOCrearInventario(CatalogoPieza $catalogo, int $cantidad, array $datos): void
+    {
+        if (!$catalogo->requiere_serie) {
+            $existing = InventarioPieza::where('catalogo_pieza_id', $catalogo->id)
+                ->where('almacen_id', $datos['almacen_id'])
+                ->where('estatus', '!=', InventarioPieza::DADA_DE_BAJA)
+                ->first();
+
+            if ($existing) {
+                $existing->increment('cantidad_inicial', $cantidad);
+                $existing->increment('cantidad_disponible', $cantidad);
+                $existing->actualizarEstatus();
+                return;
+            }
+        }
+
+        InventarioPieza::create(array_merge($datos, [
+            'catalogo_pieza_id'   => $catalogo->id,
+            'cantidad_inicial'    => $cantidad,
+            'cantidad_disponible' => $cantidad,
+            'cantidad_reservada'  => 0,
+            'cantidad_usada'      => 0,
+            'cantidad_baja'       => 0,
+        ]));
     }
 
     /**
