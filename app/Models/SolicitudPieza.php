@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
+use App\Models\Almacen;
 
 class SolicitudPieza extends Model
 {
@@ -16,6 +17,7 @@ class SolicitudPieza extends Model
         'solicitado_por_id',
         'catalogo_pieza_id',
         'descripcion_libre',
+        'cantidad',
         'estatus',
         'inventario_pieza_id',
         'respondida_por_id',
@@ -36,8 +38,9 @@ class SolicitudPieza extends Model
         'reasignada_en'           => 'datetime',
         'iniciada_instalacion_en' => 'datetime',
         'confirmada_en'           => 'datetime',
-        'instalada' => 'boolean',
-        'funciono' => 'boolean',
+        'instalada'               => 'boolean',
+        'funciono'                => 'boolean',
+        'cantidad'                => 'integer',
     ];
 
     // Estados existentes
@@ -213,10 +216,13 @@ class SolicitudPieza extends Model
     public function surtirDeInventario(int $inventarioPiezaId, int $gerenteId, ?string $notas = null, ?int $tecnicoReasignadoId = null, ?float $puntosOverride = null): void
     {
         DB::transaction(function () use ($inventarioPiezaId, $gerenteId, $notas, $tecnicoReasignadoId, $puntosOverride) {
-            $pieza = InventarioPieza::lockForUpdate()->findOrFail($inventarioPiezaId);
+            $pieza    = InventarioPieza::lockForUpdate()->findOrFail($inventarioPiezaId);
+            $cantidad = max(1, (int) $this->cantidad);
 
-            if ($pieza->cantidad_disponible < 1) {
-                throw new \Exception('No hay unidades disponibles de esta pieza en el stock seleccionado.');
+            if ($pieza->cantidad_disponible < $cantidad) {
+                throw new \Exception(
+                    "Stock insuficiente: se necesitan {$cantidad} unidad(es) pero solo hay {$pieza->cantidad_disponible} disponible(s)."
+                );
             }
 
             $this->update([
@@ -230,8 +236,8 @@ class SolicitudPieza extends Model
                 'reasignada_en'       => $tecnicoReasignadoId ? now() : null,
             ]);
 
-            $pieza->decrement('cantidad_disponible');
-            $pieza->increment('cantidad_reservada');
+            $pieza->decrement('cantidad_disponible', $cantidad);
+            $pieza->increment('cantidad_reservada', $cantidad);
             $pieza->actualizarEstatus();
         });
     }
@@ -272,12 +278,14 @@ class SolicitudPieza extends Model
                 'notas_respuesta' => $motivo,
             ]);
 
-            // Si había pieza asignada, devolver la unidad al stock
+            // Si había pieza asignada, devolver las unidades reservadas al stock
             if ($this->inventario_pieza_id) {
-                $pieza = InventarioPieza::find($this->inventario_pieza_id);
+                $pieza    = InventarioPieza::find($this->inventario_pieza_id);
+                $cantidad = max(1, (int) $this->cantidad);
                 if ($pieza && $pieza->cantidad_reservada > 0) {
-                    $pieza->decrement('cantidad_reservada');
-                    $pieza->increment('cantidad_disponible');
+                    $devolver = min($cantidad, $pieza->cantidad_reservada);
+                    $pieza->decrement('cantidad_reservada', $devolver);
+                    $pieza->increment('cantidad_disponible', $devolver);
                     $pieza->actualizarEstatus();
                 }
             }
@@ -299,19 +307,22 @@ class SolicitudPieza extends Model
             ]);
 
             if ($this->inventario_pieza_id) {
-                $pieza = InventarioPieza::lockForUpdate()->find($this->inventario_pieza_id);
+                $pieza    = InventarioPieza::lockForUpdate()->find($this->inventario_pieza_id);
+                $cantidad = max(1, (int) $this->cantidad);
+
                 if ($pieza && $pieza->cantidad_reservada > 0) {
-                    $pieza->decrement('cantidad_reservada');
+                    $mover = min($cantidad, $pieza->cantidad_reservada);
+                    $pieza->decrement('cantidad_reservada', $mover);
 
                     if ($funciono) {
-                        $pieza->increment('cantidad_usada');
-                        // Vincular al equipo si la entrada es de una sola unidad (trazabilidad)
+                        $pieza->increment('cantidad_usada', $mover);
+                        // Vincular al equipo si toda la entrada fue para este equipo (trazabilidad)
                         $equipoId = $this->equipo_id ?? $this->asignacionEquipo?->equipo_id;
-                        if ($equipoId && $pieza->cantidad_inicial === 1) {
+                        if ($equipoId && $pieza->cantidad_inicial === $cantidad) {
                             $pieza->update(['equipo_destino_id' => $equipoId]);
                         }
                     } else {
-                        $pieza->increment('cantidad_baja');
+                        $pieza->increment('cantidad_baja', $mover);
                     }
 
                     $pieza->actualizarEstatus();
@@ -335,7 +346,7 @@ class SolicitudPieza extends Model
                 $equipo->update([
                     'estatus_ciclo' => 'CALIDAD',
                     'estatus_area'  => 'EN_CALIDAD',
-                    'almacen_id'    => 5, // almacén Calidad
+                    'almacen_id'    => Almacen::CALIDAD,
                 ]);
             } elseif ($equipo && !$funciono) {
                 self::create([
@@ -344,6 +355,7 @@ class SolicitudPieza extends Model
                     'solicitado_por_id'    => $tecnicoId,
                     'catalogo_pieza_id'    => $this->catalogo_pieza_id,
                     'descripcion_libre'    => $this->descripcion_libre ?: 'Reintento - pieza anterior defectuosa',
+                    'cantidad'             => max(1, (int) $this->cantidad),
                     'estatus'              => self::PENDIENTE,
                 ]);
             }

@@ -142,6 +142,11 @@
                                     <h3 class="font-bold text-slate-900 dark:text-white">
                                         {{ $solicitud->nombre_pieza }}
                                     </h3>
+                                    @if(($solicitud->cantidad ?? 1) > 1)
+                                        <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                            ×{{ $solicitud->cantidad }}
+                                        </span>
+                                    @endif
                                     <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $badgeColor }}">
                                         {{ $labelEstatus }}
                                     </span>
@@ -247,6 +252,14 @@
                     @if($solicitudSeleccionada)
                         <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-sm text-slate-700 dark:text-slate-300 space-y-1">
                             <p><span class="font-medium">Pieza solicitada:</span> {{ $solicitudSeleccionada->nombre_pieza }}</p>
+                            @if(($solicitudSeleccionada->cantidad ?? 1) > 1)
+                                <p class="flex items-center gap-1">
+                                    <span class="font-medium">Cantidad requerida:</span>
+                                    <span class="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs font-bold">
+                                        {{ $solicitudSeleccionada->cantidad }} unidades
+                                    </span>
+                                </p>
+                            @endif
                             @php $eq = $solicitudSeleccionada->equipo ?? $solicitudSeleccionada->asignacionEquipo?->equipo; @endphp
                             @if($eq)
                                 <p><span class="font-medium">Equipo:</span> {{ $eq->numero_serie }} — {{ $eq->marca }} {{ $eq->modelo }}</p>
@@ -293,7 +306,13 @@
                         </div>
                     @else
                         <div class="p-3 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-sm text-yellow-700 dark:text-yellow-300">
-                            No hay stock disponible en inventario. Registra la compra primero o marca como pendiente de compra.
+                            @php $cantReq = $solicitudSeleccionada?->cantidad ?? 1; @endphp
+                            @if($cantReq > 1)
+                                No hay stock con suficientes unidades disponibles (se necesitan <strong>{{ $cantReq }}</strong>).
+                            @else
+                                No hay stock disponible en inventario.
+                            @endif
+                            Registra la compra primero o marca como pendiente de compra.
                         </div>
                     @endif
 

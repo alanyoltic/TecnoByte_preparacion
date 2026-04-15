@@ -988,19 +988,52 @@
                             <p class="text-xs text-rose-500">{{ $error }}</p>
                         @endif
 
-                        {{-- Notas adicionales de la pieza --}}
-                        <div class="space-y-1">
-                            <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                                Especificaciones adicionales <span class="text-slate-400 font-normal">(opcional)</span>
-                            </label>
-                            <input type="text" wire:model="descripcionPiezaLibre"
-                                placeholder="Ej. 8GB DDR4, 256GB SATA, 45Wh, color negro..."
-                                class="w-full rounded-xl px-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
-                                       border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
-                                       focus:ring-2 focus:ring-[#FF9521] outline-none">
-                            <p class="text-[0.65rem] text-slate-400 dark:text-slate-500">
-                                Capacidad, tipo, generación, voltaje u otros detalles relevantes.
-                            </p>
+                        {{-- Cantidad + Especificaciones --}}
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {{-- Cantidad --}}
+                            <div class="space-y-1 sm:col-span-1">
+                                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                    Cantidad <span class="text-red-500">*</span>
+                                </label>
+                                <div class="flex items-center gap-2">
+                                    <button type="button"
+                                        wire:click="$set('cantidadPieza', {{ max(1, $cantidadPieza - 1) }})"
+                                        class="w-8 h-8 rounded-lg flex items-center justify-center
+                                               bg-slate-200/80 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200
+                                               hover:bg-amber-100 dark:hover:bg-amber-900/30 text-base font-bold transition-colors">
+                                        −
+                                    </button>
+                                    <input type="number" wire:model.live="cantidadPieza"
+                                        min="1" max="99"
+                                        class="w-full rounded-xl px-3 py-2 text-sm text-center font-bold
+                                               bg-white/70 dark:bg-slate-900/40
+                                               border border-slate-300/80 dark:border-slate-700
+                                               text-slate-900 dark:text-slate-100
+                                               focus:ring-2 focus:ring-[#FF9521] outline-none">
+                                    <button type="button"
+                                        wire:click="$set('cantidadPieza', {{ min(99, $cantidadPieza + 1) }})"
+                                        class="w-8 h-8 rounded-lg flex items-center justify-center
+                                               bg-slate-200/80 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200
+                                               hover:bg-amber-100 dark:hover:bg-amber-900/30 text-base font-bold transition-colors">
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- Especificaciones --}}
+                            <div class="space-y-1 sm:col-span-2">
+                                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                    Especificaciones <span class="text-slate-400 font-normal">(opcional)</span>
+                                </label>
+                                <input type="text" wire:model="descripcionPiezaLibre"
+                                    placeholder="Ej. 8GB DDR4, 256GB SATA, 45Wh..."
+                                    class="w-full rounded-xl px-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
+                                           border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
+                                           focus:ring-2 focus:ring-[#FF9521] outline-none">
+                                <p class="text-[0.65rem] text-slate-400 dark:text-slate-500">
+                                    Capacidad, tipo, generación, voltaje u otros detalles relevantes.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 @endif

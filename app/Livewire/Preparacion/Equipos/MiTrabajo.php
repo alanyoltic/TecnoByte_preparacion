@@ -8,7 +8,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Computed;
 use App\Livewire\Preparacion\Forms\EquipoForm;
 use App\Models\{
-    Asignacion, AsignacionEquipo, Equipo,
+    Almacen, Asignacion, AsignacionEquipo, Equipo,
     SolicitudPieza, PuntoTecnico,
     EquipoBateria, EquipoMonitor, EquipoGpu,
     CatalogoPieza
@@ -418,7 +418,7 @@ class MiTrabajo extends Component
                     $equipo->update([
                         'estatus_ciclo' => 'CALIDAD',
                         'estatus_area'  => 'EN_CALIDAD',
-                        'almacen_id'    => 5, // almacén Calidad
+                        'almacen_id'    => Almacen::CALIDAD,
                     ]);
                 } elseif ($equipo && !$funciono) {
                     // Pieza no funcionó → crear nueva solicitud automáticamente
@@ -430,6 +430,7 @@ class MiTrabajo extends Component
                         'catalogo_pieza_id'    => $solicitud->catalogo_pieza_id,
                         'descripcion_libre'    => $solicitud->descripcion_libre
                                                     ?? 'Reintento — pieza anterior defectuosa',
+                        'cantidad'             => max(1, (int) $solicitud->cantidad),
                         'estatus'              => SolicitudPieza::PENDIENTE,
                     ]);
                 }
@@ -553,7 +554,7 @@ class MiTrabajo extends Component
                     'estatus_area'           => 'EN_PROCESO',
                     'registrado_por_user_id' => Auth::id(),
                     'proveedor_id'           => $loteModelo->lote->proveedor_id ?? null,
-                    'almacen_id'             => 2,
+                    'almacen_id'             => Almacen::PREPARACION,
                     'sucursal_id'            => Auth::user()->sucursal_id ?? 1,
                 ]);
             }
@@ -749,6 +750,10 @@ class MiTrabajo extends Component
                 $this->error = 'Selecciona o describe la pieza que falta.';
                 return;
             }
+            if ($this->cantidadPieza < 1 || $this->cantidadPieza > 99) {
+                $this->error = 'La cantidad debe ser entre 1 y 99.';
+                return;
+            }
         }
 
         $ae     = AsignacionEquipo::with(['asignacion', 'equipo'])->find($this->asignacionEquipoId);
@@ -756,10 +761,10 @@ class MiTrabajo extends Component
         if (!$ae || !$equipo) return;
 
         [$estatusCiclo, $estatusArea, $almacenId] = match($this->camino) {
-            'COMPLETADO'       => ['CALIDAD',     'EN_CALIDAD',          5], // almacén Calidad
-            'PIEZA_PENDIENTE'  => ['PREPARACION', 'PENDIENTE_PIEZA',     7], // almacén Piezas Pend.
-            'GARANTIA_INTERNA' => ['PREPARACION', 'PENDIENTE_GARANTIA',  3], // almacén Garantías Int.
-            'GARANTIA_EXTERNA' => ['PREPARACION', 'PENDIENTE_GARANTIA',  4], // almacén Garantías Ext.
+            'COMPLETADO'       => ['CALIDAD',     'EN_CALIDAD',         Almacen::CALIDAD],
+            'PIEZA_PENDIENTE'  => ['PREPARACION', 'PENDIENTE_PIEZA',    Almacen::PIEZAS_PENDIENTES],
+            'GARANTIA_INTERNA' => ['PREPARACION', 'PENDIENTE_GARANTIA', Almacen::GARANTIAS_INTERNAS],
+            'GARANTIA_EXTERNA' => ['PREPARACION', 'PENDIENTE_GARANTIA', Almacen::GARANTIAS_EXTERNAS],
             default            => ['PREPARACION', 'EN_PROCESO',          2], // almacén Preparación
         };
 
@@ -779,6 +784,7 @@ class MiTrabajo extends Component
                         'solicitado_por_id'    => Auth::id(),
                         'catalogo_pieza_id'    => $this->catalogoPiezaId ?: null,
                         'descripcion_libre'    => trim($this->descripcionPiezaLibre) ?: null,
+                        'cantidad'             => max(1, $this->cantidadPieza),
                         'estatus'              => SolicitudPieza::PENDIENTE,
                     ]);
                 }

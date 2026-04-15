@@ -238,22 +238,6 @@ class Equipo extends Model
         ];
     }
 
-    /**
-     * Label legible del estatus_ciclo actual.
-     */
-    public function getLabelCicloAttribute(): string
-    {
-        return self::labelsCiclo()[$this->estatus_ciclo] ?? $this->estatus_ciclo;
-    }
-
-    /**
-     * Label legible del estatus_area actual.
-     */
-    public function getLabelAreaAttribute(): string
-    {
-        return self::labelsArea()[$this->estatus_area] ?? $this->estatus_area;
-    }
-
     // =========================================================
     // RELACIONES
     // =========================================================
@@ -327,26 +311,6 @@ class Equipo extends Model
         return $this->hasOne(\App\Models\EquipoGpu::class, 'equipo_id')
             ->where('tipo', 'dedicada')
             ->where('activo', true);
-    }
-
-    // =========================================================
-    // ACCESSORS / MUTATORS (GPU legacy)
-    // =========================================================
-
-    public function getTieneIntegradaAttribute(): bool
-    {
-        return $this->gpus()
-            ->where('tipo', 'integrada')
-            ->where('activo', true)
-            ->exists();
-    }
-
-    public function getTieneDedicadaAttribute(): bool
-    {
-        return $this->gpus()
-            ->where('tipo', 'dedicada')
-            ->where('activo', true)
-            ->exists();
     }
 
     // =========================================================

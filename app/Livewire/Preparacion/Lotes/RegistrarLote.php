@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Preparacion\Lotes;
 
+use App\Models\Almacen;
 use App\Models\Equipo;
 use Livewire\Component;
 use App\Models\Proveedor;
@@ -155,7 +156,7 @@ class RegistrarLote extends Component
                         'estatus_area'           => 'EN_ESPERA',
                         'registrado_por_user_id' => Auth::id(),
                         'proveedor_id'           => $this->proveedor_id,
-                        'almacen_id'             => 2,
+                        'almacen_id'             => Almacen::PREPARACION,
                         'sucursal_id'            => Auth::user()->sucursal_id ?? 1,
                     ]);
                 }
@@ -189,18 +190,4 @@ class RegistrarLote extends Component
         ]);
     }
 
-    public function probarNotificaciones()
-    {
-        $tipos = ['success', 'error', 'warning', 'info'];
-        $type  = $tipos[array_rand($tipos)];
-
-        $msg = match ($type) {
-            'success' => '✅ Toast de éxito (prueba).',
-            'error'   => '❌ Toast de error (prueba).',
-            'warning' => '⚠️ Toast de aviso (prueba).',
-            default   => 'ℹ️ Toast de info (prueba).',
-        };
-
-        $this->dispatch('toast', type: $type, message: $msg);
-    }
 }

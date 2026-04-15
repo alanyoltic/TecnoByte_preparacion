@@ -22,7 +22,21 @@
       "Bash(xargs ls:*)",
       "Read(//c/Users/DELL/Desktop/proyectos/web/TecnoByte_preparacion/**)",
       "Read(//tmp/**)",
-      "Bash(php artisan:*)"
+      "Bash(php artisan:*)",
+      "Bash(php -r ':*)",
+      "Bash(composer show:*)",
+      "Bash(find resources/views -name \"*.blade.php\" -exec sed -i 's/wire:model\\\\.defer/wire:model/g' {} +)",
+      "Bash(php)",
+      "Bash(python3 -c ':*)",
+      "Bash(node -e ':*)",
+      "Bash(php -l app/Livewire/Dashboard/Dashboard.php)",
+      "Bash(find:*)",
+      "Bash(xargs grep:*)",
+      "Bash(sed \"s/wire:click=[\\\\\"']//\")",
+      "Bash(sed \"s/wire:model=[\\\\\"']//\")",
+      "Bash(grep use App\\\\\\\\Models\\\\\\\\\\\\|use \\\\\\\\\\\\\\\\:*)",
+      "Bash(grep:*)",
+      "Bash(xargs wc:*)"
     ]
   }
 }

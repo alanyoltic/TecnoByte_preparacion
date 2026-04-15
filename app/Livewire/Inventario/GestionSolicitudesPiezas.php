@@ -109,15 +109,17 @@ class GestionSolicitudesPiezas extends Component
             return;
         }
 
+        $cantidadRequerida = max(1, (int) $this->solicitudSeleccionada->cantidad);
+
         if ($this->solicitudSeleccionada->catalogo_pieza_id) {
             // Solicitud vinculada a catálogo: mostrar solo ese tipo de pieza
             $this->piezasDisponibles = InventarioPieza::where('catalogo_pieza_id', $this->solicitudSeleccionada->catalogo_pieza_id)
-                ->where('cantidad_disponible', '>', 0)
+                ->where('cantidad_disponible', '>=', $cantidadRequerida)
                 ->with(['almacen', 'catalogoPieza', 'compraItem.compra.proveedor', 'equipoOrigen'])
                 ->get();
         } else {
             // Solicitud libre (categoría + descripción): mostrar todo el inventario disponible
-            $this->piezasDisponibles = InventarioPieza::where('cantidad_disponible', '>', 0)
+            $this->piezasDisponibles = InventarioPieza::where('cantidad_disponible', '>=', $cantidadRequerida)
                 ->with(['almacen', 'catalogoPieza', 'compraItem.compra.proveedor', 'equipoOrigen'])
                 ->orderBy('catalogo_pieza_id')
                 ->get();

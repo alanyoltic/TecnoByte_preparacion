@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Preparacion\Lotes;
 
+use App\Models\Almacen;
 use App\Models\Equipo;
 use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
@@ -284,7 +285,7 @@ class EditarLote extends Component
                         'estatus_area'           => 'EN_ESPERA',
                         'registrado_por_user_id' => Auth::id(),
                         'proveedor_id'           => $lote->proveedor_id,
-                        'almacen_id'             => 2,
+                        'almacen_id'             => Almacen::PREPARACION,
                         'sucursal_id'            => Auth::user()->sucursal_id ?? 1,
                     ]);
                 }

@@ -135,7 +135,7 @@ class ComprasInventario extends Component
             'catalogo_pieza_id' => '',
             'cantidad'          => 1,
             'precio_unitario'   => '',
-            'almacen_id'        => 7,
+            'almacen_id'        => Almacen::PIEZAS_PENDIENTES,
             'notas'             => '',
         ];
         $this->busquedasPieza[] = '';

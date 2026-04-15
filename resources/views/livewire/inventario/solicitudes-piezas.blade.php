@@ -110,6 +110,11 @@
                                 <h3 class="font-bold text-slate-900 dark:text-white">
                                     {{ $solicitud->nombre_pieza }}
                                 </h3>
+                                @if(($solicitud->cantidad ?? 1) > 1)
+                                    <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                        ×{{ $solicitud->cantidad }} unidades
+                                    </span>
+                                @endif
                                 <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $badge['class'] }}">
                                     {{ $badge['label'] }}
                                 </span>
