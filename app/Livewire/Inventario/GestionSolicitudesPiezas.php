@@ -50,9 +50,14 @@ class GestionSolicitudesPiezas extends Component
                 'inventarioPieza.almacen',
                 'respondidaPor',
             ])
-            ->when($this->filtroEstatus !== 'TODAS', fn ($query) =>
-                $query->where('estatus', $this->filtroEstatus)
-            )
+            ->when($this->filtroEstatus !== 'TODAS', function ($query) {
+                match ($this->filtroEstatus) {
+                    'EN_CALIDAD'     => $query->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', true),
+                    'FALLO_PIEZA'    => $query->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', false),
+                    'PASO_CALIDAD'   => $query->whereRaw('0 = 1'), // futuro
+                    default          => $query->where('estatus', $this->filtroEstatus),
+                };
+            })
             ->when($this->busqueda, function ($query) {
                 $query->where(function ($q) {
                     $bId = is_numeric(trim($this->busqueda)) ? (int)trim($this->busqueda) : -1;
@@ -81,12 +86,14 @@ class GestionSolicitudesPiezas extends Component
             ->paginate(15);
 
         $contadores = [
-            'pendientes' => SolicitudPieza::where('estatus', SolicitudPieza::PENDIENTE)->count(),
-            'surtidas' => SolicitudPieza::where('estatus', SolicitudPieza::SURTIDA_INVENTARIO)->count(),
+            'pendientes'        => SolicitudPieza::where('estatus', SolicitudPieza::PENDIENTE)->count(),
+            'surtidas'          => SolicitudPieza::where('estatus', SolicitudPieza::SURTIDA_INVENTARIO)->count(),
             'pendientes_compra' => SolicitudPieza::where('estatus', SolicitudPieza::PENDIENTE_COMPRA)->count(),
-            'compradas' => SolicitudPieza::where('estatus', SolicitudPieza::COMPRADA)->count(),
-            'confirmadas' => SolicitudPieza::where('estatus', SolicitudPieza::CONFIRMADA)->count(),
-            'canceladas' => SolicitudPieza::where('estatus', SolicitudPieza::CANCELADA)->count(),
+            'compradas'         => SolicitudPieza::where('estatus', SolicitudPieza::COMPRADA)->count(),
+            'en_calidad'        => SolicitudPieza::where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', true)->count(),
+            'fallo_pieza'       => SolicitudPieza::where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', false)->count(),
+            'paso_calidad'      => 0, // futuro — cuando exista el área de calidad
+            'canceladas'        => SolicitudPieza::where('estatus', SolicitudPieza::CANCELADA)->count(),
         ];
 
         return view('livewire.inventario.gestion-solicitudes-piezas', [

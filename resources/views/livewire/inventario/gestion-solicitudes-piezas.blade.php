@@ -39,35 +39,49 @@
         @endif
 
         {{-- Contadores --}}
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             @php
                 $tabs = [
-                    ['key' => 'PENDIENTE',          'label' => 'Pendientes',      'count' => $contadores['pendientes'],       'color' => 'yellow'],
-                    ['key' => 'SURTIDA_INVENTARIO', 'label' => 'Surtidas',        'count' => $contadores['surtidas'],         'color' => 'blue'],
-                    ['key' => 'PENDIENTE_COMPRA',   'label' => 'Pend. Compra',    'count' => $contadores['pendientes_compra'],'color' => 'orange'],
-                    ['key' => 'COMPRADA',           'label' => 'Compradas',       'count' => $contadores['compradas'],        'color' => 'purple'],
-                    ['key' => 'CONFIRMADA',         'label' => 'Confirmadas',     'count' => $contadores['confirmadas'],      'color' => 'green'],
-                    ['key' => 'CANCELADA',          'label' => 'Canceladas',      'count' => $contadores['canceladas'],       'color' => 'red'],
+                    ['key' => 'PENDIENTE',          'label' => 'Solicitudes pendientes', 'count' => $contadores['pendientes'],        'color' => 'yellow'],
+                    ['key' => 'SURTIDA_INVENTARIO', 'label' => 'Piezas asignadas',       'count' => $contadores['surtidas'],          'color' => 'blue'],
+                    ['key' => 'PENDIENTE_COMPRA',   'label' => 'Pend. compra',           'count' => $contadores['pendientes_compra'], 'color' => 'orange'],
+                    ['key' => 'COMPRADA',           'label' => 'Compradas',              'count' => $contadores['compradas'],         'color' => 'purple'],
+                    ['key' => 'EN_CALIDAD',         'label' => 'En calidad',             'count' => $contadores['en_calidad'],        'color' => 'emerald'],
+                    ['key' => 'FALLO_PIEZA',        'label' => 'Requieren nueva pieza',  'count' => $contadores['fallo_pieza'],       'color' => 'rose'],
+                    ['key' => 'PASO_CALIDAD',       'label' => 'Pasaron calidad',        'count' => $contadores['paso_calidad'],      'color' => 'slate', 'disabled' => true],
+                    ['key' => 'CANCELADA',          'label' => 'Canceladas',             'count' => $contadores['canceladas'],        'color' => 'red'],
+                    ['key' => 'TODAS',              'label' => 'Todas',                  'count' => null,                             'color' => 'dark'],
                 ];
                 $colorMap = [
-                    'yellow' => ['active' => 'bg-yellow-500 text-white shadow-yellow-500/30', 'badge' => 'bg-yellow-100 text-yellow-700'],
-                    'blue'   => ['active' => 'bg-blue-500 text-white shadow-blue-500/30',     'badge' => 'bg-blue-100 text-blue-700'],
-                    'orange' => ['active' => 'bg-orange-500 text-white shadow-orange-500/30', 'badge' => 'bg-orange-100 text-orange-700'],
-                    'purple' => ['active' => 'bg-purple-500 text-white shadow-purple-500/30', 'badge' => 'bg-purple-100 text-purple-700'],
-                    'green'  => ['active' => 'bg-green-500 text-white shadow-green-500/30',   'badge' => 'bg-green-100 text-green-700'],
-                    'red'    => ['active' => 'bg-red-500 text-white shadow-red-500/30',       'badge' => 'bg-red-100 text-red-700'],
+                    'yellow'  => ['active' => 'bg-yellow-500 text-white shadow-yellow-500/30'],
+                    'blue'    => ['active' => 'bg-blue-500 text-white shadow-blue-500/30'],
+                    'orange'  => ['active' => 'bg-orange-500 text-white shadow-orange-500/30'],
+                    'purple'  => ['active' => 'bg-purple-500 text-white shadow-purple-500/30'],
+                    'emerald' => ['active' => 'bg-emerald-500 text-white shadow-emerald-500/30'],
+                    'rose'    => ['active' => 'bg-rose-500 text-white shadow-rose-500/30'],
+                    'slate'   => ['active' => 'bg-slate-400 text-white'],
+                    'red'     => ['active' => 'bg-red-500 text-white shadow-red-500/30'],
+                    'dark'    => ['active' => 'bg-slate-700 text-white'],
                 ];
             @endphp
 
             @foreach($tabs as $tab)
-                @php $colors = $colorMap[$tab['color']]; @endphp
+                @php
+                    $colors   = $colorMap[$tab['color']];
+                    $disabled = $tab['disabled'] ?? false;
+                @endphp
                 <button wire:click="cambiarFiltro('{{ $tab['key'] }}')"
+                        @if($disabled) disabled @endif
                         class="rounded-xl p-3 text-left transition-all shadow-lg
                                {{ $filtroEstatus === $tab['key']
                                    ? $colors['active'] . ' shadow-lg'
-                                   : 'bg-white/60 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-700/70 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800' }}">
-                    <div class="text-2xl font-bold">{{ $tab['count'] }}</div>
+                                   : 'bg-white/60 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-700/70 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800' }}
+                               {{ $disabled ? 'opacity-40 cursor-not-allowed' : '' }}">
+                    <div class="text-2xl font-bold">{{ $tab['count'] ?? '—' }}</div>
                     <div class="text-xs font-medium mt-1 opacity-80">{{ $tab['label'] }}</div>
+                    @if($disabled)
+                        <div class="text-[0.6rem] opacity-50 mt-0.5">Proximamente</div>
+                    @endif
                 </button>
             @endforeach
         </div>
@@ -110,16 +124,25 @@
                     $equipo = $solicitud->equipo ?? $solicitud->asignacionEquipo?->equipo;
                     $tecnico = $solicitud->solicitadoPor;
                     $pieza = $solicitud->catalogoPieza;
-                    $badgeColor = match($solicitud->estatus) {
-                        'PENDIENTE'          => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-                        'SURTIDA_INVENTARIO' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-                        'PENDIENTE_COMPRA'   => 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-                        'COMPRADA'           => 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-                        'CONFIRMADA'         => 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-                        'CANCELADA'          => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-                        default              => 'bg-slate-100 text-slate-600',
-                    };
-                    $labelEstatus = \App\Models\SolicitudPieza::labelsEstatus()[$solicitud->estatus] ?? $solicitud->estatus;
+                    if ($solicitud->estatus === 'CONFIRMADA') {
+                        if ($solicitud->funciono) {
+                            $badgeColor  = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
+                            $labelEstatus = 'En calidad';
+                        } else {
+                            $badgeColor  = 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400';
+                            $labelEstatus = 'Requiere nueva pieza';
+                        }
+                    } else {
+                        $badgeColor = match($solicitud->estatus) {
+                            'PENDIENTE'          => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+                            'SURTIDA_INVENTARIO' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+                            'PENDIENTE_COMPRA'   => 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+                            'COMPRADA'           => 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+                            'CANCELADA'          => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                            default              => 'bg-slate-100 text-slate-600',
+                        };
+                        $labelEstatus = \App\Models\SolicitudPieza::labelsEstatus()[$solicitud->estatus] ?? $solicitud->estatus;
+                    }
                 @endphp
 
                 <div class="rounded-2xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl
