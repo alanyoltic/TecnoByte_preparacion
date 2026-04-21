@@ -134,9 +134,10 @@ class MiTrabajo extends Component
         return [
             'total'         => $puntos->count(),
             'calidad'       => $puntos->where('rol_en_equipo', PuntoTecnico::COMPLETO)->count(),
-            'piezas'        => $puntos->where('rol_en_equipo', PuntoTecnico::INICIO_PIEZA)->count(),
-            'termino_pieza' => $puntos->where('rol_en_equipo', PuntoTecnico::TERMINO_PIEZA)->count(),
+            'piezas'        => $puntos->where('rol_en_equipo', PuntoTecnico::PIEZA_PENDIENTE)->count(),
+            'termino_pieza' => $puntos->where('rol_en_equipo', PuntoTecnico::PIEZA_INSTALADA)->count(),
             'garantia'      => $puntos->where('rol_en_equipo', PuntoTecnico::GARANTIA)->count(),
+            'despiece'      => $puntos->where('rol_en_equipo', PuntoTecnico::DESPIECE)->count(),
             'puntos'        => round($puntos->sum('puntos_final'), 2),
         ];
     }
@@ -526,7 +527,7 @@ class MiTrabajo extends Component
                     PuntoTecnico::registrar(
                         tecnicoId:          Auth::id(),
                         asignacionEquipoId: $solicitud->asignacion_equipo_id,
-                        rol:                PuntoTecnico::TERMINO_PIEZA,
+                        rol:                PuntoTecnico::PIEZA_INSTALADA,
                         puntosBase:         (float) $solicitud->puntos_override,
                         clasificacionId:    null,
                     );
@@ -902,7 +903,12 @@ class MiTrabajo extends Component
                     ? (\App\Models\ClasificacionPuntos::find($clasificacionId)?->puntos_base ?? 1.0)
                     : 1.0;
 
-                $rol = PuntoTecnico::COMPLETO;
+                $rol = match ($this->camino) {
+                    'PIEZA_PENDIENTE'                      => PuntoTecnico::PIEZA_PENDIENTE,
+                    'GARANTIA_INTERNA', 'GARANTIA_EXTERNA' => PuntoTecnico::GARANTIA,
+                    'DESPIECE'                             => PuntoTecnico::DESPIECE,
+                    default                                => PuntoTecnico::COMPLETO,
+                };
 
                 PuntoTecnico::registrar(
                     tecnicoId: Auth::id(), asignacionEquipoId: $ae->id,

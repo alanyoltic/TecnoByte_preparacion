@@ -85,7 +85,7 @@ class Equipo extends Model
         self::AREA_EN_CALIDAD         => [self::AREA_FINALIZADO],
         self::AREA_FINALIZADO         => [self::AREA_TRANSFERIDO],
         self::AREA_TRANSFERIDO        => [], // Final para preparacion
-        self::AREA_PENDIENTE_PIEZA    => [self::AREA_EN_PROCESO],
+        self::AREA_PENDIENTE_PIEZA    => [self::AREA_EN_PROCESO, self::AREA_EN_CALIDAD],
         self::AREA_PENDIENTE_GARANTIA => [self::AREA_EN_PROCESO],
         self::AREA_PENDIENTE_DESARME  => [self::AREA_EN_PROCESO],
         self::AREA_GARANTIA_INT       => [self::AREA_EN_PROCESO],

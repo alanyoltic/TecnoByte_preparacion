@@ -105,26 +105,30 @@
                     </span>
                     <div class="h-px flex-1 bg-gradient-to-r from-slate-300/70 dark:from-slate-700/70 to-transparent"></div>
                 </div>
-                <div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-3">
                     <div class="text-center">
                         <p class="text-2xl font-bold text-slate-900 dark:text-slate-50">{{ $stats['total'] }}</p>
                         <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Terminados</p>
                     </div>
                     <div class="text-center">
                         <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ $stats['calidad'] }}</p>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">→ Calidad</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Calidad</p>
                     </div>
                     <div class="text-center">
                         <p class="text-2xl font-bold text-amber-600 dark:text-amber-400">{{ $stats['piezas'] }}</p>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">→ Pieza pend.</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Pieza pendiente</p>
                     </div>
                     <div class="text-center">
                         <p class="text-2xl font-bold text-sky-600 dark:text-sky-400">{{ $stats['termino_pieza'] }}</p>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">🔧 Piezas ok</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Piezas correctas</p>
                     </div>
                     <div class="text-center">
                         <p class="text-2xl font-bold text-rose-600 dark:text-rose-400">{{ $stats['garantia'] }}</p>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">→ Garantía</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Garantia</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-2xl font-bold text-slate-600 dark:text-slate-400">{{ $stats['despiece'] }}</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Despiece</p>
                     </div>
                     <div class="text-center">
                         <p class="text-2xl font-bold text-[#FF9521]">{{ $stats['puntos'] }}</p>

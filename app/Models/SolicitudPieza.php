@@ -367,7 +367,7 @@ class SolicitudPieza extends Model
                     PuntoTecnico::registrar(
                         tecnicoId: $tecnicoId,
                         asignacionEquipoId: $this->asignacion_equipo_id,
-                        rol: PuntoTecnico::TERMINO_PIEZA,
+                        rol: PuntoTecnico::PIEZA_INSTALADA,
                         puntosBase: (float) $this->puntos_override,
                         clasificacionId: null,
                     );
