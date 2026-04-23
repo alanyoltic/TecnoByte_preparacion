@@ -2,14 +2,19 @@
 
 namespace App\Livewire\Preparacion\Inventario;
 
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Equipo;
+use App\Models\AsignacionEquipo;
+use App\Models\SolicitudPieza;
+use App\Models\PuntoTecnico;
 use App\Models\Lote;
 use App\Models\Proveedor;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
+#[Layout('layouts.app', ['pageTitle' => 'Inventario listo'])]
 class InventarioListo extends Component
 {
     use WithPagination;
@@ -69,6 +74,56 @@ public function mount()
     private function autorizarVisualizacion(): void
     {
         abort_unless(auth()->user()?->tienePermiso('prep.inventario.ver'), 403);
+    }
+
+    public function validarCalidad(int $equipoId): void
+    {
+        abort_unless(auth()->user()?->tienePermiso('prep.inventario.ver'), 403);
+
+        $equipo = Equipo::find($equipoId);
+        if (!$equipo || $equipo->estatus_area !== Equipo::AREA_EN_CALIDAD) {
+            $this->dispatch('toast', type: 'error', message: 'El equipo no está en calidad.');
+            return;
+        }
+
+        DB::transaction(function () use ($equipo) {
+            $ae = AsignacionEquipo::where('equipo_id', $equipo->id)
+                ->where('camino', AsignacionEquipo::EN_CALIDAD)
+                ->latest('fin_en')
+                ->first();
+
+            if ($ae) {
+                $ae->update(['camino' => AsignacionEquipo::COMPLETADO]);
+
+                // Si vino de ruta de pieza: buscar solicitud confirmada y registrar puntos ahora
+                $solicitud = SolicitudPieza::where('asignacion_equipo_id', $ae->id)
+                    ->where('estatus', SolicitudPieza::CONFIRMADA)
+                    ->where('funciono', true)
+                    ->latest('confirmada_en')
+                    ->first();
+
+                if ($solicitud) {
+                    $intento    = $solicitud->intentoActual;
+                    $puntosBase = (float) ($intento?->puntos_override ?? $solicitud->puntos_override ?? 0);
+                    $tecnicoId  = $solicitud->reasignado_a_id ?? $solicitud->solicitado_por_id;
+
+                    if ($puntosBase > 0 && $tecnicoId) {
+                        PuntoTecnico::registrar(
+                            tecnicoId:          $tecnicoId,
+                            asignacionEquipoId: $ae->id,
+                            rol:                PuntoTecnico::PIEZA_INSTALADA,
+                            puntosBase:         $puntosBase,
+                            clasificacionId:    null,
+                        );
+                    }
+                }
+            }
+
+            $equipo->update(['estatus_area' => Equipo::AREA_FINALIZADO]);
+        });
+
+        $this->calcularStats();
+        $this->dispatch('toast', type: 'success', message: 'Equipo validado. Listo para ventas.');
     }
 
 

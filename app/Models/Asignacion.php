@@ -88,7 +88,9 @@ class Asignacion extends Model
 
     public function equiposCompletados(): int
     {
-        return $this->equipos()->where('camino', AsignacionEquipo::COMPLETADO)->count();
+        return $this->equipos()
+            ->whereIn('camino', [AsignacionEquipo::COMPLETADO, AsignacionEquipo::EN_CALIDAD])
+            ->count();
     }
 
     public function estaActiva(): bool

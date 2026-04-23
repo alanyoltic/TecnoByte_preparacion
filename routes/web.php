@@ -3,10 +3,8 @@
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Auth\RegisteredUserController;
-use App\Http\Controllers\LoteController;
 use App\Http\Controllers\AfterLoginRedirectController;
 use App\Livewire\Preparacion\Equipos\MiTrabajo;
 use App\Livewire\Preparacion\Equipos\Asignaciones;
@@ -16,6 +14,7 @@ use App\Livewire\Preparacion\Equipos\EditarEquipo;
 use App\Livewire\Preparacion\Equipos\RegistrarEquipo;
 use App\Livewire\Preparacion\Inventario\GestionInventario;
 use App\Livewire\Preparacion\Inventario\InventarioListo;
+use App\Livewire\Preparacion\Inventario\ResumenInventario;
 use App\Livewire\Preparacion\Inventario\Transferencias;
 use App\Livewire\Preparacion\Inventario\TransferenciasCrear;
 use App\Livewire\Preparacion\Lotes\EditarLote;
@@ -23,10 +22,10 @@ use App\Livewire\Preparacion\Lotes\ListaLotes;
 use App\Livewire\Preparacion\Lotes\RegistrarLote;
 use App\Livewire\Inventario\SolicitudesPiezas;
 use App\Livewire\Inventario\GestionSolicitudesPiezas;
+use App\Livewire\Dashboard\Dashboard;
 
 
 use App\Models\Equipo;
-use App\Models\Lote;
 
 
 /*
@@ -104,19 +103,19 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
 
     Route::prefix('inventario')->group(function () {
 
-        Route::get('/listo', fn () => view('preparacion.inventario.listo'))
+        Route::get('/listo', InventarioListo::class)
             ->middleware('permiso:prep.inventario.ver')
             ->name('inventario.listo');
 
-        Route::get('/gestion', fn () => view('preparacion.inventario.gestion-inventario'))
+        Route::get('/gestion', GestionInventario::class)
             ->middleware('permiso:prep.inventario.gestion')
             ->name('inventario.gestion');
 
-        Route::get('/transferencias', fn () => view('preparacion.inventario.transferencias'))
+        Route::get('/transferencias', Transferencias::class)
             ->middleware('permiso:prep.transferencias.ver')
             ->name('inventario.transferencias');
-            
-        Route::get('/transferencias/crear', fn () => view('preparacion.inventario.transferencias-crear'))
+
+        Route::get('/transferencias/crear', TransferenciasCrear::class)
             ->middleware('permiso:prep.transferencias.crear')
             ->name('inventario.prep.transferencias.crear');
 
@@ -133,25 +132,17 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
 
     Route::prefix('equipos')->group(function () {
 
-        Route::get('/registrar', fn () => view('preparacion.equipos.registrar'))
+        Route::get('/registrar', RegistrarEquipo::class)
             ->middleware('permiso:prep.equipos.crear')
             ->name('equipos.create');
 
-        Route::view('/caracteristicas', 'preparacion.inventario.resumen')
+        Route::get('/caracteristicas', ResumenInventario::class)
             ->middleware('permiso:prep.equipos.ver')
             ->name('equipos.caracteristicas');
 
-        Route::get('/{equipo}/editar', function (Equipo $equipo) {
-
-            $equipo->load([
-                'movimientos.desde',
-                'movimientos.hacia'
-            ]);
-
-            return view('preparacion.equipos.editar-equipo', compact('equipo'));
-
-        })->middleware('permiso:prep.equipos.editar')
-          ->name('equipos.editar');
+        Route::get('/{equipo}/editar', EditarEquipo::class)
+            ->middleware('permiso:prep.equipos.editar')
+            ->name('equipos.editar');
     });
 
 
@@ -163,18 +154,17 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
 
     Route::prefix('lotes')->group(function () {
 
-        Route::get('/registrar', [LoteController::class, 'registrar'])
+        Route::get('/registrar', RegistrarLote::class)
             ->middleware('permiso:prep.lotes.gestion')
             ->name('lotes.registrar');
 
-        Route::get('/editar', fn () => view('preparacion.lotes.listalotes'))
+        Route::get('/editar', ListaLotes::class)
             ->middleware('permiso:prep.lotes.ver')
             ->name('lotes.editar');
 
-        Route::get('/{lote}/editar', function (Lote $lote) {
-            return view('preparacion.lotes.editarlote', compact('lote'));
-        })->middleware('permiso:prep.lotes.gestion')
-          ->name('lotes.edit');
+        Route::get('/{lote}/editar', EditarLote::class)
+            ->middleware('permiso:prep.lotes.gestion')
+            ->name('lotes.edit');
     });
 
     
@@ -196,7 +186,7 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::get('/preparacion/dashboard', [DashboardController::class, 'index'])
+    Route::get('/preparacion/dashboard', Dashboard::class)
         ->middleware('permiso:modulo.preparacion')
         ->name('preparacion.dashboard');
 

@@ -1,4 +1,34 @@
-<div
+<div>
+<x-tb-background>
+    <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10 space-y-6">
+
+        <x-toast />
+
+        <x-topbar
+            title="Editar equipo #{{ $equipo->id }}"
+            chip="Inventario · Edición"
+        >
+            <x-slot name="desc">
+                <div>
+                    {{ $equipo->marca }} {{ $equipo->modelo }}
+                    @if($equipo->numero_serie)
+                        · N/S: {{ $equipo->numero_serie }}
+                    @endif
+                </div>
+            </x-slot>
+            <x-slot name="right">
+                @if($equipo->estatus_area)
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full
+                                 text-[0.7rem] font-semibold tracking-wide
+                                 bg-emerald-500/10 text-emerald-400
+                                 border border-emerald-500/40">
+                        {{ $equipo->estatus_area }}
+                    </span>
+                @endif
+            </x-slot>
+        </x-topbar>
+
+        <div
     class="bg-white/80 dark:bg-slate-950/60
            border border-slate-200/80 dark:border-white/10
            backdrop-blur-xl dark:backdrop-blur-2xl
@@ -6,10 +36,7 @@
            shadow-md shadow-slate-900/10
            dark:shadow-lg dark:shadow-slate-900/30
            px-4 py-5 sm:px-6 sm:py-6
-           transition-all duration-300 ease-out
-           hover:-translate-y-1
-           hover:shadow-lg hover:shadow-indigo-500/20
-           dark:hover:shadow-2xl dark:hover:shadow-indigo-500/25"
+           transition-all duration-300 ease-out"
     wire:key="editar-equipo-{{ $equipo_id ?? 'na' }}"
 >
     {{-- Título principal --}}
@@ -268,4 +295,9 @@
         </div>
     </template>
 
+</div>
+        </div>
+
+    </div>
+</x-tb-background>
 </div>

@@ -39,6 +39,9 @@ class Asignaciones extends Component
     public array $seleccion = [];
     // seleccion = [ lote_modelo_id => cantidad, ... ]
 
+    // Series específicas opcionales: [ lote_modelo_id => [serie1, serie2, ...] ]
+    public array $seriesAsignadas = [];
+
     public string $notas = '';
     public string $error = '';
 
@@ -146,7 +149,7 @@ class Asignaciones extends Component
         return [
             'tecnicos_activos'   => $asigs->pluck('tecnico_id')->unique()->count(),
             'equipos_asignados'  => $asigs->sum('cantidad'),
-            'completados_hoy'    => AsignacionEquipo::where('camino', 'COMPLETADO')
+            'completados_hoy'    => AsignacionEquipo::whereIn('camino', ['COMPLETADO', 'EN_CALIDAD'])
                                         ->whereDate('fin_en', today())
                                         ->count(),
             'piezas_pendientes'  => AsignacionEquipo::where('camino', 'PIEZA_PENDIENTE')->count(),
@@ -195,13 +198,15 @@ class Asignaciones extends Component
     public function irANuevaAsignacion(): void
     {
         $this->vista = 'nueva';
-        $this->reset(['tecnicoId', 'seleccion', 'notas', 'error', 'busquedaTecnico', 'busquedaLote']);
+        $this->reset(['tecnicoId', 'seleccion', 'seriesAsignadas', 'notas', 'error', 'busquedaTecnico', 'busquedaLote']);
+        unset($this->equiposSinAsignarPorModelo);
     }
 
     public function volverDesdeNueva(): void
     {
         $this->vista = 'panel';
-        $this->reset(['tecnicoId', 'seleccion', 'notas', 'error', 'busquedaTecnico', 'busquedaLote']);
+        $this->reset(['tecnicoId', 'seleccion', 'seriesAsignadas', 'notas', 'error', 'busquedaTecnico', 'busquedaLote']);
+        unset($this->equiposSinAsignarPorModelo);
     }
 
     // ── Seleccionar/deseleccionar técnico ─────────────────────────────────
@@ -211,13 +216,41 @@ class Asignaciones extends Component
         $this->error = '';
     }
 
+    // ── Equipos SIN_ASIGNAR disponibles para pre-asignar (por modelo) ──────
+    #[Computed]
+    public function equiposSinAsignarPorModelo(): \Illuminate\Support\Collection
+    {
+        $ids = array_keys($this->seleccion ?: []);
+        if (empty($ids)) return collect();
+
+        return \App\Models\Equipo::whereIn('lote_modelo_id', $ids)
+            ->where('estatus_area', \App\Models\Equipo::AREA_SIN_ASIGNAR)
+            ->get(['id', 'numero_serie', 'lote_modelo_id'])
+            ->groupBy('lote_modelo_id');
+    }
+
     // ── Actualizar cantidad de un modelo ──────────────────────────────────
     public function actualizarCantidad(int $loteModeloId, int $cantidad): void
     {
         if ($cantidad <= 0) {
             unset($this->seleccion[$loteModeloId]);
+            unset($this->seriesAsignadas[$loteModeloId]);
         } else {
             $this->seleccion[$loteModeloId] = $cantidad;
+        }
+        unset($this->equiposSinAsignarPorModelo);
+    }
+
+    // ── Toggle serie específica para un modelo ────────────────────────────
+    public function toggleSerie(int $loteModeloId, string $serie): void
+    {
+        $actuales = $this->seriesAsignadas[$loteModeloId] ?? [];
+        $cantidad = $this->seleccion[$loteModeloId] ?? 0;
+
+        if (in_array($serie, $actuales, true)) {
+            $this->seriesAsignadas[$loteModeloId] = array_values(array_diff($actuales, [$serie]));
+        } elseif (count($actuales) < $cantidad) {
+            $this->seriesAsignadas[$loteModeloId][] = $serie;
         }
     }
 
@@ -255,17 +288,63 @@ class Asignaciones extends Component
             }
         }
 
-        foreach ($this->seleccion as $loteModeloId => $cantidad) {
-            Asignacion::create([
-                'tecnico_id'      => $this->tecnicoId,
-                'asignado_por_id' => Auth::id(),
-                'lote_modelo_id'  => $loteModeloId,
-                'cantidad'        => $cantidad,
-                'fecha_asignacion'=> Carbon::today(),
-                'estatus'         => Asignacion::PENDIENTE,
-                'notas'           => $this->notas ?: null,
-            ]);
-        }
+        DB::transaction(function () {
+            foreach ($this->seleccion as $loteModeloId => $cantidad) {
+                $asignacion = Asignacion::create([
+                    'tecnico_id'      => $this->tecnicoId,
+                    'asignado_por_id' => Auth::id(),
+                    'lote_modelo_id'  => $loteModeloId,
+                    'cantidad'        => $cantidad,
+                    'fecha_asignacion'=> Carbon::today(),
+                    'estatus'         => Asignacion::PENDIENTE,
+                    'notas'           => $this->notas ?: null,
+                ]);
+
+                // Pre-asignar series con número de serie conocido
+                $seriesElegidas = array_filter($this->seriesAsignadas[$loteModeloId] ?? []);
+
+                // Primero las series que el gerente eligió manualmente
+                $asignadas = 0;
+                if (!empty($seriesElegidas)) {
+                    $equipos = \App\Models\Equipo::whereIn('numero_serie', $seriesElegidas)
+                        ->where('lote_modelo_id', $loteModeloId)
+                        ->where('estatus_area', \App\Models\Equipo::AREA_SIN_ASIGNAR)
+                        ->get();
+
+                    foreach ($equipos as $equipo) {
+                        AsignacionEquipo::create([
+                            'asignacion_id' => $asignacion->id,
+                            'equipo_id'     => $equipo->id,
+                            'camino'        => AsignacionEquipo::PRE_ASIGNADO,
+                            'pre_asignado'  => true,
+                        ]);
+                        $equipo->update(['estatus_area' => \App\Models\Equipo::AREA_ASIGNADO]);
+                        $asignadas++;
+                    }
+                }
+
+                // Luego auto-asignar aleatoriamente los slots restantes
+                $restantes = $cantidad - $asignadas;
+                if ($restantes > 0) {
+                    $equiposAuto = \App\Models\Equipo::where('lote_modelo_id', $loteModeloId)
+                        ->where('estatus_area', \App\Models\Equipo::AREA_SIN_ASIGNAR)
+                        ->whereNotIn('numero_serie', $seriesElegidas)
+                        ->inRandomOrder()
+                        ->limit($restantes)
+                        ->get();
+
+                    foreach ($equiposAuto as $equipo) {
+                        AsignacionEquipo::create([
+                            'asignacion_id' => $asignacion->id,
+                            'equipo_id'     => $equipo->id,
+                            'camino'        => AsignacionEquipo::PRE_ASIGNADO,
+                            'pre_asignado'  => true,
+                        ]);
+                        $equipo->update(['estatus_area' => \App\Models\Equipo::AREA_ASIGNADO]);
+                    }
+                }
+            }
+        });
 
         $this->dispatch('toast', [
             'type'    => 'success',
@@ -285,8 +364,12 @@ class Asignaciones extends Component
 
         if (!$asignacion) return;
 
-        // Verificar que no tenga equipos escaneados
-        if ($asignacion->equipos->count() > 0) {
+        // Solo cancelable si no hay equipos ya iniciados (EN_PROCESO o más)
+        $iniciados = $asignacion->equipos->filter(
+            fn($ae) => !in_array($ae->camino, [AsignacionEquipo::PENDIENTE, AsignacionEquipo::PRE_ASIGNADO])
+        )->count();
+
+        if ($iniciados > 0) {
             $this->dispatch('toast', [
                 'type'    => 'error',
                 'title'   => 'No se puede cancelar',
@@ -316,12 +399,15 @@ class Asignaciones extends Component
             return;
         }
 
-        $asignacion = Asignacion::with('equipos')->find($this->cancelarAsignacionId);
+        $asignacion = Asignacion::with('equipos.equipo')->find($this->cancelarAsignacionId);
 
         if (!$asignacion) return;
 
-        // Doble verificación
-        if ($asignacion->equipos->count() > 0) {
+        $iniciados = $asignacion->equipos->filter(
+            fn($ae) => $ae->camino !== AsignacionEquipo::PENDIENTE
+        )->count();
+
+        if ($iniciados > 0) {
             $this->dispatch('toast', [
                 'type'    => 'error',
                 'title'   => 'No se puede cancelar',
@@ -331,10 +417,18 @@ class Asignaciones extends Component
             return;
         }
 
-        $asignacion->update([
-            'estatus'        => Asignacion::CANCELADO,
-            'notas_entrega'  => 'CANCELADA — Motivo: ' . trim($this->motivoCancelacion),
-        ]);
+        DB::transaction(function () use ($asignacion) {
+            // Liberar equipos PENDIENTE de vuelta a SIN_ASIGNAR
+            foreach ($asignacion->equipos->where('camino', AsignacionEquipo::PENDIENTE) as $ae) {
+                $ae->equipo?->update(['estatus_area' => \App\Models\Equipo::AREA_SIN_ASIGNAR]);
+                $ae->delete();
+            }
+
+            $asignacion->update([
+                'estatus'       => Asignacion::CANCELADO,
+                'notas_entrega' => 'CANCELADA — Motivo: ' . trim($this->motivoCancelacion),
+            ]);
+        });
 
         $this->dispatch('toast', [
             'type'    => 'success',

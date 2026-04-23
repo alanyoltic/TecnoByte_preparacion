@@ -1,4 +1,16 @@
-<div class="space-y-6">
+<div>
+<x-tb-background>
+    <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10 space-y-6">
+
+        <x-toast />
+
+        <x-topbar
+            title="Gestión avanzada de inventario"
+            chip="Inventario · Gestión"
+            description="Filtra, revisa y prepara lotes completos para reportes, ajustes masivos y descargas."
+        />
+
+        <div class="space-y-6">
 
 
 
@@ -960,3 +972,9 @@
     
 </div>
 
+
+        </div>
+
+    </div>
+</x-tb-background>
+</div>

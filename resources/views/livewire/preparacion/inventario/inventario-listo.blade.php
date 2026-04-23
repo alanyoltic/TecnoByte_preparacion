@@ -1,8 +1,17 @@
-<div class="space-y-6 relative">
+<div>
+<x-tb-background>
+    <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10 space-y-6">
 
-   
+        <x-topbar
+            title="Inventario listo"
+            chip="Inventario · Equipos registrados"
+            description="Consulta y filtra los equipos capturados en el sistema."
+        />
+
+        <div class="space-y-6 relative">
+
     <x-toast />
-    
+
 
 
 
@@ -1061,3 +1070,9 @@ function imprimirEtiquetaFinal(id) {
 
 
 
+
+        </div>
+
+    </div>
+</x-tb-background>
+</div>

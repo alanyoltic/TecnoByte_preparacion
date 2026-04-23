@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Dashboard;
 
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use App\Models\Equipo;
 use App\Models\User;
@@ -12,6 +13,7 @@ use App\Models\Aviso;
 use App\Models\EmpleadoDelMes;
 use App\Models\MetaTecnico;
 
+#[Layout('layouts.app', ['pageTitle' => 'Dashboard'])]
 class Dashboard extends Component
 {
 
@@ -336,7 +338,7 @@ private function calcularCambio($actual, $anterior)
             return (int) DB::table('asignacion_equipos')
                 ->join('asignaciones', 'asignacion_equipos.asignacion_id', '=', 'asignaciones.id')
                 ->where('asignaciones.tecnico_id', $tecnicoIdPersonal)
-                ->where('asignacion_equipos.camino', 'COMPLETADO')
+                ->whereIn('asignacion_equipos.camino', ['COMPLETADO', 'EN_CALIDAD'])
                 ->whereBetween('asignacion_equipos.fin_en', [$start, $end])
                 ->count();
         };

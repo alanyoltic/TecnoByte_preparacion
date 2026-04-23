@@ -49,6 +49,9 @@ class SolicitudesPiezas extends Component
                 'solicitadoPor',
                 'asignacionEquipo.equipo',
                 'equipo',
+                'intentos.asignadoA',
+                'intentos.inventarioPieza.almacen',
+                'intentos.asignadoPor',
             ])
             ->where(function ($q) use ($authId) {
                 $q->where('solicitado_por_id', $authId)
@@ -67,6 +70,7 @@ class SolicitudesPiezas extends Component
                                                                         ->whereColumn('reasignado_a_id', '!=', 'solicitado_por_id')
                                                                         ->where('solicitado_por_id', $authId))
                                         ),
+                    'REQUIERE_REASIGNACION' => $q->where('estatus', SolicitudPieza::REQUIERE_REASIGNACION),
                     // Standard status filter (for lider tabs and tecnico PENDIENTE/SURTIDA_INVENTARIO)
                     default           => $q->where('estatus', $this->filtroEstatus)
                                            ->when(
@@ -95,7 +99,7 @@ class SolicitudesPiezas extends Component
                     });
                 });
             })
-            ->orderByRaw("FIELD(estatus, 'SURTIDA_INVENTARIO', 'COMPRADA', 'PENDIENTE', 'PENDIENTE_COMPRA', 'CONFIRMADA', 'CANCELADA')")
+            ->orderByRaw("FIELD(estatus, 'SURTIDA_INVENTARIO', 'COMPRADA', 'PENDIENTE', 'REQUIERE_REASIGNACION', 'PENDIENTE_COMPRA', 'CONFIRMADA', 'CANCELADA')")
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
@@ -120,14 +124,15 @@ class SolicitudesPiezas extends Component
 
         $contadores = [
             // Tecnico
-            'por_confirmar'  => (clone $baseSinDel)->where('estatus', SolicitudPieza::PENDIENTE)->count(),
-            'restock'        => (clone $baseSinDel)->whereIn('estatus', [SolicitudPieza::PENDIENTE_COMPRA, SolicitudPieza::COMPRADA])->count(),
-            'lista'          => (clone $baseSinDel)->where('estatus', SolicitudPieza::SURTIDA_INVENTARIO)->count(),
-            'en_calidad'     => (clone $base)->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', true)->count(),
-            'finalizado_tec' => (clone $base)->where(fn ($q) =>
-                                    $q->where('estatus', SolicitudPieza::CANCELADA)
-                                      ->orWhere(fn ($q2) => $q2->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', false))
-                                )->count() + $delegadasCount,
+            'por_confirmar'      => (clone $baseSinDel)->where('estatus', SolicitudPieza::PENDIENTE)->count(),
+            'restock'            => (clone $baseSinDel)->whereIn('estatus', [SolicitudPieza::PENDIENTE_COMPRA, SolicitudPieza::COMPRADA])->count(),
+            'lista'              => (clone $baseSinDel)->where('estatus', SolicitudPieza::SURTIDA_INVENTARIO)->count(),
+            'en_calidad'         => (clone $base)->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', true)->count(),
+            'reasignacion'       => (clone $base)->where('estatus', SolicitudPieza::REQUIERE_REASIGNACION)->count(),
+            'finalizado_tec'     => (clone $base)->where(fn ($q) =>
+                                        $q->where('estatus', SolicitudPieza::CANCELADA)
+                                          ->orWhere(fn ($q2) => $q2->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', false))
+                                    )->count() + $delegadasCount,
             // Lider (old tabs)
             'pendientes'        => (clone $base)->where('estatus', SolicitudPieza::PENDIENTE)->count(),
             'surtidas'          => (clone $base)->where('estatus', SolicitudPieza::SURTIDA_INVENTARIO)->count(),
@@ -247,7 +252,7 @@ class SolicitudesPiezas extends Component
 
             $this->dispatch('toast', type: 'success', message: $funciono
                 ? 'Instalacion confirmada. El equipo volvio al flujo de calidad.'
-                : 'Se registro la falla de la pieza y se genero una nueva solicitud.'
+                : 'Se registro la falla. El gerente asignara una nueva pieza para reintentar.'
             );
 
             $this->cerrarModal();

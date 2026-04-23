@@ -1,4 +1,16 @@
-<div class="space-y-6">
+<div>
+<x-tb-background>
+    <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10 space-y-6">
+
+        <x-toast />
+
+        <x-topbar
+            title="Resumen de inventario"
+            chip="Preparación · Entrada"
+            description="Captura de equipos que ingresan a preparación."
+        />
+
+        <div class="space-y-6">
 
 
 
@@ -919,3 +931,8 @@
 </div>
 
 @endif
+
+        </div>
+    </div>
+</x-tb-background>
+</div>

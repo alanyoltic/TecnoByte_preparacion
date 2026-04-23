@@ -17,6 +17,7 @@ class AsignacionEquipo extends Model
         'fin_en',
         'camino',
         'notas',
+        'pre_asignado',
     ];
 
     protected $casts = [
@@ -25,7 +26,10 @@ class AsignacionEquipo extends Model
     ];
 
     // ── Constantes de camino ──────────────────────────────────────────────
+    const PENDIENTE        = 'PENDIENTE';
+    const PRE_ASIGNADO     = 'PRE_ASIGNADO';
     const EN_PROCESO       = 'EN_PROCESO';
+    const EN_CALIDAD       = 'EN_CALIDAD';
     const COMPLETADO       = 'COMPLETADO';
     const PIEZA_PENDIENTE  = 'PIEZA_PENDIENTE';
     const GARANTIA_INTERNA = 'GARANTIA_INTERNA';
@@ -81,13 +85,22 @@ class AsignacionEquipo extends Model
     /** Si el técnico ya terminó con este equipo (bien o mal) */
     public function estaTerminado(): bool
     {
-        return $this->camino !== self::EN_PROCESO && $this->fin_en !== null;
+        return !in_array($this->camino, [self::PENDIENTE, self::PRE_ASIGNADO, self::EN_PROCESO]) && $this->fin_en !== null;
+    }
+
+    /** Si el equipo está activo (trabajándose o por iniciar) */
+    public function estaActivo(): bool
+    {
+        return in_array($this->camino, [self::PENDIENTE, self::PRE_ASIGNADO, self::EN_PROCESO]);
     }
 
     public static function labelsCamino(): array
     {
         return [
+            self::PENDIENTE        => 'Por iniciar',
+            self::PRE_ASIGNADO     => 'Pre-asignado',
             self::EN_PROCESO       => 'En Proceso',
+            self::EN_CALIDAD       => 'En Calidad',
             self::COMPLETADO       => 'Completado',
             self::PIEZA_PENDIENTE  => 'Pieza Pendiente',
             self::GARANTIA_INTERNA => 'Garantía Interna',

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Preparacion\Inventario;
 
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use App\Models\Almacen;
 use App\Models\Transferencia;
@@ -10,6 +11,7 @@ use App\Models\Consumible;
 use App\Models\InventarioConsumible;
 use Illuminate\Support\Facades\DB;
 
+#[Layout('layouts.app', ['pageTitle' => 'Nueva transferencia'])]
 class TransferenciasCrear extends Component
 {
     public $almacenesOrigen  = [];

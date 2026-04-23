@@ -10,12 +10,13 @@ use App\Models\Proveedor;
 use App\Models\Roles;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Livewire\Component; 
+use Livewire\Attributes\Layout;
+use Livewire\Component;
 use App\Models\EquipoEliminacion;
 use Livewire\WithPagination;
 use App\Exports\ReportePreparacionPlaneacionExport;
 
-
+#[Layout('layouts.app', ['pageTitle' => 'Gestión de inventario'])]
 class GestionInventario extends Component
 {
     use WithPagination;

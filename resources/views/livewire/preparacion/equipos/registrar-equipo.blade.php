@@ -1,17 +1,26 @@
 
-<div
-        class="bg-white/80 dark:bg-slate-950/60
-            border border-slate-200/80 dark:border-white/10
-            backdrop-blur-xl dark:backdrop-blur-2xl
-            rounded-2xl
-            shadow-md shadow-slate-900/10
-            dark:shadow-lg dark:shadow-slate-900/30
-            px-4 py-5 sm:px-6 sm:py-6
-            transition-all duration-300 ease-out
-            hover:-translate-y-1
-            hover:shadow-lg hover:shadow-indigo-500/20
-            dark:hover:shadow-2xl dark:hover:shadow-indigo-500/25"
-    >
+<div>
+<x-tb-background>
+    <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10 space-y-6">
+
+        <x-toast />
+
+        <x-topbar
+            title="Registrar equipo"
+            chip="Preparación · Entrada"
+            description="Captura los datos del equipo que ingresa a preparación."
+        />
+
+        <div
+                class="bg-white/80 dark:bg-slate-950/60
+                    border border-slate-200/80 dark:border-white/10
+                    backdrop-blur-xl dark:backdrop-blur-2xl
+                    rounded-2xl
+                    shadow-md shadow-slate-900/10
+                    dark:shadow-lg dark:shadow-slate-900/30
+                    px-4 py-5 sm:px-6 sm:py-6
+                    transition-all duration-300 ease-out"
+            >
 
 
 
@@ -65,3 +74,7 @@
 
         </form>
     </div>
+
+    </div>
+</x-tb-background>
+</div>

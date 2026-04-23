@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Preparacion\Equipos;
 
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use App\Livewire\Concerns\EquipoPortMaps;
 use App\Livewire\Preparacion\Forms\EquipoForm;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
+#[Layout('layouts.app', ['pageTitle' => 'Editar equipo'])]
 class EditarEquipo extends Component
 {
     public Equipo $equipo;
@@ -93,7 +95,9 @@ public $almacenesDisponibles = [];
 
     public function mount(Equipo $equipo): void
     {
-    $this->autorizarEdicion();
+        $equipo->load(['movimientos.desde', 'movimientos.hacia']);
+
+        $this->autorizarEdicion();
 
     $this->almacenesDisponibles = \App\Models\Almacen::where('activo', 1)
     ->orderBy('nombre')

@@ -4,6 +4,7 @@ namespace App\Livewire\Preparacion\Lotes;
 
 use App\Models\Almacen;
 use App\Models\Equipo;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,7 @@ use App\Models\Proveedor;
 use App\Models\LoteModeloRecibido;
 use App\Models\ClasificacionPuntos;
 
+#[Layout('layouts.app', ['pageTitle' => 'Editar lote'])]
 class EditarLote extends Component
 {
     public int $loteId;
@@ -31,11 +33,11 @@ class EditarLote extends Component
     public bool $modalSeries   = false;
     public int  $serialesIndex = -1;
 
-    public function mount($loteId)
+    public function mount(Lote $lote)
     {
         abort_unless(auth()->user()?->tienePermiso('prep.lotes.gestion'), 403);
 
-        $this->loteId = (int) $loteId;
+        $this->loteId = $lote->id;
 
         $this->proveedores = Proveedor::orderBy('abreviacion')->get();
 
@@ -170,7 +172,7 @@ class EditarLote extends Component
         if (!$modeloId) return [];
 
         return Equipo::where('lote_modelo_id', $modeloId)
-            ->where('estatus_area', Equipo::AREA_EN_ESPERA)
+            ->where('estatus_area', Equipo::AREA_SIN_ASIGNAR)
             ->pluck('numero_serie')
             ->toArray();
     }
@@ -282,7 +284,7 @@ class EditarLote extends Component
                         'marca'                  => $m['marca'],
                         'modelo'                 => $m['modelo'],
                         'estatus_ciclo'          => 'PREPARACION',
-                        'estatus_area'           => 'EN_ESPERA',
+                        'estatus_area'           => 'SIN_ASIGNAR',
                         'registrado_por_user_id' => Auth::id(),
                         'proveedor_id'           => $lote->proveedor_id,
                         'almacen_id'             => Almacen::PREPARACION,

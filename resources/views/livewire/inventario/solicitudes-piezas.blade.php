@@ -14,15 +14,16 @@
         @if($esTecnico)
 
             {{-- TABS PARA TECNICO --}}
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
                 @php
                     $tabs = [
-                        ['key' => 'PENDIENTE',       'label' => 'Por confirmar',              'count' => $contadores['por_confirmar'],  'active' => 'bg-yellow-500 text-white shadow-yellow-500/30'],
-                        ['key' => 'POR_RESTOCK',     'label' => 'Pendientes por restock',     'count' => $contadores['restock'],        'active' => 'bg-orange-500 text-white shadow-orange-500/30'],
-                        ['key' => 'SURTIDA_INVENTARIO', 'label' => 'Listas para instalar',   'count' => $contadores['lista'],          'active' => 'bg-blue-500 text-white shadow-blue-500/30'],
-                        ['key' => 'EN_CALIDAD',      'label' => 'En calidad',                 'count' => $contadores['en_calidad'],     'active' => 'bg-emerald-500 text-white shadow-emerald-500/30'],
-                        ['key' => 'FINALIZADO_TEC',  'label' => 'Finalizadas',                'count' => $contadores['finalizado_tec'], 'active' => 'bg-slate-600 text-white'],
-                        ['key' => 'TODAS',           'label' => 'Todas',                      'count' => $contadores['todas'],          'active' => 'bg-slate-700 text-white'],
+                        ['key' => 'PENDIENTE',              'label' => 'Por confirmar',          'count' => $contadores['por_confirmar'],  'active' => 'bg-yellow-500 text-white shadow-yellow-500/30'],
+                        ['key' => 'POR_RESTOCK',            'label' => 'Pend. por restock',      'count' => $contadores['restock'],        'active' => 'bg-orange-500 text-white shadow-orange-500/30'],
+                        ['key' => 'SURTIDA_INVENTARIO',     'label' => 'Listas para instalar',   'count' => $contadores['lista'],          'active' => 'bg-blue-500 text-white shadow-blue-500/30'],
+                        ['key' => 'REQUIERE_REASIGNACION',  'label' => 'Pieza fallida',          'count' => $contadores['reasignacion'],   'active' => 'bg-rose-500 text-white shadow-rose-500/30'],
+                        ['key' => 'EN_CALIDAD',             'label' => 'En calidad',             'count' => $contadores['en_calidad'],     'active' => 'bg-emerald-500 text-white shadow-emerald-500/30'],
+                        ['key' => 'FINALIZADO_TEC',         'label' => 'Finalizadas',            'count' => $contadores['finalizado_tec'], 'active' => 'bg-slate-600 text-white'],
+                        ['key' => 'TODAS',                  'label' => 'Todas',                  'count' => $contadores['todas'],          'active' => 'bg-slate-700 text-white'],
                     ];
                 @endphp
                 @foreach($tabs as $tab)
@@ -99,14 +100,16 @@
                     } elseif ($solicitud->estatus === 'CONFIRMADA' && $solicitud->funciono) {
                         $badge = ['label' => 'En calidad', 'class' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'];
                     } else {
+                        $intentoNum = $solicitud->intentos->count();
                         $badge = match($solicitud->estatus) {
-                            'PENDIENTE'          => ['label' => $esTecnico ? 'Por confirmar'        : 'En revision',         'class' => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'],
-                            'PENDIENTE_COMPRA'   => ['label' => $esTecnico ? 'Pendiente por restock' : 'Pendiente de compra', 'class' => 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'],
-                            'COMPRADA'           => ['label' => $esTecnico ? 'Pendiente por restock' : 'Comprada',            'class' => 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'],
-                            'SURTIDA_INVENTARIO' => ['label' => $fueIniciada ? 'En instalacion'     : 'Lista para instalar',  'class' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'],
-                            'CONFIRMADA'         => ['label' => 'Finalizada',                                                  'class' => 'bg-slate-200 text-slate-600 dark:bg-slate-700/80 dark:text-slate-300'],
-                            'CANCELADA'          => ['label' => 'Cancelada',                                                   'class' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'],
-                            default              => ['label' => $solicitud->estatus,                                           'class' => 'bg-slate-100 text-slate-600'],
+                            'PENDIENTE'              => ['label' => $esTecnico ? 'Por confirmar'        : 'En revision',         'class' => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'],
+                            'PENDIENTE_COMPRA'       => ['label' => $esTecnico ? 'Pendiente por restock' : 'Pendiente de compra', 'class' => 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'],
+                            'COMPRADA'               => ['label' => $esTecnico ? 'Pendiente por restock' : 'Comprada',            'class' => 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'],
+                            'SURTIDA_INVENTARIO'     => ['label' => $fueIniciada ? 'En instalacion'     : 'Lista para instalar',  'class' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'],
+                            'CONFIRMADA'             => ['label' => 'Finalizada',                                                  'class' => 'bg-slate-200 text-slate-600 dark:bg-slate-700/80 dark:text-slate-300'],
+                            'CANCELADA'              => ['label' => 'Cancelada',                                                   'class' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'],
+                            'REQUIERE_REASIGNACION'  => ['label' => 'Pieza fallida' . ($intentoNum > 0 ? " (intento {$intentoNum})" : ''), 'class' => 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'],
+                            default                  => ['label' => $solicitud->estatus,                                           'class' => 'bg-slate-100 text-slate-600'],
                         };
                     }
                 @endphp
@@ -204,6 +207,55 @@
                                                 &mdash; {{ $solicitud->inventarioPieza->almacen->nombre }}
                                             @endif
                                         </p>
+                                    </div>
+                                @endif
+
+                                {{-- Historial de intentos --}}
+                                @if($solicitud->intentos->count() > 0)
+                                    <div class="space-y-1.5">
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Historial de intentos</p>
+                                        @foreach($solicitud->intentos as $intento)
+                                            @php
+                                                if (!$intento->estaCompletado()) {
+                                                    $intentoBadge = ['label' => 'En instalacion', 'class' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'];
+                                                } elseif ($intento->funciono) {
+                                                    $intentoBadge = ['label' => 'Funciono', 'class' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'];
+                                                } else {
+                                                    $intentoBadge = ['label' => 'Fallo', 'class' => 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'];
+                                                }
+                                            @endphp
+                                            <div class="flex items-start gap-2 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/40 text-xs">
+                                                <span class="shrink-0 w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[0.6rem] font-bold text-slate-600 dark:text-slate-300">
+                                                    {{ $intento->numero_intento }}
+                                                </span>
+                                                <div class="flex-1 min-w-0 space-y-0.5">
+                                                    <div class="flex items-center gap-2 flex-wrap">
+                                                        @if($intento->inventarioPieza)
+                                                            <span class="text-slate-700 dark:text-slate-300 font-medium">
+                                                                Pieza #{{ $intento->inventarioPieza->id }}
+                                                                @if($intento->inventarioPieza->almacen) — {{ $intento->inventarioPieza->almacen->nombre }} @endif
+                                                            </span>
+                                                        @else
+                                                            <span class="text-slate-500 dark:text-slate-400">Pieza sin detalle</span>
+                                                        @endif
+                                                        <span class="px-1.5 py-0.5 rounded-full text-[0.6rem] font-semibold {{ $intentoBadge['class'] }}">
+                                                            {{ $intentoBadge['label'] }}
+                                                        </span>
+                                                    </div>
+                                                    <div class="flex flex-wrap gap-x-3 text-slate-400 dark:text-slate-500">
+                                                        @if($intento->asignado_en)
+                                                            <span>Asignado: {{ $intento->asignado_en->format('d/m/Y') }}</span>
+                                                        @endif
+                                                        @if($intento->confirmada_en)
+                                                            <span>Confirmado: {{ $intento->confirmada_en->format('d/m/Y') }}</span>
+                                                        @endif
+                                                    </div>
+                                                    @if($intento->notas_confirmacion)
+                                                        <p class="text-slate-500 dark:text-slate-400 italic">{{ $intento->notas_confirmacion }}</p>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        @endforeach
                                     </div>
                                 @endif
 

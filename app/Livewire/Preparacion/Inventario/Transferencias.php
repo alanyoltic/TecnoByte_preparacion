@@ -2,10 +2,12 @@
 
 namespace App\Livewire\Preparacion\Inventario;
 
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Transferencia;
 
+#[Layout('layouts.app', ['pageTitle' => 'Transferencias'])]
 class Transferencias extends Component
 {
     use WithPagination;

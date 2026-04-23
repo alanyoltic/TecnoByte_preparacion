@@ -4,6 +4,7 @@ namespace App\Livewire\Preparacion\Lotes;
 
 use App\Models\Almacen;
 use App\Models\Equipo;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use App\Models\Proveedor;
 use App\Models\ClasificacionPuntos;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
+#[Layout('layouts.app', ['pageTitle' => 'Registrar Lote'])]
 class RegistrarLote extends Component
 {
     public $nombre_lote;
@@ -153,7 +155,7 @@ class RegistrarLote extends Component
                         'marca'                  => $m['marca'],
                         'modelo'                 => $m['modelo'],
                         'estatus_ciclo'          => 'PREPARACION',
-                        'estatus_area'           => 'EN_ESPERA',
+                        'estatus_area'           => 'SIN_ASIGNAR',
                         'registrado_por_user_id' => Auth::id(),
                         'proveedor_id'           => $this->proveedor_id,
                         'almacen_id'             => Almacen::PREPARACION,

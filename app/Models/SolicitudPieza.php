@@ -43,15 +43,13 @@ class SolicitudPieza extends Model
         'cantidad'                => 'integer',
     ];
 
-    // Estados existentes
-    const PENDIENTE           = 'PENDIENTE';
-    const SURTIDA_INVENTARIO  = 'SURTIDA_INVENTARIO';
-    const PENDIENTE_COMPRA    = 'PENDIENTE_COMPRA';
-    const COMPRADA            = 'COMPRADA';
-    const CANCELADA           = 'CANCELADA';
-    
-    // Nuevo estado para confirmación
-    const CONFIRMADA          = 'CONFIRMADA';
+    const PENDIENTE               = 'PENDIENTE';
+    const SURTIDA_INVENTARIO      = 'SURTIDA_INVENTARIO';
+    const PENDIENTE_COMPRA        = 'PENDIENTE_COMPRA';
+    const COMPRADA                = 'COMPRADA';
+    const CANCELADA               = 'CANCELADA';
+    const CONFIRMADA              = 'CONFIRMADA';
+    const REQUIERE_REASIGNACION   = 'REQUIERE_REASIGNACION';
 
     /**
      * Relaciones existentes
@@ -89,6 +87,16 @@ class SolicitudPieza extends Model
     public function reasignadoA(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reasignado_a_id')->withoutGlobalScopes();
+    }
+
+    public function intentos(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(SolicitudPiezaIntento::class, 'solicitud_pieza_id')->orderBy('numero_intento');
+    }
+
+    public function intentoActual(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(SolicitudPiezaIntento::class, 'solicitud_pieza_id')->latestOfMany('numero_intento');
     }
 
     /** Minutos que tardó la instalación (inicio → confirmación). */
@@ -162,12 +170,13 @@ class SolicitudPieza extends Model
     public static function labelsEstatus(): array
     {
         return [
-            self::PENDIENTE          => 'Pendiente',
-            self::SURTIDA_INVENTARIO => 'Surtida del Inventario',
-            self::PENDIENTE_COMPRA   => 'Pendiente de Compra',
-            self::COMPRADA           => 'Comprada',
-            self::CANCELADA          => 'Cancelada',
-            self::CONFIRMADA         => 'Instalada y Confirmada',
+            self::PENDIENTE              => 'Pendiente',
+            self::SURTIDA_INVENTARIO     => 'Surtida del Inventario',
+            self::PENDIENTE_COMPRA       => 'Pendiente de Compra',
+            self::COMPRADA               => 'Comprada',
+            self::CANCELADA              => 'Cancelada',
+            self::CONFIRMADA             => 'Instalada y Confirmada',
+            self::REQUIERE_REASIGNACION  => 'Reasignación pendiente',
         ];
     }
 
@@ -180,7 +189,7 @@ class SolicitudPieza extends Model
      */
     public function puedeSerGestionada(): bool
     {
-        return $this->estatus === self::PENDIENTE;
+        return in_array($this->estatus, [self::PENDIENTE, self::REQUIERE_REASIGNACION], true);
     }
 
     public function puedeSerSurtidaDesdeInventario(): bool
@@ -189,6 +198,7 @@ class SolicitudPieza extends Model
             self::PENDIENTE,
             self::PENDIENTE_COMPRA,
             self::COMPRADA,
+            self::REQUIERE_REASIGNACION,
         ], true);
     }
 
@@ -199,6 +209,7 @@ class SolicitudPieza extends Model
             self::PENDIENTE_COMPRA,
             self::COMPRADA,
             self::SURTIDA_INVENTARIO,
+            self::REQUIERE_REASIGNACION,
         ], true);
     }
 
@@ -234,6 +245,22 @@ class SolicitudPieza extends Model
                 'puntos_override'     => $puntosOverride > 0 ? $puntosOverride : null,
                 'reasignado_a_id'     => $tecnicoReasignadoId,
                 'reasignada_en'       => $tecnicoReasignadoId ? now() : null,
+                'iniciada_instalacion_en' => null,
+                'funciono'            => null,
+                'confirmada_en'       => null,
+                'notas_confirmacion'  => null,
+                'instalada'           => false,
+            ]);
+
+            $numeroIntento = $this->intentos()->count() + 1;
+            $this->intentos()->create([
+                'numero_intento'      => $numeroIntento,
+                'inventario_pieza_id' => $inventarioPiezaId,
+                'asignado_a_id'       => $tecnicoReasignadoId ?? $this->solicitado_por_id,
+                'asignado_por_id'     => $gerenteId,
+                'asignado_en'         => now(),
+                'puntos_override'     => $puntosOverride > 0 ? $puntosOverride : null,
+                'notas_asignacion'    => $notas,
             ]);
 
             $pieza->decrement('cantidad_disponible', $cantidad);
@@ -334,44 +361,96 @@ class SolicitudPieza extends Model
     public function finalizarInstalacionPorTecnico(int $tecnicoId, bool $funciono, ?string $notas = null): void
     {
         DB::transaction(function () use ($tecnicoId, $funciono, $notas) {
+            $ahora = now();
+
             if (!$this->iniciada_instalacion_en) {
-                $this->update(['iniciada_instalacion_en' => now()]);
+                $this->update(['iniciada_instalacion_en' => $ahora]);
+                $this->refresh();
             }
 
-            $this->confirmarInstalacion($funciono, $notas);
-
-            $equipo = $this->equipo ?? $this->asignacionEquipo?->equipo;
-
-            if ($equipo && $funciono) {
-                $equipo->update([
-                    'estatus_ciclo' => 'CALIDAD',
-                    'estatus_area'  => 'EN_CALIDAD',
-                    'almacen_id'    => Almacen::CALIDAD,
-                ]);
-            } elseif ($equipo && !$funciono) {
-                self::create([
-                    'asignacion_equipo_id' => $this->asignacion_equipo_id,
-                    'equipo_id'            => $this->equipo_id,
-                    'solicitado_por_id'    => $tecnicoId,
-                    'catalogo_pieza_id'    => $this->catalogo_pieza_id,
-                    'descripcion_libre'    => $this->descripcion_libre ?: 'Reintento - pieza anterior defectuosa',
-                    'cantidad'             => max(1, (int) $this->cantidad),
-                    'estatus'              => self::PENDIENTE,
+            // Actualizar el intento actual con el resultado
+            $intento = $this->intentoActual;
+            if ($intento) {
+                $intento->update([
+                    'iniciada_instalacion_en' => $this->iniciada_instalacion_en,
+                    'confirmada_en'           => $ahora,
+                    'funciono'                => $funciono,
+                    'notas_confirmacion'      => $notas,
                 ]);
             }
 
-            if ($funciono && $this->asignacion_equipo_id) {
-                // Los puntos de pieza siempre los define el gerente al asignarla.
-                // Si por alguna razón no se definieron, no se registran puntos.
-                if ($this->puntos_override > 0) {
-                    PuntoTecnico::registrar(
-                        tecnicoId: $tecnicoId,
-                        asignacionEquipoId: $this->asignacion_equipo_id,
-                        rol: PuntoTecnico::PIEZA_INSTALADA,
-                        puntosBase: (float) $this->puntos_override,
-                        clasificacionId: null,
-                    );
+            $equipo   = $this->equipo ?? $this->asignacionEquipo?->equipo;
+            $cantidad = max(1, (int) $this->cantidad);
+
+            if ($funciono) {
+                // Éxito: confirmar solicitud y mover pieza a USADA
+                $this->update([
+                    'estatus'            => self::CONFIRMADA,
+                    'instalada'          => true,
+                    'funciono'           => true,
+                    'confirmada_en'      => $ahora,
+                    'notas_confirmacion' => $notas,
+                ]);
+
+                if ($this->inventario_pieza_id) {
+                    $pieza = InventarioPieza::lockForUpdate()->find($this->inventario_pieza_id);
+                    if ($pieza && $pieza->cantidad_reservada > 0) {
+                        $mover = min($cantidad, $pieza->cantidad_reservada);
+                        $pieza->decrement('cantidad_reservada', $mover);
+                        $pieza->increment('cantidad_usada', $mover);
+                        $equipoId = $this->equipo_id ?? $this->asignacionEquipo?->equipo_id;
+                        if ($equipoId && $pieza->cantidad_inicial === $cantidad) {
+                            $pieza->update(['equipo_destino_id' => $equipoId]);
+                        }
+                        $pieza->actualizarEstatus();
+                    }
                 }
+
+                if ($equipo) {
+                    $equipo->update([
+                        'estatus_ciclo' => 'CALIDAD',
+                        'estatus_area'  => 'EN_CALIDAD',
+                        'almacen_id'    => Almacen::CALIDAD,
+                    ]);
+                }
+
+                // Marcar el registro de trabajo como EN_CALIDAD — los puntos se otorgan
+                // cuando calidad valida que la pieza está bien instalada.
+                if ($this->asignacion_equipo_id) {
+                    AsignacionEquipo::where('id', $this->asignacion_equipo_id)
+                        ->where('camino', AsignacionEquipo::PIEZA_PENDIENTE)
+                        ->update(['camino' => AsignacionEquipo::EN_CALIDAD]);
+                }
+            } else {
+                // Fallo: devolver pieza al inventario como baja y resetear solicitud a PENDIENTE
+                if ($this->inventario_pieza_id) {
+                    $pieza = InventarioPieza::lockForUpdate()->find($this->inventario_pieza_id);
+                    if ($pieza && $pieza->cantidad_reservada > 0) {
+                        $devolver = min($cantidad, $pieza->cantidad_reservada);
+                        $pieza->decrement('cantidad_reservada', $devolver);
+                        $pieza->increment('cantidad_baja', $devolver);
+                        $pieza->actualizarEstatus();
+                    }
+                }
+
+                // Marcar como REQUIERE_REASIGNACION para que el gerente asigne otra pieza
+                $this->update([
+                    'estatus'                 => self::REQUIERE_REASIGNACION,
+                    'inventario_pieza_id'     => null,
+                    'respondida_por_id'       => null,
+                    'respondida_en'           => null,
+                    'notas_respuesta'         => null,
+                    'puntos_override'         => null,
+                    'reasignado_a_id'         => null,
+                    'reasignada_en'           => null,
+                    'iniciada_instalacion_en' => null,
+                    'instalada'               => false,
+                    'funciono'                => null,
+                    'confirmada_en'           => null,
+                    'notas_confirmacion'      => null,
+                ]);
+
+                // Equipo se queda en PENDIENTE_PIEZA (no cambia)
             }
         });
     }
@@ -382,12 +461,13 @@ class SolicitudPieza extends Model
     public function getBadgeColorAttribute(): string
     {
         return match($this->estatus) {
-            self::PENDIENTE => 'yellow',
-            self::SURTIDA_INVENTARIO => 'blue',
-            self::PENDIENTE_COMPRA => 'orange',
-            self::COMPRADA => 'purple',
-            self::CONFIRMADA => 'green',
-            self::CANCELADA => 'red',
+            self::PENDIENTE              => 'yellow',
+            self::SURTIDA_INVENTARIO     => 'blue',
+            self::PENDIENTE_COMPRA       => 'orange',
+            self::COMPRADA               => 'purple',
+            self::CONFIRMADA             => 'green',
+            self::CANCELADA              => 'red',
+            self::REQUIERE_REASIGNACION  => 'rose',
             default => 'gray',
         };
     }
@@ -398,12 +478,13 @@ class SolicitudPieza extends Model
     public function getIconoEstadoAttribute(): string
     {
         return match($this->estatus) {
-            self::PENDIENTE => '⏳',
-            self::SURTIDA_INVENTARIO => '📦',
-            self::PENDIENTE_COMPRA => '🛒',
-            self::COMPRADA => '✅',
-            self::CONFIRMADA => '✓',
-            self::CANCELADA => '✗',
+            self::PENDIENTE              => '⏳',
+            self::SURTIDA_INVENTARIO     => '📦',
+            self::PENDIENTE_COMPRA       => '🛒',
+            self::COMPRADA               => '✅',
+            self::CONFIRMADA             => '✓',
+            self::CANCELADA              => '✗',
+            self::REQUIERE_REASIGNACION  => '↩',
             default => '•',
         };
     }

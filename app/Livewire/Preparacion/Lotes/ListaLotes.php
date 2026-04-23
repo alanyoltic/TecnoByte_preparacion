@@ -2,12 +2,14 @@
 
 namespace App\Livewire\Preparacion\Lotes;
 
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Lote;
 use App\Models\Proveedor;
 use Illuminate\Support\Facades\DB;
 
+#[Layout('layouts.app', ['pageTitle' => 'Editar lotes'])]
 class ListaLotes extends Component
 {
     use WithPagination;

@@ -357,14 +357,38 @@ class MiTrabajo extends Component
         $this->modalEliminar = true;
     }
 
+    public function iniciarEquipoPendiente(int $asignacionEquipoId): void
+    {
+        $this->autorizarTrabajo();
+
+        $ae = AsignacionEquipo::with('equipo')->find($asignacionEquipoId);
+
+        if (!$ae || !in_array($ae->camino, [AsignacionEquipo::PENDIENTE, AsignacionEquipo::PRE_ASIGNADO])) return;
+
+        // Verificar que la asignación pertenece al técnico autenticado
+        $asignacion = $ae->asignacion;
+        if (!$asignacion || $asignacion->tecnico_id !== Auth::id()) return;
+
+        DB::transaction(function () use ($ae) {
+            $ae->update([
+                'camino'   => AsignacionEquipo::EN_PROCESO,
+                'inicio_en'=> now(),
+            ]);
+            $ae->equipo?->update(['estatus_area' => Equipo::AREA_EN_PROCESO]);
+        });
+
+        unset($this->asignacionActual, $this->asignaciones);
+        $this->dispatch('toast', type: 'success', message: 'Equipo iniciado. Ya puedes registrar sus características.');
+    }
+
     public function eliminarAsignacionEquipo(int $asignacionEquipoId): void
     {
         $this->autorizarTrabajo();
 
         $ae = AsignacionEquipo::with(['equipo', 'solicitudesPiezas'])->find($asignacionEquipoId);
 
-        if (!$ae || $ae->camino !== AsignacionEquipo::EN_PROCESO) {
-            $this->dispatch('toast', type: 'error', message: 'Solo se pueden eliminar registros que estén en proceso.');
+        if (!$ae || !in_array($ae->camino, [AsignacionEquipo::PENDIENTE, AsignacionEquipo::PRE_ASIGNADO, AsignacionEquipo::EN_PROCESO])) {
+            $this->dispatch('toast', type: 'error', message: 'Solo se pueden eliminar registros activos.');
             return;
         }
 
@@ -383,26 +407,40 @@ class MiTrabajo extends Component
                 }
             }
 
-            // Eliminar puntos y solicitudes vinculadas a este registro
             \App\Models\PuntoTecnico::where('asignacion_equipo_id', $ae->id)->delete();
             \App\Models\SolicitudPieza::where('asignacion_equipo_id', $ae->id)->delete();
 
             $equipo = $ae->equipo;
-            $ae->delete();
 
-            // Si el equipo fue creado solo para esta asignación (sin más historia ni
-            // características cargadas), eliminarlo también para que el técnico pueda
-            // re-escanear el número de serie correcto.
-            if ($equipo) {
-                $otrosRegistros = AsignacionEquipo::where('equipo_id', $equipo->id)->exists();
-                $tieneCaract    = filled($equipo->tipo_equipo) || filled($equipo->procesador_modelo)
-                               || filled($equipo->ram_total)   || filled($equipo->sistema_operativo);
+            if ($ae->pre_asignado) {
+                // Equipo con serie pre-asignada: resetear sin borrar el equipo ni el AE.
+                // El técnico lo verá de nuevo como "Por iniciar".
+                $ae->update([
+                    'camino'    => AsignacionEquipo::PENDIENTE,
+                    'inicio_en' => null,
+                    'fin_en'    => null,
+                    'notas'     => null,
+                ]);
 
-                if (!$otrosRegistros && !$tieneCaract) {
+                if ($equipo) {
+                    // Borrar datos relacionados (no cascadean al no eliminar el equipo)
+                    \App\Models\EquipoBateria::where('equipo_id', $equipo->id)->delete();
+                    \App\Models\EquipoMonitor::where('equipo_id', $equipo->id)->delete();
+                    \App\Models\EquipoGpu::where('equipo_id', $equipo->id)->delete();
+                    \App\Models\EquipoAuditoria::where('equipo_id', $equipo->id)->delete();
+
+                    // Limpiar todas las características del equipo
+                    $equipo->update($this->camposCaracteristicasVacios() + [
+                        'estatus_area' => Equipo::AREA_ASIGNADO,
+                    ]);
+                }
+            } else {
+                // Equipo escaneado manualmente: borrado total
+                $ae->delete();
+
+                if ($equipo) {
+                    \App\Models\EquipoAuditoria::where('equipo_id', $equipo->id)->delete();
                     $equipo->forceDelete();
-                } else {
-                    // Equipo ya existía: devolverlo a EN_ESPERA para que pueda re-iniciarse
-                    $equipo->update(['estatus_area' => Equipo::AREA_EN_ESPERA]);
                 }
             }
         });
@@ -410,7 +448,36 @@ class MiTrabajo extends Component
         $this->modalEliminar = false;
         $this->eliminarAeId  = null;
         unset($this->asignaciones, $this->asignacionActual);
-        $this->dispatch('toast', type: 'success', message: 'Registro eliminado. El cupo sigue disponible en la asignación.');
+
+        $mensaje = $ae->pre_asignado
+            ? 'Registro borrado. El equipo sigue en tu lista para que lo inicies de nuevo.'
+            : 'Registro eliminado. El cupo sigue disponible en la asignación.';
+        $this->dispatch('toast', type: 'success', message: $mensaje);
+    }
+
+    private function camposCaracteristicasVacios(): array
+    {
+        return [
+            'tipo_equipo' => null, 'sistema_operativo' => null, 'area_tienda' => null,
+            'procesador_modelo' => null, 'procesador_frecuencia' => null,
+            'procesador_generacion' => null, 'procesador_nucleos' => null,
+            'ram_total' => null, 'ram_tipo' => null, 'ram_es_soldada' => false,
+            'ram_slots_totales' => null, 'ram_expansion_max' => null, 'ram_cantidad_soldada' => null,
+            'almacenamiento_principal_capacidad' => null, 'almacenamiento_principal_tipo' => null,
+            'almacenamiento_secundario_capacidad' => 'N/A', 'almacenamiento_secundario_tipo' => 'N/A',
+            'slots_alm_ssd' => null, 'slots_alm_m2' => null, 'slots_alm_m2_micro' => null,
+            'slots_alm_hdd' => null, 'slots_alm_msata' => null,
+            'ethernet_tiene' => false, 'ethernet_es_gigabit' => false,
+            'puertos_conectividad' => null, 'dispositivos_entrada' => null,
+            'puertos_hdmi' => null, 'puertos_mini_hdmi' => null, 'puertos_vga' => null,
+            'puertos_dvi' => null, 'puertos_displayport' => null, 'puertos_mini_dp' => null,
+            'puertos_usb_2' => null, 'puertos_usb_30' => null, 'puertos_usb_31' => null,
+            'puertos_usb_32' => null, 'puertos_usb_c' => null,
+            'lectores_sd' => null, 'lectores_microsd' => null, 'lectores_sc' => null,
+            'lectores_esata' => null, 'lectores_sim' => null,
+            'bateria_tiene' => false, 'teclado_idioma' => 'N/A',
+            'notas_generales' => null, 'detalles_esteticos' => null, 'detalles_funcionamiento' => null,
+        ];
     }
 
     public function volverALista(): void
@@ -479,7 +546,7 @@ class MiTrabajo extends Component
     {
         $this->autorizarTrabajo();
 
-        $solicitud = SolicitudPieza::with(['equipo', 'asignacionEquipo'])
+        $solicitud = SolicitudPieza::with(['equipo', 'asignacionEquipo', 'intentoActual'])
             ->where('id', $this->solicitudPiezaId)
             ->where('reasignado_a_id', Auth::id())
             ->where('estatus', SolicitudPieza::SURTIDA_INVENTARIO)
@@ -493,53 +560,13 @@ class MiTrabajo extends Component
         }
 
         try {
-            DB::transaction(function () use ($solicitud, $funciono) {
-                // 1. Confirmar instalación (actualiza pieza e inventario)
-                $solicitud->confirmarInstalacion($funciono, null);
-
-                $equipo = $solicitud->equipo;
-
-                // 2. Actualizar estatus del equipo según resultado
-                if ($equipo && $funciono) {
-                    // Pieza funcionó → el equipo queda listo para calidad
-                    $equipo->update([
-                        'estatus_ciclo' => 'CALIDAD',
-                        'estatus_area'  => 'EN_CALIDAD',
-                        'almacen_id'    => Almacen::CALIDAD,
-                    ]);
-                } elseif ($equipo && !$funciono) {
-                    // Pieza no funcionó → crear nueva solicitud automáticamente
-                    // El equipo se queda en PENDIENTE_PIEZA hasta que llegue otra pieza
-                    SolicitudPieza::create([
-                        'asignacion_equipo_id' => $solicitud->asignacion_equipo_id,
-                        'equipo_id'            => $solicitud->equipo_id,
-                        'solicitado_por_id'    => Auth::id(),
-                        'catalogo_pieza_id'    => $solicitud->catalogo_pieza_id,
-                        'descripcion_libre'    => $solicitud->descripcion_libre
-                                                    ?? 'Reintento — pieza anterior defectuosa',
-                        'cantidad'             => max(1, (int) $solicitud->cantidad),
-                        'estatus'              => SolicitudPieza::PENDIENTE,
-                    ]);
-                }
-
-                // 3. Registrar puntos — siempre los define el gerente al asignar la pieza
-                if ($funciono && $solicitud->asignacion_equipo_id && $solicitud->puntos_override > 0) {
-                    PuntoTecnico::registrar(
-                        tecnicoId:          Auth::id(),
-                        asignacionEquipoId: $solicitud->asignacion_equipo_id,
-                        rol:                PuntoTecnico::PIEZA_INSTALADA,
-                        puntosBase:         (float) $solicitud->puntos_override,
-                        clasificacionId:    null,
-                    );
-                }
-            });
+            $solicitud->finalizarInstalacionPorTecnico(Auth::id(), $funciono, null);
 
             $mensaje = $funciono
                 ? 'Pieza instalada. El equipo pasó a Calidad y se registraron tus puntos.'
-                : 'La pieza no funcionó. Se generó una nueva solicitud al encargado automáticamente.';
+                : 'La pieza no funcionó. El encargado recibirá una alerta para asignarte otra pieza.';
 
             $this->dispatch('toast', type: 'success', message: $mensaje);
-
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Error: ' . $e->getMessage());
         }
@@ -616,14 +643,20 @@ class MiTrabajo extends Component
                     $errores[] = "{$serie}: pertenece a un modelo diferente."; continue;
                 }
                 $enOtra = AsignacionEquipo::where('equipo_id', $equipo->id)
-                    ->where('camino', AsignacionEquipo::EN_PROCESO)
+                    ->whereIn('camino', [AsignacionEquipo::PENDIENTE, AsignacionEquipo::EN_PROCESO])
                     ->whereHas('asignacion', fn($q) =>
                         $q->where('id', '!=', $asignacion->id)
                           ->whereIn('estatus', [Asignacion::PENDIENTE, Asignacion::EN_PROCESO])
                     )->exists();
                 if ($enOtra) { $errores[] = "{$serie}: en uso por otro técnico."; continue; }
 
-                // Si estaba pre-registrado (EN_ESPERA), activarlo
+                // También bloquear si ya está PENDIENTE en ESTA asignación (pre-asignado)
+                $enEsta = AsignacionEquipo::where('equipo_id', $equipo->id)
+                    ->where('asignacion_id', $asignacion->id)
+                    ->where('camino', AsignacionEquipo::PENDIENTE)
+                    ->exists();
+                if ($enEsta) { $errores[] = "{$serie}: ya está en tu lista, dale a Iniciar."; continue; }
+
                 if ($equipo->estatus_area === Equipo::AREA_EN_ESPERA) {
                     $equipo->update([
                         'estatus_ciclo'          => 'PREPARACION',
@@ -666,64 +699,6 @@ class MiTrabajo extends Component
         unset($this->asignacionActual);
     }
 
-    // ── Equipos pre-registrados (EN_ESPERA) del lote actual ───────────────
-
-    #[Computed]
-    public function equiposPreRegistrados(): \Illuminate\Database\Eloquent\Collection
-    {
-        $asignacion = $this->asignacionActual;
-        if (!$asignacion) return collect();
-
-        return Equipo::where('lote_modelo_id', $asignacion->lote_modelo_id)
-            ->where('estatus_area', Equipo::AREA_EN_ESPERA)
-            ->whereDoesntHave('asignacionEquipos', fn ($q) =>
-                $q->where('camino', AsignacionEquipo::EN_PROCESO)
-            )
-            ->get(['id', 'numero_serie', 'marca', 'modelo']);
-    }
-
-    public function iniciarEquipoPreRegistrado(int $equipoId): void
-    {
-        $this->autorizarTrabajo();
-        $this->errorSerie = '';
-
-        $asignacion = $this->asignacionActual;
-        $equipo     = Equipo::findOrFail($equipoId);
-
-        if ($equipo->lote_modelo_id !== $asignacion->lote_modelo_id) {
-            $this->errorSerie = 'Este equipo no pertenece al modelo de esta asignación.';
-            return;
-        }
-        if ($asignacion->equipos->count() >= $asignacion->cantidad) {
-            $this->errorSerie = 'La asignación ya alcanzó su capacidad máxima.';
-            return;
-        }
-        $yaEnEsta = AsignacionEquipo::where('asignacion_id', $asignacion->id)
-            ->where('equipo_id', $equipoId)
-            ->exists();
-        if ($yaEnEsta) {
-            $this->errorSerie = 'Este equipo ya fue iniciado en esta asignación.';
-            return;
-        }
-
-        DB::transaction(function () use ($equipo, $asignacion) {
-            $equipo->update([
-                'estatus_ciclo'          => 'PREPARACION',
-                'estatus_area'           => 'EN_PROCESO',
-                'registrado_por_user_id' => Auth::id(),
-            ]);
-            AsignacionEquipo::create([
-                'asignacion_id' => $asignacion->id,
-                'equipo_id'     => $equipo->id,
-                'inicio_en'     => now(),
-                'camino'        => AsignacionEquipo::EN_PROCESO,
-            ]);
-            $asignacion->update(['estatus' => Asignacion::EN_PROCESO]);
-        });
-
-        $this->dispatch('toast', type: 'success', message: 'Equipo iniciado correctamente.');
-        unset($this->asignacionActual, $this->equiposPreRegistrados);
-    }
 
     // ══════════════════════════════════════════════════════════════════════
     // FASE 2: GUARDAR CARACTERÍSTICAS (BORRADOR)
@@ -867,7 +842,12 @@ class MiTrabajo extends Component
 
         try {
             DB::transaction(function () use ($ae, $equipo, $estatusCiclo, $estatusArea, $almacenId) {
-                $ae->update(['fin_en' => now(), 'camino' => $this->camino, 'notas' => $this->notasTerminar ?: null]);
+                // COMPLETADO en UI → EN_CALIDAD en DB (espera validación de calidad)
+                $caminoDB = $this->camino === 'COMPLETADO'
+                    ? AsignacionEquipo::EN_CALIDAD
+                    : $this->camino;
+
+                $ae->update(['fin_en' => now(), 'camino' => $caminoDB, 'notas' => $this->notasTerminar ?: null]);
                 $equipo->update([
                     'estatus_ciclo' => $estatusCiclo,
                     'estatus_area'  => $estatusArea,
@@ -887,17 +867,29 @@ class MiTrabajo extends Component
                         $descLibre = implode(' — ', $partes);
                     }
 
-                    SolicitudPieza::create([
-                        'asignacion_equipo_id' => $ae->id,
-                        'equipo_id'            => $ae->equipo_id,
-                        'solicitado_por_id'    => Auth::id(),
-                        'catalogo_pieza_id'    => $catalogoId,
-                        'descripcion_libre'    => $descLibre,
-                        'cantidad'             => max(1, $this->cantidadPieza),
-                        'estatus'              => SolicitudPieza::PENDIENTE,
-                    ]);
+                    $yaExiste = SolicitudPieza::where('asignacion_equipo_id', $ae->id)
+                        ->whereIn('estatus', [
+                            SolicitudPieza::PENDIENTE,
+                            SolicitudPieza::SURTIDA_INVENTARIO,
+                            SolicitudPieza::REQUIERE_REASIGNACION,
+                        ])->exists();
+
+                    if (!$yaExiste) {
+                        SolicitudPieza::create([
+                            'asignacion_equipo_id' => $ae->id,
+                            'equipo_id'            => $ae->equipo_id,
+                            'solicitado_por_id'    => Auth::id(),
+                            'catalogo_pieza_id'    => $catalogoId,
+                            'descripcion_libre'    => $descLibre,
+                            'cantidad'             => max(1, $this->cantidadPieza),
+                            'estatus'              => SolicitudPieza::PENDIENTE,
+                        ]);
+                    }
                 }
 
+                // Puntos de preparación: siempre inmediatos al terminar, para todos los caminos.
+                // Los puntos de instalación de pieza (puntos_override del gerente) son independientes
+                // y se registran cuando calidad valida el equipo (InventarioListo::validarCalidad).
                 $clasificacionId = $equipo->clasificacion_puntos_id;
                 $puntosBase      = $clasificacionId
                     ? (\App\Models\ClasificacionPuntos::find($clasificacionId)?->puntos_base ?? 1.0)
@@ -917,7 +909,11 @@ class MiTrabajo extends Component
 
                 $asignacion = $ae->asignacion;
                 $terminados = AsignacionEquipo::where('asignacion_id', $asignacion->id)
-                    ->where('camino', '!=', AsignacionEquipo::EN_PROCESO)->count();
+                    ->whereNotIn('camino', [
+                        AsignacionEquipo::PENDIENTE,
+                        AsignacionEquipo::PRE_ASIGNADO,
+                        AsignacionEquipo::EN_PROCESO,
+                    ])->count();
 
                 if ($terminados >= $asignacion->cantidad) {
                     $asignacion->update(['estatus' => Asignacion::ENTREGADO, 'fecha_entrega' => now()->toDateString()]);

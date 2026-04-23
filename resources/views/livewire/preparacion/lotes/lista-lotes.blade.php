@@ -1,4 +1,14 @@
-<div class="space-y-6 relative">
+<div>
+<x-tb-background>
+    <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10 space-y-6">
+
+        <x-topbar
+            title="Editar lotes"
+            chip="Lotes · Editar lotes"
+            description="Selecciona un lote para entrar a su edición."
+        />
+
+        <div class="space-y-6 relative">
 
     <x-toast />
 
@@ -353,4 +363,10 @@
         </div>
     @endif
 
+</div>
+
+        </div>
+
+    </div>
+</x-tb-background>
 </div>

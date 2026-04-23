@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Preparacion\Equipos;
 
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use App\Livewire\Concerns\EquipoPortMaps;
 use App\Livewire\Preparacion\Forms\EquipoForm;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
+#[Layout('layouts.app', ['pageTitle' => 'Registrar equipo'])]
 class RegistrarEquipo extends Component
 {
     /**

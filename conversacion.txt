@@ -1,0 +1,34 @@
+No hice cambios. Ya revisé el flujo completo de piezas pendientes en código y también lo contrasté contra tu base local.
+
+Lo Más Importante
+
+Hoy el técnico sí tiene que decidir desde la vista si la pieza “está en stock” o “hay que pedirla”, y en modo stock además debe escoger una pieza exacta del catálogo. Eso está en mi-trabajo.blade.php (line 990) y lo guarda MiTrabajo.php (line 804).
+El flujo está partido en dos zonas: la solicitud nace en MiTrabajo.php (line 852), pero el surtido/compra se administra en GestionSolicitudesPiezas.php (line 108) y el alta de stock en CatalogoPiezas.php (line 696) o en ComprasInventario.php (line 156).
+Hay un desfase real de estado: cuando la pieza sí funciona, el equipo sí pasa a calidad, pero asignacion_equipos.camino se queda en PIEZA_PENDIENTE. Eso sale de comparar MiTrabajo.php (line 845) con SolicitudPieza.php (line 409). Por eso métricas como Asignaciones.php (line 143) hoy se inflan.
+Hay dos flujos distintos para compras. CatalogoPiezas consolida stock y ComprasInventario crea entradas nuevas; además solo ComprasInventario marca solicitudes PENDIENTE_COMPRA como COMPRADA (CatalogoPiezas.php (line 696), ComprasInventario.php (line 222)).
+El catálogo solo evita duplicados exactos por LOWER(TRIM(nombre)) + categoria; variantes como “ram 8 gb ddr4” vs “ram para laptop 8gb” sí se duplicarían (CatalogoPiezas.php (line 341), CatalogoPiezas.php (line 934)).
+Flujo Actual
+
+El técnico termina un equipo y elige PIEZA_PENDIENTE. El sistema guarda:
+asignacion_equipos.camino = PIEZA_PENDIENTE, equipos.estatus_area = PENDIENTE_PIEZA, equipos.almacen_id = 7, crea una fila en solicitudes_piezas y registra puntos en puntos_tecnicos (MiTrabajo.php (line 834)).
+La solicitud queda en solicitudes_piezas con estos campos clave:
+asignacion_equipo_id, equipo_id, catalogo_pieza_id o descripcion_libre, cantidad, estatus, inventario_pieza_id, reasignado_a_id y timestamps (SolicitudPieza.php (line 14), migración (line 82)).
+El gerente entra a /inventario/piezas/gestionar y puede:
+surtir desde inventario, marcar pendiente de compra o cancelar (routes/web.php (line 215), GestionSolicitudesPiezas.php (line 167)).
+Cuando surte, SolicitudPieza::surtirDeInventario() reserva cantidades en inventario_piezas:
+baja cantidad_disponible, sube cantidad_reservada, guarda inventario_pieza_id, respondida_por_id, reasignado_a_id, puntos_override y crea intento en solicitud_pieza_intentos (SolicitudPieza.php (line 227)).
+El técnico después instala la pieza desde MiTrabajo o desde Mis Solicitudes; si funciona:
+la solicitud pasa a CONFIRMADA, la reserva pasa a cantidad_usada y el equipo va a CALIDAD/EN_CALIDAD (SolicitudPieza.php (line 361), SolicitudesPiezas.php (line 204)).
+Si no funciona:
+la reserva pasa a cantidad_baja, la solicitud vuelve a REQUIERE_REASIGNACION y el equipo se queda en PENDIENTE_PIEZA (SolicitudPieza.php (line 426)).
+Estado Real En Tu Base Hoy
+
+solicitudes_piezas: 18 registros.
+Estatus actuales: 2 PENDIENTE, 4 SURTIDA_INVENTARIO, 2 REQUIERE_REASIGNACION, 9 CONFIRMADA, 1 CANCELADA.
+13 de las 18 solicitudes son libres; solo 5 usan catalogo_pieza_id.
+catalogo_piezas activo hoy: solo 2 piezas, ram 8 gb ddr4 y ssd 256 gb.
+inventario_piezas: 4 entradas, con 13 unidades disponibles reales.
+solicitud_pieza_intentos está vacía. La tabla se creó el 21 de abril de 2026, así que no hay backfill histórico de solicitudes anteriores.
+Hay un desfase fuerte en datos: 16 filas en asignacion_equipos siguen en PIEZA_PENDIENTE, pero solo 7 tienen solicitud activa; además 177 equipos siguen con estatus_area = PENDIENTE_PIEZA y solo 7 tienen solicitud activa ligada.
+Existe una tabla legacy sin uso visible, equipo_piezas_faltantes, y hoy está vacía.
+La conclusión corta es esta: tu intuición es correcta. El problema principal no está solo en la vista; hoy el sistema tiene el UX del técnico mal acoplado al catálogo, dos caminos distintos para alimentar inventario y un estado viejo que deja PIEZA_PENDIENTE “pegado” aunque el equipo ya salió a calidad. Si quieres, el siguiente paso te lo puedo entregar como propuesta concreta de rediseño sin tocar código todavía: qué dejar, qué eliminar y qué unificar para que todo salga desde catalogo-piezas como tú quieres.

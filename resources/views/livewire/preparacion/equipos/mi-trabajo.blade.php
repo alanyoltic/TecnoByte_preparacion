@@ -17,7 +17,7 @@
             <x-topbar
                 title="{{ $this->asignacionActual?->loteModelo?->marca }} {{ $this->asignacionActual?->loteModelo?->modelo }}"
                 chip="Lote {{ $this->asignacionActual?->loteModelo?->lote?->nombre_lote }}"
-                description="{{ $this->asignacionActual?->equipos?->count() ?? 0 }} / {{ $this->asignacionActual?->cantidad }} equipos iniciados"
+                description="{{ $this->asignacionActual?->equipos?->whereNotIn('camino',[\App\Models\AsignacionEquipo::PENDIENTE,\App\Models\AsignacionEquipo::PRE_ASIGNADO])?->count() ?? 0 }} / {{ $this->asignacionActual?->cantidad }} equipos iniciados"
             >
                 <x-slot name="right">
                     <button wire:click="volverALista"
@@ -89,7 +89,7 @@
                 $stats       = $this->estadisticasMes;
                 $totalAsig   = $this->asignaciones->count();
                 $totalEq     = $this->asignaciones->sum('cantidad');
-                $completados = $this->asignaciones->sum(fn($a) => $a->equipos->where('camino','!=','EN_PROCESO')->count());
+                $completados = $this->asignaciones->sum(fn($a) => $a->equipos->whereNotIn('camino',['PENDIENTE','PRE_ASIGNADO','EN_PROCESO'])->count());
                 $enProceso   = $this->asignaciones->sum(fn($a) => $a->equipos->where('camino','EN_PROCESO')->count());
             @endphp
 
@@ -183,8 +183,9 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     @foreach($this->asignaciones as $asignacion)
                         @php
-                            $completadosA = $asignacion->equipos->where('camino','!=','EN_PROCESO')->count();
+                            $pendienteA   = $asignacion->equipos->whereIn('camino',['PENDIENTE','PRE_ASIGNADO'])->count();
                             $enProcesoA   = $asignacion->equipos->where('camino','EN_PROCESO')->count();
+                            $completadosA = $asignacion->equipos->whereNotIn('camino',['PENDIENTE','PRE_ASIGNADO','EN_PROCESO'])->count();
                             $piezasA      = $asignacion->equipos->where('camino','PIEZA_PENDIENTE')->count();
                             $garantiaA    = $asignacion->equipos->whereIn('camino',['GARANTIA_INTERNA','GARANTIA_EXTERNA'])->count();
                             $sinIniciar   = max($asignacion->cantidad - $asignacion->equipos->count(), 0);
@@ -222,11 +223,23 @@
                             </div>
 
                             {{-- Desglose --}}
-                            <div class="grid grid-cols-3 gap-2">
+                            <div class="grid grid-cols-4 gap-2">
                                 <div class="rounded-xl bg-slate-100/80 dark:bg-slate-800/50
                                             border border-slate-200/60 dark:border-slate-700/50 px-3 py-2 text-center">
-                                    <p class="text-[0.6rem] font-semibold text-slate-500 uppercase tracking-wide">Sin iniciar</p>
+                                    <p class="text-[0.6rem] font-semibold text-slate-500 uppercase tracking-wide">Sin serie</p>
                                     <p class="text-lg font-bold text-slate-700 dark:text-slate-200 mt-0.5">{{ $sinIniciar }}</p>
+                                </div>
+                                <div class="rounded-xl px-3 py-2 text-center
+                                            {{ $pendienteA > 0
+                                                ? 'bg-amber-50/80 dark:bg-amber-900/20 border border-amber-300/50 dark:border-amber-600/40'
+                                                : 'bg-slate-100/80 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/50' }}">
+                                    <p class="text-[0.6rem] font-semibold uppercase tracking-wide
+                                              {{ $pendienteA > 0 ? 'text-amber-600 dark:text-amber-300' : 'text-slate-500' }}">
+                                        Por iniciar
+                                    </p>
+                                    <p class="text-lg font-bold mt-0.5 {{ $pendienteA > 0 ? 'text-amber-700 dark:text-amber-200' : 'text-slate-700 dark:text-slate-200' }}">
+                                        {{ $pendienteA }}
+                                    </p>
                                 </div>
                                 <div class="rounded-xl px-3 py-2 text-center
                                             {{ $enProcesoA > 0
@@ -407,59 +420,9 @@
 
             <div class="space-y-4">
 
-                {{-- Equipos pre-registrados desde lote --}}
-                @if($this->equiposPreRegistrados->isNotEmpty())
-                    <div class="rounded-2xl bg-white/80 dark:bg-slate-950/60
-                                border border-amber-300/60 dark:border-amber-500/30
-                                backdrop-blur-xl dark:backdrop-blur-2xl
-                                shadow-md shadow-slate-900/10 dark:shadow-slate-900/30
-                                px-5 py-5 space-y-3">
-
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
-                                Equipos pre-registrados ({{ $this->equiposPreRegistrados->count() }})
-                            </span>
-                            <div class="h-px flex-1 bg-gradient-to-r from-amber-300/50 to-transparent"></div>
-                        </div>
-
-                        <p class="text-[0.65rem] text-slate-500 dark:text-slate-400">
-                            Estos equipos ya tienen número de serie asignado desde el lote. Haz clic en "Iniciar" para comenzar a trabajar en ellos.
-                        </p>
-
-                        @if($errorSerie)
-                            <div class="rounded-xl border border-rose-500/40 bg-rose-50/80 dark:bg-rose-950/30
-                                        px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
-                                {{ $errorSerie }}
-                            </div>
-                        @endif
-
-                        <div class="space-y-2">
-                            @foreach($this->equiposPreRegistrados as $pre)
-                                <div class="flex items-center justify-between gap-3 rounded-xl px-4 py-2.5
-                                            bg-amber-50/80 dark:bg-amber-950/20
-                                            border border-amber-200/50 dark:border-amber-700/30">
-                                    <div class="min-w-0">
-                                        <p class="text-sm font-mono font-medium text-slate-800 dark:text-slate-100 truncate">
-                                            {{ $pre->numero_serie }}
-                                        </p>
-                                        <p class="text-[0.65rem] text-slate-400">{{ $pre->marca }} {{ $pre->modelo }}</p>
-                                    </div>
-                                    <button wire:click="iniciarEquipoPreRegistrado({{ $pre->id }})"
-                                        wire:loading.attr="disabled"
-                                        wire:target="iniciarEquipoPreRegistrado({{ $pre->id }})"
-                                        class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl
-                                               text-xs font-semibold
-                                               bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow
-                                               hover:shadow-amber-500/40 hover:-translate-y-0.5
-                                               disabled:opacity-60 transition-all duration-200">
-                                        <span wire:loading.remove wire:target="iniciarEquipoPreRegistrado({{ $pre->id }})">Iniciar</span>
-                                        <span wire:loading wire:target="iniciarEquipoPreRegistrado({{ $pre->id }})">...</span>
-                                    </button>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
+                @php
+                    $pendientes = $a?->equipos->whereIn('camino', [\App\Models\AsignacionEquipo::PENDIENTE, \App\Models\AsignacionEquipo::PRE_ASIGNADO]) ?? collect();
+                @endphp
 
                 {{-- Iniciar equipos --}}
                 @if(($a?->equipos?->count() ?? 0) < ($a?->cantidad ?? 0))
@@ -535,16 +498,76 @@
                         </div>
                     </div>
                 @else
-                    <div class="rounded-xl border border-emerald-400/40 bg-emerald-50/80 dark:bg-emerald-950/20
-                                px-4 py-3 text-xs font-medium text-emerald-700 dark:text-emerald-300
-                                flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                        Todos los equipos de esta asignación han sido iniciados.
+                    @if($pendientes->isNotEmpty())
+                        <div class="rounded-xl border border-amber-400/40 bg-amber-50/80 dark:bg-amber-950/20
+                                    px-4 py-3 text-xs font-medium text-amber-700 dark:text-amber-300
+                                    flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                            Todas las series están registradas. Inicia los equipos de abajo para comenzar a trabajar.
+                        </div>
+                    @else
+                        <div class="rounded-xl border border-emerald-400/40 bg-emerald-50/80 dark:bg-emerald-950/20
+                                    px-4 py-3 text-xs font-medium text-emerald-700 dark:text-emerald-300
+                                    flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                            Todos los equipos de esta asignación han sido iniciados.
+                        </div>
+                    @endif
+                @endif
+
+                {{-- Equipos por iniciar (pre-asignados con serie) --}}
+                @if($pendientes->isNotEmpty())
+                    <div class="rounded-2xl bg-white/80 dark:bg-slate-950/60
+                                border border-amber-300/60 dark:border-amber-500/30
+                                backdrop-blur-xl dark:backdrop-blur-2xl
+                                shadow-md shadow-slate-900/10 dark:shadow-slate-900/30
+                                px-5 py-5 space-y-3">
+
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                                Por iniciar · {{ $pendientes->count() }}
+                            </span>
+                            <div class="h-px flex-1 bg-gradient-to-r from-amber-300/50 to-transparent"></div>
+                        </div>
+
+                        <p class="text-[0.65rem] text-slate-500 dark:text-slate-400">
+                            Estos equipos te fueron asignados con número de serie. Dale a Iniciar cuando vayas a trabajar en ellos.
+                        </p>
+
+                        <div class="space-y-2">
+                            @foreach($pendientes as $ae)
+                                <div class="flex items-center justify-between gap-3 rounded-xl px-4 py-2.5
+                                            bg-amber-50/80 dark:bg-amber-950/20
+                                            border border-amber-200/50 dark:border-amber-700/30">
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-mono font-medium text-slate-800 dark:text-slate-100 truncate">
+                                            {{ $ae->equipo?->numero_serie ?? '—' }}
+                                        </p>
+                                        <p class="text-[0.65rem] text-slate-400">
+                                            {{ $ae->equipo?->marca }} {{ $ae->equipo?->modelo }}
+                                        </p>
+                                    </div>
+                                    <div class="shrink-0">
+                                        <button wire:click="iniciarEquipoPendiente({{ $ae->id }})"
+                                            wire:loading.attr="disabled"
+                                            wire:target="iniciarEquipoPendiente({{ $ae->id }})"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl
+                                                   text-xs font-semibold
+                                                   bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow
+                                                   hover:shadow-amber-500/40 hover:-translate-y-0.5
+                                                   disabled:opacity-60 transition-all duration-200">
+                                            <span wire:loading.remove wire:target="iniciarEquipoPendiente({{ $ae->id }})">Iniciar</span>
+                                            <span wire:loading wire:target="iniciarEquipoPendiente({{ $ae->id }})">...</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
                 @endif
 
-                {{-- Lista de equipos --}}
-                @if($a?->equipos?->count() > 0)
+                {{-- Lista de equipos iniciados --}}
+                @if($a?->equipos->whereNotIn('camino',[\App\Models\AsignacionEquipo::PENDIENTE,\App\Models\AsignacionEquipo::PRE_ASIGNADO])->count() > 0)
 
                     {{-- Buscador por serie --}}
                     <div class="relative">
@@ -561,6 +584,8 @@
                                    focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none">
                     </div>
 
+                    @php $iniciados = $a->equipos->whereNotIn('camino',[\App\Models\AsignacionEquipo::PENDIENTE,\App\Models\AsignacionEquipo::PRE_ASIGNADO]); @endphp
+                    @if($iniciados->isNotEmpty())
                     <div class="rounded-2xl bg-white/80 dark:bg-slate-950/80
                                 border border-slate-200/80 dark:border-white/10
                                 backdrop-blur-xl dark:backdrop-blur-2xl
@@ -568,7 +593,7 @@
 
                         <div class="px-5 py-3 border-b border-slate-200/60 dark:border-slate-800/80 flex items-center justify-between gap-4 flex-wrap">
                             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                                Equipos iniciados · {{ $a->equipos->count() }} de {{ $a->cantidad }}
+                                Equipos iniciados · {{ $iniciados->count() }} de {{ $a->cantidad }}
                             </p>
                             {{-- Leyenda de estados --}}
                             <div class="flex items-center gap-3 flex-wrap">
@@ -585,9 +610,12 @@
                         </div>
 
                         <div class="divide-y divide-slate-200/60 dark:divide-slate-800/60">
-                            @foreach($a->equipos->filter(fn($ae) => !$busquedaSerie || str_contains(strtolower($ae->equipo?->numero_serie ?? ''), strtolower($busquedaSerie))) as $ae)
+                            @foreach($a->equipos->filter(fn($ae) =>
+                                !in_array($ae->camino, [\App\Models\AsignacionEquipo::PENDIENTE, \App\Models\AsignacionEquipo::PRE_ASIGNADO]) &&
+                                (!$busquedaSerie || str_contains(strtolower($ae->equipo?->numero_serie ?? ''), strtolower($busquedaSerie)))
+                            ) as $ae)
                                 @php
-                                    $terminado = $ae->camino !== \App\Models\AsignacionEquipo::EN_PROCESO;
+                                    $terminado = !in_array($ae->camino, [\App\Models\AsignacionEquipo::EN_PROCESO, \App\Models\AsignacionEquipo::PENDIENTE, \App\Models\AsignacionEquipo::PRE_ASIGNADO]);
                                     $eq        = $ae->equipo;
                                     $tieneAvance = !$terminado && (
                                         filled($eq?->tipo_equipo) ||
@@ -697,6 +725,7 @@
                             @endforeach
                         </div>
                     </div>
+                    @endif {{-- iniciados --}}
                 @endif
             </div>
 

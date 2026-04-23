@@ -49,11 +49,14 @@ class GestionSolicitudesPiezas extends Component
                 'reasignadoA',
                 'inventarioPieza.almacen',
                 'respondidaPor',
+                'intentos.asignadoA',
+                'intentos.inventarioPieza.almacen',
+                'intentos.asignadoPor',
             ])
             ->when($this->filtroEstatus !== 'TODAS', function ($query) {
                 match ($this->filtroEstatus) {
                     'EN_CALIDAD'     => $query->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', true),
-                    'FALLO_PIEZA'    => $query->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', false),
+                    'FALLO_PIEZA'    => $query->where('estatus', SolicitudPieza::REQUIERE_REASIGNACION),
                     'PASO_CALIDAD'   => $query->whereRaw('0 = 1'), // futuro
                     default          => $query->where('estatus', $this->filtroEstatus),
                 };
@@ -81,7 +84,7 @@ class GestionSolicitudesPiezas extends Component
                     ->orWhere('descripcion_libre', 'like', '%' . $this->busqueda . '%');
                 });
             })
-            ->orderByRaw("FIELD(estatus, 'PENDIENTE', 'PENDIENTE_COMPRA', 'COMPRADA', 'SURTIDA_INVENTARIO', 'CONFIRMADA', 'CANCELADA')")
+            ->orderByRaw("FIELD(estatus, 'PENDIENTE', 'REQUIERE_REASIGNACION', 'PENDIENTE_COMPRA', 'COMPRADA', 'SURTIDA_INVENTARIO', 'CONFIRMADA', 'CANCELADA')")
             ->orderBy('created_at', 'desc')
             ->paginate(15);
 
@@ -91,7 +94,7 @@ class GestionSolicitudesPiezas extends Component
             'pendientes_compra' => SolicitudPieza::where('estatus', SolicitudPieza::PENDIENTE_COMPRA)->count(),
             'compradas'         => SolicitudPieza::where('estatus', SolicitudPieza::COMPRADA)->count(),
             'en_calidad'        => SolicitudPieza::where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', true)->count(),
-            'fallo_pieza'       => SolicitudPieza::where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', false)->count(),
+            'fallo_pieza'       => SolicitudPieza::where('estatus', SolicitudPieza::REQUIERE_REASIGNACION)->count(),
             'paso_calidad'      => 0, // futuro — cuando exista el área de calidad
             'canceladas'        => SolicitudPieza::where('estatus', SolicitudPieza::CANCELADA)->count(),
         ];

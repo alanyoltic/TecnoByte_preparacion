@@ -538,41 +538,91 @@
                                 {{-- Modelos del lote --}}
                                 <div x-show="open" x-transition>
                                     @foreach($lote->modelosRecibidos as $modelo)
-                                        @php $agotado = ($modelo->equipos_libres ?? 0) <= 0; @endphp
-                                        <div class="flex items-center justify-between gap-4 px-4 py-2.5
-                                                    border-t border-slate-200/60 dark:border-slate-700/40
+                                        @php
+                                            $agotado       = ($modelo->equipos_libres ?? 0) <= 0;
+                                            $sinAsignar    = $this->equiposSinAsignarPorModelo[$modelo->id] ?? collect();
+                                            $cantSelec     = $seleccion[$modelo->id] ?? 0;
+                                            $seriesActivas = $seriesAsignadas[$modelo->id] ?? [];
+                                        @endphp
+                                        <div class="border-t border-slate-200/60 dark:border-slate-700/40
                                                     {{ $agotado
                                                         ? 'opacity-50 bg-slate-100/60 dark:bg-slate-900/30'
-                                                        : (isset($seleccion[$modelo->id]) && $seleccion[$modelo->id] > 0
+                                                        : ($cantSelec > 0
                                                             ? 'bg-[#FF9521]/5 dark:bg-[#FF9521]/5'
                                                             : 'bg-white/60 dark:bg-slate-950/20') }}">
-                                            <div>
-                                                <p class="text-sm font-medium {{ $agotado ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-slate-100' }}">
-                                                    {{ $modelo->marca }} {{ $modelo->modelo }}
-                                                    @if($agotado)
-                                                        <span class="ml-1 text-xs font-normal text-slate-400">(agotado)</span>
-                                                    @endif
-                                                </p>
-                                                <p class="text-xs text-slate-400">
-                                                    <span class="font-semibold {{ $agotado ? 'text-slate-400' : 'text-emerald-600 dark:text-emerald-400' }}">
-                                                        {{ $modelo->equipos_libres ?? 0 }} disponibles
-                                                    </span>
-                                                    de {{ $modelo->cantidad_recibida ?? 0 }} recibidos
-                                                </p>
+
+                                            {{-- Fila principal: nombre + cantidad --}}
+                                            <div class="flex items-center justify-between gap-4 px-4 py-2.5">
+                                                <div>
+                                                    <p class="text-sm font-medium {{ $agotado ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-slate-100' }}">
+                                                        {{ $modelo->marca }} {{ $modelo->modelo }}
+                                                        @if($agotado)
+                                                            <span class="ml-1 text-xs font-normal text-slate-400">(agotado)</span>
+                                                        @endif
+                                                    </p>
+                                                    <p class="text-xs text-slate-400">
+                                                        <span class="font-semibold {{ $agotado ? 'text-slate-400' : 'text-emerald-600 dark:text-emerald-400' }}">
+                                                            {{ $modelo->equipos_libres ?? 0 }} disponibles
+                                                        </span>
+                                                        de {{ $modelo->cantidad_recibida ?? 0 }} recibidos
+                                                        @if($sinAsignar->isNotEmpty())
+                                                            · <span class="text-amber-600 dark:text-amber-400 font-semibold">{{ $sinAsignar->count() }} con serie</span>
+                                                        @endif
+                                                    </p>
+                                                </div>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    max="{{ $modelo->equipos_libres ?? 0 }}"
+                                                    value="{{ $agotado ? 0 : $cantSelec }}"
+                                                    @disabled($agotado)
+                                                    wire:change="actualizarCantidad({{ $modelo->id }}, $event.target.value)"
+                                                    class="w-20 rounded-xl px-3 py-1.5 text-sm text-center
+                                                           bg-white/70 dark:bg-slate-900/40
+                                                           border border-slate-300/80 dark:border-slate-700
+                                                           text-slate-900 dark:text-slate-100
+                                                           focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none
+                                                           disabled:opacity-40 disabled:cursor-not-allowed">
                                             </div>
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                max="{{ $modelo->equipos_libres ?? 0 }}"
-                                                value="{{ $agotado ? 0 : ($seleccion[$modelo->id] ?? 0) }}"
-                                                @disabled($agotado)
-                                                wire:change="actualizarCantidad({{ $modelo->id }}, $event.target.value)"
-                                                class="w-20 rounded-xl px-3 py-1.5 text-sm text-center
-                                                       bg-white/70 dark:bg-slate-900/40
-                                                       border border-slate-300/80 dark:border-slate-700
-                                                       text-slate-900 dark:text-slate-100
-                                                       focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none
-                                                       disabled:opacity-40 disabled:cursor-not-allowed">
+
+                                            {{-- Series específicas (solo si hay SIN_ASIGNAR y cantidad seleccionada) --}}
+                                            @if(!$agotado && $cantSelec > 0 && $sinAsignar->isNotEmpty())
+                                                <div x-data="{ openSeries: false }" class="px-4 pb-3">
+                                                    <button type="button" @click="openSeries = !openSeries"
+                                                        class="text-[0.65rem] font-medium text-slate-500 dark:text-slate-400
+                                                               hover:text-[#FF9521] transition flex items-center gap-1">
+                                                        <svg class="w-3 h-3 transition-transform" :class="openSeries ? 'rotate-180' : ''"
+                                                             fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                                        </svg>
+                                                        Elegir series específicas (opcional)
+                                                        @if(count($seriesActivas) > 0)
+                                                            <span class="ml-1 text-[#FF9521] font-semibold">{{ count($seriesActivas) }} seleccionada(s)</span>
+                                                        @endif
+                                                    </button>
+
+                                                    <div x-show="openSeries" x-transition class="mt-2 space-y-1 max-h-40 overflow-y-auto pr-1">
+                                                        <p class="text-[0.6rem] text-slate-400 mb-1">
+                                                            Máximo {{ $cantSelec }}. Los no seleccionados se asignan al azar.
+                                                        </p>
+                                                        @foreach($sinAsignar as $eq)
+                                                            @php $checked = in_array($eq->numero_serie, $seriesActivas, true); @endphp
+                                                            <label class="flex items-center gap-2 rounded-lg px-3 py-1.5 cursor-pointer
+                                                                          text-xs transition
+                                                                          {{ $checked
+                                                                              ? 'bg-[#FF9521]/10 border border-[#FF9521]/40'
+                                                                              : 'hover:bg-slate-100 dark:hover:bg-slate-800/50' }}
+                                                                          {{ !$checked && count($seriesActivas) >= $cantSelec ? 'opacity-40 pointer-events-none' : '' }}">
+                                                                <input type="checkbox"
+                                                                    wire:click="toggleSerie({{ $modelo->id }}, '{{ $eq->numero_serie }}')"
+                                                                    {{ $checked ? 'checked' : '' }}
+                                                                    class="rounded text-[#FF9521] focus:ring-[#FF9521]">
+                                                                <span class="font-mono text-slate-800 dark:text-slate-100">{{ $eq->numero_serie }}</span>
+                                                            </label>
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                            @endif
                                         </div>
                                     @endforeach
                                 </div>
@@ -656,14 +706,15 @@
         @elseif($vista === 'detalle')
 
             @php
-                $tecnico     = $this->tecnicoDetalle;
+                $tecnico      = $this->tecnicoDetalle;
                 $asignaciones = $this->asignacionesTecnico;
-                $totalEq     = $asignaciones->sum('cantidad');
-                $totalComp   = $asignaciones->sum(fn($a) => $a->equipos->where('camino','COMPLETADO')->count());
-                $totalProc   = $asignaciones->sum(fn($a) => $a->equipos->where('camino','EN_PROCESO')->count());
-                $totalPiezas = $asignaciones->sum(fn($a) => $a->equipos->where('camino','PIEZA_PENDIENTE')->count());
-                $totalGar    = $asignaciones->sum(fn($a) => $a->equipos->whereIn('camino',['GARANTIA_INTERNA','GARANTIA_EXTERNA'])->count());
-                $totalSinIni = max($totalEq - $asignaciones->sum(fn($a) => $a->equipos->count()), 0);
+                $totalEq      = $asignaciones->sum('cantidad');
+                $totalComp    = $asignaciones->sum(fn($a) => $a->equipos->whereIn('camino',['COMPLETADO','EN_CALIDAD'])->count());
+                $totalProc    = $asignaciones->sum(fn($a) => $a->equipos->where('camino','EN_PROCESO')->count());
+                $totalPend    = $asignaciones->sum(fn($a) => $a->equipos->whereIn('camino',['PENDIENTE','PRE_ASIGNADO'])->count());
+                $totalPiezas  = $asignaciones->sum(fn($a) => $a->equipos->where('camino','PIEZA_PENDIENTE')->count());
+                $totalGar     = $asignaciones->sum(fn($a) => $a->equipos->whereIn('camino',['GARANTIA_INTERNA','GARANTIA_EXTERNA'])->count());
+                $totalSinIni  = max($totalEq - $asignaciones->sum(fn($a) => $a->equipos->count()), 0);
             @endphp
 
             {{-- TARJETAS MÉTRICAS DEL TÉCNICO --}}
@@ -674,7 +725,7 @@
                             backdrop-blur-xl px-4 py-3 shadow-md
                             transition-all duration-300 hover:-translate-y-1
                             hover:shadow-lg hover:shadow-slate-500/20">
-                    <p class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">⬜ Sin iniciar</p>
+                    <p class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">⬜ Sin serie</p>
                     <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-50">{{ $totalSinIni }}</p>
                     <p class="text-[0.65rem] text-slate-400 mt-1">Pendientes de escanear</p>
                 </div>

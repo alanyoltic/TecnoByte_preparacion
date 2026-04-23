@@ -7,6 +7,7 @@ use App\Models\Lote;
 use App\Models\Proveedor;
 use App\Models\Roles;
 use App\Models\User;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Spatie\Browsershot\Browsershot;
 use Livewire\WithPagination;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\IOFactory;
 
-
+#[Layout('layouts.app', ['pageTitle' => 'Resumen de inventario'])]
 class ResumenInventario extends Component
 {
     use WithPagination;

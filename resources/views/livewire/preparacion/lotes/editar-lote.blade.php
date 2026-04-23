@@ -1,15 +1,28 @@
-<div class="space-y-6">
+<div>
+<x-tb-background>
+    <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10 space-y-6">
 
-    @if (session('success'))
-        <div class="px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40
-                    text-emerald-200 text-sm">
-            {{ session('success') }}
-        </div>
-    @endif
+        <x-toast />
+
+        <x-topbar
+            title="Editar lote"
+            chip="Lotes · Editar lote"
+            description="Edita equipos, piezas y características de un lote seleccionado."
+        />
+
+        <div class="bg-white/80 dark:bg-slate-950/60
+                    border border-slate-200/80 dark:border-white/10
+                    backdrop-blur-xl dark:backdrop-blur-2xl
+                    rounded-2xl
+                    shadow-md shadow-slate-900/10
+                    dark:shadow-lg dark:shadow-slate-900/30
+                    px-6 py-6 sm:px-8
+                    transition-all duration-300 ease-out
+                    space-y-6">
 
     {{-- ===== DATOS DEL LOTE ===== --}}
     <div class="space-y-4">
-        <p class="text-[0.75rem] font-semibold tracking-wide text-slate-400 uppercase">
+        <p class="text-[0.75rem] font-semibold tracking-wide text-slate-500 dark:text-slate-400 uppercase">
             Datos del lote
         </p>
 
@@ -17,7 +30,7 @@
 
             {{-- Nombre lote --}}
             <div class="space-y-1.5">
-                <label class="text-sm text-slate-300">
+                <label class="text-sm text-slate-700 dark:text-slate-300">
                     Nombre de lote <span class="text-red-400">*</span>
                 </label>
                 <input type="text"
@@ -35,7 +48,7 @@
 
             {{-- Proveedor --}}
             <div class="space-y-1.5">
-                <label class="text-sm text-slate-300">
+                <label class="text-sm text-slate-700 dark:text-slate-300">
                     Proveedor <span class="text-red-400">*</span>
                 </label>
 
@@ -60,7 +73,7 @@
 
             {{-- Fecha --}}
             <div class="space-y-1.5">
-                <label class="text-sm text-slate-300">
+                <label class="text-sm text-slate-700 dark:text-slate-300">
                     Fecha de llegada
                 </label>
 
@@ -81,13 +94,13 @@
     </div>
 
     {{-- Línea --}}
-    <div class="border-t border-slate-800/70 pt-1"></div>
+    <div class="border-t border-slate-200 dark:border-slate-800/70 pt-1"></div>
 
     {{-- ===== MODELOS RECIBIDOS ===== --}}
     <div class="space-y-4">
 
         <div class="flex items-center justify-between">
-            <p class="text-[0.75rem] font-semibold tracking-wide text-slate-400 uppercase">
+            <p class="text-[0.75rem] font-semibold tracking-wide text-slate-500 dark:text-slate-400 uppercase">
                 Modelos recibidos en este lote
             </p>
 
@@ -106,7 +119,7 @@
                     {{-- Marca --}}
                     <div class="space-y-1.5">
                         @if($index === 0)
-                            <label class="text-sm text-slate-300">Marca</label>
+                            <label class="text-sm text-slate-700 dark:text-slate-300">Marca</label>
                         @endif
                         <input type="text"
                                wire:model="modelos.{{ $index }}.marca"
@@ -124,7 +137,7 @@
                     {{-- Modelo --}}
                     <div class="space-y-1.5">
                         @if($index === 0)
-                            <label class="text-sm text-slate-300">Modelo</label>
+                            <label class="text-sm text-slate-700 dark:text-slate-300">Modelo</label>
                         @endif
                         <input type="text"
                                wire:model="modelos.{{ $index }}.modelo"
@@ -148,7 +161,7 @@
                     {{-- Cantidad --}}
                     <div class="space-y-1.5">
                         @if($index === 0)
-                            <label class="text-sm text-slate-300">Cantidad</label>
+                            <label class="text-sm text-slate-700 dark:text-slate-300">Cantidad</label>
                         @endif
                         <input type="number"
                                wire:model="modelos.{{ $index }}.cantidad_recibida"
@@ -166,7 +179,7 @@
                     {{-- Valor unitario --}}
                     <div class="space-y-1.5">
                         @if($index === 0)
-                            <label class="text-sm text-slate-300">Valor unit. ($)</label>
+                            <label class="text-sm text-slate-700 dark:text-slate-300">Valor unit. ($)</label>
                         @endif
                         <input type="number"
                                wire:model="modelos.{{ $index }}.valor_unitario"
@@ -185,7 +198,7 @@
                     {{-- Clasificación --}}
                     <div class="space-y-1.5">
                         @if($index === 0)
-                            <label class="text-sm text-slate-300">Clasificación</label>
+                            <label class="text-sm text-slate-700 dark:text-slate-300">Clasificación</label>
                         @endif
                         <select wire:model="modelos.{{ $index }}.clasificacion_puntos_id"
                                 class="w-full px-3 py-2 rounded-xl
@@ -213,7 +226,7 @@
                     {{-- Series --}}
                     <div class="space-y-1.5">
                         @if($index === 0)
-                            <label class="text-sm text-slate-300">Serie</label>
+                            <label class="text-sm text-slate-700 dark:text-slate-300">Serie</label>
                         @endif
                         @php $serieCount = count(array_filter(array_map('trim', $modelos[$index]['numeros_serie'] ?? []), fn($s) => $s !== '')); @endphp
                         <button type="button" wire:click="abrirModalSeries({{ $index }})"
@@ -382,4 +395,10 @@
         </div>
     @endif
 
+</div>
+
+        </div>
+
+    </div>
+</x-tb-background>
 </div>

@@ -1,4 +1,26 @@
-<div class="max-w-6xl mx-auto space-y-8">
+<div>
+<x-tb-background>
+    <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10 space-y-6">
+
+        <x-toast />
+
+        <x-topbar
+            title="Nueva transferencia"
+            chip="Inventario · Transferencias"
+            description="Crea transferencias de inventario entre almacenes."
+        >
+            <x-slot name="right">
+                <a href="{{ route('inventario.transferencias') }}"
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl
+                          bg-white/80 dark:bg-slate-900/60 border border-slate-300/70 dark:border-slate-700
+                          text-xs font-medium text-slate-700 dark:text-slate-200
+                          hover:bg-slate-100 dark:hover:bg-slate-800/80 transition">
+                    ← Volver
+                </a>
+            </x-slot>
+        </x-topbar>
+
+        <div class="max-w-6xl mx-auto space-y-8">
 
 
 
@@ -296,4 +318,9 @@
         </div>
 
     </div>
+</div>
+        </div>
+
+    </div>
+</x-tb-background>
 </div>
