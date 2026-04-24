@@ -17,6 +17,8 @@ class SolicitudPieza extends Model
         'solicitado_por_id',
         'catalogo_pieza_id',
         'descripcion_libre',
+        'categoria_solicitada',
+        'detalle_solicitado',
         'cantidad',
         'estatus',
         'inventario_pieza_id',
@@ -165,6 +167,102 @@ class SolicitudPieza extends Model
     public function getNombrePiezaAttribute(): string
     {
         return $this->catalogoPieza?->nombre ?? $this->descripcion_libre ?? 'Sin descripción';
+    }
+
+    public static function formatearDescripcionSolicitada(?string $categoria, ?string $detalle): ?string
+    {
+        $categoria = trim((string) $categoria);
+        $detalle   = trim((string) $detalle);
+
+        if ($categoria === '' && $detalle === '') {
+            return null;
+        }
+
+        if ($categoria === '') {
+            return $detalle;
+        }
+
+        if ($detalle === '') {
+            return $categoria;
+        }
+
+        return $categoria . ' — ' . $detalle;
+    }
+
+    public static function parsearDescripcionLibre(?string $descripcion): array
+    {
+        $descripcion = trim((string) $descripcion);
+
+        if ($descripcion === '') {
+            return ['categoria' => null, 'detalle' => null];
+        }
+
+        if (preg_match('/^\[(.+?)\]\s*(.*)$/u', $descripcion, $matches) === 1) {
+            return [
+                'categoria' => trim((string) ($matches[1] ?? '')) ?: null,
+                'detalle'   => trim((string) ($matches[2] ?? '')) ?: null,
+            ];
+        }
+
+        $partes = preg_split('/\s+[—–-]\s+/u', $descripcion, 2);
+
+        if (is_array($partes) && count($partes) === 2) {
+            return [
+                'categoria' => trim((string) ($partes[0] ?? '')) ?: null,
+                'detalle'   => trim((string) ($partes[1] ?? '')) ?: null,
+            ];
+        }
+
+        return [
+            'categoria' => trim($descripcion) ?: null,
+            'detalle'   => null,
+        ];
+    }
+
+    public function getCategoriaSolicitadaTextoAttribute(): ?string
+    {
+        $categoria = trim((string) ($this->attributes['categoria_solicitada'] ?? ''));
+
+        if ($categoria !== '') {
+            return $categoria;
+        }
+
+        return static::parsearDescripcionLibre($this->attributes['descripcion_libre'] ?? null)['categoria'];
+    }
+
+    public function getDetalleSolicitadoTextoAttribute(): ?string
+    {
+        $detalle = trim((string) ($this->attributes['detalle_solicitado'] ?? ''));
+
+        if ($detalle !== '') {
+            return $detalle;
+        }
+
+        return static::parsearDescripcionLibre($this->attributes['descripcion_libre'] ?? null)['detalle'];
+    }
+
+    public function getDescripcionSolicitadaAttribute(): ?string
+    {
+        $descripcion = static::formatearDescripcionSolicitada(
+            $this->categoria_solicitada_texto,
+            $this->detalle_solicitado_texto
+        );
+
+        if ($descripcion !== null) {
+            return $descripcion;
+        }
+
+        $legacy = trim((string) ($this->attributes['descripcion_libre'] ?? ''));
+
+        return $legacy !== '' ? $legacy : null;
+    }
+
+    public function getTituloSolicitudAttribute(): string
+    {
+        return $this->catalogoPieza?->nombre
+            ?? $this->descripcion_solicitada
+            ?? $this->descripcion_libre
+            ?? 'Sin descripciÃ³n';
     }
 
     public static function labelsEstatus(): array

@@ -129,7 +129,7 @@
                             {{-- Nombre + badges --}}
                             <div class="flex items-center gap-2 flex-wrap">
                                 <h3 class="font-bold text-slate-900 dark:text-white">
-                                    {{ $solicitud->nombre_pieza }}
+                                        {{ $solicitud->titulo_solicitud }}
                                 </h3>
                                 @if(($solicitud->cantidad ?? 1) > 1)
                                     <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
@@ -180,9 +180,14 @@
                                 </p>
                             @else
                                 {{-- Descripcion libre --}}
-                                @if($solicitud->descripcion_libre)
+                                @if(!$solicitud->catalogo_pieza_id && ($solicitud->categoria_solicitada_texto || $solicitud->detalle_solicitado_texto))
                                     <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/40 text-sm text-slate-700 dark:text-slate-300">
-                                        {{ $solicitud->descripcion_libre }}
+                                        @if($solicitud->categoria_solicitada_texto)
+                                            <p><span class="font-medium">Categoría:</span> {{ $solicitud->categoria_solicitada_texto }}</p>
+                                        @endif
+                                        @if($solicitud->detalle_solicitado_texto)
+                                            <p><span class="font-medium">Detalle:</span> {{ $solicitud->detalle_solicitado_texto }}</p>
+                                        @endif
                                     </div>
                                 @endif
 
@@ -341,7 +346,7 @@
                     <div class="rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-700/40 px-4 py-3">
                         <p class="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">Pieza a instalar</p>
                         <p class="font-bold text-slate-900 dark:text-slate-50">
-                            {{ $solicitudSeleccionada->catalogoPieza?->nombre ?? $solicitudSeleccionada->descripcion_libre ?? 'Sin descripcion' }}
+                            {{ $solicitudSeleccionada->titulo_solicitud }}
                         </p>
                         @if($solicitudSeleccionada->inventarioPieza)
                             <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">

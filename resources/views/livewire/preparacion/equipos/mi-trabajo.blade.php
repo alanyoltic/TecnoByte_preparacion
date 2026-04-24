@@ -64,7 +64,7 @@
         @elseif($vista === 'confirmar_pieza')
             <x-topbar
                 title="Instalar pieza"
-                chip="{{ $this->solicitudPiezaActual?->nombre_pieza }}"
+                chip="{{ $this->solicitudPiezaActual?->titulo_solicitud }}"
                 description="Confirma si la pieza funcionó o no."
             >
                 <x-slot name="right">
@@ -355,6 +355,7 @@
                         @foreach($this->solicitudesPieza as $sp)
                             @php
                                 $eq          = $sp->equipo;
+                                $piezaTitulo = $sp->titulo_solicitud;
                                 $piezaNombre = $sp->catalogoPieza?->nombre ?? $sp->descripcion_libre ?? 'Sin descripción';
                                 $enCurso     = $sp->fueIniciada();
                             @endphp
@@ -365,7 +366,7 @@
                                 <div class="flex-1 min-w-0 space-y-0.5">
                                     <div class="flex items-center gap-2 flex-wrap">
                                         <p class="text-sm font-semibold text-slate-900 dark:text-slate-50 truncate">
-                                            {{ $piezaNombre }}
+                                            {{ $piezaTitulo ?? $piezaNombre }}
                                         </p>
                                         @if($enCurso)
                                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full

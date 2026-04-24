@@ -168,7 +168,7 @@
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <h3 class="font-bold text-slate-900 dark:text-white">
-                                        {{ $solicitud->nombre_pieza }}
+                                        {{ $solicitud->titulo_solicitud }}
                                     </h3>
                                     @if(($solicitud->cantidad ?? 1) > 1)
                                         <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
@@ -197,9 +197,14 @@
                                     @endif
                                 </div>
 
-                                @if($solicitud->descripcion_libre)
+                                @if(!$solicitud->catalogo_pieza_id && ($solicitud->categoria_solicitada_texto || $solicitud->detalle_solicitado_texto))
                                     <div class="mt-2 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-700 dark:text-slate-300">
-                                        <span class="font-medium">Descripción:</span> {{ $solicitud->descripcion_libre }}
+                                        @if($solicitud->categoria_solicitada_texto)
+                                            <p><span class="font-medium">Categoría:</span> {{ $solicitud->categoria_solicitada_texto }}</p>
+                                        @endif
+                                        @if($solicitud->detalle_solicitado_texto)
+                                            <p><span class="font-medium">Detalle:</span> {{ $solicitud->detalle_solicitado_texto }}</p>
+                                        @endif
                                     </div>
                                 @endif
 
@@ -329,7 +334,7 @@
                     {{-- Info del equipo/solicitud --}}
                     @if($solicitudSeleccionada)
                         <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-sm text-slate-700 dark:text-slate-300 space-y-1">
-                            <p><span class="font-medium">Pieza solicitada:</span> {{ $solicitudSeleccionada->nombre_pieza }}</p>
+                            <p><span class="font-medium">Pieza solicitada:</span> {{ $solicitudSeleccionada->titulo_solicitud }}</p>
                             @if(($solicitudSeleccionada->cantidad ?? 1) > 1)
                                 <p class="flex items-center gap-1">
                                     <span class="font-medium">Cantidad requerida:</span>
@@ -358,9 +363,15 @@
                             </label>
                             @if(!$solicitudSeleccionada?->catalogo_pieza_id)
                                 @php
-                                    $descLibre        = $solicitudSeleccionada->descripcion_libre ?? '';
+                                    $catInferida = $solicitudSeleccionada->categoria_solicitada_texto;
+                                    $descLibre   = $catInferida && $catInferida !== 'Otro'
+                                        ? $catInferida . ' â€” '
+                                        : '';
                                     $catInferida      = str_contains($descLibre, ' — ')
                                         ? trim(explode(' — ', $descLibre)[0])
+                                        : null;
+                                    $catInferida = $solicitudSeleccionada->categoria_solicitada_texto !== 'Otro'
+                                        ? $solicitudSeleccionada->categoria_solicitada_texto
                                         : null;
                                 @endphp
                                 <p class="text-xs text-amber-600 dark:text-amber-400 mb-2">

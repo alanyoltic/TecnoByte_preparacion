@@ -856,14 +856,18 @@ class MiTrabajo extends Component
 
                 if ($this->camino === 'PIEZA_PENDIENTE') {
                     if ($this->fuentePieza === 'stock') {
-                        $catalogoId   = $this->catalogoPiezaId;
-                        $descLibre    = null;
+                        $catalogoId          = $this->catalogoPiezaId;
+                        $categoriaSolicitada = null;
+                        $detalleSolicitado   = null;
+                        $descLibre           = null;
                     } else {
-                        $catalogoId   = null;
-                        $partes       = [trim($this->categoriaPiezaLibre)];
-                        if (!empty(trim($this->descripcionPiezaLibre))) {
-                            $partes[] = trim($this->descripcionPiezaLibre);
-                        }
+                        $catalogoId          = null;
+                        $categoriaSolicitada = trim($this->categoriaPiezaLibre) ?: null;
+                        $detalleSolicitado   = trim($this->descripcionPiezaLibre) ?: null;
+                        $partes              = array_values(array_filter([
+                            $categoriaSolicitada,
+                            $detalleSolicitado,
+                        ], fn ($valor) => $valor !== null && $valor !== ''));
                         $descLibre = implode(' — ', $partes);
                     }
 
@@ -881,6 +885,8 @@ class MiTrabajo extends Component
                             'solicitado_por_id'    => Auth::id(),
                             'catalogo_pieza_id'    => $catalogoId,
                             'descripcion_libre'    => $descLibre,
+                            'categoria_solicitada' => $categoriaSolicitada,
+                            'detalle_solicitado'   => $detalleSolicitado,
                             'cantidad'             => max(1, $this->cantidadPieza),
                             'estatus'              => SolicitudPieza::PENDIENTE,
                         ]);

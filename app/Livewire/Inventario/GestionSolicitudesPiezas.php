@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Inventario;
 
+use App\Models\CatalogoPieza;
 use App\Models\InventarioPieza;
 use App\Models\SolicitudPieza;
 use App\Models\User;
@@ -81,7 +82,9 @@ class GestionSolicitudesPiezas extends Component
                     ->orWhereHas('catalogoPieza', function ($cat) {
                         $cat->where('nombre', 'like', '%' . $this->busqueda . '%');
                     })
-                    ->orWhere('descripcion_libre', 'like', '%' . $this->busqueda . '%');
+                    ->orWhere('descripcion_libre', 'like', '%' . $this->busqueda . '%')
+                    ->orWhere('categoria_solicitada', 'like', '%' . $this->busqueda . '%')
+                    ->orWhere('detalle_solicitado', 'like', '%' . $this->busqueda . '%');
                 });
             })
             ->orderByRaw("FIELD(estatus, 'PENDIENTE', 'REQUIERE_REASIGNACION', 'PENDIENTE_COMPRA', 'COMPRADA', 'SURTIDA_INVENTARIO', 'CONFIRMADA', 'CANCELADA')")
@@ -130,10 +133,20 @@ class GestionSolicitudesPiezas extends Component
         } else {
             // Solicitud libre: si la descripción tiene formato "Categoría — detalle",
             // filtrar el inventario por esa categoría para no mostrar piezas de otro tipo.
-            $categoriaInferida = null;
-            $desc = $this->solicitudSeleccionada->descripcion_libre ?? '';
+            $categoriaInferida = $this->solicitudSeleccionada->categoria_solicitada_texto;
+            $desc = $categoriaInferida ? $categoriaInferida . ' â€” ' : '';
+            if ($categoriaInferida === 'Otro') {
+                $categoriaInferida = null;
+            }
             if (str_contains($desc, ' — ')) {
                 $categoriaInferida = trim(explode(' — ', $desc)[0]);
+            }
+
+            $categoriaInferida = $this->solicitudSeleccionada->categoria_solicitada_texto !== 'Otro'
+                ? $this->solicitudSeleccionada->categoria_solicitada_texto
+                : null;
+            if ($categoriaInferida && !CatalogoPieza::where('categoria', $categoriaInferida)->exists()) {
+                $categoriaInferida = null;
             }
 
             $this->piezasDisponibles = InventarioPieza::where('cantidad_disponible', '>=', $cantidadRequerida)

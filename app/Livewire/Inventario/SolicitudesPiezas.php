@@ -85,6 +85,8 @@ class SolicitudesPiezas extends Component
                         $c->where('nombre', 'like', '%' . $this->busqueda . '%')
                     )
                     ->orWhere('descripcion_libre', 'like', '%' . $this->busqueda . '%')
+                    ->orWhere('categoria_solicitada', 'like', '%' . $this->busqueda . '%')
+                    ->orWhere('detalle_solicitado', 'like', '%' . $this->busqueda . '%')
                     ->orWhereHas('equipo', function ($e) {
                         $bId = is_numeric(trim($this->busqueda)) ? (int) trim($this->busqueda) : -1;
                         $e->where('numero_serie', 'like', '%' . $this->busqueda . '%')
