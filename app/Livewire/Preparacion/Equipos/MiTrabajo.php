@@ -871,14 +871,14 @@ class MiTrabajo extends Component
                         $descLibre = implode(' — ', $partes);
                     }
 
-                    $yaExiste = SolicitudPieza::where('asignacion_equipo_id', $ae->id)
-                        ->whereIn('estatus', [
-                            SolicitudPieza::PENDIENTE,
-                            SolicitudPieza::SURTIDA_INVENTARIO,
-                            SolicitudPieza::REQUIERE_REASIGNACION,
-                        ])->exists();
+                    $solicitudActiva = SolicitudPieza::query()
+                        ->where('equipo_id', $ae->equipo_id)
+                        ->activas()
+                        ->lockForUpdate()
+                        ->orderByDesc('id')
+                        ->first();
 
-                    if (!$yaExiste) {
+                    if (!$solicitudActiva) {
                         SolicitudPieza::create([
                             'asignacion_equipo_id' => $ae->id,
                             'equipo_id'            => $ae->equipo_id,
@@ -889,6 +889,21 @@ class MiTrabajo extends Component
                             'detalle_solicitado'   => $detalleSolicitado,
                             'cantidad'             => max(1, $this->cantidadPieza),
                             'estatus'              => SolicitudPieza::PENDIENTE,
+                        ]);
+                    } elseif (in_array($solicitudActiva->estatus, [
+                        SolicitudPieza::PENDIENTE,
+                        SolicitudPieza::PENDIENTE_COMPRA,
+                        SolicitudPieza::COMPRADA,
+                        SolicitudPieza::REQUIERE_REASIGNACION,
+                    ], true)) {
+                        $solicitudActiva->update([
+                            'asignacion_equipo_id' => $ae->id,
+                            'solicitado_por_id'    => Auth::id(),
+                            'catalogo_pieza_id'    => $catalogoId,
+                            'descripcion_libre'    => $descLibre,
+                            'categoria_solicitada' => $categoriaSolicitada,
+                            'detalle_solicitado'   => $detalleSolicitado,
+                            'cantidad'             => max(1, $this->cantidadPieza),
                         ]);
                     }
                 }
