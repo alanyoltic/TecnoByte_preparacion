@@ -90,6 +90,7 @@ class PermisosSeeder extends Seeder
             ['slug' => 'sistema.usuarios.crear',         'descripcion' => 'Crear usuarios'],
             ['slug' => 'sistema.usuarios.editar',        'descripcion' => 'Editar usuarios'],
             ['slug' => 'sistema.avisos.ver',             'descripcion' => 'Ver avisos / anuncios'],
+            ['slug' => 'sistema.avisos.gestion',         'descripcion' => 'Gestionar avisos / anuncios'],
             ['slug' => 'sistema.reportes.ver',           'descripcion' => 'Ver reportes globales'],
             ['slug' => 'sistema.reportes.exportar',      'descripcion' => 'Exportar reportes'],
             ['slug' => 'sistema.contabilidad.ver',       'descripcion' => 'Ver resumen contable'],
@@ -159,6 +160,8 @@ class PermisosSeeder extends Seeder
             'sistema.usuarios.ver',
             'sistema.usuarios.crear',
             'sistema.usuarios.editar',
+            'sistema.avisos.ver',
+            'sistema.avisos.gestion',
             'sistema.reportes.ver',
             'sistema.reportes.exportar',
             'sistema.contabilidad.ver',
@@ -183,6 +186,8 @@ class PermisosSeeder extends Seeder
             'sistema.usuarios.ver',
             'sistema.usuarios.crear',
             'sistema.usuarios.editar',
+            'sistema.avisos.ver',
+            'sistema.avisos.gestion',
             'modulo.sistema',
         ]);
 

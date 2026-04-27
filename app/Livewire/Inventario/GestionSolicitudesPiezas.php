@@ -133,15 +133,6 @@ class GestionSolicitudesPiezas extends Component
         } else {
             // Solicitud libre: si la descripción tiene formato "Categoría — detalle",
             // filtrar el inventario por esa categoría para no mostrar piezas de otro tipo.
-            $categoriaInferida = $this->solicitudSeleccionada->categoria_solicitada_texto;
-            $desc = $categoriaInferida ? $categoriaInferida . ' â€” ' : '';
-            if ($categoriaInferida === 'Otro') {
-                $categoriaInferida = null;
-            }
-            if (str_contains($desc, ' — ')) {
-                $categoriaInferida = trim(explode(' — ', $desc)[0]);
-            }
-
             $categoriaInferida = $this->solicitudSeleccionada->categoria_solicitada_texto !== 'Otro'
                 ? $this->solicitudSeleccionada->categoria_solicitada_texto
                 : null;

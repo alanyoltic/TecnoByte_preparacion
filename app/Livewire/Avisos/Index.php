@@ -26,6 +26,7 @@ class Index extends Component
     public $pinned = false;
     public $starts_at = null;
     public $ends_at = null;
+    public bool $puedeGestionar = false;
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -34,12 +35,18 @@ class Index extends Component
 
     public function mount(): void
     {
-        $this->autorizarGestionAvisos();
+        $this->autorizarVerAvisos();
+        $this->puedeGestionar = (bool) auth()->user()?->tienePermiso('sistema.avisos.gestion');
+    }
+
+    private function autorizarVerAvisos(): void
+    {
+        abort_unless(auth()->user()?->tienePermiso('sistema.avisos.ver'), 403);
     }
 
     private function autorizarGestionAvisos(): void
     {
-        abort_unless(auth()->user()?->tienePermiso('sistema.admin.configuracion'), 403);
+        abort_unless(auth()->user()?->tienePermiso('sistema.avisos.gestion'), 403);
     }
 
     public function updatingSearch(): void
@@ -116,12 +123,28 @@ class Index extends Component
             'ends_at'   => 'nullable|date|after_or_equal:starts_at',
         ]);
 
+        if ((bool) $this->is_active) {
+            $activosPublicados = Aviso::activos()
+                ->when($this->editingId, fn ($q) => $q->where('id', '!=', $this->editingId))
+                ->count();
+
+            if ($activosPublicados >= 10) {
+                $this->dispatch('toast', [
+                    'type' => 'error',
+                    'message' => 'Ya hay 10 avisos activos/vigentes. Desactiva o programa uno antes de publicar otro.',
+                ]);
+                return;
+            }
+        }
+
+        $iconoNormalizado = trim((string) $this->icono);
+
         $payload = [
             'titulo'    => $this->titulo,
             'texto'     => $this->texto,
             'tag'       => $this->tag,
             'color'     => $this->color,
-            'icono'     => $this->icono ?: null,
+            'icono'     => $iconoNormalizado !== '' ? $iconoNormalizado : null,
             'is_active' => (bool) $this->is_active,
             'pinned'    => (bool) $this->pinned,
             'starts_at' => $this->starts_at ? Carbon::parse($this->starts_at) : null,

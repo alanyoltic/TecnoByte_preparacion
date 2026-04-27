@@ -52,6 +52,13 @@ class SolicitudPieza extends Model
     const CANCELADA               = 'CANCELADA';
     const CONFIRMADA              = 'CONFIRMADA';
     const REQUIERE_REASIGNACION   = 'REQUIERE_REASIGNACION';
+    const ESTATUS_ACTIVOS = [
+        self::PENDIENTE,
+        self::PENDIENTE_COMPRA,
+        self::COMPRADA,
+        self::SURTIDA_INVENTARIO,
+        self::REQUIERE_REASIGNACION,
+    ];
 
     /**
      * Relaciones existentes
@@ -149,6 +156,11 @@ class SolicitudPieza extends Model
     public function scopeDelTecnico($query, $tecnicoId)
     {
         return $query->where('solicitado_por_id', $tecnicoId);
+    }
+
+    public function scopeActivas($query)
+    {
+        return $query->whereIn('estatus', self::ESTATUS_ACTIVOS);
     }
 
     /**
@@ -262,7 +274,7 @@ class SolicitudPieza extends Model
         return $this->catalogoPieza?->nombre
             ?? $this->descripcion_solicitada
             ?? $this->descripcion_libre
-            ?? 'Sin descripciÃ³n';
+            ?? 'Sin descripción';
     }
 
     public static function labelsEstatus(): array

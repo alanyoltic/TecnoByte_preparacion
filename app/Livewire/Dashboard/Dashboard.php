@@ -82,18 +82,9 @@ class Dashboard extends Component
 
     private function cargarAvisos(): void
     {
-        $now = Carbon::now();
-
         $this->avisos = Aviso::query()
-            ->where('is_active', true)
-            ->where(function ($q) use ($now) {
-                $q->whereNull('starts_at')->orWhere('starts_at', '<=', $now);
-            })
-            ->where(function ($q) use ($now) {
-                $q->whereNull('ends_at')->orWhere('ends_at', '>=', $now);
-            })
-            ->orderByDesc('pinned')
-            ->orderByDesc('created_at')
+            ->activos()
+            ->ordenDashboard()
             ->limit(10)
             ->get()
             ->map(fn ($a) => [
@@ -101,7 +92,7 @@ class Dashboard extends Component
                 'texto'  => $a->texto,
                 'tag'    => $a->tag ?? 'INFO',
                 'color'  => $a->color ?? 'slate',
-                'icono'  => $a->icono ?? 'Ã°Å¸â€œÅ’',
+                'icono'  => $a->icono ?? '📌',
             ])
             ->toArray();
 }
@@ -127,7 +118,7 @@ class Dashboard extends Component
 
         $this->selectedMonthValue = now()->format('Y-m');
 
-        // Si es tÃƒÂ©cnico, el filtro de colaborador debe quedar vacÃƒÂ­o (porque siempre se filtra a ÃƒÂ©l)
+        // Si es tecnico, el filtro de colaborador debe quedar vacio (porque siempre se filtra a el)
         if ($this->isTecnico) {
             $this->selectedColaboradorId = null;
         }
@@ -156,7 +147,7 @@ class Dashboard extends Component
 
     public function updatedSelectedColaboradorId(): void
     {
-        // Si es tÃƒÂ©cnico, ignora cambios (por seguridad)
+        // Si es tecnico, ignora cambios (por seguridad)
         if ($this->isTecnico) {
             $this->selectedColaboradorId = null;
         }
@@ -199,10 +190,10 @@ private function cargarEmpleadoDelMes(): void
 
     $u = $record->user;
 
-    // Ã¢Å“â€¦ Normalizar foto_perfil a "path" (ej: fotos_perfil/archivo.jpg)
+    // Normalizar foto_perfil a "path" (ej: fotos_perfil/archivo.jpg)
     $foto = $u->foto_perfil ?? null;
 
-    // Si por alguna razÃƒÂ³n viene como URL completa (http://.../storage/...), lo convertimos a path
+    // Si por alguna razon viene como URL completa (http://.../storage/...), lo convertimos a path
     if ($foto && str_contains($foto, '/storage/')) {
         $foto = ltrim(explode('/storage/', $foto, 2)[1], '/');
     }
@@ -212,7 +203,7 @@ private function cargarEmpleadoDelMes(): void
         'nombre'      => trim(($u->nombre ?? '') . ' ' . ($u->apellido_paterno ?? '')),
         'mensaje'     => $record->mensaje,
         'month'       => $record->month,
-        'foto_perfil' => $foto, // Ã¢Å“â€¦ MISMO NOMBRE que en users/sidebar
+        'foto_perfil' => $foto, // MISMO NOMBRE que en users/sidebar
     ];
 }
 
@@ -267,7 +258,7 @@ public function openEmpleadoModal(): void
     $this->validate([
         'empleadoMesUserId' => 'required|exists:users,id',
         'empleadoMesMensaje' => 'nullable|string|max:400',
-        // cuando agreguemos "hasta quÃƒÂ© fecha", aquÃƒÂ­ va su regla
+        // cuando agreguemos "hasta que fecha", aqui va su regla
     ]);
 
     EmpleadoDelMes::updateOrCreate(
@@ -458,7 +449,7 @@ $this->labelMes = $selectedDate->locale('es')->translatedFormat('F Y');
 ]);
 
 
-        // ===== 3. GRÃƒÂFICA LÃƒÂNEA =====
+        // ===== 3. GRAFICA LINEA =====
         $lineDataLabels = ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4', 'Semana 5'];
         $lineDataCounts = [0, 0, 0, 0, 0];
 
@@ -490,7 +481,7 @@ $this->labelMes = $selectedDate->locale('es')->translatedFormat('F Y');
             'data'   => $lineDataCounts,
         ];
 
-        // ===== 4. GRÃƒÂFICA BARRAS =====
+        // ===== 4. GRAFICA BARRAS =====
         $labels           = [];
         $serieActualAno   = [];
         $serieAnoAnterior = [];
@@ -542,7 +533,7 @@ $this->labelMes = $selectedDate->locale('es')->translatedFormat('F Y');
         // ===== 5. COLABORADORES =====
         $tecnicosBaseQuery = User::query()
             ->join('roles', 'users.role_id', '=', 'roles.id')
-            ->whereIn(DB::raw('LOWER(roles.slug)'), ['tecnico', 'tÃƒÂ©cnico']);
+            ->whereIn(DB::raw('LOWER(roles.slug)'), ['tecnico']);
 
         $colaboradoresCount = (clone $tecnicosBaseQuery)->count();
 
@@ -574,7 +565,7 @@ $metaRecord = PreparacionMetaMensual::where('anio', $anio)
     ->where('mes', $mes)
     ->first();
 
-// Si NO existe y es el mes actual Ã¢â€ â€™ la creamos
+// Si NO existe y es el mes actual, la creamos
 if (!$metaRecord && $anio == now()->year && $mes == now()->month) {
 
     $tecnicosIniciales = $colaboradoresCount;
@@ -653,7 +644,7 @@ $this->breakdown = [
 
 
 
-        // Ã¢Å“â€¦ Disparar evento para actualizar ApexCharts sin recargar
+        // Disparar evento para actualizar ApexCharts sin recargar
         $this->dispatch('dashboard-data-updated',
             lineChart: $this->lineChart,
             tecnicoChart: $this->tecnicoChart,
@@ -745,4 +736,3 @@ $this->breakdown = [
    
 
 }
-

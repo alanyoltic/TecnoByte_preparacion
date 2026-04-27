@@ -364,12 +364,6 @@
                             @if(!$solicitudSeleccionada?->catalogo_pieza_id)
                                 @php
                                     $catInferida = $solicitudSeleccionada->categoria_solicitada_texto;
-                                    $descLibre   = $catInferida && $catInferida !== 'Otro'
-                                        ? $catInferida . ' â€” '
-                                        : '';
-                                    $catInferida      = str_contains($descLibre, ' — ')
-                                        ? trim(explode(' — ', $descLibre)[0])
-                                        : null;
                                     $catInferida = $solicitudSeleccionada->categoria_solicitada_texto !== 'Otro'
                                         ? $solicitudSeleccionada->categoria_solicitada_texto
                                         : null;

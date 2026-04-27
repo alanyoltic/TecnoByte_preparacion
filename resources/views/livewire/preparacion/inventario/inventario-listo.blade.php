@@ -311,7 +311,7 @@
             dark:hover:shadow-2xl dark:hover:shadow-indigo-500/25
             hover:border-[#3B82F6]/70 dark:hover:border-indigo-400/50"
     >
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto overflow-y-visible">
             <table class="min-w-full text-sm sm:text-base text-left">
 
                 <thead class="bg-slate-100 border-b border-slate-200 dark:bg-slate-950/90 dark:border-slate-800/80">
@@ -434,7 +434,11 @@
                                 <span class="text-sm sm:text-base text-slate-400">—</span>
                             @endif
                         </td>
-<td class="px-3 py-3 align-top text-right">
+<td
+    x-data="{ open: false }"
+    :class="open ? 'relative z-[90]' : 'relative z-10'"
+    class="px-3 py-3 align-top text-right"
+>
 
     @php
         // 1) SMART ID — fecha de registro del equipo, no la de impresión
@@ -453,7 +457,7 @@
     @endphp
 
     {{-- MENÚ DE ACCIONES (Imprimir / Editar) --}}
-    <div x-data="{ open: false }" class="relative inline-block text-left z-50">
+    <div class="relative inline-block text-left">
 
         <button
             type="button"
@@ -477,11 +481,12 @@
         <div
             x-show="open"
             x-transition
+            x-cloak
             @click.outside="open = false"
             class="origin-top-right absolute right-0 mt-1 w-40
-                   rounded-xl bg-white dark:bg-slate-900
-                   border border-slate-200/80 dark:border-slate-700/80
-                   shadow-lg shadow-slate-900/20 z-[9999]"
+                    rounded-xl bg-white dark:bg-slate-900
+                    border border-slate-200/80 dark:border-slate-700/80
+                    shadow-lg shadow-slate-900/20 z-[100]"
         >
             <div class="py-1 text-xs text-slate-700 dark:text-slate-200">
 
@@ -506,7 +511,6 @@
             </div>
         </div>
     </div>
-    </button>
 
     {{-- 3. ETIQUETA OCULTA (DISEÑO NUEVO TIPO IMAGEN) --}}
     <div id="etiqueta-source-{{ $equipo->id }}" class="hidden font-['Inter',sans-serif]">

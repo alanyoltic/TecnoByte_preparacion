@@ -538,12 +538,21 @@ public function cerrarModalCambiarEstatus(): void
     {
         $equipos = $this->equiposQuery()->paginate($this->perPage);
 
+        $equiposConTecnico = Equipo::query()
+            ->whereHas('asignacionEquipos.asignacion', function ($q) {
+                $q->whereNotNull('tecnico_id');
+            });
+
         // Stats para las tarjetas (son counts, ligeros)
         $stats = [
             'total'          => Equipo::count(),
-            'sin_asignar'    => Equipo::whereDoesntHave('asignacionEquipos')->count(),
-            'por_hacer'      => Equipo::whereHas('asignacionEquipos')
-                ->where('estatus_area', '!=', 'EN_CALIDAD')
+            'sin_asignar'    => Equipo::query()
+                ->whereDoesntHave('asignacionEquipos.asignacion', function ($q) {
+                    $q->whereNotNull('tecnico_id');
+                })
+                ->count(),
+            'por_hacer'      => (clone $equiposConTecnico)
+                ->whereNotIn('estatus_area', ['EN_CALIDAD', 'FINALIZADO', 'TRANSFERIDO'])
                 ->count(),
             'en_calidad'     => Equipo::where('estatus_area', 'EN_CALIDAD')->count(),
             'finalizado'     => Equipo::where('estatus_area', 'FINALIZADO')->count(),

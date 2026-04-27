@@ -156,11 +156,20 @@ public function mount()
 
     protected function calcularStats(): void
     {
+        $equiposConTecnico = Equipo::query()
+            ->whereHas('asignacionEquipos.asignacion', function ($q) {
+                $q->whereNotNull('tecnico_id');
+            });
+
         // TODOS los equipos, sin importar estatus
         $this->stats['total'] = Equipo::count();
 
-        // Equipos en lotes SIN asignar a ningún técnico
-        $this->stats['sin_asignar'] = Equipo::whereDoesntHave('asignacionEquipos')->count();
+        // Equipos sin técnico asignado (con o sin número de serie)
+        $this->stats['sin_asignar'] = Equipo::query()
+            ->whereDoesntHave('asignacionEquipos.asignacion', function ($q) {
+                $q->whereNotNull('tecnico_id');
+            })
+            ->count();
 
         // Equipos en calidad
         $this->stats['en_calidad'] = Equipo::where('estatus_area', 'EN_CALIDAD')->count();
@@ -168,9 +177,9 @@ public function mount()
         // Equipos finalizados
         $this->stats['finalizado'] = Equipo::where('estatus_area', 'FINALIZADO')->count();
 
-        // Equipos asignados a técnico pero que NO están en calidad (por hacer)
-        $this->stats['por_hacer'] = Equipo::whereHas('asignacionEquipos')
-            ->where('estatus_area', '!=', 'EN_CALIDAD')
+        // Equipos asignados a técnico que aún no llegan a calidad/finalizado/transferido
+        $this->stats['por_hacer'] = (clone $equiposConTecnico)
+            ->whereNotIn('estatus_area', ['EN_CALIDAD', 'FINALIZADO', 'TRANSFERIDO'])
             ->count();
     }
 

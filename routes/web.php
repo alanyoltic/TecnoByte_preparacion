@@ -255,7 +255,7 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
                 ->middleware('permiso:sistema.usuarios.crear');
 
             Route::get('/avisos', \App\Livewire\Avisos\Index::class)
-                ->middleware('permiso:sistema.admin.configuracion')
+                ->middleware('permiso:sistema.avisos.ver')
                 ->name('avisos.index');
 
                 Route::patch('/usuarios/{user}/baja', [UserController::class, 'baja'])

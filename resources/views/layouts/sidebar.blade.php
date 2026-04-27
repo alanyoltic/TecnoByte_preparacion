@@ -74,10 +74,17 @@
 
             $labelBase = "ml-2 whitespace-nowrap";
 
-            $isDashboard  = request()->routeIs('dashboard');
+            $isDashboard  = request()->routeIs('dashboard')
+                || request()->routeIs('preparacion.dashboard');
             $isLotes      = request()->routeIs('lotes.*');
-            $isOperaciones = request()->routeIs('preparacion.*');
-            $isInventario = request()->routeIs('inventario.*') || request()->routeIs('preparacion.inventario.*');
+            $isOperaciones = request()->routeIs('preparacion.mi-trabajo')
+                || request()->routeIs('preparacion.asignaciones')
+                || request()->routeIs('inventario.piezas.solicitudes')
+                || request()->routeIs('equipos.caracteristicas');
+            $isInventario = (
+                request()->routeIs('inventario.*')
+                || request()->routeIs('preparacion.inventario.*')
+            ) && !request()->routeIs('inventario.piezas.solicitudes');
             $isUsuarios   = request()->routeIs('users.*') || request()->routeIs('register');
 
             $u = auth()->user();
@@ -98,6 +105,7 @@
             $puedeUsuarios      = $u && $u->tienePermiso('sistema.usuarios.ver');
             $puedeUsuariosCrear = $u && $u->tienePermiso('sistema.usuarios.crear');
             $puedeAdminConfig   = $u && $u->tienePermiso('sistema.admin.configuracion');
+            $puedeAvisos        = $u && $u->tienePermiso('sistema.avisos.ver');
         @endphp
 
        {{-- NAV --}}
@@ -106,6 +114,10 @@
         activeMenu: null,
         setMenu(id){ this.activeMenu = (this.activeMenu === id) ? null : id; },
         closeMenu(){ this.activeMenu = null; },
+        closeAll(){
+            this.closeMenu();
+            window.dispatchEvent(new CustomEvent('tb-close-popovers'));
+        },
     }"
     @click.outside="if(sidebarOpen) closeMenu()"
     @keydown.escape.window="closeMenu()"
@@ -904,7 +916,7 @@
                                       transition-colors duration-150">
                                 Perfil
                             </a>
-                            @if($puedeAdminConfig)
+                            @if($puedeAvisos)
                             <a href="{{ route('avisos.index') }}"
                                class="block px-4 py-2
                                       text-slate-700 dark:text-slate-200
