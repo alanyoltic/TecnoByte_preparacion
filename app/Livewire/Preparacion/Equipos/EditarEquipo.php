@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Services\EquipoTraceService;
 
 #[Layout('layouts.app', ['pageTitle' => 'Editar equipo'])]
 class EditarEquipo extends Component
@@ -1050,18 +1051,18 @@ private function classifyAuditAction(array $diff): array
 
 private function registrarAuditoria(int $equipoId, string $accion, ?string $motivo, array $cambios): void
 {
-    // si no hubo cambios, no registres nada
-    if (empty($cambios)) return;
+    $equipo = $this->equipo;
 
-    \App\Models\EquipoAuditoria::create([
-        'equipo_id'   => $equipoId,
-        'user_id'     => (int) auth()->id(),
-        'accion'      => $accion,
-        'motivo'      => filled($motivo) ? $motivo : null,
-        'cambios'     => $cambios,                 // cast a array/json
-        'ip'          => request()->ip(),
-        'user_agent'  => request()->userAgent(),
-    ]);
+    if ((int) $equipo->id !== $equipoId) {
+        $equipo = Equipo::findOrFail($equipoId);
+    }
+
+    app(EquipoTraceService::class)->registrarAuditoria(
+        equipo: $equipo,
+        accion: $accion,
+        motivo: $motivo,
+        cambios: $cambios,
+    );
 }
 
 

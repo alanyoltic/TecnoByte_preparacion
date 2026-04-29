@@ -12,6 +12,7 @@ use App\Models\LoteModeloRecibido;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Services\EquipoMovimientoService;
 
 #[Layout('layouts.app', ['pageTitle' => 'Registrar Lote'])]
 class RegistrarLote extends Component
@@ -148,8 +149,10 @@ class RegistrarLote extends Component
                     }
                 }
 
+                $almacenPreparacion = Almacen::find(Almacen::PREPARACION);
+
                 foreach ($seriesTrimmed as $serie) {
-                    Equipo::create([
+                    $equipo = Equipo::create([
                         'numero_serie'           => $serie,
                         'lote_modelo_id'         => $loteModelo->id,
                         'marca'                  => $m['marca'],
@@ -161,6 +164,15 @@ class RegistrarLote extends Component
                         'almacen_id'             => Almacen::PREPARACION,
                         'sucursal_id'            => Auth::user()->sucursal_id ?? 1,
                     ]);
+
+                    if ($almacenPreparacion) {
+                        app(EquipoMovimientoService::class)->abrirEstanciaInicial(
+                            $equipo,
+                            $almacenPreparacion,
+                            'ALTA_LOTE',
+                            'Alta inicial desde registro de lote'
+                        );
+                    }
                 }
             }
         });

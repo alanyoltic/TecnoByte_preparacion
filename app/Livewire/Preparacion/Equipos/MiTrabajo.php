@@ -15,6 +15,8 @@ use App\Models\{
 };
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Services\EquipoTraceService;
+use App\Services\EquipoMovimientoService;
 
 #[Layout('layouts.app', ['pageTitle' => 'Mi Trabajo'])]
 class MiTrabajo extends Component
@@ -392,7 +394,19 @@ class MiTrabajo extends Component
             return;
         }
 
-        DB::transaction(function () use ($ae) {
+        $traceService = app(EquipoTraceService::class);
+        $equipo = $ae->equipo;
+        $snapshot = null;
+
+        if (!$ae->pre_asignado && $equipo && $traceService->requiereSnapshotForense($equipo)) {
+            $snapshot = $traceService->crearSnapshotEliminacion(
+                $equipo,
+                'Eliminacion desde Mi Trabajo por reinicio de registro'
+            );
+        }
+
+        try {
+            DB::transaction(function () use ($ae) {
             // Liberar reservas de inventario de solicitudes pendientes
             foreach ($ae->solicitudesPiezas as $sol) {
                 if ($sol->inventario_pieza_id && $sol->estatus === \App\Models\SolicitudPieza::SURTIDA_INVENTARIO) {
@@ -427,7 +441,6 @@ class MiTrabajo extends Component
                     \App\Models\EquipoBateria::where('equipo_id', $equipo->id)->delete();
                     \App\Models\EquipoMonitor::where('equipo_id', $equipo->id)->delete();
                     \App\Models\EquipoGpu::where('equipo_id', $equipo->id)->delete();
-                    \App\Models\EquipoAuditoria::where('equipo_id', $equipo->id)->delete();
 
                     // Limpiar todas las características del equipo
                     $equipo->update($this->camposCaracteristicasVacios() + [
@@ -443,7 +456,18 @@ class MiTrabajo extends Component
                     $equipo->forceDelete();
                 }
             }
-        });
+            });
+
+            if ($snapshot) {
+                $traceService->marcarEliminacionConfirmada($snapshot);
+            }
+        } catch (\Throwable $e) {
+            if ($snapshot) {
+                $traceService->marcarEliminacionFallida($snapshot, $e);
+            }
+
+            throw $e;
+        }
 
         $this->modalEliminar = false;
         $this->eliminarAeId  = null;
@@ -629,6 +653,8 @@ class MiTrabajo extends Component
         $loteModelo = $asignacion->loteModelo()->with('lote')->first();
         $errores    = [];
 
+        $almacenPreparacion = Almacen::find(Almacen::PREPARACION);
+
         foreach ($seriesLimpias as $serie) {
             $yaEnEsta = AsignacionEquipo::where('asignacion_id', $asignacion->id)
                 ->whereHas('equipo', fn($q) => $q->where('numero_serie', $serie))
@@ -677,6 +703,15 @@ class MiTrabajo extends Component
                     'almacen_id'             => Almacen::PREPARACION,
                     'sucursal_id'            => Auth::user()->sucursal_id ?? 1,
                 ]);
+
+                if ($almacenPreparacion) {
+                    app(EquipoMovimientoService::class)->abrirEstanciaInicial(
+                        $equipo,
+                        $almacenPreparacion,
+                        'ALTA_MANUAL',
+                        'Alta desde Mi Trabajo al iniciar equipo'
+                    );
+                }
             }
 
             AsignacionEquipo::create([

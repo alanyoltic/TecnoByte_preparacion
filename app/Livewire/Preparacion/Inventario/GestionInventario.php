@@ -12,9 +12,9 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use App\Models\EquipoEliminacion;
 use Livewire\WithPagination;
 use App\Exports\ReportePreparacionPlaneacionExport;
+use App\Services\EquipoTraceService;
 
 #[Layout('layouts.app', ['pageTitle' => 'Gestión de inventario'])]
 class GestionInventario extends Component
@@ -213,57 +213,59 @@ public function confirmarEliminarSeleccion()
         return;
     }
 
-    try {
-        DB::transaction(function () {
-            // Traemos los equipos incluyendo soft-deleted por seguridad
-            $equipos = Equipo::withTrashed()->whereIn('id', $this->selected)->get();
+    $traceService = app(EquipoTraceService::class);
+    $equipos = Equipo::withTrashed()->whereIn('id', $this->selected)->get();
+    $errores = [];
+    $eliminados = 0;
 
-            foreach ($equipos as $equipo) {
-                // 2) Auditoría (Snapshot)
-                \App\Models\EquipoEliminacion::create([
-                    'numero_serie' => $equipo->numero_serie, 
-                    'equipo_id_original' => $equipo->id,
-                    'codigo'       => $equipo->codigo,
-                    'tipo_equipo'  => $equipo->tipo_equipo,
-                    'marca'        => $equipo->marca,
-                    'modelo'       => $equipo->modelo,
-                    'user_id'      => auth()->id(),
-                    'motivo'       => $this->motivo_eliminacion,
-                    'snapshot'     => [
-                        'equipo'   => $equipo->toArray(),
-                        'gpus'     => $equipo->gpus->toArray(),
-                        'baterias' => $equipo->baterias->toArray(),
-                    ],
-                    'ip'           => request()->ip(),
-                    'user_agent'   => substr((string) request()->userAgent(), 0, 250),
-                ]);
+    foreach ($equipos as $equipo) {
+        $snapshot = null;
 
-                // 3) Borrado de Relaciones
-                // Si tus modelos EquipoGpu y EquipoBateria NO usan SoftDeletes, usa delete()
-                // Si los borras así, se eliminan físicamente de la tabla.
-                $equipo->gpus()->delete(); 
+        if ($traceService->requiereSnapshotForense($equipo)) {
+            $snapshot = $traceService->crearSnapshotEliminacion($equipo, $this->motivo_eliminacion);
+        }
+
+        try {
+            DB::transaction(function () use ($equipo) {
+                $equipo->gpus()->delete();
                 $equipo->baterias()->delete();
 
                 if ($equipo->monitor) {
                     $equipo->monitor()->delete();
                 }
 
-                // 4) Borrado DEFINITIVO del Equipo
-                // Como Equipo SÍ tiene SoftDeletes, usamos forceDelete para que desaparezca
+                \App\Models\EquipoAuditoria::where('equipo_id', $equipo->id)->delete();
                 $equipo->forceDelete();
+            });
+
+            if ($snapshot) {
+                $traceService->marcarEliminacionConfirmada($snapshot);
             }
-        });
 
-        // 5) Limpieza de interfaz
-        $this->selected = [];
-        $this->motivo_eliminacion = '';
-        $this->modalEliminarSeleccion = false;
+            $eliminados++;
+        } catch (\Throwable $e) {
+            if ($snapshot) {
+                $traceService->marcarEliminacionFallida($snapshot, $e);
+            }
 
-        $this->dispatch('toast', type: 'success', message: 'Equipo/s eliminado/s correctamente.');
-
-    } catch (\Exception $e) {
-        $this->dispatch('toast', type: 'error', message: 'Error al eliminar: ' . $e->getMessage());
+            $errores[] = $equipo->numero_serie ?: ('ID ' . $equipo->id);
+        }
     }
+
+    $this->selected = [];
+    $this->motivo_eliminacion = '';
+    $this->modalEliminarSeleccion = false;
+
+    if (!empty($errores)) {
+        $this->dispatch(
+            'toast',
+            type: 'error',
+            message: "Se eliminaron {$eliminados} equipo(s). Fallaron: " . implode(', ', $errores)
+        );
+        return;
+    }
+
+    $this->dispatch('toast', type: 'success', message: 'Equipo/s eliminado/s correctamente.');
 }
 
 

@@ -13,6 +13,7 @@ use App\Models\Lote;
 use App\Models\Proveedor;
 use App\Models\LoteModeloRecibido;
 use App\Models\ClasificacionPuntos;
+use App\Services\EquipoMovimientoService;
 
 #[Layout('layouts.app', ['pageTitle' => 'Editar lote'])]
 class EditarLote extends Component
@@ -275,10 +276,12 @@ class EditarLote extends Component
                     array_map('trim', $m['numeros_serie'] ?? []), fn ($s) => $s !== ''
                 ));
 
+                $almacenPreparacion = Almacen::find(Almacen::PREPARACION);
+
                 foreach ($seriesTrimmed as $serie) {
                     if (Equipo::where('numero_serie', $serie)->exists()) continue;
 
-                    Equipo::create([
+                    $equipo = Equipo::create([
                         'numero_serie'           => $serie,
                         'lote_modelo_id'         => $registro->id,
                         'marca'                  => $m['marca'],
@@ -290,6 +293,15 @@ class EditarLote extends Component
                         'almacen_id'             => Almacen::PREPARACION,
                         'sucursal_id'            => Auth::user()->sucursal_id ?? 1,
                     ]);
+
+                    if ($almacenPreparacion) {
+                        app(EquipoMovimientoService::class)->abrirEstanciaInicial(
+                            $equipo,
+                            $almacenPreparacion,
+                            'ALTA_LOTE',
+                            'Alta inicial desde edicion de lote'
+                        );
+                    }
                 }
             }
         });

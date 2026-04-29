@@ -18,6 +18,7 @@ use App\Models\{
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Services\EquipoMovimientoService;
 
 #[Layout('layouts.app', ['pageTitle' => 'Registrar equipo'])]
 class RegistrarEquipo extends Component
@@ -618,6 +619,17 @@ public function updatedFormRamExpansionMax($value): void
             $this->guardarBaterias((int) $equipo->id);
             $this->guardarMonitor((int) $equipo->id);
             $this->guardarGpus((int) $equipo->id);
+
+            $almacenId = (int) ($equipo->almacen_id ?: 0);
+            $almacen = $almacenId > 0 ? \App\Models\Almacen::find($almacenId) : null;
+            if ($almacen) {
+                app(EquipoMovimientoService::class)->abrirEstanciaInicial(
+                    $equipo,
+                    $almacen,
+                    'ALTA_MANUAL',
+                    'Alta desde registro manual de equipo'
+                );
+            }
         });
 
         $this->reiniciarFormulario();
