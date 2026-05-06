@@ -31,6 +31,35 @@
                     </button>
                 @endif
             </div>
+
+            @php
+                $usoVigentes = $maxActivosVigentes > 0 ? min(100, (int) round(($activosVigentesCount / $maxActivosVigentes) * 100)) : 0;
+                $slotsDisponibles = max(0, $maxActivosVigentes - $activosVigentesCount);
+            @endphp
+            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="rounded-xl border border-blue-200/70 dark:border-blue-500/25 bg-gradient-to-br from-blue-50/80 to-sky-50/60 dark:from-blue-900/20 dark:to-sky-900/10 p-3">
+                    <p class="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Vigentes en dashboard</p>
+                    <p class="text-base font-semibold text-slate-900 dark:text-slate-100">
+                        {{ $activosVigentesCount }} / {{ $maxActivosVigentes }}
+                    </p>
+                    <div class="mt-2 h-2 rounded-full bg-white/70 dark:bg-slate-900/70 overflow-hidden">
+                        <div class="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400" style="width: {{ $usoVigentes }}%"></div>
+                    </div>
+                    <p class="text-[0.7rem] mt-1 text-slate-600 dark:text-slate-300">{{ $usoVigentes }}% ocupado</p>
+                </div>
+                <div class="rounded-xl border border-emerald-200/70 dark:border-emerald-500/25 bg-gradient-to-br from-emerald-50/80 to-teal-50/60 dark:from-emerald-900/20 dark:to-teal-900/10 p-3">
+                    <p class="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Publicados totales</p>
+                    <p class="text-base font-semibold text-slate-900 dark:text-slate-100">{{ $activosPublicadosCount }}</p>
+                    <p class="text-[0.7rem] mt-1 text-slate-600 dark:text-slate-300">
+                        Espacios vigentes disponibles: {{ $slotsDisponibles }}
+                    </p>
+                    @if($casiLimite)
+                        <p class="text-[0.7rem] mt-1 text-amber-700 dark:text-amber-300">
+                            Estás cerca del límite de avisos vigentes.
+                        </p>
+                    @endif
+                </div>
+            </div>
         </div>
 
             {{-- Contenido --}}
@@ -75,8 +104,8 @@
                                         focus:outline-none focus:ring-2
                                         focus:ring-blue-500/60 focus:border-blue-500"
                                 >
-                                    <option value="activos">Activos</option>
-                                    <option value="inactivos">Inactivos</option>
+                                    <option value="activos">Publicados</option>
+                                    <option value="inactivos">No publicados</option>
                                     <option value="todos">Todos</option>
                                 </select>
                             </div>
@@ -99,33 +128,48 @@
                                         : (($a->starts_at && $a->starts_at > $now)
                                             ? ['label' => 'Programado', 'class' => 'bg-blue-100 text-blue-700 border-blue-200/70 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700/50']
                                             : ['label' => 'Expirado', 'class' => 'bg-rose-100 text-rose-700 border-rose-200/70 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-700/50']);
+
+                                    $accentBarClass = match($a->color) {
+                                        'amber' => 'from-amber-500/85 to-yellow-400/80',
+                                        'blue' => 'from-blue-500/85 to-cyan-400/80',
+                                        'emerald' => 'from-emerald-500/85 to-teal-400/80',
+                                        'rose' => 'from-rose-500/85 to-pink-400/80',
+                                        default => 'from-slate-500/85 to-slate-400/80',
+                                    };
+                                    $iconWrapClass = match($a->color) {
+                                        'amber' => 'bg-amber-100 dark:bg-amber-900/30 border-amber-200/70 dark:border-amber-700/50',
+                                        'blue' => 'bg-blue-100 dark:bg-blue-900/30 border-blue-200/70 dark:border-blue-700/50',
+                                        'emerald' => 'bg-emerald-100 dark:bg-emerald-900/30 border-emerald-200/70 dark:border-emerald-700/50',
+                                        'rose' => 'bg-rose-100 dark:bg-rose-900/30 border-rose-200/70 dark:border-rose-700/50',
+                                        default => 'bg-slate-900/5 dark:bg-white/5 border-slate-200/60 dark:border-white/10',
+                                    };
                                 @endphp
 
                                 <div class="relative overflow-hidden rounded-2xl
-                                            bg-white/70 dark:bg-slate-950/55
-                                            border border-slate-200/70 dark:border-white/10
+                                            bg-gradient-to-r from-white/80 to-white/55 dark:from-slate-950/65 dark:to-slate-950/45
+                                            border border-slate-200/80 dark:border-white/10
                                             backdrop-blur-xl
                                             p-4">
+                                    <div class="absolute left-0 top-0 h-full w-1.5 rounded-l-2xl bg-gradient-to-b {{ $accentBarClass }}"></div>
                                     <div class="flex items-start justify-between gap-3">
                                         <div class="flex items-start gap-3">
                                             <div class="w-10 h-10 rounded-2xl flex items-center justify-center
-                                                        bg-slate-900/5 dark:bg-white/5
-                                                        border border-slate-200/60 dark:border-white/10">
+                                                        border {{ $iconWrapClass }}">
                                                 <span class="text-lg">{{ $a->icono ?? '📌' }}</span>
                                             </div>
 
                                             <div class="space-y-1">
                                                 <div class="flex items-center gap-2 flex-wrap">
-                                                    <p class="text-sm font-semibold text-slate-900 dark:text-slate-50">
+                                                    <p class="text-[0.95rem] font-semibold text-slate-900 dark:text-slate-50">
                                                         {{ $a->titulo }}
                                                     </p>
 
                                                     @if($a->pinned)
                                                         <span class="inline-flex items-center px-2 py-0.5 rounded-full
                                                                     text-[0.65rem] font-semibold tracking-wide
-                                                                    bg-amber-100 text-amber-700
+                                                                    bg-amber-100 text-amber-700 shadow-sm
                                                                     border border-amber-200/70 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700/50">
-                                                            FIJADO
+                                                            📌 FIJADO
                                                         </span>
                                                     @endif
 
@@ -150,7 +194,7 @@
                                                     </span>
                                                 </div>
 
-                                                <p class="text-xs text-slate-600 dark:text-slate-300">
+                                                <p class="text-[0.8rem] text-slate-700 dark:text-slate-300 leading-relaxed">
                                                     {{ $a->texto }}
                                                 </p>
 
@@ -272,10 +316,10 @@
                         </h3>
 
                         <ul class="text-sm text-slate-700 dark:text-slate-300 space-y-2">
-                            <li>• Solo se muestran en el Dashboard los avisos <span class="font-semibold">activos</span>.</li>
+                            <li>• Solo se muestran en el Dashboard los avisos <span class="font-semibold">activos y vigentes</span>.</li>
                             <li>• <span class="font-semibold">Desde/Hasta</span> controlan cuándo aparecen.</li>
                             <li>• Los <span class="font-semibold">fijados</span> salen primero en el carrusel.</li>
-                            <li>• Recomendado: máximo <span class="font-semibold">6 a 10</span> avisos activos.</li>
+                            <li>• Límite actual: <span class="font-semibold">{{ $maxActivosVigentes }}</span> avisos vigentes.</li>
                         </ul>
                     </div>
                 </div>
@@ -317,14 +361,59 @@
                         </div>
                     </div>
 
+                    @php
+                        $tituloLen = mb_strlen((string) $titulo);
+                        $textoLen = mb_strlen((string) $texto);
+                        $tituloRecomendado = 60;
+                        $textoRecomendado = 280;
+                        $previewIcon = trim((string) $icono) !== '' ? $icono : '📌';
+                        $previewTag = trim((string) $tag) !== '' ? $tag : 'INFO';
+                        $previewColor = match(trim((string) $previewTag)) {
+                            'IMPORTANTE' => 'rose',
+                            'TIP' => 'blue',
+                            'META' => 'emerald',
+                            default => 'slate',
+                        };
+                        $previewTitulo = trim((string) $titulo) !== '' ? $titulo : 'Título del aviso';
+                        $previewTexto = trim((string) $texto) !== '' ? $texto : 'Aquí verás una vista previa rápida del aviso tal como se percibe en dashboard.';
+                        $previewBadgeClass = match($previewColor) {
+                            'amber' => 'bg-amber-100 text-amber-700 border-amber-200/70 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700/50',
+                            'blue' => 'bg-blue-100 text-blue-700 border-blue-200/70 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700/50',
+                            'emerald' => 'bg-emerald-100 text-emerald-700 border-emerald-200/70 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700/50',
+                            'rose' => 'bg-rose-100 text-rose-700 border-rose-200/70 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-700/50',
+                            default => 'bg-slate-100 text-slate-700 border-slate-200/70 dark:bg-slate-800/60 dark:text-slate-200 dark:border-slate-700/70',
+                        };
+                        $previewBorderClass = match($previewColor) {
+                            'amber' => 'border-amber-200/80 dark:border-amber-500/25',
+                            'blue' => 'border-blue-200/80 dark:border-blue-500/25',
+                            'emerald' => 'border-emerald-200/80 dark:border-emerald-500/25',
+                            'rose' => 'border-rose-200/80 dark:border-rose-500/25',
+                            default => 'border-slate-200/80 dark:border-white/10',
+                        };
+                    @endphp
                     <div class="p-5 sm:p-6 space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div class="rounded-xl border border-indigo-200/70 dark:border-indigo-500/25 bg-indigo-50/70 dark:bg-indigo-900/15 p-3">
+                                <p class="text-[0.65rem] uppercase tracking-wide font-semibold text-indigo-700 dark:text-indigo-300">Título recomendado</p>
+                                <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $tituloLen }} / {{ $tituloRecomendado }}</p>
+                            </div>
+                            <div class="rounded-xl border border-cyan-200/70 dark:border-cyan-500/25 bg-cyan-50/70 dark:bg-cyan-900/15 p-3">
+                                <p class="text-[0.65rem] uppercase tracking-wide font-semibold text-cyan-700 dark:text-cyan-300">Texto recomendado</p>
+                                <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $textoLen }} / {{ $textoRecomendado }}</p>
+                            </div>
+                            <div class="rounded-xl border border-emerald-200/70 dark:border-emerald-500/25 bg-emerald-50/70 dark:bg-emerald-900/15 p-3">
+                                <p class="text-[0.65rem] uppercase tracking-wide font-semibold text-emerald-700 dark:text-emerald-300">Estado actual</p>
+                                <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $is_active ? 'Publicado' : 'Borrador' }} · {{ $pinned ? 'Fijado' : 'Normal' }}</p>
+                            </div>
+                        </div>
+
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div class="space-y-1">
                                 <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                                     Título
                                 </label>
                                 <input
-                                    wire:model="titulo"
+                                    wire:model.live.debounce.250ms="titulo"
                                     type="text"
                                     class="w-full text-sm rounded-xl
                                         border border-slate-300/80 dark:border-white/15
@@ -338,6 +427,11 @@
                                 <div class="text-[0.7rem] text-slate-500 dark:text-slate-400 text-right">
                                     {{ mb_strlen((string) $titulo) }}/120
                                 </div>
+                                @if($tituloLen > $tituloRecomendado)
+                                    <div class="text-[0.7rem] text-amber-700 dark:text-amber-300">
+                                        Recomendación: usa un título breve para mejorar lectura en carrusel.
+                                    </div>
+                                @endif
                                 @error('titulo') <div class="text-xs text-rose-600 dark:text-rose-300">{{ $message }}</div> @enderror
                             </div>
 
@@ -346,7 +440,7 @@
                                     Icono (emoji)
                                 </label>
                                 <input
-                                    wire:model="icono"
+                                    wire:model.live.debounce.250ms="icono"
                                     type="text"
                                     placeholder="💡"
                                     class="w-full text-sm rounded-xl
@@ -363,10 +457,10 @@
 
                             <div class="space-y-1">
                                 <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                                    Tag
+                                    Tipo de aviso (Tag)
                                 </label>
                                 <select
-                                    wire:model="tag"
+                                    wire:model.live="tag"
                                     class="w-full text-sm rounded-xl
                                         border border-slate-300/80 dark:border-white/15
                                         bg-white/80 text-slate-800
@@ -376,10 +470,10 @@
                                         focus:outline-none focus:ring-2
                                         focus:ring-blue-500/60 focus:border-blue-500"
                                 >
-                                    <option value="INFO">INFO</option>
-                                    <option value="IMPORTANTE">IMPORTANTE</option>
-                                    <option value="TIP">TIP</option>
-                                    <option value="META">META</option>
+                                    <option value="INFO">INFO · General</option>
+                                    <option value="IMPORTANTE">IMPORTANTE · Requiere atención</option>
+                                    <option value="TIP">TIP · Recomendación rápida</option>
+                                    <option value="META">META · Objetivo del equipo</option>
                                 </select>
                                 @error('tag') <div class="text-xs text-rose-600 dark:text-rose-300">{{ $message }}</div> @enderror
                             </div>
@@ -388,23 +482,17 @@
                                 <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                                     Color
                                 </label>
-                                <select
-                                    wire:model="color"
-                                    class="w-full text-sm rounded-xl
-                                        border border-slate-300/80 dark:border-white/15
-                                        bg-white/80 text-slate-800
-                                        dark:bg-slate-950/80 dark:text-slate-100
-                                        py-2 pl-3 pr-8
-                                        shadow-inner shadow-slate-200/80 dark:shadow-black/40
-                                        focus:outline-none focus:ring-2
-                                        focus:ring-blue-500/60 focus:border-blue-500"
-                                >
-                                    <option value="slate">slate</option>
-                                    <option value="amber">amber</option>
-                                    <option value="blue">blue</option>
-                                    <option value="emerald">emerald</option>
-                                    <option value="rose">rose</option>
-                                </select>
+                                <div class="w-full rounded-xl border border-slate-300/80 dark:border-white/15 bg-white/80 dark:bg-slate-950/80 px-3 py-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-4 h-4 rounded-full
+                                            {{ $color === 'rose' ? 'bg-rose-500' : '' }}
+                                            {{ $color === 'blue' ? 'bg-blue-500' : '' }}
+                                            {{ $color === 'emerald' ? 'bg-emerald-500' : '' }}
+                                            {{ $color === 'amber' ? 'bg-amber-400' : '' }}
+                                            {{ $color === 'slate' ? 'bg-slate-500' : '' }}"></span>
+                                        <span class="text-sm text-slate-800 dark:text-slate-100">{{ $color ?: 'slate' }}</span>
+                                    </div>
+                                </div>
                                 @error('color') <div class="text-xs text-rose-600 dark:text-rose-300">{{ $message }}</div> @enderror
                             </div>
                         </div>
@@ -414,7 +502,7 @@
                                 Texto
                             </label>
                             <textarea
-                                wire:model="texto"
+                                wire:model.live.debounce.300ms="texto"
                                 rows="4"
                                 class="w-full text-sm rounded-xl
                                     border border-slate-300/80 dark:border-white/15
@@ -425,10 +513,35 @@
                                     focus:outline-none focus:ring-2
                                     focus:ring-blue-500/60 focus:border-blue-500"
                             ></textarea>
-                            <div class="text-[0.7rem] text-slate-500 dark:text-slate-400 text-right">
-                                {{ mb_strlen((string) $texto) }}/2000
+                                <div class="text-[0.7rem] text-slate-500 dark:text-slate-400 text-right">
+                                    {{ mb_strlen((string) $texto) }}/2000
+                                </div>
+                                @if($textoLen > $textoRecomendado)
+                                    <div class="text-[0.7rem] text-amber-700 dark:text-amber-300">
+                                        Consejo UX: intenta mantenerlo corto (ideal ≤ {{ $textoRecomendado }} caracteres).
+                                    </div>
+                                @endif
+                                @error('texto') <div class="text-xs text-rose-600 dark:text-rose-300">{{ $message }}</div> @enderror
                             </div>
-                            @error('texto') <div class="text-xs text-rose-600 dark:text-rose-300">{{ $message }}</div> @enderror
+
+                        <div class="rounded-2xl border {{ $previewBorderClass }} bg-gradient-to-r from-white/80 to-white/60 dark:from-slate-900/45 dark:to-slate-900/30 p-4">
+                            <p class="text-[0.68rem] uppercase tracking-wide font-semibold text-slate-500 dark:text-slate-400 mb-2">
+                                Vista previa rápida
+                            </p>
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-10 h-10 rounded-2xl flex items-center justify-center border border-slate-200/70 dark:border-white/10 bg-white/75 dark:bg-slate-900/65">
+                                        <span class="text-lg">{{ $previewIcon }}</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-semibold text-slate-900 dark:text-slate-50">{{ $previewTitulo }}</p>
+                                        <p class="text-xs leading-relaxed text-slate-700 dark:text-slate-300">{{ $previewTexto }}</p>
+                                    </div>
+                                </div>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold tracking-wide border {{ $previewBadgeClass }}">
+                                    {{ $previewTag }}
+                                </span>
+                            </div>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -437,7 +550,7 @@
                                     Mostrar desde (opcional)
                                 </label>
                                 <input
-                                    wire:model="starts_at"
+                                    wire:model.live="starts_at"
                                     type="datetime-local"
                                     class="w-full text-sm rounded-xl
                                         border border-slate-300/80 dark:border-white/15
@@ -446,8 +559,11 @@
                                         py-2 pl-3 pr-3
                                         shadow-inner shadow-slate-200/80 dark:shadow-black/40
                                         focus:outline-none focus:ring-2
-                                        focus:ring-blue-500/60 focus:border-blue-500"
+                                    focus:ring-blue-500/60 focus:border-blue-500"
                                 />
+                                <div class="text-[0.7rem] text-slate-500 dark:text-slate-400">
+                                    Déjalo vacío para mostrarlo inmediatamente.
+                                </div>
                                 @error('starts_at') <div class="text-xs text-rose-600 dark:text-rose-300">{{ $message }}</div> @enderror
                             </div>
 
@@ -456,7 +572,7 @@
                                     Mostrar hasta (opcional)
                                 </label>
                                 <input
-                                    wire:model="ends_at"
+                                    wire:model.live="ends_at"
                                     type="datetime-local"
                                     class="w-full text-sm rounded-xl
                                         border border-slate-300/80 dark:border-white/15
@@ -465,8 +581,11 @@
                                         py-2 pl-3 pr-3
                                         shadow-inner shadow-slate-200/80 dark:shadow-black/40
                                         focus:outline-none focus:ring-2
-                                        focus:ring-blue-500/60 focus:border-blue-500"
+                                    focus:ring-blue-500/60 focus:border-blue-500"
                                 />
+                                <div class="text-[0.7rem] text-slate-500 dark:text-slate-400">
+                                    Úsalo para que el aviso desaparezca automáticamente.
+                                </div>
                                 @error('ends_at') <div class="text-xs text-rose-600 dark:text-rose-300">{{ $message }}</div> @enderror
                             </div>
                         </div>
@@ -474,12 +593,12 @@
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
                             <div class="flex items-center gap-4">
                                 <label class="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                                    <input type="checkbox" wire:model="is_active" class="rounded border-slate-300 dark:border-white/20">
+                                    <input type="checkbox" wire:model.live="is_active" class="rounded border-slate-300 dark:border-white/20">
                                     Publicado
                                 </label>
 
                                 <label class="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                                    <input type="checkbox" wire:model="pinned" class="rounded border-slate-300 dark:border-white/20">
+                                    <input type="checkbox" wire:model.live="pinned" class="rounded border-slate-300 dark:border-white/20">
                                     Fijado
                                 </label>
                             </div>

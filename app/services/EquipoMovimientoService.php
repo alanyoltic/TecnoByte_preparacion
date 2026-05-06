@@ -13,6 +13,40 @@ use Exception;
 
 class EquipoMovimientoService
 {
+    private const TIPOS_VALIDOS = [
+        'ALTA_LOTE',
+        'ALTA_MANUAL',
+        'MOVER_ALMACEN',
+        'ASIGNAR_TECNICO',
+        'FINALIZAR_TECNICO',
+        'VENTA',
+        'BAJA',
+        'AJUSTE',
+    ];
+
+    private function normalizarTipoMovimiento(string $tipo, ?string &$motivo = null): string
+    {
+        $tipoNormalizado = strtoupper(trim($tipo));
+
+        if (in_array($tipoNormalizado, self::TIPOS_VALIDOS, true)) {
+            return $tipoNormalizado;
+        }
+
+        // Evita SQLSTATE[01000] (truncamiento por ENUM inválido) y deja rastro.
+        $motivoOriginal = $motivo;
+        $motivo = trim(implode(' | ', array_filter([
+            $motivoOriginal,
+            "Tipo movimiento inválido: {$tipoNormalizado}",
+        ])));
+
+        logger()->warning('Tipo de movimiento inválido normalizado a AJUSTE', [
+            'tipo_original' => $tipo,
+            'tipo_normalizado' => $tipoNormalizado,
+        ]);
+
+        return 'AJUSTE';
+    }
+
     /**
      * Mueve un equipo a otro almacén.
      */
@@ -24,6 +58,7 @@ class EquipoMovimientoService
     ): void {
 
         DB::transaction(function () use ($equipo, $destino, $tipo, $motivo) {
+            $tipo = $this->normalizarTipoMovimiento($tipo, $motivo);
 
             $usuario = auth()->user();
 
@@ -97,6 +132,7 @@ class EquipoMovimientoService
     ): void {
 
         DB::transaction(function () use ($equipo, $almacen, $tipo, $motivo) {
+            $tipo = $this->normalizarTipoMovimiento($tipo, $motivo);
 
             $usuario = Auth::user();
 

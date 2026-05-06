@@ -85,7 +85,7 @@ class Dashboard extends Component
         $this->avisos = Aviso::query()
             ->activos()
             ->ordenDashboard()
-            ->limit(10)
+            ->limit(Aviso::DASHBOARD_LIMIT)
             ->get()
             ->map(fn ($a) => [
                 'titulo' => $a->titulo,

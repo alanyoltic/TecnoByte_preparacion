@@ -473,9 +473,26 @@
                                         index: 0,
                                         dir: 1,
                                         timer: null,
+                                        autoplay: true,
+                                        reducedMotion: false,
 
-                                        start(){ this.stop(); this.timer = setInterval(() => this.next(), 6500); },
+                                        init(){
+                                            this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                                            this.autoplay = this.items.length > 1 && !this.reducedMotion;
+                                            if (this.autoplay) this.start();
+                                        },
+                                        start(){
+                                            if (!this.autoplay || this.items.length <= 1 || this.reducedMotion) return;
+                                            this.stop();
+                                            this.timer = setInterval(() => this.next(), 9000);
+                                        },
                                         stop(){ if (this.timer) clearInterval(this.timer); this.timer = null; },
+                                        toggleAutoplay(){
+                                            if (this.items.length <= 1 || this.reducedMotion) return;
+                                            this.autoplay = !this.autoplay;
+                                            if (this.autoplay) this.start();
+                                            else this.stop();
+                                        },
 
                                         next(){
                                             if (!this.items.length) return;
@@ -501,11 +518,23 @@
                                                 case 'rose': return 'bg-rose-500/10 text-rose-300 border-rose-400/30';
                                                 default: return 'bg-slate-500/10 text-slate-200 border-white/10';
                                             }
+                                        },
+                                        panelClasses(color){
+                                            switch(color){
+                                                case 'amber': return 'border-amber-300/50 dark:border-amber-500/30 bg-gradient-to-br from-amber-50/80 to-yellow-50/60 dark:from-amber-900/20 dark:to-yellow-900/10';
+                                                case 'emerald': return 'border-emerald-300/50 dark:border-emerald-500/30 bg-gradient-to-br from-emerald-50/80 to-teal-50/60 dark:from-emerald-900/20 dark:to-teal-900/10';
+                                                case 'blue': return 'border-blue-300/50 dark:border-blue-500/30 bg-gradient-to-br from-blue-50/80 to-cyan-50/60 dark:from-blue-900/20 dark:to-cyan-900/10';
+                                                case 'rose': return 'border-rose-300/50 dark:border-rose-500/30 bg-gradient-to-br from-rose-50/80 to-pink-50/60 dark:from-rose-900/20 dark:to-pink-900/10';
+                                                default: return 'border-slate-200/70 dark:border-white/15 bg-white/70 dark:bg-slate-900/35';
+                                            }
                                         }
                                     }"
-                                    x-init="start()"
+                                    x-init="init()"
                                     @mouseenter="stop()"
-                                    @mouseleave="start()"
+                                    @mouseleave="if (autoplay) start()"
+                                    role="region"
+                                    aria-label="Avisos del sistema"
+                                    :aria-live="autoplay ? 'off' : 'polite'"
                                     class="group relative overflow-hidden
                                         bg-white/80 dark:bg-slate-950/60
                                         border border-slate-200/80 dark:border-white/10
@@ -526,11 +555,32 @@
 
                                     {{-- Header --}}
                                     <div class="flex items-center justify-between mb-3">
-                                        <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
-                                            Avisos
-                                        </h3>
-
                                         <div class="flex items-center gap-2">
+                                            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
+                                                Avisos
+                                            </h3>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold tracking-wide border border-indigo-200/80 dark:border-indigo-500/30 bg-indigo-50/80 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300">
+                                                <span x-text="items.length"></span>&nbsp;activos
+                                            </span>
+                                        </div>
+
+                                        <div class="flex items-center gap-2" x-show="items.length > 1">
+                                            <button
+                                                type="button"
+                                                @click="toggleAutoplay()"
+                                                class="inline-flex items-center justify-center rounded-full px-2.5 h-8 text-xs
+                                                    border border-slate-200/70 dark:border-white/10
+                                                    bg-white/60 dark:bg-slate-950/60
+                                                    text-slate-700 dark:text-slate-200
+                                                    transition-all duration-200
+                                                    hover:-translate-y-0.5 hover:shadow-md hover:shadow-indigo-500/10"
+                                                :aria-label="autoplay ? 'Pausar rotación de avisos' : 'Reanudar rotación de avisos'"
+                                                x-text="autoplay ? 'Pausar' : 'Reanudar'"
+                                            ></button>
+                                            <span x-show="!autoplay" class="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold border border-amber-300/60 dark:border-amber-500/30 bg-amber-50/80 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300">
+                                                En pausa
+                                            </span>
+
                                             <button
                                                 type="button"
                                                 @click="prev()"
@@ -540,6 +590,7 @@
                                                     text-slate-700 dark:text-slate-200
                                                     transition-all duration-200
                                                     hover:-translate-y-0.5 hover:shadow-md hover:shadow-indigo-500/10"
+                                                aria-label="Aviso anterior"
                                             >‹</button>
 
                                             <button
@@ -551,6 +602,7 @@
                                                     text-slate-700 dark:text-slate-200
                                                     transition-all duration-200
                                                     hover:-translate-y-0.5 hover:shadow-md hover:shadow-indigo-500/10"
+                                                aria-label="Siguiente aviso"
                                             >›</button>
                                         </div>
                                     </div>
@@ -572,22 +624,23 @@
                                                         x-transition:leave-end="opacity-0"
                                                     >
                                                         <div
-                                                            class="space-y-3"
-                                                            :class="dir === 1
+                                                            class="space-y-3 rounded-2xl border p-3.5 sm:p-4 relative overflow-hidden"
+                                                            :class="[panelClasses(it.color), reducedMotion ? '' : (dir === 1
                                                                 ? 'animate-[slideInFromRight_.4s_ease-out]'
-                                                                : 'animate-[slideInFromLeft_.4s_ease-out]'"
+                                                                : 'animate-[slideInFromLeft_.4s_ease-out]')]"
                                                         >
+                                                            <div class="pointer-events-none absolute -right-6 -top-6 w-20 h-20 rounded-full bg-white/45 dark:bg-white/5 blur-xl"></div>
                                                             <div class="flex items-start justify-between gap-3">
                                                                 <div class="flex items-start gap-3">
                                                                     <div class="w-10 h-10 rounded-2xl flex items-center justify-center
-                                                                                bg-slate-900/5 dark:bg-white/5
-                                                                                border border-slate-200/60 dark:border-white/10">
+                                                                                bg-white/75 dark:bg-white/5
+                                                                                border border-slate-200/70 dark:border-white/10 shadow-sm">
                                                                         <span class="text-lg" x-text="it.icono ?? '📌'"></span>
                                                                     </div>
 
                                                                     <div class="space-y-1">
-                                                                        <p class="text-sm font-semibold text-slate-900 dark:text-slate-50" x-text="it.titulo"></p>
-                                                                        <p class="text-xs text-slate-600 dark:text-slate-300" x-text="it.texto"></p>
+                                                                        <p class="text-[0.95rem] font-semibold text-slate-900 dark:text-slate-50" x-text="it.titulo"></p>
+                                                                        <p class="text-[0.8rem] leading-relaxed text-slate-700 dark:text-slate-300" x-text="it.texto"></p>
                                                                     </div>
                                                                 </div>
 
@@ -600,7 +653,9 @@
                                                             </div>
 
                                                             {{-- Dots --}}
-                                                            <div class="flex items-center gap-1.5 pt-1">
+                                                            <div class="flex items-center justify-between gap-2 pt-1">
+                                                                <span class="text-[0.68rem] text-slate-600 dark:text-slate-300" x-show="items.length > 1" x-text="`Aviso ${index + 1} de ${items.length}`"></span>
+                                                                <div class="flex items-center gap-1.5" x-show="items.length > 1">
                                                                 <template x-for="(dot, di) in items" :key="di">
                                                                     <button
                                                                         type="button"
@@ -609,8 +664,10 @@
                                                                         :class="index === di
                                                                             ? 'bg-[#FF9521] shadow-[0_0_0_4px_rgba(255,149,33,0.15)]'
                                                                             : 'bg-slate-300/70 dark:bg-white/15'"
+                                                                        :aria-label="`Ir al aviso ${di + 1}`"
                                                                     ></button>
                                                                 </template>
+                                                            </div>
                                                             </div>
                                                         </div>
                                                     </div>
