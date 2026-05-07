@@ -155,6 +155,7 @@ class RegistrarLote extends Component
                     $equipo = Equipo::create([
                         'numero_serie'           => $serie,
                         'lote_modelo_id'         => $loteModelo->id,
+                        'clasificacion_puntos_id' => $loteModelo->clasificacion_puntos_id,
                         'marca'                  => $m['marca'],
                         'modelo'                 => $m['modelo'],
                         'estatus_ciclo'          => 'PREPARACION',

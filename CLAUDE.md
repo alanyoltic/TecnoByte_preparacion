@@ -63,6 +63,23 @@ A technician's work on a single equipment is recorded in `AsignacionEquipo` with
 
 Period format: `Y-m` (e.g. `2026-03`).
 
+### MiTrabajo: Guardrails de puntuación
+
+- `MiTrabajo::iniciarEquipos()` propaga `clasificacion_puntos_id` desde `LoteModeloRecibido` al equipo (existente o nuevo) cuando falta en `equipos`.
+- `MiTrabajo::terminarEquipo()` exige clasificación válida para registrar puntos:
+  - intenta usar `equipo.clasificacion_puntos_id`
+  - si falta, hace fallback a `lote_modelo.clasificacion_puntos_id` y persiste en el equipo
+  - si sigue faltando o la clasificación no existe, lanza `PUNTOS_LOTE_FALTANTES`
+- Al detectar `PUNTOS_LOTE_FALTANTES`, no termina el equipo, guarda avance silencioso y muestra toast orientativo:
+  - **"No hay puntuación configurada para este equipo. Dile a tu líder/gerente que actualice la puntuación; tu avance ya fue guardado."**
+
+### MiTrabajo: Mapeo de garantía (camino vs estatus_area)
+
+- En garantía, el detalle técnico se guarda en `asignacion_equipos.camino`:
+  - `GARANTIA_INTERNA` o `GARANTIA_EXTERNA`
+- El estado operativo del equipo se unifica en `equipos.estatus_area = PENDIENTE_GARANTIA`.
+- Aunque el enum de `equipos.estatus_area` incluye `GARANTIA_INT` y `GARANTIA_EXT`, en el flujo actual de `MiTrabajo::terminarEquipo()` no se usan; la decisión vigente es mantener `PENDIENTE_GARANTIA` como estado de área.
+
 ### Piece Request Flow (SolicitudPieza)
 
 1. Technician creates a `SolicitudPieza` (estatus: `PENDIENTE`)

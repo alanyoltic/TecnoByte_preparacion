@@ -9,7 +9,7 @@ use Livewire\Attributes\Computed;
 use App\Livewire\Preparacion\Forms\EquipoForm;
 use App\Models\{
     Almacen, Asignacion, AsignacionEquipo, Equipo,
-    SolicitudPieza, PuntoTecnico,
+    SolicitudPieza, PuntoTecnico, ClasificacionPuntos,
     EquipoBateria, EquipoMonitor, EquipoGpu,
     CatalogoPieza
 };
@@ -651,6 +651,7 @@ class MiTrabajo extends Component
         }
 
         $loteModelo = $asignacion->loteModelo()->with('lote')->first();
+        $clasificacionLoteId = $loteModelo?->clasificacion_puntos_id;
         $errores    = [];
 
         $almacenPreparacion = Almacen::find(Almacen::PREPARACION);
@@ -690,10 +691,17 @@ class MiTrabajo extends Component
                         'registrado_por_user_id' => Auth::id(),
                     ]);
                 }
+
+                if (!$equipo->clasificacion_puntos_id && $clasificacionLoteId) {
+                    $equipo->update([
+                        'clasificacion_puntos_id' => $clasificacionLoteId,
+                    ]);
+                }
             } else {
                 $equipo = Equipo::create([
                     'numero_serie'           => $serie,
                     'lote_modelo_id'         => $asignacion->lote_modelo_id,
+                    'clasificacion_puntos_id' => $clasificacionLoteId,
                     'marca'                  => $loteModelo->marca ?? null,
                     'modelo'                 => $loteModelo->modelo ?? '',
                     'estatus_ciclo'          => 'PREPARACION',
@@ -943,13 +951,25 @@ class MiTrabajo extends Component
                     }
                 }
 
-                // Puntos de preparación: siempre inmediatos al terminar, para todos los caminos.
-                // Los puntos de instalación de pieza (puntos_override del gerente) son independientes
-                // y se registran cuando calidad valida el equipo (InventarioListo::validarCalidad).
                 $clasificacionId = $equipo->clasificacion_puntos_id;
-                $puntosBase      = $clasificacionId
-                    ? (\App\Models\ClasificacionPuntos::find($clasificacionId)?->puntos_base ?? 1.0)
-                    : 1.0;
+                if (!$clasificacionId) {
+                    $clasificacionId = (int) ($equipo->loteModelo()->value('clasificacion_puntos_id') ?? 0);
+
+                    if ($clasificacionId > 0) {
+                        $equipo->update(['clasificacion_puntos_id' => $clasificacionId]);
+                    }
+                }
+
+                if (!$clasificacionId) {
+                    throw new \RuntimeException('PUNTOS_LOTE_FALTANTES');
+                }
+
+                $clasificacion = ClasificacionPuntos::find($clasificacionId);
+                if (!$clasificacion) {
+                    throw new \RuntimeException('PUNTOS_LOTE_FALTANTES');
+                }
+
+                $puntosBase = (float) $clasificacion->puntos_base;
 
                 $rol = match ($this->camino) {
                     'PIEZA_PENDIENTE'                      => PuntoTecnico::PIEZA_PENDIENTE,
@@ -976,6 +996,17 @@ class MiTrabajo extends Component
                 }
             });
         } catch (\Throwable $e) {
+            if ($e instanceof \RuntimeException && $e->getMessage() === 'PUNTOS_LOTE_FALTANTES') {
+                $this->guardarAvanceSilencioso();
+                $this->dispatch(
+                    'toast',
+                    type: 'error',
+                    title: 'No se puede terminar',
+                    message: 'No hay puntuación configurada para este equipo. Dile a tu líder/gerente que actualice la puntuación; tu avance ya fue guardado.'
+                );
+                return;
+            }
+
             $this->dispatch('toast', type: 'error', title: 'Error', message: 'No se pudo terminar el equipo: ' . $e->getMessage());
             \Log::error('terminarEquipo error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return;

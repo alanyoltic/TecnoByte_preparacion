@@ -7,8 +7,6 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Equipo;
 use App\Models\AsignacionEquipo;
-use App\Models\SolicitudPieza;
-use App\Models\PuntoTecnico;
 use App\Models\Lote;
 use App\Models\Proveedor;
 use App\Models\User;
@@ -94,29 +92,6 @@ public function mount()
 
             if ($ae) {
                 $ae->update(['camino' => AsignacionEquipo::COMPLETADO]);
-
-                // Si vino de ruta de pieza: buscar solicitud confirmada y registrar puntos ahora
-                $solicitud = SolicitudPieza::where('asignacion_equipo_id', $ae->id)
-                    ->where('estatus', SolicitudPieza::CONFIRMADA)
-                    ->where('funciono', true)
-                    ->latest('confirmada_en')
-                    ->first();
-
-                if ($solicitud) {
-                    $intento    = $solicitud->intentoActual;
-                    $puntosBase = (float) ($intento?->puntos_override ?? $solicitud->puntos_override ?? 0);
-                    $tecnicoId  = $solicitud->reasignado_a_id ?? $solicitud->solicitado_por_id;
-
-                    if ($puntosBase > 0 && $tecnicoId) {
-                        PuntoTecnico::registrar(
-                            tecnicoId:          $tecnicoId,
-                            asignacionEquipoId: $ae->id,
-                            rol:                PuntoTecnico::PIEZA_INSTALADA,
-                            puntosBase:         $puntosBase,
-                            clasificacionId:    null,
-                        );
-                    }
-                }
             }
 
             $equipo->update(['estatus_area' => Equipo::AREA_FINALIZADO]);

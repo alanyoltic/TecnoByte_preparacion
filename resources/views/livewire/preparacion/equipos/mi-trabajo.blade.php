@@ -625,6 +625,7 @@
                                         filled($eq?->sistema_operativo)
                                     );
                                     $destino   = match($ae->camino) {
+                                        'EN_CALIDAD'       => ['label' => 'Calidad',      'color' => 'emerald'],
                                         'COMPLETADO'       => ['label' => 'Calidad',      'color' => 'emerald'],
                                         'PIEZA_PENDIENTE'  => ['label' => 'Pieza pend.',  'color' => 'amber'],
                                         'GARANTIA_INTERNA' => ['label' => 'Gar. Interna', 'color' => 'rose'],
@@ -643,6 +644,7 @@
                                         @if($terminado)
                                             <div class="w-2.5 h-2.5 rounded-full shrink-0
                                                 {{ match($ae->camino) {
+                                                    'EN_CALIDAD'                        => 'bg-emerald-400',
                                                     'COMPLETADO'                        => 'bg-emerald-400',
                                                     'PIEZA_PENDIENTE'                   => 'bg-amber-400',
                                                     'GARANTIA_INTERNA','GARANTIA_EXTERNA'=> 'bg-rose-400',
@@ -922,11 +924,23 @@
                                 wire:click="$set('camino', '{{ $opcion['value'] }}')"
                                 @class([
                                     'rounded-xl border px-3 py-3 text-left transition-all duration-200',
-                                    $opcion['active_color'] . ' shadow-sm'  => $camino === $opcion['value'],
-                                    'border-slate-300/80 dark:border-slate-700 bg-white/60 dark:bg-slate-900/40 hover:border-slate-400 dark:hover:border-slate-600' => $camino !== $opcion['value'],
+                                    $opcion['active_color'] . ' shadow-sm'  => ($opcion['value'] === 'GARANTIA_INTERNA')
+                                        ? in_array($camino, ['GARANTIA_INTERNA', 'GARANTIA_EXTERNA'])
+                                        : $camino === $opcion['value'],
+                                    'border-slate-300/80 dark:border-slate-700 bg-white/60 dark:bg-slate-900/40 hover:border-slate-400 dark:hover:border-slate-600' => ($opcion['value'] === 'GARANTIA_INTERNA')
+                                        ? !in_array($camino, ['GARANTIA_INTERNA', 'GARANTIA_EXTERNA'])
+                                        : $camino !== $opcion['value'],
                                 ])>
                                 <span class="block text-xl mb-1.5 leading-none">{{ $opcion['emoji'] }}</span>
-                                <p @class(['text-sm font-semibold leading-tight', $opcion['active_text'] => $camino === $opcion['value'], 'text-slate-800 dark:text-slate-100' => $camino !== $opcion['value']])>
+                                <p @class([
+                                    'text-sm font-semibold leading-tight',
+                                    $opcion['active_text'] => ($opcion['value'] === 'GARANTIA_INTERNA')
+                                        ? in_array($camino, ['GARANTIA_INTERNA', 'GARANTIA_EXTERNA'])
+                                        : $camino === $opcion['value'],
+                                    'text-slate-800 dark:text-slate-100' => ($opcion['value'] === 'GARANTIA_INTERNA')
+                                        ? !in_array($camino, ['GARANTIA_INTERNA', 'GARANTIA_EXTERNA'])
+                                        : $camino !== $opcion['value'],
+                                ])>
                                     {{ $opcion['label'] }}
                                 </p>
                                 <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">{{ $opcion['desc'] }}</p>
@@ -936,7 +950,7 @@
                 </div>
 
                 {{-- Si garantía: interna o externa --}}
-                @if($camino === 'GARANTIA_INTERNA')
+                @if(in_array($camino, ['GARANTIA_INTERNA', 'GARANTIA_EXTERNA']))
                     <div class="space-y-2">
                         <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tipo de garantía</p>
                         <div class="flex gap-3">

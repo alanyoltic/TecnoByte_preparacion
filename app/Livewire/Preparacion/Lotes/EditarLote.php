@@ -284,6 +284,7 @@ class EditarLote extends Component
                     $equipo = Equipo::create([
                         'numero_serie'           => $serie,
                         'lote_modelo_id'         => $registro->id,
+                        'clasificacion_puntos_id' => $registro->clasificacion_puntos_id,
                         'marca'                  => $m['marca'],
                         'modelo'                 => $m['modelo'],
                         'estatus_ciclo'          => 'PREPARACION',
