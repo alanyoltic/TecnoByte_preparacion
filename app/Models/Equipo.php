@@ -313,6 +313,11 @@ class Equipo extends Model
             ->where('activo', true);
     }
 
+    public function clasificacionPuntos()
+    {
+        return $this->belongsTo(\App\Models\ClasificacionPuntos::class, 'clasificacion_puntos_id');
+    }
+
     // =========================================================
     // CASTS
     // =========================================================

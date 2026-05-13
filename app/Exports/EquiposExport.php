@@ -37,6 +37,7 @@ public function headings(): array
         'Num. de serie',
         'Área',
         'Sistema operativo',
+        'Puntuación',
 
         'Modelo proce',
         'Frecuencia proce',
@@ -127,6 +128,15 @@ public function map($e): array
     $lote       = $loteModelo->lote ?? null;
     $proveedor  = $lote->proveedor ?? null;
     $usuario    = $e->registradoPor ?? null;
+    
+    // ===== Puntuación de Clasificación =====
+    $puntosClasificacion = 0;
+    if ($e->clasificacion_puntos_id) {
+        $clasificacion = $e->clasificacionPuntos;
+        if ($clasificacion) {
+            $puntosClasificacion = (float) $clasificacion->puntos_base;
+        }
+    }
 
     // ===== GPU (equipo_gpus) =====
     $gpuInt = $e->gpus?->firstWhere('tipo', 'INTEGRADA');
@@ -200,7 +210,7 @@ public function map($e): array
     $ramTotalPreparada = '';
 
     return [
-        // 1-4
+        // 1-11 (Información básica + Puntuación)
         optional($e->created_at)->format('Y-m-d H:i:s'),
         $usuario?->nombre ?? '',
         $proveedor->nombre_empresa ?? '',
@@ -213,14 +223,17 @@ public function map($e): array
         $e->numero_serie,
         $e->area_tienda,
         $e->sistema_operativo,
+        
+        // 11 Puntuación de Clasificación
+        $puntosClasificacion,
 
-        // 11-14
+        // 12-15 Procesador
         $e->procesador_modelo,
         $e->procesador_frecuencia,
         $e->procesador_generacion,
         $e->procesador_nucleos,
 
-        // 15-21 RAM
+        // 16-21 RAM
     $e->ram_total,
     $e->ram_tipo,
     $e->ram_expansion_max,
@@ -279,16 +292,16 @@ public function map($e): array
         $bateriaCantidad,
         $bateriaCondTxt,
 
-        // 57-60 GPU
+        // 57-59 GPU
         $gpuIntegradaTxt,
         $gpuDedicadaTxt,
         $vramTxt,
 
-        // 61-62 Detalles equipo
+        // 60-61 Detalles equipo
         $e->detalles_esteticos,
         $e->detalles_funcionamiento,
 
-        // 63-71 Entradas monitor
+        // 62-70 Entradas monitor
         $inMonHdmi,
         $inMonVga,
         $inMonDvi,
@@ -299,11 +312,11 @@ public function map($e): array
         $inMonUsb32,
         $inMonUsbC,
 
-        // 72-73 Detalles monitor
+        // 71-72 Detalles monitor
         $monFunc,
         $monEst,
 
-        // 74 Lote
+        // 73 Lote
         $lote->nombre_lote ?? '',
     ];
 }
@@ -315,7 +328,7 @@ public function map($e): array
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet;
 
-                $headerRange = 'A1:BE1'; // Ajusta si hay más columnas
+                $headerRange = 'A1:BZ1'; // Actualizado para cubrir todas las columnas incluida clasificación
 
                 $sheet->getDelegate()->getStyle($headerRange)->applyFromArray([
                     'font' => [

@@ -67,6 +67,7 @@ $equipos = Equipo::with([
     'gpus',
     'monitor',
     'baterias',
+    'clasificacionPuntos',
 ])->get();
 
 
@@ -525,7 +526,7 @@ public function cerrarModalCambiarEstatus(): void
     }
 
     $equipos = $query
-        ->with(['loteModelo.lote.proveedor', 'registradoPor'])
+        ->with(['loteModelo.lote.proveedor', 'registradoPor', 'clasificacionPuntos'])
         ->get();
         
 
