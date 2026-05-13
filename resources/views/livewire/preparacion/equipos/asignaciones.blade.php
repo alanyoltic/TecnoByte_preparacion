@@ -800,6 +800,9 @@
                             $piezas      = $asignacion->equipos->where('camino','PIEZA_PENDIENTE')->count();
                             $garantia    = $asignacion->equipos->whereIn('camino',['GARANTIA_INTERNA','GARANTIA_EXTERNA'])->count();
                             $sinIniciar  = max($asignacion->cantidad - $asignacion->equipos->count(), 0);
+                            $iniciados   = $asignacion->equipos->filter(
+                                fn($ae) => !in_array($ae->camino, ['PENDIENTE', 'PRE_ASIGNADO'], true)
+                            )->count();
                             $pct         = $asignacion->cantidad > 0 ? round(($completados / $asignacion->cantidad) * 100) : 0;
                         @endphp
 
@@ -963,7 +966,7 @@
                             @endif
 
                             {{-- Footer: cancelar o mensaje --}}
-                            @if($asignacion->equipos->count() === 0)
+                            @if($iniciados === 0)
                                 <div class="flex justify-end pt-1">
                                     <button wire:click="abrirModalCancelar({{ $asignacion->id }})"
                                         class="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5

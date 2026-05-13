@@ -9,6 +9,7 @@ use App\Models\Asignacion;
 use App\Models\AsignacionEquipo;
 use App\Models\Lote;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -55,6 +56,27 @@ class Asignaciones extends Component
         abort_unless(auth()->user()?->tienePermiso('prep.inventario.gestion'), 403);
     }
 
+    private function queryEquiposSinAsignarPorModelo(int $loteModeloId): Builder
+    {
+        return \App\Models\Equipo::query()
+            ->where('lote_modelo_id', $loteModeloId)
+            ->whereNull('deleted_at')
+            ->where('estatus_area', \App\Models\Equipo::AREA_SIN_ASIGNAR);
+    }
+
+    private function queryEquiposConSerieDeLotePorModelo(int $loteModeloId): Builder
+    {
+        return $this->queryEquiposSinAsignarPorModelo($loteModeloId)
+            ->whereNotNull('numero_serie')
+            ->whereRaw("TRIM(numero_serie) <> ''")
+            ->whereExists(function ($q) {
+                $q->select(DB::raw('1'))
+                    ->from('equipo_movimientos as em')
+                    ->whereColumn('em.equipo_id', 'equipos.id')
+                    ->where('em.tipo', 'ALTA_LOTE');
+            });
+    }
+
     // ── Computed: todas las asignaciones activas ──────────────────────────
     #[Computed]
     public function asignacionesActivas()
@@ -99,6 +121,34 @@ class Asignaciones extends Component
                         WHERE equipos.lote_modelo_id = lote_modelos_recibidos.id
                         AND equipos.deleted_at IS NULL
                     ) as equipos_registrados"),
+                    // Equipos físicos listos para asignar de inmediato
+                    DB::raw("(
+                        SELECT COUNT(*)
+                        FROM equipos
+                        WHERE equipos.lote_modelo_id = lote_modelos_recibidos.id
+                        AND equipos.deleted_at IS NULL
+                        AND equipos.estatus_area = 'SIN_ASIGNAR'
+                        AND (
+                            equipos.numero_serie IS NULL
+                            OR TRIM(equipos.numero_serie) = ''
+                        )
+                    ) as equipos_sin_serie_disponibles"),
+                    // Equipos con serie elegibles para selector (solo alta de lote)
+                    DB::raw("(
+                        SELECT COUNT(*)
+                        FROM equipos
+                        WHERE equipos.lote_modelo_id = lote_modelos_recibidos.id
+                        AND equipos.deleted_at IS NULL
+                        AND equipos.estatus_area = 'SIN_ASIGNAR'
+                        AND equipos.numero_serie IS NOT NULL
+                        AND TRIM(equipos.numero_serie) <> ''
+                        AND EXISTS (
+                            SELECT 1
+                            FROM equipo_movimientos em
+                            WHERE em.equipo_id = equipos.id
+                            AND em.tipo = 'ALTA_LOTE'
+                        )
+                    ) as equipos_con_serie_lote_disponibles"),
                     // Slots reservados por asignaciones activas aún no escaneados
                     DB::raw("(
                         SELECT COALESCE(SUM(
@@ -123,12 +173,16 @@ class Asignaciones extends Component
             ->get()
             ->map(function($lote) {
                 $lote->modelosRecibidos = $lote->modelosRecibidos->map(function($modelo) {
-                    $modelo->equipos_libres = max(
-                        (int)$modelo->cantidad_recibida
-                            - (int)($modelo->equipos_registrados ?? 0)
-                            - (int)($modelo->slots_reservados ?? 0),
+                    $disponiblesSinSerie = (int) ($modelo->equipos_sin_serie_disponibles ?? 0);
+                    $disponiblesSerieLote = (int) ($modelo->equipos_con_serie_lote_disponibles ?? 0);
+                    $cupoSinRegistrarLibre = max(
+                        (int) $modelo->cantidad_recibida
+                            - (int) ($modelo->equipos_registrados ?? 0)
+                            - (int) ($modelo->slots_reservados ?? 0),
                         0
                     );
+
+                    $modelo->equipos_libres = $disponiblesSinSerie + $disponiblesSerieLote + $cupoSinRegistrarLibre;
                     return $modelo;
                 })->values();
                 return $lote;
@@ -225,6 +279,14 @@ class Asignaciones extends Component
 
         return \App\Models\Equipo::whereIn('lote_modelo_id', $ids)
             ->where('estatus_area', \App\Models\Equipo::AREA_SIN_ASIGNAR)
+            ->whereNotNull('numero_serie')
+            ->whereRaw("TRIM(numero_serie) <> ''")
+            ->whereExists(function ($q) {
+                $q->select(DB::raw('1'))
+                    ->from('equipo_movimientos as em')
+                    ->whereColumn('em.equipo_id', 'equipos.id')
+                    ->where('em.tipo', 'ALTA_LOTE');
+            })
             ->get(['id', 'numero_serie', 'lote_modelo_id'])
             ->groupBy('lote_modelo_id');
     }
@@ -271,20 +333,51 @@ class Asignaciones extends Component
             return;
         }
 
-        // Validar que ninguna cantidad supere los disponibles
-        // Descuenta: equipos ya registrados + slots reservados por asignaciones activas
+        // Validar que ninguna cantidad supere los disponibles reales:
+        // equipos físicos SIN_ASIGNAR + cupo pendiente de registrar no reservado.
         foreach ($this->seleccion as $loteModeloId => $cantidad) {
             $modelo      = \App\Models\LoteModeloRecibido::find($loteModeloId);
             $registrados = \App\Models\Equipo::where('lote_modelo_id', $loteModeloId)->whereNull('deleted_at')->count();
+            $sinSerieDisponibles = $this->queryEquiposSinAsignarPorModelo($loteModeloId)
+                ->where(function ($q) {
+                    $q->whereNull('numero_serie')
+                        ->orWhereRaw("TRIM(numero_serie) = ''");
+                })
+                ->count();
+            $conSerieLoteDisponibles = $this->queryEquiposConSerieDeLotePorModelo($loteModeloId)->count();
             $reservados  = Asignacion::where('lote_modelo_id', $loteModeloId)
                 ->whereIn('estatus', [Asignacion::PENDIENTE, Asignacion::EN_PROCESO])
                 ->get()
                 ->sum(fn($a) => max($a->cantidad - $a->equipos()->count(), 0));
-            $disponibles = max((int)($modelo->cantidad_recibida ?? 0) - $registrados - $reservados, 0);
+            $cupoSinRegistrarLibre = max((int)($modelo->cantidad_recibida ?? 0) - $registrados - $reservados, 0);
+            $disponibles = $sinSerieDisponibles + $conSerieLoteDisponibles + $cupoSinRegistrarLibre;
+            $seriesElegidas = array_values(array_unique(array_filter(
+                array_map('trim', $this->seriesAsignadas[$loteModeloId] ?? []),
+                fn($s) => $s !== ''
+            )));
+
+            $minSeriesObligatorias = max($cantidad - ($sinSerieDisponibles + $cupoSinRegistrarLibre), 0);
 
             if ($cantidad > $disponibles) {
                 $this->error = "La cantidad para {$modelo->marca} {$modelo->modelo} supera los disponibles ({$disponibles}).";
                 return;
+            }
+
+            if (count($seriesElegidas) < $minSeriesObligatorias) {
+                $faltan = $minSeriesObligatorias - count($seriesElegidas);
+                $this->error = "Para {$modelo->marca} {$modelo->modelo} debes seleccionar {$faltan} serie(s) más. Ya no alcanzan los equipos sin serie.";
+                return;
+            }
+
+            if (!empty($seriesElegidas)) {
+                $seriesValidas = $this->queryEquiposConSerieDeLotePorModelo($loteModeloId)
+                    ->whereIn('numero_serie', $seriesElegidas)
+                    ->count();
+
+                if ($seriesValidas !== count($seriesElegidas)) {
+                    $this->error = "Algunas series seleccionadas para {$modelo->marca} {$modelo->modelo} ya no están disponibles. Recarga y vuelve a seleccionarlas.";
+                    return;
+                }
             }
         }
 
@@ -301,14 +394,16 @@ class Asignaciones extends Component
                 ]);
 
                 // Pre-asignar series con número de serie conocido
-                $seriesElegidas = array_filter($this->seriesAsignadas[$loteModeloId] ?? []);
+                $seriesElegidas = array_values(array_unique(array_filter(
+                    array_map('trim', $this->seriesAsignadas[$loteModeloId] ?? []),
+                    fn($s) => $s !== ''
+                )));
 
                 // Primero las series que el gerente eligió manualmente
                 $asignadas = 0;
                 if (!empty($seriesElegidas)) {
-                    $equipos = \App\Models\Equipo::whereIn('numero_serie', $seriesElegidas)
-                        ->where('lote_modelo_id', $loteModeloId)
-                        ->where('estatus_area', \App\Models\Equipo::AREA_SIN_ASIGNAR)
+                    $equipos = $this->queryEquiposConSerieDeLotePorModelo($loteModeloId)
+                        ->whereIn('numero_serie', $seriesElegidas)
                         ->get();
 
                     foreach ($equipos as $equipo) {
@@ -326,9 +421,11 @@ class Asignaciones extends Component
                 // Luego auto-asignar aleatoriamente los slots restantes
                 $restantes = $cantidad - $asignadas;
                 if ($restantes > 0) {
-                    $equiposAuto = \App\Models\Equipo::where('lote_modelo_id', $loteModeloId)
-                        ->where('estatus_area', \App\Models\Equipo::AREA_SIN_ASIGNAR)
-                        ->whereNotIn('numero_serie', $seriesElegidas)
+                    $equiposAuto = $this->queryEquiposSinAsignarPorModelo($loteModeloId)
+                        ->where(function ($q) {
+                            $q->whereNull('numero_serie')
+                                ->orWhereRaw("TRIM(numero_serie) = ''");
+                        })
                         ->inRandomOrder()
                         ->limit($restantes)
                         ->get();
@@ -404,7 +501,7 @@ class Asignaciones extends Component
         if (!$asignacion) return;
 
         $iniciados = $asignacion->equipos->filter(
-            fn($ae) => $ae->camino !== AsignacionEquipo::PENDIENTE
+            fn($ae) => !in_array($ae->camino, [AsignacionEquipo::PENDIENTE, AsignacionEquipo::PRE_ASIGNADO], true)
         )->count();
 
         if ($iniciados > 0) {
@@ -418,8 +515,10 @@ class Asignaciones extends Component
         }
 
         DB::transaction(function () use ($asignacion) {
-            // Liberar equipos PENDIENTE de vuelta a SIN_ASIGNAR
-            foreach ($asignacion->equipos->where('camino', AsignacionEquipo::PENDIENTE) as $ae) {
+            // Liberar equipos aún no iniciados (PENDIENTE / PRE_ASIGNADO) a SIN_ASIGNAR
+            foreach ($asignacion->equipos->filter(
+                fn($ae) => in_array($ae->camino, [AsignacionEquipo::PENDIENTE, AsignacionEquipo::PRE_ASIGNADO], true)
+            ) as $ae) {
                 $ae->equipo?->update(['estatus_area' => \App\Models\Equipo::AREA_SIN_ASIGNAR]);
                 $ae->delete();
             }

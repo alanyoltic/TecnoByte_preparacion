@@ -670,7 +670,7 @@ class MiTrabajo extends Component
                     $errores[] = "{$serie}: pertenece a un modelo diferente."; continue;
                 }
                 $enOtra = AsignacionEquipo::where('equipo_id', $equipo->id)
-                    ->whereIn('camino', [AsignacionEquipo::PENDIENTE, AsignacionEquipo::EN_PROCESO])
+                    ->whereIn('camino', [AsignacionEquipo::PENDIENTE, AsignacionEquipo::PRE_ASIGNADO, AsignacionEquipo::EN_PROCESO])
                     ->whereHas('asignacion', fn($q) =>
                         $q->where('id', '!=', $asignacion->id)
                           ->whereIn('estatus', [Asignacion::PENDIENTE, Asignacion::EN_PROCESO])
