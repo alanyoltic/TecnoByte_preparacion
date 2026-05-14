@@ -27,6 +27,7 @@ class PuntoTecnico extends Model
     const COMPLETO           = 'COMPLETO';
     const PIEZA_PENDIENTE    = 'PIEZA_PENDIENTE';    // Tech terminó equipo, falta pieza
     const PIEZA_COMPLETADA  = 'PIEZA_COMPLETADA';    // Tech terminó pieza
+    const PIEZA_INSTALADA    = self::PIEZA_COMPLETADA; // Alias legacy
     const GARANTIA           = 'GARANTIA';
     const DESPIECE           = 'DESPIECE';
 
