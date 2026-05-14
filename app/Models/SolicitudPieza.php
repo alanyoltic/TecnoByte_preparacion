@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
 use App\Models\Almacen;
+use App\Models\PuntoTecnico;
 
 class SolicitudPieza extends Model
 {
@@ -524,8 +525,18 @@ class SolicitudPieza extends Model
                     ]);
                 }
 
-                // Marcar el registro de trabajo como EN_CALIDAD — los puntos se otorgan
-                // cuando calidad valida que la pieza está bien instalada.
+                // Registrar puntos de pieza si el gerente asignó puntos_override
+                if ($intento && $intento->puntos_override && $intento->puntos_override > 0 && $this->asignacion_equipo_id) {
+                    PuntoTecnico::registrar(
+                        tecnicoId: $tecnicoId,
+                        asignacionEquipoId: $this->asignacion_equipo_id,
+                        rol: PuntoTecnico::PIEZA_COMPLETADA,
+                        puntosBase: (float) $intento->puntos_override,
+                        clasificacionId: null, // Piezas no usan clasificación, solo puntos_override
+                    );
+                }
+
+                // Marcar el registro de trabajo como EN_CALIDAD
                 if ($this->asignacion_equipo_id) {
                     AsignacionEquipo::where('id', $this->asignacion_equipo_id)
                         ->where('camino', AsignacionEquipo::PIEZA_PENDIENTE)

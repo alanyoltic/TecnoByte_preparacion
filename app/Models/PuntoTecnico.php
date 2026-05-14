@@ -24,11 +24,11 @@ class PuntoTecnico extends Model
     ];
 
     // ── Roles ─────────────────────────────────────────────────────────────
-    const COMPLETO        = 'COMPLETO';
-    const PIEZA_PENDIENTE = 'INICIO_PIEZA';
-    const PIEZA_INSTALADA = 'TERMINO_PIEZA';
-    const GARANTIA        = 'GARANTIA';
-    const DESPIECE        = 'DESPIECE';
+    const COMPLETO           = 'COMPLETO';
+    const PIEZA_PENDIENTE    = 'PIEZA_PENDIENTE';    // Tech terminó equipo, falta pieza
+    const PIEZA_COMPLETADA  = 'PIEZA_COMPLETADA';    // Tech terminó pieza
+    const GARANTIA           = 'GARANTIA';
+    const DESPIECE           = 'DESPIECE';
 
     // ── Porcentajes por rol — todos los caminos otorgan el 100% del equipo ──
     const PORCENTAJES = [
@@ -84,7 +84,9 @@ class PuntoTecnico extends Model
         float  $puntosBase,
         ?int   $clasificacionId = null,
     ): self {
-        $porcentaje  = self::PORCENTAJES[$rol] ?? 100.00;
+        // CAMBIO: Siempre 100% en terminación de equipos
+        // El 40/60 de piezas se maneja aparte por el gerente
+        $porcentaje  = 100.00;
         $puntosCalc  = round($puntosBase * ($porcentaje / 100), 2);
 
         return static::create([

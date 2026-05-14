@@ -35,7 +35,7 @@
            bg-gradient-to-br
            from-slate-100 via-slate-100 to-slate-200
            dark:from-slate-950 dark:via-[#020617] dark:to-slate-950"
-    @if($poll) wire:poll.visible.30s="{{ $poll }}" @endif
+    @if($poll) wire:poll.visible.60s="{{ $poll }}" @endif
 >
     {{-- Luces TecnoByte (persistentes por sesión) --}}
     <div class="pointer-events-none absolute -inset-2">

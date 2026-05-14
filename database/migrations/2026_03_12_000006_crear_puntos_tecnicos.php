@@ -54,10 +54,11 @@ return new class extends Migration
 
             // ── Contexto del camino ───────────────────────────────────────
             $table->enum('rol_en_equipo', [
-                'COMPLETO',          // Hizo todo el trabajo
-                'INICIO_PIEZA',      // Inició pero mandó a pieza pendiente
-                'TERMINO_PIEZA',     // Recibió de pieza pendiente y terminó
-                'GARANTIA',          // Detectó falla y mandó a garantía
+                'COMPLETO',           // Tech completó todo el equipo
+                'PIEZA_PENDIENTE',    // Tech terminó equipo pero falta pieza
+                'PIEZA_COMPLETADA',   // Tech completó la instalación de la pieza
+                'GARANTIA',           // Tech detectó falla y mandó a garantía
+                'DESPIECE',           // Tech mandó equipo a despiece
             ])->comment('Qué rol tuvo el técnico en este equipo');
 
             // ── Período para agrupación de reportes ───────────────────────
