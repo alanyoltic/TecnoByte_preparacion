@@ -89,7 +89,7 @@ class ActualizarClasificacionesPuntosSeeder extends Seeder
 
         $distribucion = DB::table('equipos')
             ->leftJoin('clasificaciones_puntos', 'equipos.clasificacion_puntos_id', '=', 'clasificaciones_puntos.id')
-            ->groupBy('clasificaciones_puntos.clave')
+            ->groupBy('clasificaciones_puntos.clave', 'clasificaciones_puntos.puntos_base')
             ->selectRaw('clasificaciones_puntos.clave, COUNT(*) as total, clasificaciones_puntos.puntos_base')
             ->orderBy('clasificaciones_puntos.clave')
             ->get();
