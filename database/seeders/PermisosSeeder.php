@@ -202,9 +202,10 @@ class PermisosSeeder extends Seeder
             'modulo.sistema',
         ]);
 
-        // Exhibicion — solo dashboard
+        // Exhibicion — dashboard + acceso a preparación
         $exhibicion = $this->slugsAIds($mapaIds, [
             'sistema.dashboard.ver',
+            'modulo.preparacion',
         ]);
 
         // Usuario personalizado — sin permisos base (se asignan por usuario_permiso)
