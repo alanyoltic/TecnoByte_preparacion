@@ -128,19 +128,61 @@
     x-data="{
         slide: 0,
         total: 2,
+        durations: [5 * 60 * 1000, 2 * 60 * 1000], // [dashboard, empleado]
+
+        scheduleAuto(){
+            // Evitar timers duplicados (por re-render Livewire o navegacion interna)
+            if (window.__TB_DASH_CAROUSEL_TIMER__) {
+                clearTimeout(window.__TB_DASH_CAROUSEL_TIMER__);
+                window.__TB_DASH_CAROUSEL_TIMER__ = null;
+            }
+
+            const ms = this.durations?.[this.slide] ?? 0;
+            if (!ms) return;
+
+            const tick = () => {
+                // Si la pestaña esta oculta, no avanzamos el carrusel
+                if (document.hidden) {
+                    window.__TB_DASH_CAROUSEL_TIMER__ = setTimeout(tick, 1000);
+                    return;
+                }
+
+                this.go(this.slide === 0 ? 1 : 0);
+            };
+
+            window.__TB_DASH_CAROUSEL_TIMER__ = setTimeout(tick, ms);
+        },
 
         init(){
-            // Deep-link inicial ?tab=empleado
-            const p = new URLSearchParams(window.location.search);
-            if (p.get('tab') === 'empleado') this.slide = 1;
+            // Siempre iniciar en Dashboard (no persistir ultima vista)
+            this.slide = 0;
+
+            // Limpiar cualquier ?tab=... previo (por bookmarks o navegacion anterior)
+            const url = new URL(window.location.href);
+            if (url.searchParams.has('tab')) {
+                url.searchParams.delete('tab');
+                window.history.replaceState({}, '', url);
+            }
 
             // Exponer estado global para los dots del topbar
             window.__TB_ACTIVE_TAB__ = this.slide === 0 ? 'dashboard' : 'empleado';
+            window.__TB_DASH_CAROUSEL_INSTANCE__ = this;
 
             // Al iniciar (si estás en dashboard), ajusta charts
             this.$nextTick(() => {
                 if (this.slide === 0) window.TB_DASH_RESIZE?.();
             });
+
+            // Auto-rotacion: 5 min dashboard -> 2 min empleado -> ...
+            this.scheduleAuto();
+
+            // Reanudar el timer al volver a la pestaña
+            if (!window.__TB_DASH_VIS_LISTENER__) {
+                window.__TB_DASH_VIS_LISTENER__ = true;
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden) window.__TB_DASH_CAROUSEL_INSTANCE__?.scheduleAuto?.();
+                });
+            }
         },
 
         go(i){
@@ -149,18 +191,14 @@
             // Actualizar estado global (para pintar dots)
             window.__TB_ACTIVE_TAB__ = this.slide === 0 ? 'dashboard' : 'empleado';
 
-            // Guardar en URL
-            const url = new URL(window.location.href);
-            if (this.slide === 1) url.searchParams.set('tab','empleado');
-            else url.searchParams.delete('tab');
-            window.history.replaceState({}, '', url);
-
             // Al volver al dashboard, reajusta charts
             if (this.slide === 0){
                 this.$nextTick(() => window.TB_DASH_RESIZE?.());
             }
             this.$dispatch('tb-slide-changed', { slide: this.slide });
 
+            // Si el usuario cambia manualmente, reinicia el conteo desde el slide actual
+            this.scheduleAuto();
         },
 
         // 🔹 Evento que viene desde los dots del Topbar
@@ -176,11 +214,48 @@
 
 
             {{-- Slides --}}
-            <div class="relative overflow-hidden rounded-3xl">
-                <div
-                    class="flex transition-transform duration-500 ease-out"
-                    :style="`transform: translateX(-${slide * 100}%);`"
-                >
+            <div class="relative rounded-3xl">
+
+                {{-- Confeti: solo para el empleado del mes al entrar --}}
+                @php
+                    $empleadoMesId = data_get($empleadoMes, 'id');
+                @endphp
+                @if(auth()->id() && !empty($empleadoMesId) && (int) auth()->id() === (int) $empleadoMesId)
+                    <div
+                        x-data="{
+                            show: false,
+                            hasPlayed: false,
+                            start(){
+                                if (this.hasPlayed) return;
+                                const key = 'tb_confetti_empleado_mes_{{ $selectedMonthValue }}_{{ auth()->id() }}';
+                                const storage = window.localStorage;
+                                const seen = storage.getItem(key);
+                                if (seen === '1') return;
+                                storage.setItem(key, '1');
+                                this.hasPlayed = true;
+                                this.show = true;
+                                setTimeout(() => { this.show = false; }, 4500);
+                            }
+                        }"
+                        @tb-dashboard-tab.window="if ($event.detail.tab === 'empleado') start()"
+                        class="pointer-events-none absolute inset-0 z-30 overflow-visible"
+                    >
+                        <div x-show="show" x-transition.opacity.duration.250ms class="absolute inset-0 overflow-visible">
+                            @for($i = 0; $i < 90; $i++)
+                                <span
+                                    class="tb-confetti-piece"
+                                    style="--x: {{ rand(-18, 18) }}vw; --y: {{ rand(-10, -2) }}vh; --tx: {{ rand(-60, 60) }}vw; --ty: {{ rand(84, 138) }}vh; --d: {{ rand(0, 1200) }}ms; --s: {{ rand(10, 22) }}px; --r: {{ rand(0, 360) }}deg; --c: hsl({{ rand(0, 360) }}, 92%, 60%); --br: {{ rand(0, 100) < 25 ? '9999px' : '2px' }};"
+                                ></span>
+                            @endfor
+                        </div>
+                    </div>
+                @endif
+
+                <div class="overflow-hidden rounded-3xl">
+                    <div
+                        class="flex transition-transform duration-500 ease-out"
+                        :style="`transform: translateX(-${slide * 100}%);`"
+                    >
 
                     {{-- ===================== SLIDE 1: DASHBOARD ACTUAL ===================== --}}
                     <section class="w-full shrink-0">
@@ -307,7 +382,7 @@
                                     $labelClass = "text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400";
                                     $valueClass = "text-3xl font-bold text-slate-900 dark:text-slate-50";
                                     $badgeClass = "inline-flex items-center text-xs font-semibold text-emerald-600 dark:text-emerald-500";
-                                @endphp
+                                 @endphp
 
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                                     <div class="{{ $cardClass }} {{ $cardGlow }} {{ $cardGlow2 }}">
@@ -789,16 +864,29 @@
                                             {{ $empleadoMes['nombre'] ?? 'Pendiente' }}
                                         </p>
 
-                                        <p class="text-sm text-slate-600 dark:text-slate-300">
-                                            {{ $empleadoMes['mensaje'] ?? 'Aquí irá el empleado del mes' }}
-                                        </p>
+                                        <div class="mt-5 w-full max-w-xl mx-auto">
+                                            <div class="relative overflow-hidden rounded-2xl px-6 py-5
+                                                        bg-white/60 dark:bg-white/5
+                                                        border border-slate-200/70 dark:border-white/10
+                                                        shadow-sm shadow-slate-900/5 dark:shadow-black/25">
+                                                <span class="pointer-events-none absolute top-1 left-3
+                                                             text-4xl leading-none font-serif
+                                                             text-indigo-500/20 dark:text-indigo-300/20">&ldquo;</span>
+                                                <span class="pointer-events-none absolute bottom-1 right-3
+                                                             text-4xl leading-none font-serif
+                                                             text-indigo-500/20 dark:text-indigo-300/20">&rdquo;</span>
+                                                <p class="text-sm sm:text-base text-slate-700 dark:text-slate-200 leading-relaxed tracking-[0.01em] whitespace-pre-line px-5">
+                                                    {{ $empleadoMes['mensaje'] ?? 'Aquí irá el empleado del mes' }}
+                                                </p>
+                                            </div>
+                                        </div>
 
 
 
                                     </div>
                                         {{-- (Opcional) Botón dentro de la tarjeta --}}
                                         <div class="mt-8 flex justify-center">
-                                            @if($esAdminCeo)
+                                            @if($puedeConfigurarEmpleadoMes)
                                                 <button
                                                     type="button"
                                                     wire:click="openEmpleadoModal"
@@ -814,7 +902,7 @@
                                             @endif
                                         </div>
 
-                                        @if($esAdminCeo && !empty($empleadoMes))
+    @if($puedeConfigurarEmpleadoMes && !empty($empleadoMes))
     <button
         type="button"
         x-data
@@ -849,6 +937,7 @@
 
 
 
+                    </div>
                 </div>
             </div>
         </div>
@@ -1043,6 +1132,30 @@
 </x-tb-background>
 
 @push('scripts')
+    <style>
+        .tb-confetti-piece{
+            position: absolute;
+            left: 50%;
+            top: 4vh;
+            width: var(--s, 14px);
+            height: calc(var(--s, 14px) * 0.55);
+            background: var(--c, #3B82F6);
+            border-radius: var(--br, 2px);
+            opacity: 0;
+            filter: drop-shadow(0 10px 14px rgba(0,0,0,.22));
+            will-change: transform, opacity;
+            animation: tbConfettiBurst 4.4s cubic-bezier(.18,.82,.2,1) forwards;
+            animation-delay: var(--d, 0ms);
+        }
+        @keyframes tbConfettiBurst{
+            0%   { opacity: 0; transform: translate3d(var(--x, 0vw), var(--y, -8vh), 0) rotate(var(--r, 0deg)) scale(.9); }
+            10%  { opacity: 1; }
+            100% { opacity: 0; transform: translate3d(calc(var(--x, 0vw) + var(--tx, 0vw)), var(--ty, 118vh), 0) rotate(calc(var(--r, 0deg) + 980deg)) scale(.98); }
+        }
+        @media (prefers-reduced-motion: reduce){
+            .tb-confetti-piece{ animation: none !important; display:none !important; }
+        }
+    </style>
     <script>
         (() => {
             if (window.__TB_DASH_CHARTS__) return;

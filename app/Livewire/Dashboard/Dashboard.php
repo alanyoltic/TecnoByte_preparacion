@@ -19,6 +19,8 @@ class Dashboard extends Component
 
 //fix
 
+    private const DEFAULT_EMPLEADO_MES_MENSAJE = 'Tu esfuerzo, dedicación y compromiso hicieron la diferencia este mes. ¡Gracias por dar siempre lo mejor de ti!';
+
     public bool $esAdminCeo = false;
     public bool $esLiderGerente = false;
 
@@ -72,6 +74,7 @@ class Dashboard extends Component
     public bool $viejoSistema = false;
     public ?string $empleadoMesUserId = null;
     public ?string $empleadoMesMensaje = null;
+    public bool $puedeConfigurarEmpleadoMes = false;
 
 
 
@@ -111,6 +114,11 @@ class Dashboard extends Component
         $this->cargarAvisos();
         $this->esAdminCeo     = in_array($roleSlug, ['ceo', 'admin', 'admin_sistema'], true);
         $this->esLiderGerente = in_array($roleSlug, ['ceo', 'gerente', 'lider'], true);
+        
+        // Empleado del mes: Solo CEO o GERENTE de PREPARACION
+        $isCeo = in_array($roleSlug, ['ceo', 'admin', 'admin_sistema'], true);
+        $isGerentePreparacion = $roleSlug === 'gerente' && optional($user->departamento)->id === 1;
+        $this->puedeConfigurarEmpleadoMes = $isCeo || $isGerentePreparacion;
         
 
         $this->isTecnico = in_array($roleSlug, ['tecnico'])
@@ -201,7 +209,7 @@ private function cargarEmpleadoDelMes(): void
     $this->empleadoMes = [
         'id'          => $u->id,
         'nombre'      => trim(($u->nombre ?? '') . ' ' . ($u->apellido_paterno ?? '')),
-        'mensaje'     => $record->mensaje,
+        'mensaje'     => trim((string) ($record->mensaje ?? '')) !== '' ? $record->mensaje : self::DEFAULT_EMPLEADO_MES_MENSAJE,
         'month'       => $record->month,
         'foto_perfil' => $foto, // MISMO NOMBRE que en users/sidebar
     ];
@@ -210,7 +218,7 @@ private function cargarEmpleadoDelMes(): void
 
 public function quitarEmpleadoDelMes(): void
 {
-    abort_unless($this->esAdminCeo, 403);
+    abort_unless($this->puedeConfigurarEmpleadoMes, 403);
 
     EmpleadoDelMes::query()
         ->where('month', $this->selectedMonthValue)
@@ -232,7 +240,7 @@ public function quitarEmpleadoDelMes(): void
 
 public function openEmpleadoModal(): void
 {
-    abort_unless($this->esAdminCeo, 403);
+    abort_unless($this->puedeConfigurarEmpleadoMes, 403);
 
     $this->showEmpleadoModal = true;
 
@@ -241,7 +249,7 @@ public function openEmpleadoModal(): void
         $this->empleadoMesMensaje = $this->empleadoMes['mensaje'];
     } else {
         $this->empleadoMesUserId = null;
-        $this->empleadoMesMensaje = null;
+        $this->empleadoMesMensaje = self::DEFAULT_EMPLEADO_MES_MENSAJE;
     }
 }
 
@@ -253,7 +261,7 @@ public function openEmpleadoModal(): void
 
     public function saveEmpleadoDelMes(): void
 {
-    abort_unless($this->esAdminCeo, 403);
+    abort_unless($this->puedeConfigurarEmpleadoMes, 403);
 
     $this->validate([
         'empleadoMesUserId' => 'required|exists:users,id',
@@ -261,11 +269,17 @@ public function openEmpleadoModal(): void
         // cuando agreguemos "hasta que fecha", aqui va su regla
     ]);
 
+    $mensaje = trim((string) ($this->empleadoMesMensaje ?? ''));
+    if ($mensaje === '') {
+        $mensaje = self::DEFAULT_EMPLEADO_MES_MENSAJE;
+    }
+    $this->empleadoMesMensaje = $mensaje;
+
     EmpleadoDelMes::updateOrCreate(
         ['month' => $this->selectedMonthValue],
         [
             'user_id' => $this->empleadoMesUserId,
-            'mensaje' => $this->empleadoMesMensaje,
+            'mensaje' => $mensaje,
             'is_active' => true,
         ]
     );
