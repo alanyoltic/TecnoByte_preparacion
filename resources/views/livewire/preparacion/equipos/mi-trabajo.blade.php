@@ -1185,26 +1185,29 @@
 
                         {{-- Formulario modo LIBRE (hay que pedirla) --}}
                         @if($fuentePieza === 'libre')
-                            <div class="space-y-3 border-t border-rose-300/30 dark:border-rose-700/30 pt-3">
+                            <div class="space-y-4 border-t border-rose-300/30 dark:border-rose-700/30 pt-3">
                                 <p class="text-xs text-slate-500 dark:text-slate-400">
                                     Describe la pieza que necesitas para que el encargado la consiga:
                                 </p>
 
-                                {{-- Categoría (obligatoria) --}}
-                                <div class="space-y-1">
+                                {{-- Categoría (obligatoria) - CHIPS en lugar de SELECT --}}
+                                <div class="space-y-2">
                                     <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">
                                         Categoría <span class="text-red-500">*</span>
                                     </label>
-                                    <select wire:model.live="categoriaPiezaLibre"
-                                        class="w-full rounded-xl px-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
-                                               border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
-                                               focus:ring-2 focus:ring-rose-400 outline-none">
-                                        <option value="">Selecciona una categoría...</option>
-                                        @foreach($categoriasDisponibles as $cat)
-                                            <option value="{{ $cat }}">{{ $cat }}</option>
+                                    <div class="flex flex-wrap gap-2">
+                                        @foreach($categoriasParaSolicitud as $cat)
+                                            <button type="button"
+                                                wire:click="$set('categoriaPiezaLibre', '{{ $cat }}')"
+                                                @class([
+                                                    'px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-150',
+                                                    'bg-rose-500 border-rose-500 text-white shadow-sm' => $categoriaPiezaLibre === $cat,
+                                                    'bg-white/70 dark:bg-slate-800/60 border-slate-300/70 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-rose-400 hover:text-rose-600 dark:hover:text-rose-400' => $categoriaPiezaLibre !== $cat,
+                                                ])>
+                                                {{ $cat }}
+                                            </button>
                                         @endforeach
-                                        <option value="Otro">Otro / No está en la lista</option>
-                                    </select>
+                                    </div>
                                 </div>
 
                                 {{-- Descripción (opcional) --}}

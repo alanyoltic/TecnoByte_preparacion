@@ -198,6 +198,12 @@ class MiTrabajo extends Component
     }
 
     #[Computed]
+    public function categoriasParaSolicitud()
+    {
+        return collect(CatalogoPieza::CATEGORIAS);
+    }
+
+    #[Computed]
     public function equipoActual(): ?AsignacionEquipo
     {
         if (!$this->asignacionEquipoId) return null;
@@ -1528,6 +1534,7 @@ class MiTrabajo extends Component
             'tipo_equipo'          => $this->form->tipo_equipo ?? null,
             'catalogoPiezas'       => $this->catalogoPiezas,
             'categoriasDisponibles'=> $this->categoriasDisponibles,
+            'categoriasParaSolicitud' => $this->categoriasParaSolicitud,
             'detallesFuncionamientoCatalogo' => [
                 'CAMARA NO FUNCIONA','NO FUNCIONA ENTRADA DE ETHERNET',
                 'NO FUNCIONA 1 PUERTO USB','NO FUNCIONAN 2 PUERTOS USB',

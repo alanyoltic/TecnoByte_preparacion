@@ -60,6 +60,11 @@ class PermisosSeeder extends Seeder
             ['slug' => 'prep.transferencias.ver',        'descripcion' => 'Ver transferencias (Preparación)'],
             ['slug' => 'prep.transferencias.crear',      'descripcion' => 'Crear transferencias (Preparación)'],
 
+            // PREPARACIÓN — CALIDAD
+            ['slug' => 'modulo.calidad',                 'descripcion' => 'Acceso al módulo Calidad'],
+            ['slug' => 'prep.calidad.ver',               'descripcion' => 'Ver equipos en calidad (Preparación)'],
+            ['slug' => 'prep.calidad.validar',           'descripcion' => 'Validar/rechazar equipos (Calidad)'],
+
             // -----------------------------------------------------------------
             // VENTAS
             // -----------------------------------------------------------------
@@ -208,6 +213,15 @@ class PermisosSeeder extends Seeder
             'modulo.preparacion',
         ]);
 
+        // Calidad — ver y validar equipos en calidad
+        $calidad = $this->slugsAIds($mapaIds, [
+            'sistema.dashboard.ver',
+            'modulo.calidad',
+            'prep.calidad.ver',
+            'prep.calidad.validar',
+            'modulo.sistema',
+        ]);
+
         // Usuario personalizado — sin permisos base (se asignan por usuario_permiso)
         $usuarioPersonalizado = [];
 
@@ -221,6 +235,7 @@ class PermisosSeeder extends Seeder
             'lider'        => $lider,
             'tecnico'      => $tecnico,
             'exhibicion'   => $exhibicion,
+            'calidad'      => $calidad,
             'usuario'      => $usuarioPersonalizado,
         ];
 
