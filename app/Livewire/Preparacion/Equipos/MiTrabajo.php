@@ -35,6 +35,7 @@ class MiTrabajo extends Component
 
     // ── Si el equipo ya está terminado (solo lectura) ─────────────────────
     public bool $equipoTerminado = false;
+    public bool $usaListadoPiezas = false;
 
     // ── Fase 1: iniciar equipos (múltiples series) ────────────────────────
     public array  $series     = [''];
@@ -76,6 +77,7 @@ class MiTrabajo extends Component
     public function mount(): void
     {
         $this->autorizarTrabajo();
+        $this->definirModoListadoPiezas();
         $this->setDefaultsEnForm();
     }
 
@@ -85,9 +87,18 @@ class MiTrabajo extends Component
         $roleSlug = strtolower((string) ($user?->role?->slug ?? ''));
 
         abort_unless(
-            $user?->tienePermiso('prep.equipos.ver') && in_array($roleSlug, ['lider', 'tecnico'], true),
+            $user?->tienePermiso('prep.equipos.ver') && in_array($roleSlug, ['lider', 'tecnico', 'gerente'], true),
             403
         );
+    }
+
+    private function definirModoListadoPiezas(): void
+    {
+        $user = auth()->user();
+        $roleSlug = strtolower((string) ($user?->role?->slug ?? ''));
+
+        $this->usaListadoPiezas = (bool) ($user?->tienePermiso('prep.equipos.editar'))
+            && in_array($roleSlug, ['lider', 'gerente'], true);
     }
 
     private function setDefaultsEnForm(): void

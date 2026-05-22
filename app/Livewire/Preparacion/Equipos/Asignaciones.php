@@ -96,15 +96,32 @@ class Asignaciones extends Component
     #[Computed]
     public function tecnicos()
     {
-        return User::whereHas('role', fn($q) => $q->whereIn('slug', ['tecnico', 'lider']))
-            ->where('is_active', true)
-            ->when($this->busquedaTecnico, fn($q) =>
-                $q->where(fn($q2) =>
-                    $q2->where('nombre', 'like', "%{$this->busquedaTecnico}%")
-                       ->orWhere('apellido_paterno', 'like', "%{$this->busquedaTecnico}%")
-                ))
-            ->orderBy('nombre')
-            ->get();
+        // Técnicos + Líderes activos como técnicos + Líderes inactivos con equipos históricos
+        return User::where(function($q) {
+            // Técnicos (siempre)
+            $q->whereHas('role', fn($r) => $r->where('slug', 'tecnico'))
+              ->where('is_active', true);
+        })
+        ->orWhere(function($q) {
+            // Líderes activos como técnicos
+            $q->whereHas('role', fn($r) => $r->where('slug', 'lider'))
+              ->where('is_active', true)
+              ->whereHas('liderModoTecnico', fn($lmt) => $lmt->where('es_tecnico', true));
+        })
+        ->orWhere(function($q) {
+            // Líderes inactivos o sin modo técnico, pero con asignaciones históricos
+            $q->whereHas('role', fn($r) => $r->where('slug', 'lider'))
+              ->where('is_active', true)
+              ->whereHas('asignaciones'); // que tienen alguna asignación
+        })
+        ->when($this->busquedaTecnico, fn($q) =>
+            $q->where(fn($q2) =>
+                $q2->where('nombre', 'like', "%{$this->busquedaTecnico}%")
+                   ->orWhere('apellido_paterno', 'like', "%{$this->busquedaTecnico}%")
+            ))
+        ->distinct()
+        ->orderBy('nombre')
+        ->get();
     }
 
     // ── Computed: lotes con modelos disponibles ───────────────────────────

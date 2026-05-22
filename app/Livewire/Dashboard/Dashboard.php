@@ -3,6 +3,7 @@
 namespace App\Livewire\Dashboard;
 
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use App\Models\Equipo;
 use App\Models\User;
@@ -12,6 +13,7 @@ use Carbon\Carbon;
 use App\Models\Aviso;
 use App\Models\EmpleadoDelMes;
 use App\Models\MetaTecnico;
+use App\Models\LiderModoTecnico;
 
 #[Layout('layouts.app', ['pageTitle' => 'Dashboard'])]
 class Dashboard extends Component
@@ -28,6 +30,9 @@ class Dashboard extends Component
     public bool  $showModalMeta       = false;
     public int   $editMetaTotal       = 0;
     public array $editMetasTecnicos   = [];
+
+    // Modal edición de líderes como técnicos
+    public bool  $showModalLideres    = false;
 
     // ===== Roles =====
     public bool $isTecnico = false;
@@ -167,6 +172,12 @@ class Dashboard extends Component
     {
         $this->loadData();
         $this->cargarAvisos();
+    }
+
+    #[On('lideresActualizados')]
+    public function actualizarPorLideres(): void
+    {
+        $this->loadData();
     }
 
     private function buildMonthsOptions(): void
@@ -545,15 +556,31 @@ $this->labelMes = $selectedDate->locale('es')->translatedFormat('F Y');
         ];
 
         // ===== 5. COLABORADORES =====
-        $tecnicosBaseQuery = User::query()
+        // Técnicos base (siempre cuentan)
+        $tecnicosCount = User::query()
             ->join('roles', 'users.role_id', '=', 'roles.id')
-            ->whereIn(DB::raw('LOWER(roles.slug)'), ['tecnico']);
+            ->whereIn(DB::raw('LOWER(roles.slug)'), ['tecnico'])
+            ->count();
 
-        $colaboradoresCount = (clone $tecnicosBaseQuery)->count();
+        // Líderes que trabajan como técnicos (global, sin período)
+        $lideresComoTecnicoIds = LiderModoTecnico::lideresActivos();
+        $lideresCount = count($lideresComoTecnicoIds);
+
+        // Total colaboradores
+        $colaboradoresCount = $tecnicosCount + $lideresCount;
+
+        // Query de todos los colaboradores (técnicos + líderes activos)
+        $colaboradoresBaseQuery = User::query()
+            ->join('roles', 'users.role_id', '=', 'roles.id')
+            ->where(function ($q) use ($lideresComoTecnicoIds) {
+                $q->whereIn(DB::raw('LOWER(roles.slug)'), ['tecnico'])
+                  ->orWhereIn('users.id', $lideresComoTecnicoIds);
+            });
 
         $this->colaboradores = [];
         if (!$this->isTecnico) {
-            $this->colaboradores = (clone $tecnicosBaseQuery)
+            $this->colaboradores = (clone $colaboradoresBaseQuery)
+                ->distinct('users.id')
                 ->orderBy('users.nombre')
                 ->get([
                     'users.id',
@@ -582,15 +609,15 @@ $metaRecord = PreparacionMetaMensual::where('anio', $anio)
 // Si NO existe y es el mes actual, la creamos
 if (!$metaRecord && $anio == now()->year && $mes == now()->month) {
 
-    $tecnicosIniciales = $colaboradoresCount;
-
     $metaPorColaborador = 140; // regla actual
-    $metaTotalCalculada = max($tecnicosIniciales, 1) * $metaPorColaborador;
+    $metaTotalCalculada = max($colaboradoresCount, 1) * $metaPorColaborador;
 
     $metaRecord = PreparacionMetaMensual::create([
         'anio' => $anio,
         'mes' => $mes,
-        'tecnicos_iniciales' => $tecnicosIniciales,
+        'tecnicos_iniciales' => $tecnicosCount,
+        'lideres_iniciales' => $lideresCount,
+        'colaboradores_iniciales' => $colaboradoresCount,
         'meta_total' => $metaTotalCalculada,
     ]);
 }
@@ -681,25 +708,59 @@ $this->breakdown = [
         abort_unless($this->esLiderGerente, 403);
 
         $periodo = $this->selectedMonthValue; // Y-m
-        [$anio, $mes] = explode('-', $periodo);
+        [$anioStr, $mesStr] = explode('-', $periodo);
+        $anio = (int) $anioStr;
+        $mes = (int) $mesStr;
 
-        $metaRecord = PreparacionMetaMensual::where('anio', $anio)->where('mes', (int)$mes)->first();
+        // Bloquear edición de meses anteriores
+        $hoy = Carbon::now();
+        $fechaSeleccionada = Carbon::createFromDate($anio, $mes, 1);
+
+        if ($fechaSeleccionada < $hoy->startOfMonth()) {
+            $this->dispatch('toast', type: 'error', message: 'No se puede modificar metas de meses anteriores.');
+            return;
+        }
+
+        $metaRecord = PreparacionMetaMensual::where('anio', $anio)->where('mes', $mes)->first();
         $this->editMetaTotal = $metaRecord ? (int)$metaRecord->meta_total : 0;
 
-        // Cargar meta individual de cada técnico (o default)
+        // Cargar meta individual de cada técnico (o proporcional si es mes actual)
         $this->editMetasTecnicos = collect($this->colaboradores)
-            ->map(function ($c) use ($periodo) {
+            ->map(function ($c) use ($periodo, $anio, $mes) {
                 $meta = MetaTecnico::where('tecnico_id', $c['id'])
                     ->where('periodo', $periodo)
                     ->value('meta_puntos');
                 return [
                     'tecnico_id'  => $c['id'],
                     'nombre'      => $c['nombre'],
-                    'meta_puntos' => $meta !== null ? (float)$meta : MetaTecnico::META_DEFAULT,
+                    'meta_puntos' => $meta !== null ? (float)$meta : (float)$this->calcularMetaParaMes($anio, $mes),
                 ];
             })->toArray();
 
         $this->showModalMeta = true;
+    }
+
+    /**
+     * Calcula meta proporcional si es mes actual (mitad de mes)
+     * Si es mes pasado o futuro, devuelve META_DEFAULT completo
+     */
+    private function calcularMetaParaMes(int $anio, int $mes): float
+    {
+        $hoy = Carbon::now();
+
+        // Si NO es el mes actual, devolver meta completa
+        if ($hoy->year != $anio || $hoy->month != $mes) {
+            return (float) MetaTecnico::META_DEFAULT;
+        }
+
+        // Si es el mes actual, calcular proporcional
+        $diasDelMes = Carbon::createFromDate($anio, $mes, 1)->daysInMonth;
+        $diaActual = $hoy->day;
+        $diasRestantes = $diasDelMes - $diaActual + 1; // +1 para incluir hoy
+
+        $metaProporcional = round((float) MetaTecnico::META_DEFAULT * ($diasRestantes / $diasDelMes), 2);
+
+        return $metaProporcional;
     }
 
     public function recalcularMetaTotal(): void

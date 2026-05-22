@@ -148,6 +148,11 @@ class Equipo extends Model
         return $this->hasMany(\App\Models\AsignacionEquipo::class, 'equipo_id');
     }
 
+    public function validacionesCalidad(): HasMany
+    {
+        return $this->hasMany(\App\Models\ValidacionCalidad::class, 'equipo_id');
+    }
+
     // =========================================================
     // HELPERS DE ÁREA
     // =========================================================

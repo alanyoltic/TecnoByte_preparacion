@@ -134,6 +134,7 @@ class PermisosSeeder extends Seeder
         $gerente = $this->slugsAIds($mapaIds, [
             'sistema.dashboard.ver',
             'modulo.preparacion',
+            'modulo.calidad',
             'modulo.ventas',
             'modulo.soporte',
             'prep.equipos.ver',
@@ -147,6 +148,8 @@ class PermisosSeeder extends Seeder
             'prep.inventario.gestion',
             'prep.transferencias.ver',
             'prep.transferencias.crear',
+            'prep.calidad.ver',
+            'prep.calidad.validar',
             'ventas.ver',
             'ventas.venta.crear',
             'ventas.venta.editar',

@@ -5,10 +5,17 @@
         <x-toast />
 
         <x-topbar
-            title="Gestión de Solicitudes"
-            chip="Preparación · Inventario"
+            title="Gestión de Solicitudes · Gerente"
+            chip="Vista activa"
             description="Administra las solicitudes de piezas de los técnicos"
         />
+
+        <div class="rounded-2xl border border-sky-200 dark:border-sky-800 bg-sky-50/90 dark:bg-sky-900/20 px-4 py-3 flex items-center gap-3 shadow-sm">
+            <div class="w-2.5 h-2.5 rounded-full bg-sky-500 animate-pulse"></div>
+            <p class="text-sm font-medium text-sky-800 dark:text-sky-200">
+                Estás en la vista correcta: gestión de solicitudes para usuario gerente.
+            </p>
+        </div>
 
         {{-- Alertas --}}
         @if (session()->has('success'))
@@ -322,7 +329,7 @@
     {{-- Modal: Reasignar con pieza --}}
     @if($modalSurtir)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-             wire:click.self="cerrarModales">
+              wire:click.self="cerrarModales">
             <div class="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 shadow-2xl">
 
                 <div class="p-6 border-b border-slate-200 dark:border-slate-700">

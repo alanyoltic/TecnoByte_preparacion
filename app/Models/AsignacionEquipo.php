@@ -52,6 +52,11 @@ class AsignacionEquipo extends Model
         return $this->hasMany(SolicitudPieza::class, 'asignacion_equipo_id');
     }
 
+    public function validacionesCalidad(): HasMany
+    {
+        return $this->hasMany(ValidacionCalidad::class, 'asignacion_equipo_id');
+    }
+
     // ── Scopes ────────────────────────────────────────────────────────────
     public function scopeCompletados($query)
     {
@@ -92,6 +97,19 @@ class AsignacionEquipo extends Model
     public function estaActivo(): bool
     {
         return in_array($this->camino, [self::PENDIENTE, self::PRE_ASIGNADO, self::EN_PROCESO]);
+    }
+
+    /** Obtiene la validación de calidad más reciente */
+    public function ultimaValidacion(): ?ValidacionCalidad
+    {
+        return $this->validacionesCalidad()->latest()->first();
+    }
+
+    /** Indica si fue rechazado en calidad */
+    public function fueRechazadoEnCalidad(): bool
+    {
+        $validacion = $this->ultimaValidacion();
+        return $validacion && $validacion->estaRechazado();
     }
 
     public static function labelsCamino(): array

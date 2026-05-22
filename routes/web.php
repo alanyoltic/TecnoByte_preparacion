@@ -23,6 +23,7 @@ use App\Livewire\Preparacion\Lotes\RegistrarLote;
 use App\Livewire\Inventario\SolicitudesPiezas;
 use App\Livewire\Inventario\GestionSolicitudesPiezas;
 use App\Livewire\Dashboard\Dashboard;
+use App\Livewire\Preparacion\Calidad\GestionCalidad;
 
 
 use App\Models\Equipo;
@@ -200,6 +201,9 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
         ->middleware('permiso:prep.inventario.gestion')
         ->name('preparacion.asignaciones');
 
+    Route::get('/preparacion/calidad', GestionCalidad::class)
+        ->middleware('permiso:prep.calidad.validar')
+        ->name('preparacion.calidad');
 
         Route::get('/preparacion/catalogo-piezas', CatalogoPiezas::class)
             ->middleware('permiso:prep.inventario.gestion')

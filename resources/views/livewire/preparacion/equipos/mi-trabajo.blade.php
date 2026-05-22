@@ -1082,101 +1082,222 @@
                                     </div>
 
                                 @else
-                                    {{-- Paso 1: chips de categoría --}}
-                                    <div class="space-y-2">
-                                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">
-                                            1. Elige la categoría:
-                                        </p>
-                                        <div class="flex flex-wrap gap-2">
-                                            @foreach($categoriasDisponibles as $cat)
-                                                <button type="button"
-                                                    wire:click="$set('filtroCategoriaPieza', '{{ $cat }}')"
-                                                    @class([
-                                                        'px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-150',
-                                                        'bg-emerald-500 border-emerald-500 text-white shadow-sm' => $filtroCategoriaPieza === $cat,
-                                                        'bg-white/70 dark:bg-slate-800/60 border-slate-300/70 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400' => $filtroCategoriaPieza !== $cat,
-                                                    ])>
-                                                    {{ $cat }}
-                                                </button>
-                                            @endforeach
-                                        </div>
-                                    </div>
+                                    @if($usaListadoPiezas)
+                                        @php
+                                            $puedeListar = $filtroCategoriaPieza || mb_strlen(trim($busquedaPieza)) >= 2;
+                                        @endphp
 
-                                    {{-- Paso 2: búsqueda por nombre (solo si hay categoría o quiere buscar directo) --}}
-                                    <div class="space-y-1">
-                                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">
-                                            2. Busca por nombre
-                                            @if(!$filtroCategoriaPieza)
-                                                <span class="font-normal opacity-70">(o selecciona categoría arriba)</span>
-                                            @endif
-                                            :
-                                        </p>
-                                        <div class="relative">
-                                            <input type="text" wire:model.live.debounce.300ms="busquedaPieza"
-                                                placeholder="Ej. RAM, SSD, Batería..."
-                                                class="w-full rounded-xl pl-8 pr-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
-                                                       border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
-                                                       focus:ring-2 focus:ring-emerald-400 outline-none">
-                                            <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">
-                                                &#128269;
-                                            </span>
-                                            @if($busquedaPieza)
-                                                <button type="button" wire:click="$set('busquedaPieza', '')"
-                                                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm">
-                                                    &times;
-                                                </button>
-                                            @endif
-                                        </div>
-                                    </div>
-
-                                    {{-- Resultados --}}
-                                    @if($filtroCategoriaPieza || mb_strlen(trim($busquedaPieza)) >= 2)
-                                        @if($catalogoPiezas->count() > 0)
-                                            <div class="space-y-1 rounded-xl border border-slate-200/80 dark:border-slate-700/50 bg-white/50 dark:bg-slate-900/20 p-2 max-h-52 overflow-y-auto">
-                                                @if($filtroCategoriaPieza && !$busquedaPieza)
-                                                    <p class="text-[0.65rem] text-slate-400 px-2 pb-1">
-                                                        {{ $catalogoPiezas->count() }} pieza(s) en <strong>{{ $filtroCategoriaPieza }}</strong>
-                                                    </p>
-                                                @endif
-                                                @foreach($catalogoPiezas as $pieza)
+                                        <div class="space-y-4">
+                                            <div class="rounded-2xl bg-white/80 dark:bg-slate-950/70
+                                                        border border-slate-200/80 dark:border-white/10
+                                                        backdrop-blur-xl dark:backdrop-blur-2xl
+                                                        shadow-md shadow-slate-900/10 dark:shadow-slate-900/30">
+                                                <div class="px-4 py-3 border-b border-slate-200/60 dark:border-slate-800/80 flex items-center justify-between">
+                                                    <div>
+                                                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                                            Filtros de piezas
+                                                        </p>
+                                                        <p class="text-[0.7rem] text-slate-500 dark:text-slate-400">
+                                                            Selecciona una categoría o busca por nombre
+                                                        </p>
+                                                    </div>
                                                     <button type="button"
-                                                        wire:click="$set('catalogoPiezaId', {{ $pieza->id }})"
-                                                        class="w-full text-left rounded-lg px-3 py-2 text-sm transition-all duration-150
-                                                               hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:border-emerald-300
-                                                               border border-transparent text-slate-700 dark:text-slate-300 group">
-                                                        <div class="flex items-center justify-between gap-2">
-                                                            <div class="min-w-0">
-                                                                <span class="font-medium group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
-                                                                    {{ $pieza->nombre }}
-                                                                </span>
-                                                                @if($pieza->especificacion)
-                                                                    <span class="text-xs text-slate-400 ml-1 truncate">{{ $pieza->especificacion }}</span>
-                                                                @endif
-                                                            </div>
-                                                            @if(!$filtroCategoriaPieza)
-                                                                <span class="text-[0.65rem] px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 text-slate-500 shrink-0">
-                                                                    {{ $pieza->categoria }}
-                                                                </span>
+                                                        wire:click="$set('filtroCategoriaPieza', ''); $set('busquedaPieza', '')"
+                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.7rem] font-semibold
+                                                               bg-slate-100/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-100
+                                                               border border-slate-300/70 dark:border-slate-700/80
+                                                               hover:bg-slate-200/80 dark:hover:bg-slate-800 transition-colors">
+                                                        Limpiar
+                                                    </button>
+                                                </div>
+
+                                                <div class="px-4 py-3 space-y-3">
+                                                    <div class="flex flex-wrap gap-2 max-h-24 overflow-y-auto pr-1">
+                                                        @foreach($categoriasDisponibles as $cat)
+                                                            <button type="button"
+                                                                wire:click="$set('filtroCategoriaPieza', '{{ $cat }}')"
+                                                                @class([
+                                                                    'px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-150',
+                                                                    'bg-emerald-500 border-emerald-500 text-white shadow-sm' => $filtroCategoriaPieza === $cat,
+                                                                    'bg-white/70 dark:bg-slate-800/60 border-slate-300/70 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400' => $filtroCategoriaPieza !== $cat,
+                                                                ])>
+                                                                {{ $cat }}
+                                                            </button>
+                                                        @endforeach
+                                                    </div>
+
+                                                    <div class="relative">
+                                                        <input type="text" wire:model.live.debounce.300ms="busquedaPieza"
+                                                            placeholder="Ej. RAM, SSD, Batería..."
+                                                            class="w-full rounded-xl pl-8 pr-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
+                                                                   border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
+                                                                   focus:ring-2 focus:ring-emerald-400 outline-none">
+                                                        <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">
+                                                            &#128269;
+                                                        </span>
+                                                        @if($busquedaPieza)
+                                                            <button type="button" wire:click="$set('busquedaPieza', '')"
+                                                                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm">
+                                                                &times;
+                                                            </button>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="rounded-2xl bg-white/80 dark:bg-slate-950/80
+                                                        border border-slate-200/80 dark:border-white/10
+                                                        backdrop-blur-xl dark:backdrop-blur-2xl
+                                                        shadow-md shadow-slate-900/10 dark:shadow-slate-900/30">
+                                                <div class="overflow-x-auto max-h-64 overflow-y-auto">
+                                                    <table class="min-w-full text-sm text-left">
+                                                        <thead class="bg-slate-100 border-b border-slate-200 dark:bg-slate-950/90 dark:border-slate-800/80">
+                                                            <tr>
+                                                                <th class="px-4 py-2 font-semibold text-slate-700 dark:text-slate-300">Pieza</th>
+                                                                <th class="px-4 py-2 font-semibold text-slate-700 dark:text-slate-300">Categoría</th>
+                                                                <th class="px-4 py-2 font-semibold text-slate-700 dark:text-slate-300">Especificación</th>
+                                                                <th class="px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 text-right">Acción</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @if($puedeListar)
+                                                                @forelse($catalogoPiezas as $pieza)
+                                                                    <tr class="border-b border-slate-200/70 dark:border-slate-800/70 hover:bg-white/60 dark:hover:bg-slate-800/60 transition-colors">
+                                                                        <td class="px-4 py-2 text-slate-900 dark:text-slate-50 font-medium">
+                                                                            {{ $pieza->nombre }}
+                                                                        </td>
+                                                                        <td class="px-4 py-2 text-slate-600 dark:text-slate-300">
+                                                                            {{ $pieza->categoria }}
+                                                                        </td>
+                                                                        <td class="px-4 py-2 text-slate-500 dark:text-slate-400">
+                                                                            {{ $pieza->especificacion ?? '—' }}
+                                                                        </td>
+                                                                        <td class="px-4 py-2 text-right">
+                                                                            <button type="button"
+                                                                                wire:click="$set('catalogoPiezaId', {{ $pieza->id }})"
+                                                                                class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold
+                                                                                       bg-emerald-500/10 text-emerald-600 dark:text-emerald-300
+                                                                                       border border-emerald-400/40 hover:bg-emerald-500/20 transition">
+                                                                                Elegir
+                                                                            </button>
+                                                                        </td>
+                                                                    </tr>
+                                                                @empty
+                                                                    <tr>
+                                                                        <td colspan="4" class="px-4 py-6 text-center text-xs text-slate-400 italic">
+                                                                            Sin resultados. Intenta con otro término o ajusta el filtro.
+                                                                        </td>
+                                                                    </tr>
+                                                                @endforelse
+                                                            @else
+                                                                <tr>
+                                                                    <td colspan="4" class="px-4 py-6 text-center text-xs text-slate-400 italic">
+                                                                        Selecciona una categoría o escribe al menos 2 letras para ver piezas.
+                                                                    </td>
+                                                                </tr>
                                                             @endif
-                                                        </div>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @else
+                                        {{-- Paso 1: chips de categoría --}}
+                                        <div class="space-y-2">
+                                            <p class="text-xs font-medium text-slate-500 dark:text-slate-400">
+                                                1. Elige la categoría:
+                                            </p>
+                                            <div class="flex flex-wrap gap-2">
+                                                @foreach($categoriasDisponibles as $cat)
+                                                    <button type="button"
+                                                        wire:click="$set('filtroCategoriaPieza', '{{ $cat }}')"
+                                                        @class([
+                                                            'px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-150',
+                                                            'bg-emerald-500 border-emerald-500 text-white shadow-sm' => $filtroCategoriaPieza === $cat,
+                                                            'bg-white/70 dark:bg-slate-800/60 border-slate-300/70 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400' => $filtroCategoriaPieza !== $cat,
+                                                        ])>
+                                                        {{ $cat }}
                                                     </button>
                                                 @endforeach
                                             </div>
-                                        @else
-                                            <p class="text-xs text-slate-400 italic text-center py-3 rounded-xl border border-dashed border-slate-300/60 dark:border-slate-700">
-                                                Sin resultados. Intenta con otro término
-                                                @if($filtroCategoriaPieza)
-                                                    o
-                                                    <button type="button" wire:click="$set('filtroCategoriaPieza', '')"
-                                                        class="underline hover:text-emerald-600">quita el filtro de categoría</button>
+                                        </div>
+
+                                        {{-- Paso 2: búsqueda por nombre (solo si hay categoría o quiere buscar directo) --}}
+                                        <div class="space-y-1">
+                                            <p class="text-xs font-medium text-slate-500 dark:text-slate-400">
+                                                2. Busca por nombre
+                                                @if(!$filtroCategoriaPieza)
+                                                    <span class="font-normal opacity-70">(o selecciona categoría arriba)</span>
                                                 @endif
-                                                .
+                                                :
+                                            </p>
+                                            <div class="relative">
+                                                <input type="text" wire:model.live.debounce.300ms="busquedaPieza"
+                                                    placeholder="Ej. RAM, SSD, Batería..."
+                                                    class="w-full rounded-xl pl-8 pr-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
+                                                           border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
+                                                           focus:ring-2 focus:ring-emerald-400 outline-none">
+                                                <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">
+                                                    &#128269;
+                                                </span>
+                                                @if($busquedaPieza)
+                                                    <button type="button" wire:click="$set('busquedaPieza', '')"
+                                                        class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm">
+                                                        &times;
+                                                    </button>
+                                                @endif
+                                            </div>
+                                        </div>
+
+                                        {{-- Resultados --}}
+                                        @if($filtroCategoriaPieza || mb_strlen(trim($busquedaPieza)) >= 2)
+                                            @if($catalogoPiezas->count() > 0)
+                                                <div class="space-y-1 rounded-xl border border-slate-200/80 dark:border-slate-700/50 bg-white/50 dark:bg-slate-900/20 p-2 max-h-52 overflow-y-auto">
+                                                    @if($filtroCategoriaPieza && !$busquedaPieza)
+                                                        <p class="text-[0.65rem] text-slate-400 px-2 pb-1">
+                                                            {{ $catalogoPiezas->count() }} pieza(s) en <strong>{{ $filtroCategoriaPieza }}</strong>
+                                                        </p>
+                                                    @endif
+                                                    @foreach($catalogoPiezas as $pieza)
+                                                        <button type="button"
+                                                            wire:click="$set('catalogoPiezaId', {{ $pieza->id }})"
+                                                            class="w-full text-left rounded-lg px-3 py-2 text-sm transition-all duration-150
+                                                                   hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:border-emerald-300
+                                                                   border border-transparent text-slate-700 dark:text-slate-300 group">
+                                                            <div class="flex items-center justify-between gap-2">
+                                                                <div class="min-w-0">
+                                                                    <span class="font-medium group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
+                                                                        {{ $pieza->nombre }}
+                                                                    </span>
+                                                                    @if($pieza->especificacion)
+                                                                        <span class="text-xs text-slate-400 ml-1 truncate">{{ $pieza->especificacion }}</span>
+                                                                    @endif
+                                                                </div>
+                                                                @if(!$filtroCategoriaPieza)
+                                                                    <span class="text-[0.65rem] px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 text-slate-500 shrink-0">
+                                                                        {{ $pieza->categoria }}
+                                                                    </span>
+                                                                @endif
+                                                            </div>
+                                                        </button>
+                                                    @endforeach
+                                                </div>
+                                            @else
+                                                <p class="text-xs text-slate-400 italic text-center py-3 rounded-xl border border-dashed border-slate-300/60 dark:border-slate-700">
+                                                    Sin resultados. Intenta con otro término
+                                                    @if($filtroCategoriaPieza)
+                                                        o
+                                                        <button type="button" wire:click="$set('filtroCategoriaPieza', '')"
+                                                            class="underline hover:text-emerald-600">quita el filtro de categoría</button>
+                                                    @endif
+                                                    .
+                                                </p>
+                                            @endif
+                                        @else
+                                            <p class="text-xs text-slate-400 italic text-center py-3 rounded-xl border border-dashed border-slate-300/40 dark:border-slate-700/60">
+                                                Selecciona una categoría o escribe al menos 2 letras para ver piezas.
                                             </p>
                                         @endif
-                                    @else
-                                        <p class="text-xs text-slate-400 italic text-center py-3 rounded-xl border border-dashed border-slate-300/40 dark:border-slate-700/60">
-                                            Selecciona una categoría o escribe al menos 2 letras para ver piezas.
-                                        </p>
                                     @endif
                                 @endif
 

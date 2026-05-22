@@ -482,17 +482,30 @@
                                             Avance de Meta Mensual
                                         </h3>
                                         @if($esLiderGerente && !$viejoSistema)
-                                        <button wire:click="abrirModalMeta"
-                                                title="Editar meta mensual"
-                                                class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg
-                                                       bg-slate-700/60 hover:bg-[#FF9521]/20
-                                                       border border-slate-600/60 hover:border-[#FF9521]/50
-                                                       text-slate-400 hover:text-[#FF9521] text-xs transition">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.5-6.5a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-.707.464l-3.5 1 1-3.5a2 2 0 01.464-.707z"/>
-                                            </svg>
-                                            Editar meta
-                                        </button>
+                                        <div class="flex items-center gap-2">
+                                            <button wire:click="$set('showModalLideres', true)"
+                                                    title="Configurar líderes que trabajan como técnicos"
+                                                    class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg
+                                                           bg-slate-700/60 hover:bg-emerald-500/20
+                                                           border border-slate-600/60 hover:border-emerald-500/50
+                                                           text-slate-400 hover:text-emerald-500 text-xs transition">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 12H9m6 0a6 6 0 11-12 0 6 6 0 0112 0z"/>
+                                                </svg>
+                                                Líderes
+                                            </button>
+                                            <button wire:click="abrirModalMeta"
+                                                    title="Editar meta mensual"
+                                                    class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg
+                                                           bg-slate-700/60 hover:bg-[#FF9521]/20
+                                                           border border-slate-600/60 hover:border-[#FF9521]/50
+                                                           text-slate-400 hover:text-[#FF9521] text-xs transition">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.5-6.5a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-.707.464l-3.5 1 1-3.5a2 2 0 01.464-.707z"/>
+                                                </svg>
+                                                Editar meta
+                                            </button>
+                                        </div>
                                         @endif
                                     </div>
                                     <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">
@@ -945,6 +958,29 @@
     </div>
 
 
+    {{-- ── Botón temporal: Gestión de Calidad ──────────────────────────────────── --}}
+    @if(auth()->user()->tienePermiso('prep.calidad.validar'))
+    <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 py-6">
+        <div class="flex justify-center sm:justify-end">
+            <a href="{{ route('preparacion.calidad') }}"
+               class="inline-flex items-center gap-3
+                      px-6 py-3 rounded-xl text-sm font-semibold
+                      bg-gradient-to-r from-blue-600 to-purple-600
+                      text-white
+                      shadow-lg shadow-blue-900/40
+                      transition-all duration-200
+                      hover:shadow-blue-500/60 hover:-translate-y-0.5"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Gestión de Calidad
+            </a>
+        </div>
+    </div>
+    @endif
+
+
     {{-- ── Modal: Editar Meta Mensual ──────────────────────────────────── --}}
     @if($showModalMeta)
     <div class="fixed inset-0 z-[998] flex items-center justify-center px-4">
@@ -1064,7 +1100,54 @@
     </div>
     @endif
 
-     @if($showEmpleadoModal)
+    {{-- ── Modal: Configurar Líderes como Técnicos ──────────────────────── --}}
+    @if($showModalLideres)
+    <div class="fixed inset-0 z-[998] flex items-center justify-center px-4">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+             wire:click="$set('showModalLideres', false)"></div>
+
+        <div class="relative w-full max-w-2xl rounded-2xl
+                    bg-white/90 dark:bg-slate-950/70
+                    border border-slate-200/80 dark:border-white/10
+                    shadow-2xl shadow-black/40 flex flex-col max-h-[90vh]">
+
+            {{-- Header --}}
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200/60 dark:border-white/10 shrink-0">
+                <div>
+                    <h3 class="text-base font-semibold text-slate-900 dark:text-slate-50">
+                        Líderes trabajando como técnicos
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        Marca los líderes que trabajan como técnicos de forma permanente
+                    </p>
+                </div>
+                <button wire:click="$set('showModalLideres', false)"
+                        class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            {{-- Body --}}
+            <div class="flex-1 overflow-y-auto px-6 py-4">
+                <livewire:dashboard.configurar-lideres-tecnicos lazy />
+            </div>
+
+            {{-- Footer --}}
+            <div class="flex justify-end gap-2 px-6 py-4 border-t border-slate-200/60 dark:border-white/10 shrink-0">
+                <button wire:click="$set('showModalLideres', false)"
+                        class="px-4 py-2 rounded-full text-sm font-semibold
+                               bg-white/60 dark:bg-white/5 border border-slate-200/60 dark:border-white/10
+                               hover:bg-slate-100 dark:hover:bg-white/10 transition">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
+
+      @if($showEmpleadoModal)
 <div class="fixed inset-0 z-[999] flex items-center justify-center px-4">
     <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" wire:click="closeEmpleadoModal"></div>
 

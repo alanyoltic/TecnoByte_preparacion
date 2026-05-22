@@ -60,6 +60,26 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->belongsTo(Roles::class, 'role_id');
     }
 
+    public function validacionesCalidad()
+    {
+        return $this->hasMany(ValidacionCalidad::class, 'validado_por_user_id');
+    }
+
+    public function liderModoTecnico()
+    {
+        return $this->hasOne(LiderModoTecnico::class, 'lider_id');
+    }
+
+    public function asignaciones()
+    {
+        return $this->hasMany(Asignacion::class, 'tecnico_id');
+    }
+
+    public function solicitudesPiezas()
+    {
+        return $this->hasMany(SolicitudPieza::class, 'solicitado_por_id');
+    }
+
     protected static function booted()
     {
         static::addGlobalScope('is_active', function ($query) {

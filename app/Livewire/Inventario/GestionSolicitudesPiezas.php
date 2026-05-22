@@ -123,6 +123,7 @@ class GestionSolicitudesPiezas extends Component
         }
 
         $cantidadRequerida = max(1, (int) $this->solicitudSeleccionada->cantidad);
+        $categoriaInferida = null;
 
         if ($this->solicitudSeleccionada->catalogo_pieza_id) {
             // Solicitud vinculada a catálogo: mostrar solo ese tipo de pieza
@@ -155,11 +156,27 @@ class GestionSolicitudesPiezas extends Component
             $this->piezaSeleccionada = (int) $this->piezasDisponibles->first()->id;
         }
 
-        $this->tecnicos = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['tecnico', 'lider']))
-            ->where('is_active', true)
-            ->orderBy('nombre')
-            ->get(['id', 'nombre', 'apellido_paterno'])
-            ->toArray();
+        $this->tecnicos = User::where(function($q) {
+            // Técnicos (siempre)
+            $q->whereHas('role', fn($r) => $r->where('slug', 'tecnico'))
+              ->where('is_active', true);
+        })
+        ->orWhere(function($q) {
+            // Líderes activos como técnicos
+            $q->whereHas('role', fn($r) => $r->where('slug', 'lider'))
+              ->where('is_active', true)
+              ->whereHas('liderModoTecnico', fn($lmt) => $lmt->where('es_tecnico', true));
+        })
+        ->orWhere(function($q) {
+            // Líderes inactivos o sin modo técnico, pero con solicitudes históricas
+            $q->whereHas('role', fn($r) => $r->where('slug', 'lider'))
+              ->where('is_active', true)
+              ->whereHas('solicitudesPiezas'); // que tienen solicitudes
+        })
+        ->distinct()
+        ->orderBy('nombre')
+        ->get(['id', 'nombre', 'apellido_paterno'])
+        ->toArray();
 
         $this->tecnicoReasignadoId = $this->solicitudSeleccionada->reasignado_a_id
             ?: $this->solicitudSeleccionada->solicitado_por_id;

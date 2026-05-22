@@ -12,6 +12,8 @@ class PreparacionMetaMensual extends Model
         'anio',
         'mes',
         'tecnicos_iniciales',
+        'lideres_iniciales',
+        'colaboradores_iniciales',
         'meta_total',
         'hubo_movimientos',
     ];
