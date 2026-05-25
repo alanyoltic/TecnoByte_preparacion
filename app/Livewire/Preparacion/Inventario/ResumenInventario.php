@@ -437,9 +437,9 @@ if ($e->teclado_idioma && $e->teclado_idioma !== 'N/A') {
 
         $stats = [
             'total'        => Equipo::count(),
-            'en_revision'  => Equipo::where('estatus_area', 'EN_PROCESO')->count(),
-            'aprobados'    => Equipo::where('estatus_area', 'EN_CALIDAD')->count(),
-            'finalizados'  => Equipo::where('estatus_area', 'FINALIZADO')->count(),
+            'en_revision'  => Equipo::where('estatus_area', Equipo::AREA_EN_PROCESO)->count(),
+            'aprobados'    => Equipo::where('estatus_area', Equipo::AREA_EN_CALIDAD)->count(),
+            'finalizados'  => Equipo::where('estatus_area', Equipo::AREA_FINALIZADO)->count(),
         ];
 
         return view('livewire.preparacion.inventario.resumen-inventario', [

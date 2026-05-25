@@ -205,6 +205,19 @@
                 <label class="text-sm sm:text-base font-semibold text-slate-700 dark:text-slate-200">
                     Estatus general
                 </label>
+                @php
+                    $labels = \App\Models\Equipo::labelsArea();
+                    $filtroEstados = [
+                        \App\Models\Equipo::AREA_EN_ESPERA,
+                        \App\Models\Equipo::AREA_EN_PROCESO,
+                        \App\Models\Equipo::AREA_EN_CALIDAD,
+                        \App\Models\Equipo::AREA_FINALIZADO,
+                        \App\Models\Equipo::AREA_PENDIENTE_PIEZA,
+                        \App\Models\Equipo::AREA_PENDIENTE_GARANTIA,
+                        \App\Models\Equipo::AREA_PENDIENTE_DESARME,
+                        \App\Models\Equipo::AREA_TRANSFERIDO,
+                    ];
+                @endphp
                 <select
                     wire:model.live="filtroEstado"
                     class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
@@ -213,14 +226,11 @@
                            focus:outline-none focus:ring-2 focus:ring-blue-500/70"
                 >
                     <option value="todos">Todos</option>
-                    <option value="EN_ESPERA">En espera</option>
-                    <option value="EN_PROCESO">En proceso</option>
-                    <option value="EN_CALIDAD">En calidad</option>
-                    <option value="FINALIZADO">Finalizado</option>
-                    <option value="PENDIENTE_PIEZA">Pendiente pieza</option>
-                    <option value="PENDIENTE_GARANTIA">Pendiente garantía</option>
-                    <option value="PENDIENTE_DESARME">Pendiente desarme</option>
-                    <option value="TRANSFERIDO">Transferido</option>
+                    @foreach ($filtroEstados as $estado)
+                        <option value="{{ $estado }}">
+                            {{ $labels[$estado] ?? $estado }}
+                        </option>
+                    @endforeach
                 </select>
             </div>
 
@@ -391,21 +401,27 @@
                         <td class="px-4 py-3 align-top whitespace-nowrap">
                             @php
                                 $estado = $equipo->estatus_area ?? 'Sin estatus';
+                                $labels = \App\Models\Equipo::labelsArea();
+                                $labelEstado = $labels[$estado] ?? $estado;
                                 $badge = match ($estado) {
-                                    'EN_ESPERA'           => 'bg-slate-100 text-slate-700 border-slate-300',
-                                    'EN_PROCESO'          => 'bg-amber-100 text-amber-900 border-amber-300',
-                                    'EN_CALIDAD'          => 'bg-emerald-100 text-emerald-900 border-emerald-300',
-                                    'FINALIZADO'          => 'bg-green-200 text-green-900 border-green-400',
-                                    'PENDIENTE_PIEZA'     => 'bg-yellow-100 text-yellow-900 border-yellow-300',
-                                    'PENDIENTE_GARANTIA'  => 'bg-blue-100 text-blue-900 border-blue-300',
-                                    'PENDIENTE_DESARME'   => 'bg-purple-100 text-purple-900 border-purple-300',
-                                    'TRANSFERIDO'         => 'bg-slate-200 text-slate-900 border-slate-400',
+                                    \App\Models\Equipo::AREA_EN_ESPERA           => 'bg-slate-100 text-slate-700 border-slate-300',
+                                    \App\Models\Equipo::AREA_SIN_ASIGNAR         => 'bg-slate-50 text-slate-700 border-slate-200',
+                                    \App\Models\Equipo::AREA_ASIGNADO            => 'bg-cyan-100 text-cyan-900 border-cyan-300',
+                                    \App\Models\Equipo::AREA_EN_PROCESO          => 'bg-amber-100 text-amber-900 border-amber-300',
+                                    \App\Models\Equipo::AREA_EN_CALIDAD          => 'bg-emerald-100 text-emerald-900 border-emerald-300',
+                                    \App\Models\Equipo::AREA_FINALIZADO          => 'bg-green-200 text-green-900 border-green-400',
+                                    \App\Models\Equipo::AREA_PENDIENTE_PIEZA     => 'bg-yellow-100 text-yellow-900 border-yellow-300',
+                                    \App\Models\Equipo::AREA_PENDIENTE_GARANTIA  => 'bg-blue-100 text-blue-900 border-blue-300',
+                                    \App\Models\Equipo::AREA_PENDIENTE_DESARME   => 'bg-purple-100 text-purple-900 border-purple-300',
+                                    \App\Models\Equipo::AREA_TRANSFERIDO         => 'bg-slate-200 text-slate-900 border-slate-400',
+                                    \App\Models\Equipo::AREA_GARANTIA_INT        => 'bg-indigo-100 text-indigo-900 border-indigo-300',
+                                    \App\Models\Equipo::AREA_GARANTIA_EXT        => 'bg-fuchsia-100 text-fuchsia-900 border-fuchsia-300',
                                     default               => 'bg-slate-100 text-slate-900 border-slate-300',
                                 };
                             @endphp
 
                             <span class="inline-flex px-3 py-1 rounded-full text-xs sm:text-sm border font-semibold {{ $badge }}">
-                                {{ $estado }}
+                                {{ $labelEstado }}
                             </span>
                         </td>
 

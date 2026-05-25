@@ -46,6 +46,10 @@ class Asignaciones extends Component
     public string $notas = '';
     public string $error = '';
 
+    // Inline edit of asignación notas (gerente)
+    public ?int $editarNotasAsignacionId = null;
+    public string $notasEditar = '';
+
     public function mount(): void
     {
         $this->autorizarGestionAsignaciones();
@@ -467,6 +471,37 @@ class Asignaciones extends Component
         ]);
 
         $this->volverDesdeNueva();
+    }
+
+    // ── Métodos para editar notas de asignación (gerente) ──────────────────
+    public function abrirEditarNotas(int $asignacionId): void
+    {
+        $this->autorizarGestionAsignaciones();
+        $asig = Asignacion::find($asignacionId);
+        if (! $asig) return;
+        $this->editarNotasAsignacionId = $asignacionId;
+        $this->notasEditar = $asig->notas ?? '';
+    }
+
+    public function cancelarEditarNotas(): void
+    {
+        $this->editarNotasAsignacionId = null;
+        $this->notasEditar = '';
+    }
+
+    public function guardarNotasAsignacion(): void
+    {
+        $this->autorizarGestionAsignaciones();
+        if (! $this->editarNotasAsignacionId) return;
+        $asig = Asignacion::find($this->editarNotasAsignacionId);
+        if (! $asig) return;
+        $asig->update(['notas' => $this->notasEditar ?: null]);
+        $this->dispatch('toast', [
+            'type'    => 'success',
+            'title'   => 'Notas actualizadas',
+            'message' => 'Las notas de la asignación se actualizaron.',
+        ]);
+        $this->cancelarEditarNotas();
     }
 
     // ── Abrir modal cancelar ─────────────────────────────────────────────

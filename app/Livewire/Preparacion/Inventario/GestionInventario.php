@@ -55,6 +55,7 @@ class GestionInventario extends Component
     public $tiposEquipo = [];
     public $areas = [];
     public $sistemasOperativos = [];
+    public array $estatusAreaOpciones = [];
 
 
 public function descargarExcel()
@@ -119,6 +120,8 @@ $equipos = Equipo::with([
             ->orderBy('sistema_operativo')
             ->pluck('sistema_operativo')
             ->toArray();
+
+        $this->estatusAreaOpciones = $this->cargarEstatusAreaOpciones();
         $rolTecnicoId = Roles::where('slug', 'tecnico')->value('id');
 
         $this->tecnicos = User::withoutGlobalScopes()
@@ -142,6 +145,26 @@ $equipos = Equipo::with([
     private function autorizarGestion(): void
     {
         abort_unless(auth()->user()?->tienePermiso('prep.inventario.gestion'), 403);
+    }
+
+    private function cargarEstatusAreaOpciones(): array
+    {
+        $labels = Equipo::labelsArea();
+
+        return [
+            ['value' => Equipo::AREA_SIN_ASIGNAR,        'label' => $labels[Equipo::AREA_SIN_ASIGNAR] ?? Equipo::AREA_SIN_ASIGNAR],
+            ['value' => Equipo::AREA_EN_ESPERA,          'label' => $labels[Equipo::AREA_EN_ESPERA] ?? Equipo::AREA_EN_ESPERA],
+            ['value' => Equipo::AREA_ASIGNADO,           'label' => $labels[Equipo::AREA_ASIGNADO] ?? Equipo::AREA_ASIGNADO],
+            ['value' => Equipo::AREA_EN_PROCESO,         'label' => $labels[Equipo::AREA_EN_PROCESO] ?? Equipo::AREA_EN_PROCESO],
+            ['value' => Equipo::AREA_EN_CALIDAD,         'label' => $labels[Equipo::AREA_EN_CALIDAD] ?? Equipo::AREA_EN_CALIDAD],
+            ['value' => Equipo::AREA_FINALIZADO,         'label' => $labels[Equipo::AREA_FINALIZADO] ?? Equipo::AREA_FINALIZADO],
+            ['value' => Equipo::AREA_TRANSFERIDO,        'label' => $labels[Equipo::AREA_TRANSFERIDO] ?? Equipo::AREA_TRANSFERIDO],
+            ['value' => Equipo::AREA_PENDIENTE_PIEZA,    'label' => $labels[Equipo::AREA_PENDIENTE_PIEZA] ?? Equipo::AREA_PENDIENTE_PIEZA],
+            ['value' => Equipo::AREA_PENDIENTE_GARANTIA, 'label' => $labels[Equipo::AREA_PENDIENTE_GARANTIA] ?? Equipo::AREA_PENDIENTE_GARANTIA],
+            ['value' => Equipo::AREA_PENDIENTE_DESARME,  'label' => $labels[Equipo::AREA_PENDIENTE_DESARME] ?? Equipo::AREA_PENDIENTE_DESARME],
+            ['value' => Equipo::AREA_GARANTIA_INT,       'label' => $labels[Equipo::AREA_GARANTIA_INT] ?? Equipo::AREA_GARANTIA_INT],
+            ['value' => Equipo::AREA_GARANTIA_EXT,       'label' => $labels[Equipo::AREA_GARANTIA_EXT] ?? Equipo::AREA_GARANTIA_EXT],
+        ];
     }
 
     public function updating($name): void
@@ -452,11 +475,7 @@ public function cerrarModalCambiarEstatus(): void
             return;
         }
 
-        $permitidos = [
-            Equipo::AREA_EN_ESPERA,
-            Equipo::AREA_EN_PROCESO,
-            Equipo::AREA_EN_CALIDAD,
-        ];
+        $permitidos = array_column($this->estatusAreaOpciones ?: $this->cargarEstatusAreaOpciones(), 'value');
 
         if (!in_array($nuevoEstatus, $permitidos, true)) {
             $this->dispatch('toast', type: 'error', message: 'Estatus no válido.');
@@ -555,10 +574,14 @@ public function cerrarModalCambiarEstatus(): void
                 })
                 ->count(),
             'por_hacer'      => (clone $equiposConTecnico)
-                ->whereNotIn('estatus_area', ['EN_CALIDAD', 'FINALIZADO', 'TRANSFERIDO'])
+                ->whereNotIn('estatus_area', [
+                    Equipo::AREA_EN_CALIDAD,
+                    Equipo::AREA_FINALIZADO,
+                    Equipo::AREA_TRANSFERIDO,
+                ])
                 ->count(),
-            'en_calidad'     => Equipo::where('estatus_area', 'EN_CALIDAD')->count(),
-            'finalizado'     => Equipo::where('estatus_area', 'FINALIZADO')->count(),
+            'en_calidad'     => Equipo::where('estatus_area', Equipo::AREA_EN_CALIDAD)->count(),
+            'finalizado'     => Equipo::where('estatus_area', Equipo::AREA_FINALIZADO)->count(),
         ];
 
         return view('livewire.preparacion.inventario.gestion-inventario', [

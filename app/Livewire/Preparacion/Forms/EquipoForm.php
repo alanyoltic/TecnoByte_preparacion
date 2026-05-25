@@ -376,12 +376,7 @@ class EquipoForm extends Form
             'estatus_area' => [
                 'nullable',
                 'string',
-                Rule::in([
-                    'EN_ESPERA', 'SIN_ASIGNAR', 'ASIGNADO', 'EN_PROCESO',
-                    'EN_CALIDAD', 'FINALIZADO', 'TRANSFERIDO',
-                    'PENDIENTE_PIEZA', 'PENDIENTE_GARANTIA',
-                    'PENDIENTE_DESARME', 'GARANTIA_INT', 'GARANTIA_EXT',
-                ]),
+                Rule::in(array_keys(Equipo::labelsArea())),
             ],
 
             'tipo_equipo_id' => 'nullable|exists:tipos_equipo,id',

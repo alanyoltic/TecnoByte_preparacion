@@ -243,7 +243,7 @@
                                     @endphp
                                     @continue(!$tecnico)
                                     @php
-                                        $completados = $asignaciones->sum(fn($a) => $a->equipos->where('camino','COMPLETADO')->count());
+                                        $completados = $asignaciones->sum(fn($a) => $a->equipos->whereIn('camino',['COMPLETADO','EN_CALIDAD'])->count());
                                         $enProceso   = $asignaciones->sum(fn($a) => $a->equipos->where('camino','EN_PROCESO')->count());
                                         $problemas   = $asignaciones->sum(fn($a) => $a->equipos->whereIn('camino',['PIEZA_PENDIENTE','GARANTIA_INTERNA','GARANTIA_EXTERNA'])->count());
                                         $pct         = $totalEq > 0 ? round(($completados / $totalEq) * 100) : 0;
@@ -795,7 +795,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     @foreach($asignaciones as $asignacion)
                         @php
-                            $completados = $asignacion->equipos->where('camino','COMPLETADO')->count();
+                            $completados = $asignacion->equipos->whereIn('camino',['COMPLETADO','EN_CALIDAD'])->count();
                             $enProceso   = $asignacion->equipos->where('camino','EN_PROCESO')->count();
                             $piezas      = $asignacion->equipos->where('camino','PIEZA_PENDIENTE')->count();
                             $garantia    = $asignacion->equipos->whereIn('camino',['GARANTIA_INTERNA','GARANTIA_EXTERNA'])->count();
@@ -837,6 +837,39 @@
                                     {{ $asignacion->label_estatus }}
                                 </span>
                             </div>
+
+                            @if($editarNotasAsignacionId === $asignacion->id)
+                                <div class="mt-2 rounded-xl border border-slate-200/70 dark:border-slate-700/60 bg-slate-50/80 dark:bg-slate-900/40 p-3">
+                                    <textarea wire:model.defer="notasEditar" rows="3" class="w-full rounded-lg border border-slate-300/70 dark:border-slate-700 bg-white/80 dark:bg-slate-950/60 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/40 outline-none"></textarea>
+                                    <div class="mt-2 flex justify-end gap-2">
+                                        <button wire:click="cancelarEditarNotas" type="button" class="text-sm px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">Cancelar</button>
+                                        <button wire:click="guardarNotasAsignacion" type="button" class="text-sm px-3 py-1.5 rounded-lg bg-blue-600 text-white">Guardar</button>
+                                    </div>
+                                </div>
+                            @elseif(auth()->user() && auth()->user()->tienePermiso('prep.inventario.gestion'))
+                                @if(!empty($asignacion->notas))
+                                    <div class="mt-2 flex items-start justify-between gap-3 rounded-xl bg-amber-50/80 dark:bg-amber-900/20 border border-amber-200/70 dark:border-amber-600/30 px-3 py-2">
+                                        <div class="flex items-start gap-2 min-w-0">
+                                            <svg class="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <p class="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+                                                {{ $asignacion->notas }}
+                                            </p>
+                                        </div>
+                                        <button wire:click="abrirEditarNotas({{ $asignacion->id }})" type="button" class="shrink-0 text-[0.65rem] font-semibold text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100">
+                                            Editar
+                                        </button>
+                                    </div>
+                                @else
+                                    <div class="mt-2 flex justify-end">
+                                        <button wire:click="abrirEditarNotas({{ $asignacion->id }})" type="button" class="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+                                            Agregar nota
+                                        </button>
+                                    </div>
+                                @endif
+                            @endif
 
                             {{-- Desglose 3 columnas --}}
                             <div class="grid grid-cols-3 gap-2">
@@ -910,60 +943,6 @@
                                          style="width: {{ $pct }}%"></div>
                                 </div>
                             </div>
-
-                            {{-- Equipos escaneados --}}
-                            @if($asignacion->equipos->count() > 0)
-                                <div class="rounded-xl border border-slate-200/60 dark:border-slate-700/40 overflow-hidden">
-                                    <div class="px-4 py-2 bg-slate-50/80 dark:bg-slate-900/40
-                                                border-b border-slate-200/60 dark:border-slate-700/40">
-                                        <p class="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                                            Series escaneadas · {{ $asignacion->equipos->count() }} de {{ $asignacion->cantidad }}
-                                        </p>
-                                    </div>
-                                    <div class="divide-y divide-slate-200/40 dark:divide-slate-800/40">
-                                        @foreach($asignacion->equipos as $ae)
-                                            <div class="flex items-center justify-between gap-3 px-4 py-2
-                                                        hover:bg-slate-50/60 dark:hover:bg-slate-800/20 transition-colors">
-                                                <div class="flex items-center gap-2">
-                                                    <div class="w-2 h-2 rounded-full shrink-0
-                                                        {{ match($ae->camino) {
-                                                            'COMPLETADO'       => 'bg-emerald-400',
-                                                            'EN_PROCESO'       => 'bg-blue-400 animate-pulse',
-                                                            'PIEZA_PENDIENTE'  => 'bg-amber-400',
-                                                            'GARANTIA_INTERNA',
-                                                            'GARANTIA_EXTERNA' => 'bg-rose-400',
-                                                            default            => 'bg-slate-400'
-                                                        } }}"></div>
-                                                    <span class="text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">
-                                                        {{ $ae->equipo?->numero_serie ?? '—' }}
-                                                    </span>
-                                                </div>
-                                                @php
-                                                    $terminado = $ae->camino !== 'EN_PROCESO';
-                                                    $destLabel = match($ae->camino) {
-                                                        'COMPLETADO'       => '→ Calidad',
-                                                        'PIEZA_PENDIENTE'  => '→ Pieza pend.',
-                                                        'GARANTIA_INTERNA' => '→ Gar. Interna',
-                                                        'GARANTIA_EXTERNA' => '→ Gar. Externa',
-                                                        default            => 'Trabajando',
-                                                    };
-                                                @endphp
-                                                <span class="text-[0.65rem] font-medium
-                                                             {{ match($ae->camino) {
-                                                                 'COMPLETADO'       => 'text-emerald-600 dark:text-emerald-400',
-                                                                 'EN_PROCESO'       => 'text-blue-500 dark:text-blue-400',
-                                                                 'PIEZA_PENDIENTE'  => 'text-amber-600 dark:text-amber-400',
-                                                                 'GARANTIA_INTERNA',
-                                                                 'GARANTIA_EXTERNA' => 'text-rose-600 dark:text-rose-400',
-                                                                 default            => 'text-slate-400'
-                                                             } }}">
-                                                    {{ $destLabel }}
-                                                </span>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
 
                             {{-- Footer: cancelar o mensaje --}}
                             @if($iniciados === 0)

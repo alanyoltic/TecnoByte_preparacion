@@ -147,14 +147,18 @@ public function mount()
             ->count();
 
         // Equipos en calidad
-        $this->stats['en_calidad'] = Equipo::where('estatus_area', 'EN_CALIDAD')->count();
+        $this->stats['en_calidad'] = Equipo::where('estatus_area', Equipo::AREA_EN_CALIDAD)->count();
 
         // Equipos finalizados
-        $this->stats['finalizado'] = Equipo::where('estatus_area', 'FINALIZADO')->count();
+        $this->stats['finalizado'] = Equipo::where('estatus_area', Equipo::AREA_FINALIZADO)->count();
 
         // Equipos asignados a técnico que aún no llegan a calidad/finalizado/transferido
         $this->stats['por_hacer'] = (clone $equiposConTecnico)
-            ->whereNotIn('estatus_area', ['EN_CALIDAD', 'FINALIZADO', 'TRANSFERIDO'])
+            ->whereNotIn('estatus_area', [
+                Equipo::AREA_EN_CALIDAD,
+                Equipo::AREA_FINALIZADO,
+                Equipo::AREA_TRANSFERIDO,
+            ])
             ->count();
     }
 
