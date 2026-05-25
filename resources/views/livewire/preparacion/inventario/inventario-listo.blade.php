@@ -585,8 +585,8 @@
                         $freq     = null;
 
                         if ($cpuRaw) {
-                            // Capturar segmento tipo "I7-8650U"
-                            if (preg_match('/(I[3579]\s*-?\s*\d{3,4}[A-Z]?)/', $cpuRaw, $mCpu)) {
+                            // Capturar segmento tipo "I7-8650U" o "I5-1135G7"
+                            if (preg_match('/(I[3579]\s*-?\s*\d{3,5}(?:[A-Z]\d?)?)/', $cpuRaw, $mCpu)) {
                                 // Normalizar: I7- 8650U
                                 $segmento = strtoupper(str_replace(' ', '', $mCpu[1]));
                                 $segmento = preg_replace('/(I[3579])\-?(\d)/', '$1- $2', $segmento);
