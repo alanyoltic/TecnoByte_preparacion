@@ -10,13 +10,6 @@
             description="Administra las solicitudes de piezas de los técnicos"
         />
 
-        <div class="rounded-2xl border border-sky-200 dark:border-sky-800 bg-sky-50/90 dark:bg-sky-900/20 px-4 py-3 flex items-center gap-3 shadow-sm">
-            <div class="w-2.5 h-2.5 rounded-full bg-sky-500 animate-pulse"></div>
-            <p class="text-sm font-medium text-sky-800 dark:text-sky-200">
-                Estás en la vista correcta: gestión de solicitudes para usuario gerente.
-            </p>
-        </div>
-
         {{-- Alertas --}}
         @if (session()->has('success'))
             <div class="rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 flex items-center gap-3">
@@ -45,283 +38,349 @@
             </div>
         @endif
 
-        {{-- Contadores --}}
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            @php
-                $tabs = [
-                    ['key' => 'PENDIENTE',          'label' => 'Solicitudes pendientes', 'count' => $contadores['pendientes'],        'color' => 'yellow'],
-                    ['key' => 'SURTIDA_INVENTARIO', 'label' => 'Piezas asignadas',       'count' => $contadores['surtidas'],          'color' => 'blue'],
-                    ['key' => 'PENDIENTE_COMPRA',   'label' => 'Pend. compra',           'count' => $contadores['pendientes_compra'], 'color' => 'orange'],
-                    ['key' => 'COMPRADA',           'label' => 'Compradas',              'count' => $contadores['compradas'],         'color' => 'purple'],
-                    ['key' => 'EN_CALIDAD',         'label' => 'En calidad',             'count' => $contadores['en_calidad'],        'color' => 'emerald'],
-                    ['key' => 'FALLO_PIEZA',        'label' => 'Reasignación pendiente', 'count' => $contadores['fallo_pieza'],       'color' => 'rose'],
-                    ['key' => 'PASO_CALIDAD',       'label' => 'Pasaron calidad',        'count' => $contadores['paso_calidad'],      'color' => 'slate', 'disabled' => true],
-                    ['key' => 'CANCELADA',          'label' => 'Canceladas',             'count' => $contadores['canceladas'],        'color' => 'red'],
-                    ['key' => 'TODAS',              'label' => 'Todas',                  'count' => null,                             'color' => 'dark'],
-                ];
-                $colorMap = [
-                    'yellow'  => ['active' => 'bg-yellow-500 text-white shadow-yellow-500/30'],
-                    'blue'    => ['active' => 'bg-blue-500 text-white shadow-blue-500/30'],
-                    'orange'  => ['active' => 'bg-orange-500 text-white shadow-orange-500/30'],
-                    'purple'  => ['active' => 'bg-purple-500 text-white shadow-purple-500/30'],
-                    'emerald' => ['active' => 'bg-emerald-500 text-white shadow-emerald-500/30'],
-                    'rose'    => ['active' => 'bg-rose-500 text-white shadow-rose-500/30'],
-                    'slate'   => ['active' => 'bg-slate-400 text-white'],
-                    'red'     => ['active' => 'bg-red-500 text-white shadow-red-500/30'],
-                    'dark'    => ['active' => 'bg-slate-700 text-white'],
-                ];
-            @endphp
+        @php
+            $estatusOptions = [
+                ['value' => 'TODOS',              'label' => 'Todos',                    'count' => null],
+                ['value' => 'PENDIENTE',          'label' => 'Pendientes',               'count' => $contadores['pendientes']],
+                ['value' => 'SURTIDA_INVENTARIO', 'label' => 'Asignadas',                'count' => $contadores['surtidas']],
+                ['value' => 'PENDIENTE_COMPRA',   'label' => 'Pend. compra',             'count' => $contadores['pendientes_compra']],
+                ['value' => 'COMPRADA',           'label' => 'Compradas',                'count' => $contadores['compradas']],
+                ['value' => 'EN_CALIDAD',         'label' => 'En calidad',               'count' => $contadores['en_calidad']],
+                ['value' => 'TERMINADOS',         'label' => 'Terminados',               'count' => $contadores['terminados']],
+                ['value' => 'FALLO_PIEZA',        'label' => 'Reasignación pendiente',   'count' => $contadores['fallo_pieza']],
+                ['value' => 'CANCELADA',          'label' => 'Canceladas',               'count' => $contadores['canceladas']],
+            ];
+        @endphp
 
-            @foreach($tabs as $tab)
-                @php
-                    $colors   = $colorMap[$tab['color']];
-                    $disabled = $tab['disabled'] ?? false;
-                @endphp
-                <button wire:click="cambiarFiltro('{{ $tab['key'] }}')"
-                        @if($disabled) disabled @endif
-                        class="rounded-xl p-3 text-left transition-all shadow-lg
-                               {{ $filtroEstatus === $tab['key']
-                                   ? $colors['active'] . ' shadow-lg'
-                                   : 'bg-white/60 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-700/70 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800' }}
-                               {{ $disabled ? 'opacity-40 cursor-not-allowed' : '' }}">
-                    <div class="text-2xl font-bold">{{ $tab['count'] ?? '—' }}</div>
-                    <div class="text-xs font-medium mt-1 opacity-80">{{ $tab['label'] }}</div>
-                    @if($disabled)
-                        <div class="text-[0.6rem] opacity-50 mt-0.5">Proximamente</div>
-                    @endif
-                </button>
-            @endforeach
-        </div>
-
-        {{-- Filtros --}}
-        <div class="rounded-2xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/70 dark:border-slate-700/70 shadow-xl shadow-slate-900/5 p-4">
-            <div class="flex flex-wrap items-center gap-3">
-                {{-- Búsqueda --}}
-                <div class="relative flex-1 min-w-[200px]">
-                    <input type="text"
-                           wire:model.live.debounce.300ms="busqueda"
-                           placeholder="Buscar por técnico, equipo, pieza..."
-                           class="w-full px-4 py-2.5 pl-10 rounded-xl
-                                  bg-slate-50 dark:bg-slate-800/50
-                                  border border-slate-200 dark:border-slate-700
-                                  text-slate-900 dark:text-slate-100
-                                  placeholder:text-slate-400 dark:placeholder:text-slate-500
-                                  focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm">
-                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
-                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+        <div
+            class="rounded-2xl
+                bg-white/80 dark:bg-slate-950/70
+                border border-slate-200/80 dark:border-white/10
+                backdrop-blur-xl dark:backdrop-blur-2xl
+                shadow-md shadow-slate-900/10
+                dark:shadow-lg dark:shadow-slate-900/30
+                transition-all duration-300
+                hover:-translate-y-1
+                hover:shadow-lg hover:shadow-indigo-500/20
+                dark:hover:shadow-2xl dark:hover:shadow-indigo-500/25
+                hover:border-[#3B82F6]/70 dark:hover:border-indigo-400/50"
+        >
+            <div class="px-5 py-4 border-b border-slate-200/60 dark:border-slate-800/80 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h3 class="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100">
+                        Filtros
+                    </h3>
+                    <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+                        Combina estatus, técnico y búsqueda para ubicar una solicitud.
+                    </p>
                 </div>
 
-                <button wire:click="cambiarFiltro('TODAS')"
-                        class="px-4 py-2.5 rounded-xl text-sm font-medium transition-all
-                               {{ $filtroEstatus === 'TODAS'
-                                   ? 'bg-slate-700 text-white shadow-lg'
-                                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700' }}">
-                    Ver todas
-                </button>
+                <p class="hidden sm:block text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+                    Mostrando
+                    <span class="font-bold text-slate-900 dark:text-slate-50">{{ $solicitudes->total() }}</span>
+                    solicitud(es)
+                    @if($busqueda)
+                        para “<span class="font-semibold">{{ $busqueda }}</span>”
+                    @endif
+                </p>
+            </div>
+
+            <div class="px-5 py-4 grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-slate-200/60 dark:border-slate-800/80">
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-sm sm:text-base font-semibold text-slate-700 dark:text-slate-200">
+                        Estatus
+                    </label>
+                    <select
+                        wire:model.live="filtroEstatus"
+                        class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
+                            border border-white/60 dark:border-slate-600/70
+                            text-sm sm:text-base text-slate-900 dark:text-slate-100
+                            focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+                    >
+                        <option value="TODOS">Todos</option>
+                        @foreach($estatusOptions as $option)
+                            @if($option['value'] !== 'TODOS')
+                                <option value="{{ $option['value'] }}">
+                                    {{ $option['label'] }} ({{ $option['count'] }})
+                                </option>
+                            @endif
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-sm sm:text-base font-semibold text-slate-700 dark:text-slate-200">
+                        Técnico
+                    </label>
+                    <select
+                        wire:model.live="filtroTecnico"
+                        class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
+                            border border-white/60 dark:border-slate-600/70
+                            text-sm sm:text-base text-slate-900 dark:text-slate-100
+                            focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+                    >
+                        <option value="TODOS">Todos</option>
+                        @foreach($tecnicos as $tec)
+                            <option value="{{ $tec['id'] }}">
+                                {{ $tec['nombre'] }} {{ $tec['apellido_paterno'] }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-sm sm:text-base font-semibold text-slate-700 dark:text-slate-200">
+                        Búsqueda rápida
+                    </label>
+
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-lg">
+                            🔍
+                        </span>
+
+                        <input
+                            type="text"
+                            wire:model.live.debounce.300ms="busqueda"
+                            placeholder="Técnico, equipo, pieza o categoría..."
+                            class="w-full pl-10 pr-4 py-2.5 text-sm sm:text-base rounded-2xl
+                                bg-white/80 dark:bg-slate-900/60
+                                border border-white/60 dark:border-slate-700/70
+                                text-slate-900 dark:text-slate-100
+                                placeholder:text-slate-400 dark:placeholder:text-slate-500
+                                shadow-md shadow-slate-900/10 dark:shadow-xl dark:shadow-slate-950/60
+                                focus:outline-none focus:ring-2 focus:ring-blue-500/70 focus:border-blue-500/70
+                                backdrop-blur-xl"
+                        >
+                    </div>
+                </div>
             </div>
         </div>
 
         {{-- Lista de Solicitudes --}}
-        <div class="space-y-3">
-            @forelse($solicitudes as $solicitud)
-                @php
-                    $equipo = $solicitud->equipo ?? $solicitud->asignacionEquipo?->equipo;
-                    $tecnico = $solicitud->solicitadoPor;
-                    $pieza = $solicitud->catalogoPieza;
-                    $intentoNum = $solicitud->intentos->count();
-                    if ($solicitud->estatus === 'CONFIRMADA') {
-                        if ($solicitud->funciono) {
-                            $badgeColor  = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
-                            $labelEstatus = 'En calidad';
-                        } else {
-                            $badgeColor  = 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400';
-                            $labelEstatus = 'Pieza fallida';
-                        }
-                    } elseif ($solicitud->estatus === 'REQUIERE_REASIGNACION') {
-                        $badgeColor   = 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400';
-                        $labelEstatus = 'Reasignación pendiente' . ($intentoNum > 0 ? " (intento {$intentoNum})" : '');
-                    } else {
-                        $badgeColor = match($solicitud->estatus) {
-                            'PENDIENTE'              => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-                            'SURTIDA_INVENTARIO'     => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-                            'PENDIENTE_COMPRA'       => 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-                            'COMPRADA'               => 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-                            'CANCELADA'              => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-                            'REQUIERE_REASIGNACION'  => 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
-                            default                  => 'bg-slate-100 text-slate-600',
-                        };
-                        $labelEstatus = \App\Models\SolicitudPieza::labelsEstatus()[$solicitud->estatus] ?? $solicitud->estatus;
-                    }
-                @endphp
+        <div
+            class="rounded-2xl bg-white/80 dark:bg-slate-950/80 border border-slate-200/80 dark:border-white/10 backdrop-blur-xl dark:backdrop-blur-2xl shadow-md shadow-slate-900/10 dark:shadow-lg dark:shadow-slate-900/30 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/20 dark:hover:shadow-2xl dark:hover:shadow-indigo-500/25"
+        >
+            <div class="overflow-x-auto">
+                <table class="min-w-[1280px] w-full text-sm sm:text-base text-left">
+                    <thead class="bg-slate-100 border-b border-slate-200 dark:bg-slate-950/90 dark:border-slate-800/80">
+                        <tr>
+                            <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Solicitud</th>
+                            <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Equipo</th>
+                            <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Técnico</th>
+                            <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Fechas</th>
+                            <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Estado</th>
+                            <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap text-right">Acciones</th>
+                        </tr>
+                    </thead>
 
-                <div class="rounded-2xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl
-                            border border-slate-200/70 dark:border-slate-700/70
-                            shadow-xl shadow-slate-900/5 p-5">
+                    <tbody>
+                        @forelse($solicitudes as $solicitud)
+                            @php
+                                $equipo = $solicitud->equipo ?? $solicitud->asignacionEquipo?->equipo;
+                                $tecnico = $solicitud->solicitadoPor;
+                                $reasignado = $solicitud->reasignadoA;
+                                $pieza = $solicitud->catalogoPieza;
+                                $intentoNum = $solicitud->intentos->count();
 
-                    <div class="flex items-start justify-between gap-4 flex-wrap">
+                                if ($solicitud->estatus === 'CONFIRMADA') {
+                                    if ($solicitud->funciono) {
+                                        $badgeColor = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
+                                        $labelEstatus = 'En calidad';
+                                    } else {
+                                        $badgeColor = 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400';
+                                        $labelEstatus = 'Pieza fallida';
+                                    }
+                                } elseif ($solicitud->estatus === 'REQUIERE_REASIGNACION') {
+                                    $badgeColor = 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400';
+                                    $labelEstatus = 'Reasignación pendiente';
+                                } else {
+                                    $badgeColor = match($solicitud->estatus) {
+                                        'PENDIENTE'              => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+                                        'SURTIDA_INVENTARIO'     => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+                                        'PENDIENTE_COMPRA'       => 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+                                        'COMPRADA'               => 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+                                        'CANCELADA'              => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                                        'REQUIERE_REASIGNACION'  => 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
+                                        default                  => 'bg-slate-100 text-slate-600',
+                                    };
+                                    $labelEstatus = \App\Models\SolicitudPieza::labelsEstatus()[$solicitud->estatus] ?? $solicitud->estatus;
+                                }
+                            @endphp
 
-                        {{-- Info --}}
-                        <div class="flex items-start gap-4 flex-1 min-w-0">
-                            <div class="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 shrink-0">
-                                <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                </svg>
-                            </div>
+                            <tr class="border-b border-slate-200 dark:border-slate-800/80 hover:bg-white/60 dark:hover:bg-slate-800/60 transition-colors">
+                                <td class="px-4 py-4 align-top">
+                                    <div class="space-y-2">
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <h3 class="font-semibold text-slate-900 dark:text-slate-50">
+                                                {{ $solicitud->titulo_solicitud }}
+                                            </h3>
+                                            @if(($solicitud->cantidad ?? 1) > 1)
+                                                <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                                    ×{{ $solicitud->cantidad }}
+                                                </span>
+                                            @endif
+                                            @if($intentoNum > 0)
+                                                <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                                    {{ $intentoNum }} intento(s)
+                                                </span>
+                                            @endif
+                                        </div>
 
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <h3 class="font-bold text-slate-900 dark:text-white">
-                                        {{ $solicitud->titulo_solicitud }}
-                                    </h3>
-                                    @if(($solicitud->cantidad ?? 1) > 1)
-                                        <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                                            ×{{ $solicitud->cantidad }}
-                                        </span>
-                                    @endif
-                                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $badgeColor }}">
+                                        @if($pieza)
+                                            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                                                <span class="font-medium text-slate-700 dark:text-slate-300">Pieza:</span>
+                                                {{ $pieza->categoria }} — {{ $pieza->nombre }}
+                                            </p>
+                                        @elseif(!$solicitud->catalogo_pieza_id && ($solicitud->categoria_solicitada_texto || $solicitud->detalle_solicitado_texto))
+                                            <div class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 space-y-0.5">
+                                                @if($solicitud->categoria_solicitada_texto)
+                                                    <p><span class="font-medium text-slate-700 dark:text-slate-300">Categoría:</span> {{ $solicitud->categoria_solicitada_texto }}</p>
+                                                @endif
+                                                @if($solicitud->detalle_solicitado_texto)
+                                                    <p><span class="font-medium text-slate-700 dark:text-slate-300">Detalle:</span> {{ $solicitud->detalle_solicitado_texto }}</p>
+                                                @endif
+                                            </div>
+                                        @endif
+
+                                        @if($solicitud->notas_respuesta)
+                                            <p class="text-xs sm:text-sm text-indigo-600 dark:text-indigo-300">
+                                                <span class="font-medium">Notas:</span> {{ $solicitud->notas_respuesta }}
+                                            </p>
+                                        @endif
+                                    </div>
+                                </td>
+
+                                <td class="px-4 py-4 align-top">
+                                    <div class="space-y-1">
+                                        @if($equipo)
+                                            <p class="font-mono text-sm text-slate-900 dark:text-slate-50">
+                                                {{ $equipo->numero_serie }}
+                                            </p>
+                                            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                                                {{ $equipo->marca }} {{ $equipo->modelo }}
+                                            </p>
+                                        @else
+                                            <span class="text-slate-400">Sin equipo</span>
+                                        @endif
+
+                                        @if($solicitud->inventarioPieza)
+                                            <p class="text-xs text-emerald-600 dark:text-emerald-300">
+                                                Pieza asignada #{{ $solicitud->inventarioPieza->id }}
+                                            </p>
+                                        @endif
+                                    </div>
+                                </td>
+
+                                <td class="px-4 py-4 align-top">
+                                    <div class="space-y-1">
+                                        @if($tecnico)
+                                            <p class="font-medium text-slate-900 dark:text-slate-50">
+                                                {{ $tecnico->nombre }} {{ $tecnico->apellido_paterno }}
+                                            </p>
+                                        @endif
+                                        @if($reasignado && $reasignado->id !== $tecnico?->id)
+                                            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                                                Reasignado a: {{ $reasignado->nombre }} {{ $reasignado->apellido_paterno }}
+                                            </p>
+                                        @endif
+                                    </div>
+                                </td>
+
+                                <td class="px-4 py-4 align-top whitespace-nowrap">
+                                    <div class="space-y-1 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                                        <p>
+                                            <span class="font-medium text-slate-700 dark:text-slate-300">Solicitada:</span>
+                                            {{ $solicitud->created_at->format('d/m/Y H:i') }}
+                                        </p>
+                                        <p>
+                                            <span class="font-medium text-slate-700 dark:text-slate-300">Respondida:</span>
+                                            {{ $solicitud->respondida_en ? $solicitud->respondida_en->format('d/m/Y H:i') : 'Pendiente' }}
+                                        </p>
+                                    </div>
+                                </td>
+
+                                <td class="px-4 py-4 align-top whitespace-nowrap">
+                                    <span class="inline-flex px-3 py-1 rounded-full text-xs sm:text-sm border font-semibold {{ $badgeColor }}">
                                         {{ $labelEstatus }}
                                     </span>
-                                </div>
+                                </td>
 
-                                <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-slate-600 dark:text-slate-400">
-                                    @if($equipo)
-                                        <p><span class="font-medium text-slate-700 dark:text-slate-300">Equipo:</span>
-                                           {{ $equipo->numero_serie }} — {{ $equipo->modelo }}</p>
+                                <td class="px-4 py-4 align-top text-right">
+                                    @php
+                                        $tieneAcciones = $solicitud->puedeSerSurtidaDesdeInventario()
+                                            || $solicitud->puedeSerGestionada()
+                                            || $solicitud->puedeCancelarse();
+                                    @endphp
+
+                                    @if($tieneAcciones)
+                                        <x-dropdown align="right" width="64" contentClasses="py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                                            <x-slot name="trigger">
+                                                <button
+                                                    type="button"
+                                                    class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-medium shadow-lg shadow-slate-900/20 hover:bg-slate-800 transition-all"
+                                                >
+                                                    <span>Acciones</span>
+                                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.18l3.71-3.95a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                            </x-slot>
+
+                                            <x-slot name="content">
+                                                @if($solicitud->puedeSerSurtidaDesdeInventario())
+                                                    <button
+                                                        type="button"
+                                                        wire:click="abrirModalSurtir({{ $solicitud->id }})"
+                                                        class="block w-full px-4 py-2.5 text-left text-sm text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                                                    >
+                                                        {{ $solicitud->estatus === 'COMPRADA' ? 'Surtir compra' : 'Surtir' }}
+                                                    </button>
+                                                @endif
+
+                                                @if($solicitud->puedeSerGestionada())
+                                                    <button
+                                                        type="button"
+                                                        wire:click="abrirModalCompra({{ $solicitud->id }})"
+                                                        class="block w-full px-4 py-2.5 text-left text-sm text-orange-700 dark:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
+                                                    >
+                                                        Compra
+                                                    </button>
+                                                @endif
+
+                                                @if($solicitud->puedeCancelarse())
+                                                    <button
+                                                        type="button"
+                                                        wire:click="abrirModalCancelar({{ $solicitud->id }})"
+                                                        class="block w-full px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300 transition-colors"
+                                                    >
+                                                        Cancelar
+                                                    </button>
+                                                @endif
+                                            </x-slot>
+                                        </x-dropdown>
+                                    @else
+                                        <span class="text-xs text-slate-400 dark:text-slate-500">Sin acciones</span>
                                     @endif
-                                    @if($tecnico)
-                                        <p><span class="font-medium text-slate-700 dark:text-slate-300">Técnico:</span>
-                                           {{ $tecnico->nombre }} {{ $tecnico->apellido_paterno }}</p>
-                                    @endif
-                                    <p><span class="font-medium text-slate-700 dark:text-slate-300">Solicitada:</span>
-                                       {{ $solicitud->created_at->diffForHumans() }}</p>
-                                    @if($solicitud->respondida_en)
-                                        <p><span class="font-medium text-slate-700 dark:text-slate-300">Respondida:</span>
-                                           {{ $solicitud->respondida_en->diffForHumans() }}</p>
-                                    @endif
-                                </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6" class="px-4 py-16 text-center">
+                                    <svg class="w-16 h-16 mx-auto text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                    </svg>
+                                    <p class="mt-4 text-slate-500 dark:text-slate-400">No hay solicitudes para mostrar</p>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
 
-                                @if(!$solicitud->catalogo_pieza_id && ($solicitud->categoria_solicitada_texto || $solicitud->detalle_solicitado_texto))
-                                    <div class="mt-2 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-700 dark:text-slate-300">
-                                        @if($solicitud->categoria_solicitada_texto)
-                                            <p><span class="font-medium">Categoría:</span> {{ $solicitud->categoria_solicitada_texto }}</p>
-                                        @endif
-                                        @if($solicitud->detalle_solicitado_texto)
-                                            <p><span class="font-medium">Detalle:</span> {{ $solicitud->detalle_solicitado_texto }}</p>
-                                        @endif
-                                    </div>
-                                @endif
-
-                                @if($solicitud->notas_respuesta)
-                                    <div class="mt-2 p-2.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-sm text-indigo-700 dark:text-indigo-300">
-                                        <span class="font-medium">Notas:</span> {{ $solicitud->notas_respuesta }}
-                                    </div>
-                                @endif
-
-                                @if($solicitud->inventarioPieza)
-                                    <div class="mt-2 p-2.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-sm text-green-700 dark:text-green-300">
-                                        <span class="font-medium">Pieza asignada:</span>
-                                        #{{ $solicitud->inventarioPieza->id }}
-                                        — Almacén: {{ $solicitud->inventarioPieza->almacen->nombre ?? 'N/A' }}
-                                    </div>
-                                @endif
-
-                                {{-- Historial de intentos --}}
-                                @if($solicitud->intentos->count() > 0)
-                                    <div class="mt-3 space-y-1.5">
-                                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Historial de intentos</p>
-                                        @foreach($solicitud->intentos as $intento)
-                                            @php
-                                                if (!$intento->estaCompletado()) {
-                                                    $intentoBadge = ['label' => 'En instalacion', 'class' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'];
-                                                } elseif ($intento->funciono) {
-                                                    $intentoBadge = ['label' => 'Funciono', 'class' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'];
-                                                } else {
-                                                    $intentoBadge = ['label' => 'Fallo', 'class' => 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'];
-                                                }
-                                            @endphp
-                                            <div class="flex items-start gap-2 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/40 text-xs">
-                                                <span class="shrink-0 w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[0.6rem] font-bold text-slate-600 dark:text-slate-300">
-                                                    {{ $intento->numero_intento }}
-                                                </span>
-                                                <div class="flex-1 min-w-0 space-y-0.5">
-                                                    <div class="flex items-center gap-2 flex-wrap">
-                                                        @if($intento->inventarioPieza)
-                                                            <span class="text-slate-700 dark:text-slate-300 font-medium">
-                                                                Pieza #{{ $intento->inventarioPieza->id }}
-                                                                @if($intento->inventarioPieza->almacen) — {{ $intento->inventarioPieza->almacen->nombre }} @endif
-                                                            </span>
-                                                        @endif
-                                                        <span class="px-1.5 py-0.5 rounded-full text-[0.6rem] font-semibold {{ $intentoBadge['class'] }}">
-                                                            {{ $intentoBadge['label'] }}
-                                                        </span>
-                                                    </div>
-                                                    <div class="flex flex-wrap gap-x-3 text-slate-400 dark:text-slate-500">
-                                                        @if($intento->asignadoA)
-                                                            <span>Tecnico: {{ $intento->asignadoA->nombre }} {{ $intento->asignadoA->apellido_paterno }}</span>
-                                                        @endif
-                                                        @if($intento->asignado_en)
-                                                            <span>Asignado: {{ $intento->asignado_en->format('d/m/Y') }}</span>
-                                                        @endif
-                                                        @if($intento->confirmada_en)
-                                                            <span>Confirmado: {{ $intento->confirmada_en->format('d/m/Y') }}</span>
-                                                        @endif
-                                                    </div>
-                                                    @if($intento->notas_confirmacion)
-                                                        <p class="text-slate-500 dark:text-slate-400 italic">{{ $intento->notas_confirmacion }}</p>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-
-                        {{-- Acciones --}}
-                        @if($solicitud->puedeSerSurtidaDesdeInventario() || $solicitud->puedeSerGestionada() || $solicitud->puedeCancelarse())
-                            <div class="flex flex-col gap-2 shrink-0">
-                                @if($solicitud->puedeSerSurtidaDesdeInventario())
-                                    <button wire:click="abrirModalSurtir({{ $solicitud->id }})"
-                                            class="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600
-                                                   text-white text-sm font-medium shadow-lg shadow-amber-500/30 transition-all">
-                                        {{ $solicitud->estatus === 'COMPRADA' ? 'Surtir compra' : 'Reasignar con pieza' }}
-                                    </button>
-                                @endif
-                                @if($solicitud->puedeSerGestionada())
-                                    <button wire:click="abrirModalCompra({{ $solicitud->id }})"
-                                            class="px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600
-                                                   text-white text-sm font-medium shadow-lg shadow-orange-500/30 transition-all">
-                                        Pend. de Compra
-                                    </button>
-                                @endif
-                                @if($solicitud->puedeCancelarse())
-                                    <button wire:click="abrirModalCancelar({{ $solicitud->id }})"
-                                            class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-red-100
-                                                   text-slate-700 hover:text-red-700 text-sm font-medium transition-all">
-                                        Cancelar
-                                    </button>
-                                @endif
-                            </div>
-                        @endif
-
-                    </div>
-                </div>
-            @empty
-                <div class="rounded-2xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl
-                            border border-slate-200/70 dark:border-slate-700/70 p-12 text-center">
-                    <svg class="w-16 h-16 mx-auto text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                    </svg>
-                    <p class="mt-4 text-slate-500 dark:text-slate-400">No hay solicitudes para mostrar</p>
-                </div>
-            @endforelse
-
-            <div>{{ $solicitudes->links() }}</div>
+            <div class="px-4 py-4 border-t border-slate-200 dark:border-slate-800">
+                {{ $solicitudes->links() }}
+            </div>
         </div>
 
     </div>
