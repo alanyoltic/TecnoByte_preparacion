@@ -37,6 +37,10 @@ class AfterLoginRedirectController extends Controller
             'depto_nombre'   => optional($user->departamento)->nombre,
         ]);
 
+        if ($roleSlug === 'CALIDAD') {
+            return redirect()->route('preparacion.dashboard');
+        }
+
         // Redirección estricta por departamento
         return match ($deptoKey) {
             'PREPARACION'     => redirect()->route('preparacion.dashboard'),

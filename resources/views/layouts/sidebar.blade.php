@@ -157,6 +157,28 @@
         </a>
     </div>
 
+    {{-- Registro lateral solo para calidad (link directo) --}}
+    @if(optional($u?->role)->slug === 'calidad' || ($u && $u->tienePermiso('prep.calidad.validar')))
+    @php $isRegistro = request()->routeIs('preparacion.calidad'); @endphp
+    <div class="px-3 mt-2">
+        <a href="{{ route('preparacion.calidad') }}"
+           title="Registro"
+           class="{{ $linkBase }} {{ $isRegistro
+                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB] text-white font-semibold drop-shadow-[0_0_6px_rgba(99,102,241,0.65)] border-blue-400/70 shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                : 'bg-white/10 dark:bg-slate-900/20 text-slate-700 dark:text-slate-400 hover:bg-white/20 dark:hover:bg-slate-900/30 hover:text-slate-900 dark:hover:text-white' }}"
+           :class="sidebarOpen ? 'justify-start' : 'justify-center'">
+            <div class="flex items-center">
+                <div class="flex items-center justify-center w-7 h-7">
+                    <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Registro</span>
+            </div>
+        </a>
+    </div>
+    @endif
+
     {{-- ===================== RECEPCIÓN - LOTES ===================== --}}
     @if($puedeLotes)
     @php
@@ -339,6 +361,11 @@
                 'label' => 'Resumen de Equipos',
                 'href'  => route('equipos.caracteristicas'),
                 'perm'  => 'prep.inventario.gestion',
+            ],
+            [
+                'label' => 'Registro',
+                'href'  => route('preparacion.calidad'),
+                'visible' => $roleSlug === 'calidad',
             ],
         ];
 

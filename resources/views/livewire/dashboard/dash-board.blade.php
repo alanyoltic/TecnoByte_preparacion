@@ -958,27 +958,6 @@
     </div>
 
 
-    {{-- ── Botón temporal: Gestión de Calidad ──────────────────────────────────── --}}
-    @if(auth()->user()->tienePermiso('prep.calidad.validar'))
-    <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 py-6">
-        <div class="flex justify-center sm:justify-end">
-            <a href="{{ route('preparacion.calidad') }}"
-               class="inline-flex items-center gap-3
-                      px-6 py-3 rounded-xl text-sm font-semibold
-                      bg-gradient-to-r from-blue-600 to-purple-600
-                      text-white
-                      shadow-lg shadow-blue-900/40
-                      transition-all duration-200
-                      hover:shadow-blue-500/60 hover:-translate-y-0.5"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Gestión de Calidad
-            </a>
-        </div>
-    </div>
-    @endif
 
 
     {{-- ── Modal: Editar Meta Mensual ──────────────────────────────────── --}}

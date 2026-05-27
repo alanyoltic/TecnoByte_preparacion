@@ -338,6 +338,29 @@ private function calcularCambio($actual, $anterior)
         $this->currentMonthName = $selectedDate->locale('es')->translatedFormat('F Y');
         $this->monthFinished    = $endOfMonth->lt(Carbon::now()->endOfDay());
 
+        // Si el usuario es del rol "calidad" mostramos un dashboard visualmente vacío
+        // (mismas vistas/estructuras, pero sin métricas ni gráficos pesados).
+        $roleSlug = strtolower(optional(auth()->user()->role)->slug ?? '');
+        if ($roleSlug === 'calidad') {
+            $this->kpis = [
+                'equiposHoy' => 0,
+                'equiposSemana' => 0,
+                'equiposMes' => 0,
+                'hoy_change' => 0,
+                'semana_change' => 0,
+                'mes_change' => 0,
+            ];
+
+            $this->lineChart = ['labels' => [], 'data' => []];
+            $this->tecnicoChart = ['labels' => [], 'series' => ['actual' => [], 'anterior' => []]];
+            $this->radialPercent = 0;
+            $this->breakdown = [];
+            $this->avisos = [];
+            $this->colaboradores = [];
+
+            return;
+        }
+
         // ===== ROLES / FILTRO =====
         $user = auth()->user();
 

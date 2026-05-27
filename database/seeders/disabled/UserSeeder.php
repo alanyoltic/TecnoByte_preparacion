@@ -1,6 +1,6 @@
 <?php
 
-namespace Database\Seeders;
+namespace Database\Seeders\Disabled;
 
 use App\Models\User;
 use App\Models\Roles;

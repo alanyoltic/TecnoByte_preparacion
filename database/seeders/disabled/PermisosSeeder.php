@@ -1,6 +1,6 @@
 <?php
 
-namespace Database\Seeders;
+namespace Database\Seeders\Disabled;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -219,6 +219,7 @@ class PermisosSeeder extends Seeder
         // Calidad — ver y validar equipos en calidad
         $calidad = $this->slugsAIds($mapaIds, [
             'sistema.dashboard.ver',
+            'modulo.preparacion',
             'modulo.calidad',
             'prep.calidad.ver',
             'prep.calidad.validar',
