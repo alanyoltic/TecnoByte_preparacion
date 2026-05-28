@@ -8,6 +8,8 @@ use App\Models\SolicitudPieza;
 use App\Models\User;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\SolicitudesPiezasExport;
 
 class GestionSolicitudesPiezas extends Component
 {
@@ -25,6 +27,10 @@ class GestionSolicitudesPiezas extends Component
     public ?float $puntosOverride = null;
     public ?int $tecnicoReasignadoId = null;
     public array $tecnicos = [];
+
+    // Selección masiva
+    public array $selected = [];
+    public bool $selectPage = false;
 
     public bool $modalCompra = false;
 
@@ -47,59 +53,7 @@ class GestionSolicitudesPiezas extends Component
     {
         $this->autorizarGestion();
 
-        $solicitudes = SolicitudPieza::query()
-            ->with([
-                'asignacionEquipo.equipo',
-                'equipo',
-                'catalogoPieza',
-                'solicitadoPor',
-                'reasignadoA',
-                'inventarioPieza.almacen',
-                'respondidaPor',
-                'intentos.asignadoA',
-                'intentos.inventarioPieza.almacen',
-                'intentos.asignadoPor',
-            ])
-            ->when($this->filtroTecnico !== 'TODOS', function ($query) {
-                $query->where('solicitado_por_id', (int) $this->filtroTecnico);
-            })
-            ->when($this->filtroEstatus !== 'TODOS', function ($query) {
-                match ($this->filtroEstatus) {
-                    'EN_CALIDAD'     => $query->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', true),
-                    'FALLO_PIEZA'    => $query->where('estatus', SolicitudPieza::REQUIERE_REASIGNACION),
-                    'PASO_CALIDAD'   => $query->whereRaw('0 = 1'), // futuro
-                        'TERMINADOS'     => $query->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', true),
-                        default          => $query->where('estatus', $this->filtroEstatus),
-                    };
-            })
-            ->when($this->busqueda, function ($query) {
-                $query->where(function ($q) {
-                    $bId = is_numeric(trim($this->busqueda)) ? (int)trim($this->busqueda) : -1;
-                    $q->whereHas('asignacionEquipo.equipo', function ($eq) use ($bId) {
-                        $eq->where('numero_serie', 'like', '%' . $this->busqueda . '%')
-                            ->orWhere('modelo', 'like', '%' . $this->busqueda . '%')
-                            ->orWhere('id', $bId);
-                    })
-                    ->orWhereHas('equipo', function ($eq) use ($bId) {
-                        $eq->where('numero_serie', 'like', '%' . $this->busqueda . '%')
-                            ->orWhere('modelo', 'like', '%' . $this->busqueda . '%')
-                            ->orWhere('id', $bId);
-                    })
-                    ->orWhereHas('solicitadoPor', function ($tec) {
-                        $tec->where('nombre', 'like', '%' . $this->busqueda . '%')
-                            ->orWhere('apellido_paterno', 'like', '%' . $this->busqueda . '%');
-                    })
-                    ->orWhereHas('catalogoPieza', function ($cat) {
-                        $cat->where('nombre', 'like', '%' . $this->busqueda . '%');
-                    })
-                    ->orWhere('descripcion_libre', 'like', '%' . $this->busqueda . '%')
-                    ->orWhere('categoria_solicitada', 'like', '%' . $this->busqueda . '%')
-                    ->orWhere('detalle_solicitado', 'like', '%' . $this->busqueda . '%');
-                });
-            })
-            ->orderByRaw("FIELD(estatus, 'PENDIENTE', 'REQUIERE_REASIGNACION', 'PENDIENTE_COMPRA', 'COMPRADA', 'SURTIDA_INVENTARIO', 'CONFIRMADA', 'CANCELADA')")
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
+        $solicitudes = $this->solicitudesQuery()->paginate(15);
 
         $contadores = [
             'pendientes'        => SolicitudPieza::where('estatus', SolicitudPieza::PENDIENTE)->count(),
@@ -278,17 +232,20 @@ class GestionSolicitudesPiezas extends Component
     public function updatedFiltroEstatus(): void
     {
         $this->resetPage();
-    }
+            $this->resetSelection();
+        }
 
-    public function updatedFiltroTecnico(): void
-    {
-        $this->resetPage();
-    }
+        public function updatedFiltroTecnico(): void
+        {
+            $this->resetPage();
+            $this->resetSelection();
+        }
 
-    public function updatingBusqueda(): void
-    {
-        $this->resetPage();
-    }
+        public function updatingBusqueda(): void
+        {
+            $this->resetPage();
+            $this->resetSelection();
+        }
 
     public function cerrarModales(): void
     {
@@ -307,30 +264,128 @@ class GestionSolicitudesPiezas extends Component
         ]);
     }
 
-    private function autorizarGestion(): void
+    protected function solicitudesQuery()
     {
-        abort_unless(auth()->user()?->tienePermiso('prep.inventario.gestion'), 403);
-    }
+            $query = SolicitudPieza::query()
+                ->with([
+                    'asignacionEquipo.equipo',
+                    'equipo',
+                    'catalogoPieza',
+                    'solicitadoPor',
+                    'reasignadoA',
+                    'inventarioPieza.almacen',
+                    'respondidaPor',
+                    'intentos.asignadoA',
+                    'intentos.inventarioPieza.almacen',
+                    'intentos.asignadoPor',
+                ])
+                ->when($this->filtroTecnico !== 'TODOS', function ($query) {
+                    $query->where('solicitado_por_id', (int) $this->filtroTecnico);
+                })
+                ->when($this->filtroEstatus !== 'TODOS', function ($query) {
+                    match ($this->filtroEstatus) {
+                        'EN_CALIDAD'     => $query->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', true),
+                        'FALLO_PIEZA'    => $query->where('estatus', SolicitudPieza::REQUIERE_REASIGNACION),
+                        'PASO_CALIDAD'   => $query->whereRaw('0 = 1'), // futuro
+                        'TERMINADOS'     => $query->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', true),
+                        default          => $query->where('estatus', $this->filtroEstatus),
+                    };
+                })
+                ->when($this->busqueda, function ($query) {
+                    $query->where(function ($q) {
+                        $bId = is_numeric(trim($this->busqueda)) ? (int)trim($this->busqueda) : -1;
+                        $q->whereHas('asignacionEquipo.equipo', function ($eq) use ($bId) {
+                            $eq->where('numero_serie', 'like', '%' . $this->busqueda . '%')
+                                ->orWhere('modelo', 'like', '%' . $this->busqueda . '%')
+                                ->orWhere('id', $bId);
+                        })
+                        ->orWhereHas('equipo', function ($eq) use ($bId) {
+                            $eq->where('numero_serie', 'like', '%' . $this->busqueda . '%')
+                                ->orWhere('modelo', 'like', '%' . $this->busqueda . '%')
+                                ->orWhere('id', $bId);
+                        })
+                        ->orWhereHas('solicitadoPor', function ($tec) {
+                            $tec->where('nombre', 'like', '%' . $this->busqueda . '%')
+                                ->orWhere('apellido_paterno', 'like', '%' . $this->busqueda . '%');
+                        })
+                        ->orWhereHas('catalogoPieza', function ($cat) {
+                            $cat->where('nombre', 'like', '%' . $this->busqueda . '%');
+                        })
+                        ->orWhere('descripcion_libre', 'like', '%' . $this->busqueda . '%')
+                        ->orWhere('categoria_solicitada', 'like', '%' . $this->busqueda . '%')
+                        ->orWhere('detalle_solicitado', 'like', '%' . $this->busqueda . '%');
+                    });
+                })
+                ->orderByRaw("FIELD(estatus, 'PENDIENTE', 'REQUIERE_REASIGNACION', 'PENDIENTE_COMPRA', 'COMPRADA', 'SURTIDA_INVENTARIO', 'CONFIRMADA', 'CANCELADA')")
+                ->orderBy('created_at', 'desc');
 
-    private function cargarTecnicos(): array
-    {
-        return User::where(function ($q) {
-            $q->whereHas('role', fn ($r) => $r->where('slug', 'tecnico'))
-                ->where('is_active', true);
-        })
-            ->orWhere(function ($q) {
-                $q->whereHas('role', fn ($r) => $r->where('slug', 'lider'))
-                    ->where('is_active', true)
-                    ->whereHas('liderModoTecnico', fn ($lmt) => $lmt->where('es_tecnico', true));
+            return $query;
+        }
+
+        public function updatedSelectPage($value): void
+        {
+            if ($value) {
+                // Solo cargamos los IDs de la página actual, no todas las solicitudes
+                $idsPagina = $this->solicitudesQuery()
+                    ->clone()
+                    ->paginate(15)
+                    ->pluck('id')
+                    ->map(fn ($id) => (string) $id)
+                    ->toArray();
+
+                $this->selected = $idsPagina;
+            } else {
+                $this->selected = [];
+            }
+        }
+
+        public function resetSelection(): void
+        {
+            $this->selected = [];
+            $this->selectPage = false;
+        }
+
+        public function exportarSeleccion()
+        {
+            $this->autorizarGestion();
+
+            $query = $this->solicitudesQuery();
+
+            if (!empty($this->selected)) {
+                $query->whereIn('id', $this->selected);
+            }
+
+            $solicitudes = $query->get();
+
+            $fileName = 'solicitudes_piezas_' . now()->format('Ymd_His') . '.xlsx';
+
+            return Excel::download(new SolicitudesPiezasExport($solicitudes), $fileName);
+        }
+
+        private function autorizarGestion(): void
+        {
+            abort_unless(auth()->user()?->tienePermiso('prep.inventario.gestion'), 403);
+        }
+
+        private function cargarTecnicos(): array
+        {
+            return User::where(function ($q) {
+                $q->whereHas('role', fn ($r) => $r->where('slug', 'tecnico'))
+                    ->where('is_active', true);
             })
-            ->orWhere(function ($q) {
-                $q->whereHas('role', fn ($r) => $r->where('slug', 'lider'))
-                    ->where('is_active', true)
-                    ->whereHas('solicitudesPiezas');
-            })
-            ->distinct()
-            ->orderBy('nombre')
-            ->get(['id', 'nombre', 'apellido_paterno'])
-            ->toArray();
-    }
+                ->orWhere(function ($q) {
+                    $q->whereHas('role', fn ($r) => $r->where('slug', 'lider'))
+                        ->where('is_active', true)
+                        ->whereHas('liderModoTecnico', fn ($lmt) => $lmt->where('es_tecnico', true));
+                })
+                ->orWhere(function ($q) {
+                    $q->whereHas('role', fn ($r) => $r->where('slug', 'lider'))
+                        ->where('is_active', true)
+                        ->whereHas('solicitudesPiezas');
+                })
+                ->distinct()
+                ->orderBy('nombre')
+                ->get(['id', 'nombre', 'apellido_paterno'])
+                ->toArray();
+        }
 }

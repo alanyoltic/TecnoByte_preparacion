@@ -75,14 +75,20 @@
                     </p>
                 </div>
 
-                <p class="hidden sm:block text-xs sm:text-sm text-slate-600 dark:text-slate-300">
-                    Mostrando
-                    <span class="font-bold text-slate-900 dark:text-slate-50">{{ $solicitudes->total() }}</span>
-                    solicitud(es)
-                    @if($busqueda)
-                        para “<span class="font-semibold">{{ $busqueda }}</span>”
-                    @endif
-                </p>
+                <div class="flex items-center gap-3">
+                                    <p class="hidden sm:block text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+                                        Mostrando
+                                        <span class="font-bold text-slate-900 dark:text-slate-50">{{ $solicitudes->total() }}</span>
+                                        solicitud(es)
+                                        @if($busqueda)
+                                            para “<span class="font-semibold">{{ $busqueda }}</span>”
+                                        @endif
+                                    </p>
+
+                                    <button type="button" wire:click="exportarSeleccion" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-medium shadow-lg hover:bg-slate-800">
+                                        Exportar
+                                    </button>
+                                </div>
             </div>
 
             <div class="px-5 py-4 grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-slate-200/60 dark:border-slate-800/80">
@@ -164,14 +170,17 @@
                 <table class="min-w-[1280px] w-full text-sm sm:text-base text-left">
                     <thead class="bg-slate-100 border-b border-slate-200 dark:bg-slate-950/90 dark:border-slate-800/80">
                         <tr>
-                            <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Solicitud</th>
-                            <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Equipo</th>
-                            <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Técnico</th>
-                            <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Fechas</th>
-                            <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Estado</th>
-                            <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap text-right">Acciones</th>
-                        </tr>
-                    </thead>
+                                                <th class="px-4 py-3">
+                                                    <input type="checkbox" wire:model="selectPage" class="h-4 w-4 text-blue-600 rounded border-slate-300">
+                                                </th>
+                                                <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Solicitud</th>
+                                                <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Equipo</th>
+                                                <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Técnico</th>
+                                                <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Fechas</th>
+                                                <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Estado</th>
+                                                <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap text-right">Acciones</th>
+                                            </tr>
+                                        </thead>
 
                     <tbody>
                         @forelse($solicitudes as $solicitud)
@@ -208,6 +217,9 @@
                             @endphp
 
                             <tr class="border-b border-slate-200 dark:border-slate-800/80 hover:bg-white/60 dark:hover:bg-slate-800/60 transition-colors">
+                                <td class="px-4 py-4 align-top w-12">
+                                    <input type="checkbox" wire:model="selected" value="{{ $solicitud->id }}" class="h-4 w-4 text-blue-600 rounded border-slate-300">
+                                </td>
                                 <td class="px-4 py-4 align-top">
                                     <div class="space-y-2">
                                         <div class="flex items-center gap-2 flex-wrap">
@@ -365,7 +377,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-4 py-16 text-center">
+                                <td colspan="7" class="px-4 py-16 text-center">
                                     <svg class="w-16 h-16 mx-auto text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                               d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
