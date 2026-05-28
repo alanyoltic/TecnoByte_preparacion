@@ -27,6 +27,8 @@ class GestionSolicitudesPiezas extends Component
     public ?float $puntosOverride = null;
     public ?int $tecnicoReasignadoId = null;
     public array $tecnicos = [];
+    public string $filtroPieza = 'TODOS';
+    public array $piezas = [];
 
     // Selección masiva
     public array $selected = [];
@@ -40,6 +42,7 @@ class GestionSolicitudesPiezas extends Component
     protected $queryString = [
         'filtroEstatus' => ['except' => 'TODOS'],
         'filtroTecnico' => ['except' => 'TODOS'],
+        'filtroPieza' => ['except' => 'TODOS'],
         'busqueda' => ['except' => ''],
     ];
 
@@ -47,6 +50,7 @@ class GestionSolicitudesPiezas extends Component
     {
         $this->autorizarGestion();
         $this->tecnicos = $this->cargarTecnicos();
+        $this->piezas = CatalogoPieza::orderBy('categoria')->orderBy('nombre')->get(['id','nombre','categoria'])->toArray();
     }
 
     public function render()
@@ -241,6 +245,12 @@ class GestionSolicitudesPiezas extends Component
             $this->resetSelection();
         }
 
+        public function updatedFiltroPieza(): void
+        {
+            $this->resetPage();
+            $this->resetSelection();
+        }
+
         public function updatingBusqueda(): void
         {
             $this->resetPage();
@@ -281,6 +291,9 @@ class GestionSolicitudesPiezas extends Component
                 ])
                 ->when($this->filtroTecnico !== 'TODOS', function ($query) {
                     $query->where('solicitado_por_id', (int) $this->filtroTecnico);
+                })
+                ->when($this->filtroPieza !== 'TODOS', function ($query) {
+                    $query->where('catalogo_pieza_id', (int) $this->filtroPieza);
                 })
                 ->when($this->filtroEstatus !== 'TODOS', function ($query) {
                     match ($this->filtroEstatus) {
