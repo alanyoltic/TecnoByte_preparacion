@@ -562,7 +562,7 @@
                                             </option>
 
 
-                                            @foreach ([8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 512, 1024, 2048] as $ram)
+                                            @foreach ([8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 512, 1024, 1536, 2048] as $ram)
                                                 <option value="{{ $ram }} GB">{{ $ram }} GB</option>
                                             @endforeach
                                         </select>
