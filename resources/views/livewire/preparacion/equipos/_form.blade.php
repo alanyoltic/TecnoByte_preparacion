@@ -562,7 +562,7 @@
                                             </option>
 
 
-                                            @foreach ([8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 512] as $ram)
+                                            @foreach ([8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 512, 1024, 2048] as $ram)
                                                 <option value="{{ $ram }} GB">{{ $ram }} GB</option>
                                             @endforeach
                                         </select>
@@ -590,7 +590,7 @@
 
                                         <option value="">Selecciona</option>
 
-    @foreach(range(1,16) as $slots)
+    @foreach(range(1,26) as $slots)
         <option value="{{ $slots }}">{{ $slots }} SLOTS</option>
     @endforeach
 </select>
