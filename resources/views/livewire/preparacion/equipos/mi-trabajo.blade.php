@@ -1079,6 +1079,17 @@
                                         </div>
                                         {{-- Cantidad debajo de la tarjeta de selección --}}
                                         @include('livewire.preparacion.equipos._cantidad-pieza-selector')
+
+                                        {{-- Cable de batería (solo si es Batería) --}}
+                                        @if($filtroCategoriaPieza === 'Batería')
+                                            <div class="flex items-center gap-3 pt-2 border-t border-emerald-200/50 dark:border-emerald-800/30">
+                                                <input type="checkbox" wire:model="requiereCableBateria" id="cable-bateria-stock"
+                                                    class="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500 cursor-pointer">
+                                                <label for="cable-bateria-stock" class="text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer">
+                                                    También se necesita cable para la batería
+                                                </label>
+                                            </div>
+                                        @endif
                                     </div>
 
                                 @else
@@ -1348,6 +1359,17 @@
 
                                 {{-- Cantidad --}}
                                 @include('livewire.preparacion.equipos._cantidad-pieza-selector')
+
+                                {{-- Cable de batería (solo si es Batería) --}}
+                                @if($categoriaPiezaLibre === 'Batería')
+                                    <div class="flex items-center gap-3 pt-2 border-t border-rose-200/50 dark:border-rose-800/30">
+                                        <input type="checkbox" wire:model="requiereCableBateria" id="cable-bateria-libre"
+                                            class="w-4 h-4 rounded border-slate-300 text-rose-600 focus:ring-2 focus:ring-rose-500 cursor-pointer">
+                                        <label for="cable-bateria-libre" class="text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer">
+                                            También se necesita cable para la batería
+                                        </label>
+                                    </div>
+                                @endif
                             </div>
                         @endif
 

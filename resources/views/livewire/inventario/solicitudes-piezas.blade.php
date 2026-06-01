@@ -147,6 +147,18 @@
                                 @endif
                             </div>
 
+                            {{-- Cable de batería (si aplica) --}}
+                            @if($solicitud->requiere_cable_bateria)
+                                <div class="flex items-center gap-1.5">
+                                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">
+                                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M8 2a1 1 0 011 1v1h2V3a1 1 0 112 0v1h2V3a1 1 0 112 0v14a2 2 0 01-2 2H4a2 2 0 01-2-2V3a1 1 0 011-1h2V2a1 1 0 011-1zm6 2H6v12h8V4z"/>
+                                        </svg>
+                                        +Cable
+                                    </span>
+                                </div>
+                            @endif
+
                             {{-- Equipo --}}
                             @if($equipo)
                                 <div class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">

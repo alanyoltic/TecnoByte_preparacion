@@ -4,13 +4,13 @@ namespace App\Exports;
 
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Events\AfterSheet;
 
-class SolicitudesPiezasExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithEvents
+class SolicitudesPiezasExport implements FromCollection, ShouldAutoSize, WithEvents, WithHeadings, WithMapping
 {
     protected Collection $solicitudes;
 
@@ -30,6 +30,7 @@ class SolicitudesPiezasExport implements FromCollection, WithHeadings, WithMappi
             'Fecha',
             'Pieza',
             'Cantidad',
+            'Cable',
             'Modelo',
             'Marca',
             'Técnico',
@@ -44,21 +45,22 @@ class SolicitudesPiezasExport implements FromCollection, WithHeadings, WithMappi
         // Pieza preferente
         $piezaTxt = '';
         if ($s->catalogoPieza) {
-            $piezaTxt = ($s->catalogoPieza->categoria ? $s->catalogoPieza->categoria . ' — ' : '') . ($s->catalogoPieza->nombre ?? '');
+            $piezaTxt = ($s->catalogoPieza->categoria ? $s->catalogoPieza->categoria.' — ' : '').($s->catalogoPieza->nombre ?? '');
         } else {
-            if (!empty($s->categoria_solicitada_texto) || !empty($s->detalle_solicitado_texto)) {
-                $piezaTxt = trim(($s->categoria_solicitada_texto ? $s->categoria_solicitada_texto . ' — ' : '') . ($s->detalle_solicitado_texto ?? ''));
+            if (! empty($s->categoria_solicitada_texto) || ! empty($s->detalle_solicitado_texto)) {
+                $piezaTxt = trim(($s->categoria_solicitada_texto ? $s->categoria_solicitada_texto.' — ' : '').($s->detalle_solicitado_texto ?? ''));
             } else {
                 $piezaTxt = $s->descripcion_libre ?? '';
             }
         }
 
-        $tecnico = $s->solicitadoPor?->nombre . ' ' . $s->solicitadoPor?->apellido_paterno;
+        $tecnico = $s->solicitadoPor?->nombre.' '.$s->solicitadoPor?->apellido_paterno;
 
         return [
             optional($s->created_at)->format('Y-m-d H:i:s'),
             $piezaTxt,
             $s->cantidad ?? 1,
+            $s->requiere_cable_bateria ? 'Sí' : 'No',
             $equipo?->modelo ?? '',
             $equipo?->marca ?? '',
             trim($tecnico),
@@ -71,27 +73,27 @@ class SolicitudesPiezasExport implements FromCollection, WithHeadings, WithMappi
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet;
-                $headerRange = 'A1:G1';
+                $headerRange = 'A1:H1';
                 $sheet->getDelegate()->getStyle($headerRange)->applyFromArray([
                     'font' => [
                         'bold' => true,
                         'color' => ['rgb' => 'FFFFFF'],
-                        'size' => 11
+                        'size' => 11,
                     ],
                     'alignment' => [
                         'horizontal' => 'center',
                         'vertical' => 'center',
-                        'wrapText' => true
+                        'wrapText' => true,
                     ],
                     'fill' => [
                         'fillType' => 'solid',
-                        'startColor' => ['rgb' => '2B6CB0']
+                        'startColor' => ['rgb' => '2B6CB0'],
                     ],
                 ]);
 
                 $sheet->freezePane('A2');
                 $sheet->getRowDimension(1)->setRowHeight(20);
-            }
+            },
         ];
     }
 }

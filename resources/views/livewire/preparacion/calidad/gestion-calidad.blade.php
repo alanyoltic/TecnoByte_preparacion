@@ -323,12 +323,12 @@
                                 </td>
 
                                 {{-- Acciones --}}
-                                <td class="px-4 py-3 align-top text-right whitespace-nowrap">
+                                <td class="px-4 py-3 align-top text-right min-w-[170px]">
                                     @if($equipo->estatus_area === 'EN_CALIDAD')
-                                        <div class="flex justify-end gap-2">
+                                        <div class="flex flex-wrap justify-end gap-2">
                                             <button 
                                                 wire:click="abrirValidar({{ $equipo->id }})"
-                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full whitespace-nowrap
                                                        bg-emerald-600 hover:bg-emerald-500
                                                        text-xs font-semibold text-white
                                                        shadow-md shadow-emerald-500/30
@@ -341,7 +341,7 @@
                                             </button>
                                             <button 
                                                 wire:click="abrirRechazar({{ $equipo->id }})"
-                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full whitespace-nowrap
                                                        bg-red-600 hover:bg-red-500
                                                        text-xs font-semibold text-white
                                                        shadow-md shadow-red-500/30
@@ -416,11 +416,18 @@
                     </button>
                 </div>
 
-                {{-- Body --}
+                {{-- Body --}}
                 <div class="overflow-y-auto flex-1 px-6 py-5 space-y-5">
 
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/40 p-4">
+                        <p class="text-sm text-slate-700 dark:text-slate-300"><span class="font-semibold">Serie:</span> {{ $equipo->numero_serie ?? '—' }}</p>
+                        <p class="text-sm text-slate-700 dark:text-slate-300"><span class="font-semibold">Modelo:</span> {{ $equipo->marca ?? '—' }} {{ $equipo->modelo ?? '' }}</p>
+                        <p class="text-sm text-slate-700 dark:text-slate-300"><span class="font-semibold">Técnico:</span> {{ optional($equipo->asignacionEquipos->first()?->asignacion?->tecnico)->nombre ?? 'Sin asignar' }}</p>
+                        <p class="text-sm text-slate-700 dark:text-slate-300"><span class="font-semibold">Tipo:</span> {{ $equipo->tipo_equipo ?? '—' }}</p>
+                    </div>
+
                     {{-- ENSAMBLE Y ESTÉTICA --}}
-                    <div>
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
                         <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">🔧 ENSAMBLE Y ESTÉTICA</h4>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             @php
@@ -435,7 +442,7 @@
                             @endphp
 
                             @foreach($ensambleItems as $key => $label)
-                                <label class="flex items-center gap-2 cursor-pointer">
+                                <label class="flex items-start gap-2.5 cursor-pointer rounded-lg px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                     <input type="checkbox" wire:model="qSalioBien.{{ $key }}" value="{{ $label }}"
                                            class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
                                     <span class="text-sm text-slate-700 dark:text-slate-300">{{ $label }}</span>
@@ -445,7 +452,7 @@
                     </div>
 
                     {{-- FUNCIONAMIENTO BÁSICO --}}
-                    <div>
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
                         <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">⚡ FUNCIONAMIENTO BÁSICO</h4>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             @php
@@ -463,7 +470,7 @@
                             @endphp
 
                             @foreach($funcItems as $key => $label)
-                                <label class="flex items-center gap-2 cursor-pointer">
+                                <label class="flex items-start gap-2.5 cursor-pointer rounded-lg px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                     <input type="checkbox" wire:model="qSalioBien.{{ $key }}" value="{{ $label }}"
                                            class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
                                     <span class="text-sm text-slate-700 dark:text-slate-300">{{ $label }}</span>
@@ -478,7 +485,7 @@
                     @endphp
 
                     @if($hasBattery)
-                        <div>
+                        <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
                             <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">🔋 BATERÍA</h4>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 @php
@@ -490,7 +497,7 @@
                                 @endphp
 
                                 @foreach($batteryItems as $key => $label)
-                                    <label class="flex items-center gap-2 cursor-pointer">
+                                    <label class="flex items-start gap-2.5 cursor-pointer rounded-lg px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                         <input type="checkbox" wire:model="qSalioBien.{{ $key }}" value="{{ $label }}"
                                                class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
                                         <span class="text-sm text-slate-700 dark:text-slate-300">{{ $label }}</span>
@@ -501,7 +508,7 @@
                     @endif
 
                     {{-- PRESENTACIÓN / VENTA --}}
-                    <div>
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
                         <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">📦 PRESENTACIÓN / VENTA</h4>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             @php
@@ -513,7 +520,7 @@
                             @endphp
 
                             @foreach($presentacionItems as $key => $label)
-                                <label class="flex items-center gap-2 cursor-pointer">
+                                <label class="flex items-start gap-2.5 cursor-pointer rounded-lg px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                     <input type="checkbox" wire:model="qSalioBien.{{ $key }}" value="{{ $label }}"
                                            class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
                                     <span class="text-sm text-slate-700 dark:text-slate-300">{{ $label }}</span>
@@ -523,7 +530,7 @@
                     </div>
 
                     {{-- Calificación y notas --}}
-                    <div class="grid grid-cols-1 gap-2">
+                    <div class="grid grid-cols-1 gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
                         <label class="block text-sm font-semibold text-slate-700 dark:text-slate-200">Calificación general (opcional)</label>
                         <select wire:model="calificacion" class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70 border border-white/60 dark:border-slate-600/70 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/70">
                             <option value="">Sin calificar</option>
@@ -547,13 +554,13 @@
                     <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed sm:order-first order-last">
                         Revisa el checklist completo. Si hay dudas, agrega notas antes de aprobar.
                     </p>
-                    <div class="flex items-center gap-2 sm:gap-3">
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                         <button wire:click="cerrarModales"
-                                class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg border border-slate-300/70 dark:border-slate-700/80 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all duration-200">
+                                class="w-full sm:w-auto px-4 py-2.5 rounded-lg border border-slate-300/70 dark:border-slate-700/80 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all duration-200">
                             Cancelar
                         </button>
                         <button wire:click="validarEquipo"
-                                class="flex-1 sm:flex-none px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-sm font-bold shadow-lg shadow-emerald-500/25 dark:shadow-emerald-900/40 transition-all duration-200 hover:shadow-emerald-500/40">
+                                class="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-sm font-bold shadow-lg shadow-emerald-500/25 dark:shadow-emerald-900/40 transition-all duration-200 hover:shadow-emerald-500/40">
                             Aprobar ✓
                         </button>
                     </div>
@@ -597,11 +604,17 @@
                     </button>
                 </div>
 
-                {{-- Body --}
+                {{-- Body --}}
                 <div class="overflow-y-auto px-6 py-5 space-y-5">
 
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/40 p-4">
+                        <p class="text-sm text-slate-700 dark:text-slate-300">
+                            Marca los defectos encontrados y agrega un motivo claro para que el técnico pueda corregir rápido.
+                        </p>
+                    </div>
+
                     {{-- Defectos --}}
-                    <div>
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
                         <label class="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">¿Qué defectos encontraste?</label>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             @php
@@ -615,7 +628,7 @@
                             @endphp
 
                             @foreach($defectItems as $key => $label)
-                                <label class="flex items-center gap-2 cursor-pointer">
+                                <label class="flex items-start gap-2.5 cursor-pointer rounded-lg px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                     <input type="checkbox" wire:model="qSalioMal.{{ $key }}" value="{{ $label }}" class="rounded border-slate-300 text-red-600 focus:ring-red-500">
                                     <span class="text-sm text-slate-700 dark:text-slate-300">{{ $label }}</span>
                                 </label>
@@ -624,7 +637,7 @@
                     </div>
 
                     {{-- Qué salió bien (opcional) --}}
-                    <div>
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
                         <label class="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Qué salió bien (opcional)</label>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             @php
@@ -637,7 +650,7 @@
                             @endphp
 
                             @foreach($okItems as $key => $label)
-                                <label class="flex items-center gap-2 cursor-pointer">
+                                <label class="flex items-start gap-2.5 cursor-pointer rounded-lg px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                     <input type="checkbox" wire:model="qSalioBienRechazo.{{ $key }}" value="{{ $label }}" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
                                     <span class="text-sm text-slate-700 dark:text-slate-300">{{ $label }}</span>
                                 </label>
@@ -646,7 +659,7 @@
                     </div>
 
                     {{-- Motivo --}}
-                    <div>
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
                         <label class="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Motivo del rechazo (obligatorio)</label>
                         <textarea wire:model="motivoRechazo" placeholder="Describe los problemas encontrados..." rows="4" class="w-full px-4 py-2.5 rounded-lg bg-white/80 dark:bg-slate-900/60 border border-slate-300/70 dark:border-slate-700/80 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/70"></textarea>
 
@@ -662,7 +675,7 @@
                     <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed sm:order-first order-last">
                         El técnico recibirá estas observaciones para corregir el equipo.
                     </p>
-                    <div class="flex items-center gap-2 sm:gap-3">
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                         <button wire:click="cerrarModales" class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg border border-slate-300/70 dark:border-slate-700/80 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all duration-200">Cancelar</button>
 
                         @if(!$motivoRechazo)
