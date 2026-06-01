@@ -85,9 +85,18 @@
                                         @endif
                                     </p>
 
-                                    <button type="button" wire:click="exportarSeleccion" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-medium shadow-lg hover:bg-slate-800">
-                                        Exportar
-                                    </button>
+                                    <div class="flex items-center gap-2">
+                                        @if(count($selected) > 0)
+                                            <span class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                                                <span class="inline-block px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold text-xs">
+                                                    {{ count($selected) }} seleccionado(s)
+                                                </span>
+                                            </span>
+                                        @endif
+                                        <button type="button" wire:click="exportarSeleccion" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-medium shadow-lg hover:bg-slate-800 transition-colors">
+                                            Exportar
+                                        </button>
+                                    </div>
                                 </div>
             </div>
 
