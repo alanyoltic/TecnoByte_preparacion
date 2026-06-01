@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Models\SolicitudPieza;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
@@ -28,6 +29,7 @@ class SolicitudesPiezasExport implements FromCollection, ShouldAutoSize, WithEve
     {
         return [
             'Fecha',
+            'Estatus',
             'Pieza',
             'Cantidad',
             'Cable',
@@ -41,6 +43,7 @@ class SolicitudesPiezasExport implements FromCollection, ShouldAutoSize, WithEve
     public function map($s): array
     {
         $equipo = $s->equipo ?? $s->asignacionEquipo?->equipo;
+        $estatusTxt = SolicitudPieza::labelsEstatus()[$s->estatus] ?? ($s->estatus ?? '');
 
         // Pieza preferente
         $piezaTxt = '';
@@ -58,6 +61,7 @@ class SolicitudesPiezasExport implements FromCollection, ShouldAutoSize, WithEve
 
         return [
             optional($s->created_at)->format('Y-m-d H:i:s'),
+            $estatusTxt,
             $piezaTxt,
             $s->cantidad ?? 1,
             $s->requiere_cable_bateria ? 'Sí' : 'No',
@@ -73,7 +77,7 @@ class SolicitudesPiezasExport implements FromCollection, ShouldAutoSize, WithEve
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet;
-                $headerRange = 'A1:H1';
+                $headerRange = 'A1:I1';
                 $sheet->getDelegate()->getStyle($headerRange)->applyFromArray([
                     'font' => [
                         'bold' => true,
