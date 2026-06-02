@@ -964,7 +964,7 @@ class MiTrabajo extends Component
             'PIEZA_PENDIENTE' => ['PREPARACION', 'PENDIENTE_PIEZA',    Almacen::PIEZAS_PENDIENTES],
             'GARANTIA_INTERNA' => ['PREPARACION', 'PENDIENTE_GARANTIA', Almacen::GARANTIAS_INTERNAS],
             'GARANTIA_EXTERNA' => ['PREPARACION', 'PENDIENTE_GARANTIA', Almacen::GARANTIAS_EXTERNAS],
-            'DESPIECE' => ['SCRAP',        'SCRAP',             Almacen::SCRAP],
+            'DESPIECE' => ['SCRAP',        'PENDIENTE_DESARME', Almacen::SCRAP],
             default => ['PREPARACION', 'EN_PROCESO',         Almacen::PREPARACION],
         };
 
