@@ -556,6 +556,7 @@ public $almacenesDisponibles = [];
         $f = $this->form;
 
         $f->lote_modelo_id = $modeloId ?: null;
+        $f->catalogo_equipo_id = null;
         $f->marca = null;
         $f->modelo = null;
 
@@ -564,6 +565,7 @@ public $almacenesDisponibles = [];
         $lm = LoteModeloRecibido::find($modeloId);
         if (!$lm) return;
 
+        $f->catalogo_equipo_id = $lm->catalogo_equipo_id;
         $f->marca = $lm->marca;
         $f->modelo = $lm->modelo;
     }
@@ -1312,8 +1314,9 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
         return [
             // NO tocamos registrado_por_user_id en edición
 
-            'lote_modelo_id' => $f->lote_modelo_id,
-            'proveedor_id'   => $f->proveedor_id,
+            'lote_modelo_id'     => $f->lote_modelo_id,
+            'catalogo_equipo_id' => $f->catalogo_equipo_id,
+            'proveedor_id'       => $f->proveedor_id,
 
             // estatus_area NO se incluye: solo el sistema puede cambiar el estatus
 

@@ -10,12 +10,18 @@ class LoteModeloRecibido extends Model
 
     protected $fillable = [
         'lote_id',
+        'catalogo_equipo_id',
         'marca',
         'modelo',
         'cantidad_recibida',
         'valor_unitario',
         'clasificacion_puntos_id',
     ];
+
+    public function catalogoEquipo()
+    {
+        return $this->belongsTo(CatalogoEquipo::class, 'catalogo_equipo_id');
+    }
 
     public function lote()
     {

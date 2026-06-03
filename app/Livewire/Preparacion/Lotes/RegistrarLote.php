@@ -9,6 +9,7 @@ use Livewire\Component;
 use App\Models\Proveedor;
 use App\Models\ClasificacionPuntos;
 use App\Models\LoteModeloRecibido;
+use App\Models\CatalogoEquipo;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -21,6 +22,7 @@ class RegistrarLote extends Component
     public $proveedor_id;
     public $fecha_llegada;
     public $modelos = [];
+    public $marcas  = [];
 
     public bool $modalSeries  = false;
     public int  $serialesIndex = -1;
@@ -31,10 +33,19 @@ class RegistrarLote extends Component
 
         $this->fecha_llegada = now()->toDateString();
 
+        $this->marcas = CatalogoEquipo::select('marca')
+            ->distinct()
+            ->orderBy('marca')
+            ->pluck('marca')
+            ->toArray();
+
         $this->modelos = [
             [
+                'catalogo_equipo_id'      => null,
                 'marca'                   => '',
                 'modelo'                  => '',
+                'temp_marca'              => '',
+                'modelos_filtrados'       => [],
                 'cantidad_recibida'       => 1,
                 'valor_unitario'          => '',
                 'clasificacion_puntos_id' => null,
@@ -46,12 +57,47 @@ class RegistrarLote extends Component
     public function addModeloRow()
     {
         $this->modelos[] = [
+            'catalogo_equipo_id'      => null,
             'marca'                   => '',
             'modelo'                  => '',
+            'temp_marca'              => '',
+            'modelos_filtrados'       => [],
             'cantidad_recibida'       => 1,
+            'valor_unitario'          => '',
             'clasificacion_puntos_id' => null,
             'numeros_serie'           => [],
         ];
+    }
+
+    public function updatedModelos($value, $name): void
+    {
+        $parts = explode('.', $name);
+        $index = (int) $parts[0];
+        $field = $parts[1] ?? '';
+
+        if ($field === 'temp_marca') {
+            $this->modelos[$index]['marca'] = $value;
+            $this->modelos[$index]['catalogo_equipo_id'] = null;
+            
+            if ($value) {
+                $this->modelos[$index]['modelos_filtrados'] = CatalogoEquipo::where('marca', $value)
+                    ->orderBy('modelo')
+                    ->get(['id', 'modelo'])
+                    ->toArray();
+            } else {
+                $this->modelos[$index]['modelos_filtrados'] = [];
+            }
+            return;
+        }
+
+        if ($field === 'catalogo_equipo_id') {
+            if ($value) {
+                $item = CatalogoEquipo::find($value);
+                if ($item) {
+                    $this->modelos[$index]['modelo'] = $item->modelo;
+                }
+            }
+        }
     }
 
     public function removeModeloRow($index)
@@ -108,6 +154,7 @@ class RegistrarLote extends Component
             'fecha_llegada' => 'nullable|date',
 
             'modelos'                              => 'required|array|min:1',
+            'modelos.*.catalogo_equipo_id'         => 'nullable|exists:catalogo_equipos,id',
             'modelos.*.marca'                      => 'required|string|max:100',
             'modelos.*.modelo'                     => 'required|string|max:255',
             'modelos.*.cantidad_recibida'          => 'required|integer|min:1',
@@ -129,6 +176,7 @@ class RegistrarLote extends Component
             foreach ($this->modelos as $m) {
                 $loteModelo = LoteModeloRecibido::create([
                     'lote_id'                 => $loteId,
+                    'catalogo_equipo_id'      => $m['catalogo_equipo_id'] ?: null,
                     'marca'                   => $m['marca'],
                     'modelo'                  => $m['modelo'],
                     'cantidad_recibida'       => $m['cantidad_recibida'],
@@ -155,6 +203,7 @@ class RegistrarLote extends Component
                     $equipo = Equipo::create([
                         'numero_serie'           => $serie,
                         'lote_modelo_id'         => $loteModelo->id,
+                        'catalogo_equipo_id'     => $loteModelo->catalogo_equipo_id,
                         'clasificacion_puntos_id' => $loteModelo->clasificacion_puntos_id,
                         'marca'                  => $m['marca'],
                         'modelo'                 => $m['modelo'],
@@ -184,6 +233,7 @@ class RegistrarLote extends Component
         $this->fecha_llegada = now()->toDateString();
         $this->modelos = [
             [
+                'catalogo_equipo_id'      => null,
                 'marca'                   => '',
                 'modelo'                  => '',
                 'cantidad_recibida'       => 1,
@@ -198,10 +248,12 @@ class RegistrarLote extends Component
     {
         $proveedores     = Proveedor::orderBy('nombre_empresa')->get();
         $clasificaciones = ClasificacionPuntos::where('activo', true)->orderBy('clave')->get();
+        $catalogo        = CatalogoEquipo::where('activo', true)->orderBy('marca')->orderBy('modelo')->get();
 
         return view('livewire.preparacion.lotes.registrar-lote', [
             'proveedores'     => $proveedores,
             'clasificaciones' => $clasificaciones,
+            'catalogo'        => $catalogo,
         ]);
     }
 

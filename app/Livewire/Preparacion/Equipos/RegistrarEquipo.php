@@ -190,6 +190,7 @@ class RegistrarEquipo extends Component
 
 
         $f->lote_modelo_id = $modeloId ?: null;
+        $f->catalogo_equipo_id = null;
         $f->marca = null;
         $f->modelo = null;
 
@@ -198,6 +199,7 @@ class RegistrarEquipo extends Component
         $lm = LoteModeloRecibido::find($modeloId);
         if (!$lm) return;
 
+        $f->catalogo_equipo_id = $lm->catalogo_equipo_id;
         $f->marca = $lm->marca;
         $f->modelo = $lm->modelo;
     }
@@ -651,6 +653,7 @@ public function updatedFormRamExpansionMax($value): void
         return [
             
             'lote_modelo_id'         => $f->lote_modelo_id,
+            'catalogo_equipo_id'     => $f->catalogo_equipo_id,
             'numero_serie'           => $f->numero_serie,
             'registrado_por_user_id' => Auth::id(),
             'proveedor_id'           => $f->proveedor_id,

@@ -15,6 +15,7 @@ class EquipoForm extends Form
     // =========================
     public $lote_id;
     public $lote_modelo_id;
+    public $catalogo_equipo_id;
     public $proveedor_id;
 
     public $numero_serie;
@@ -214,9 +215,10 @@ class EquipoForm extends Form
     public function snapshotPersistible(): array
     {
         return [
-            'lote_id'        => $this->lote_id,
-            'lote_modelo_id' => $this->lote_modelo_id,
-            'proveedor_id'   => $this->proveedor_id,
+            'lote_id'            => $this->lote_id,
+            'lote_modelo_id'     => $this->lote_modelo_id,
+            'catalogo_equipo_id' => $this->catalogo_equipo_id,
+            'proveedor_id'       => $this->proveedor_id,
 
             'numero_serie' => $this->numero_serie,
 

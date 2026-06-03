@@ -262,6 +262,11 @@ class Equipo extends Model
         return $this->belongsTo(LoteModeloRecibido::class, 'lote_modelo_id');
     }
 
+    public function catalogoEquipo()
+    {
+        return $this->belongsTo(CatalogoEquipo::class, 'catalogo_equipo_id');
+    }
+
     /**
      * Tipo A-F para el sistema de puntos de preparación.
      * Diferente a tipo_equipo (que es texto libre "Laptop", "Desktop", etc.)
