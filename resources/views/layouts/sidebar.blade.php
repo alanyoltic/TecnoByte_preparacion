@@ -530,6 +530,11 @@
                 'href'  => route('preparacion.catalogo-piezas'),
                 'perm'  => 'prep.inventario.gestion',
             ],
+            [
+                'label' => 'Catálogo Equipos',
+                'href'  => route('preparacion.catalogo-equipos'),
+                'perm'  => 'prep.inventario.gestion',
+            ],
             // 'Compras de Piezas' se accede desde Catálogo Piezas (historial)
             [
                 'label' => 'Transferencias',

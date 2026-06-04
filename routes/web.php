@@ -289,6 +289,8 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
     Route::view('/administracion/dashboard', 'administracion.dashboard')
         ->middleware('permiso:modulo.administracion')
         ->name('administracion.dashboard');
+// Catálogo de Equipos
+Route::get('/preparacion/catalogo-equipos', \App\Livewire\Preparacion\CatalogoEquipos::class)->name('preparacion.catalogo-equipos');
 });
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

@@ -12,4 +12,14 @@ class CatalogoEquipo extends Model
         'tipo_equipo',
         'activo',
     ];
+
+    public function lotesVinculados()
+    {
+        return $this->hasMany(LoteModeloRecibido::class, 'catalogo_equipo_id');
+    }
+
+    public function equiposVinculados()
+    {
+        return $this->hasMany(Equipo::class, 'catalogo_equipo_id');
+    }
 }
