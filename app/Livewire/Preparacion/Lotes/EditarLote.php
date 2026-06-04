@@ -29,7 +29,6 @@ class EditarLote extends Component
 
     public $proveedores = [];
     public $catalogo    = [];
-    public $marcas      = [];
 
     public array $modelos        = [];
     public array $deleteModeloIds = [];
@@ -305,6 +304,17 @@ class EditarLote extends Component
                         'clasificacion_puntos_id' => $clasificacionId,
                     ]);
 
+                    // === NUEVA LÓGICA: Sincronizar hacia el Catálogo ===
+                    if ($catalogoId) {
+                        $catItem = CatalogoEquipo::find($catalogoId);
+                        if ($catItem) {
+                            $catItem->update([
+                                'marca'  => ucfirst(strtolower(trim($m['marca']))),
+                                'modelo' => trim($m['modelo']),
+                            ]);
+                        }
+                    }
+
                     // Propagamos el ID del catálogo a todos los equipos de este renglón del lote
                     if ($catalogoId) {
                         Equipo::where('lote_modelo_id', $registro->id)
@@ -373,7 +383,14 @@ class EditarLote extends Component
 
     public function render()
     {
+        $marcas = CatalogoEquipo::select('marca')
+            ->distinct()
+            ->orderBy('marca')
+            ->pluck('marca')
+            ->toArray();
+
         return view('livewire.preparacion.lotes.editar-lote', [
+            'marcas'          => $marcas,
             'clasificaciones' => ClasificacionPuntos::where('activo', true)->orderBy('clave')->get(),
         ]);
     }
