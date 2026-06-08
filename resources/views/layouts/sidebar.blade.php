@@ -74,6 +74,7 @@
 
             $labelBase = "ml-2 whitespace-nowrap";
 
+            $isEstadisticas = request()->routeIs('preparacion.estadisticas-equipos');
             $isDashboard  = request()->routeIs('dashboard')
                 || request()->routeIs('preparacion.dashboard');
             $isLotes      = request()->routeIs('lotes.*');
@@ -156,6 +157,37 @@
             </span>
         </a>
     </div>
+
+    {{-- ===================== ESTADISTICAS (Gerente Preparación) ===================== --}}
+    @if($puedeInvGestion)
+    <div class="px-3 mt-2">
+        <a
+            href="{{ route('preparacion.estadisticas-equipos') }}"
+            title="Estadísticas de Modelos"
+            class="{{ $linkBase }} {{ $isEstadisticas
+                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                   text-white font-semibold
+                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                   border-blue-400/70
+                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                : 'bg-white/10 dark:bg-slate-900/20
+                    text-slate-700 dark:text-slate-400
+                    hover:bg-white/20 dark:hover:bg-slate-900/30
+                    hover:text-slate-900 dark:hover:text-white' }}"
+            :class="sidebarOpen ? 'justify-start' : 'justify-center'"
+        >
+            <div class="flex items-center justify-center w-7 h-7">
+                <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+            </div>
+
+            <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>
+                Estadísticas
+            </span>
+        </a>
+    </div>
+    @endif
 
     {{-- Registro lateral solo para calidad (link directo) --}}
     @if(optional($u?->role)->slug === 'calidad' || ($u && $u->tienePermiso('prep.calidad.validar')))

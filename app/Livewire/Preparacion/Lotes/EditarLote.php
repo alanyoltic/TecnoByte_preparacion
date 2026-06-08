@@ -44,12 +44,6 @@ class EditarLote extends Component
 
         $this->proveedores = Proveedor::orderBy('abreviacion')->get();
         
-        $this->marcas = CatalogoEquipo::select('marca')
-            ->distinct()
-            ->orderBy('marca')
-            ->pluck('marca')
-            ->toArray();
-
         $this->lote = Lote::with(['modelosRecibidos' => function ($q) {
             $q->withCount('equipos')->orderBy('id');
         }])->findOrFail($this->loteId);
@@ -59,22 +53,13 @@ class EditarLote extends Component
         $this->fecha_llegada = $this->lote->fecha_llegada;
 
         $this->modelos = $this->lote->modelosRecibidos->map(function ($m) {
-            $modelosFiltrados = [];
             $tempMarca = $m->catalogoEquipo?->marca ?? '';
-            
-            if ($tempMarca) {
-                $modelosFiltrados = CatalogoEquipo::where('marca', $tempMarca)
-                    ->orderBy('modelo')
-                    ->get(['id', 'modelo'])
-                    ->toArray();
-            }
+            $modelosFiltrados = $tempMarca ? CatalogoEquipo::where('marca', $tempMarca)->orderBy('modelo')->get(['id', 'modelo'])->toArray() : [];
 
             return [
                 'id'                      => $m->id,
-                'catalogo_equipo_id'      => $m->catalogo_equipo_id,
-                'marca'                   => $m->marca,
-                'modelo'                  => $m->modelo,
                 'temp_marca'              => $tempMarca,
+                'catalogo_equipo_id'      => $m->catalogo_equipo_id,
                 'modelos_filtrados'       => $modelosFiltrados,
                 'cantidad_recibida'       => (int) $m->cantidad_recibida,
                 'valor_unitario'          => $m->valor_unitario !== null ? (string) $m->valor_unitario : '',
@@ -97,9 +82,7 @@ class EditarLote extends Component
             'fecha_llegada' => ['nullable', 'date'],
 
             'modelos'                             => ['required', 'array', 'min:1'],
-            'modelos.*.catalogo_equipo_id'        => ['nullable', 'exists:catalogo_equipos,id'],
-            'modelos.*.marca'                     => ['required', 'string', 'max:100'],
-            'modelos.*.modelo'                    => ['required', 'string', 'max:255'],
+            'modelos.*.catalogo_equipo_id'        => ['required', 'exists:catalogo_equipos,id'],
             'modelos.*.cantidad_recibida'         => ['required', 'integer', 'min:1'],
             'modelos.*.valor_unitario'            => ['nullable', 'numeric', 'min:0'],
             'modelos.*.clasificacion_puntos_id'   => ['nullable', 'exists:clasificaciones_puntos,id'],
@@ -110,10 +93,8 @@ class EditarLote extends Component
     {
         $this->modelos[] = [
             'id'                      => null,
-            'catalogo_equipo_id'      => null,
-            'marca'                   => '',
-            'modelo'                  => '',
             'temp_marca'              => '',
+            'catalogo_equipo_id'      => null,
             'modelos_filtrados'       => [],
             'cantidad_recibida'       => 1,
             'valor_unitario'          => '',
@@ -217,10 +198,8 @@ class EditarLote extends Component
         $index = (int) $parts[0];
         $field = $parts[1] ?? '';
 
-        // Si cambia la marca en el selector
         if ($field === 'temp_marca') {
-            $this->modelos[$index]['marca'] = $value; // Sincronizamos el texto
-            $this->modelos[$index]['catalogo_equipo_id'] = null; // Reseteamos el modelo seleccionado
+            $this->modelos[$index]['catalogo_equipo_id'] = null; 
             
             if ($value) {
                 $this->modelos[$index]['modelos_filtrados'] = CatalogoEquipo::where('marca', $value)
@@ -229,17 +208,6 @@ class EditarLote extends Component
                     ->toArray();
             } else {
                 $this->modelos[$index]['modelos_filtrados'] = [];
-            }
-            return;
-        }
-
-        // Si selecciona un modelo del catálogo
-        if ($field === 'catalogo_equipo_id') {
-            if ($value) {
-                $item = CatalogoEquipo::find($value);
-                if ($item) {
-                    $this->modelos[$index]['modelo'] = $item->modelo;
-                }
             }
             return;
         }
@@ -286,7 +254,9 @@ class EditarLote extends Component
             foreach ($this->modelos as $m) {
 
                 $clasificacionId = $m['clasificacion_puntos_id'] ?: null;
-                $catalogoId      = $m['catalogo_equipo_id'] ?: null;
+                $catalogoId      = $m['catalogo_equipo_id'];
+
+                $catItem = CatalogoEquipo::findOrFail($catalogoId);
 
                 if (!empty($m['id'])) {
                     $registro = LoteModeloRecibido::where('lote_id', $lote->id)
@@ -297,33 +267,20 @@ class EditarLote extends Component
 
                     $registro->update([
                         'catalogo_equipo_id'      => $catalogoId,
-                        'marca'                   => $m['marca'],
-                        'modelo'                  => $m['modelo'],
+                        'marca'                   => $catItem->marca,
+                        'modelo'                  => $catItem->modelo,
                         'cantidad_recibida'       => (int) $m['cantidad_recibida'],
                         'valor_unitario'          => is_numeric($m['valor_unitario'] ?? '') ? (float) $m['valor_unitario'] : null,
                         'clasificacion_puntos_id' => $clasificacionId,
                     ]);
 
-                    // === NUEVA LÓGICA: Sincronizar hacia el Catálogo ===
-                    if ($catalogoId) {
-                        $catItem = CatalogoEquipo::find($catalogoId);
-                        if ($catItem) {
-                            $catItem->update([
-                                'marca'  => ucfirst(strtolower(trim($m['marca']))),
-                                'modelo' => trim($m['modelo']),
-                            ]);
-                        }
-                    }
-
                     // Propagamos el ID del catálogo a todos los equipos de este renglón del lote
-                    if ($catalogoId) {
-                        Equipo::where('lote_modelo_id', $registro->id)
-                            ->update([
-                                'catalogo_equipo_id' => $catalogoId,
-                                'marca'              => $m['marca'],
-                                'modelo'             => $m['modelo'],
-                            ]);
-                    }
+                    Equipo::where('lote_modelo_id', $registro->id)
+                        ->update([
+                            'catalogo_equipo_id' => $catalogoId,
+                            'marca'              => $catItem->marca,
+                            'modelo'             => $catItem->modelo,
+                        ]);
 
                     if ($clasificacionCambio) {
                         $registro->propagarClasificacion();
@@ -332,8 +289,8 @@ class EditarLote extends Component
                     $registro = LoteModeloRecibido::create([
                         'lote_id'                 => $lote->id,
                         'catalogo_equipo_id'      => $catalogoId,
-                        'marca'                   => $m['marca'],
-                        'modelo'                  => $m['modelo'],
+                        'marca'                   => $catItem->marca,
+                        'modelo'                  => $catItem->modelo,
                         'cantidad_recibida'       => (int) $m['cantidad_recibida'],
                         'valor_unitario'          => is_numeric($m['valor_unitario'] ?? '') ? (float) $m['valor_unitario'] : null,
                         'clasificacion_puntos_id' => $clasificacionId,

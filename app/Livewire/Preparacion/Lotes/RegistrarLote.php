@@ -41,11 +41,9 @@ class RegistrarLote extends Component
 
         $this->modelos = [
             [
-                'catalogo_equipo_id'      => null,
-                'marca'                   => '',
-                'modelo'                  => '',
                 'temp_marca'              => '',
                 'modelos_filtrados'       => [],
+                'catalogo_equipo_id'      => null,
                 'cantidad_recibida'       => 1,
                 'valor_unitario'          => '',
                 'clasificacion_puntos_id' => null,
@@ -57,11 +55,9 @@ class RegistrarLote extends Component
     public function addModeloRow()
     {
         $this->modelos[] = [
-            'catalogo_equipo_id'      => null,
-            'marca'                   => '',
-            'modelo'                  => '',
             'temp_marca'              => '',
             'modelos_filtrados'       => [],
+            'catalogo_equipo_id'      => null,
             'cantidad_recibida'       => 1,
             'valor_unitario'          => '',
             'clasificacion_puntos_id' => null,
@@ -76,8 +72,7 @@ class RegistrarLote extends Component
         $field = $parts[1] ?? '';
 
         if ($field === 'temp_marca') {
-            $this->modelos[$index]['marca'] = $value;
-            $this->modelos[$index]['catalogo_equipo_id'] = null;
+            $this->modelos[$index]['catalogo_equipo_id'] = null; 
             
             if ($value) {
                 $this->modelos[$index]['modelos_filtrados'] = CatalogoEquipo::where('marca', $value)
@@ -86,16 +81,6 @@ class RegistrarLote extends Component
                     ->toArray();
             } else {
                 $this->modelos[$index]['modelos_filtrados'] = [];
-            }
-            return;
-        }
-
-        if ($field === 'catalogo_equipo_id') {
-            if ($value) {
-                $item = CatalogoEquipo::find($value);
-                if ($item) {
-                    $this->modelos[$index]['modelo'] = $item->modelo;
-                }
             }
         }
     }
@@ -154,14 +139,13 @@ class RegistrarLote extends Component
             'fecha_llegada' => 'nullable|date',
 
             'modelos'                              => 'required|array|min:1',
-            'modelos.*.catalogo_equipo_id'         => 'nullable|exists:catalogo_equipos,id',
-            'modelos.*.marca'                      => 'required|string|max:100',
-            'modelos.*.modelo'                     => 'required|string|max:255',
+            'modelos.*.catalogo_equipo_id'         => 'required|exists:catalogo_equipos,id',
             'modelos.*.cantidad_recibida'          => 'required|integer|min:1',
             'modelos.*.valor_unitario'             => 'nullable|numeric|min:0',
             'modelos.*.clasificacion_puntos_id'    => 'nullable|exists:clasificaciones_puntos,id',
         ], [
             'modelos.required' => 'Debes agregar al menos un modelo al lote.',
+            'modelos.*.catalogo_equipo_id.required' => 'Debes seleccionar un equipo del catálogo oficial.',
         ]);
 
         DB::transaction(function () {
@@ -174,11 +158,14 @@ class RegistrarLote extends Component
             ]);
 
             foreach ($this->modelos as $m) {
+                
+                $catItem = CatalogoEquipo::findOrFail($m['catalogo_equipo_id']);
+
                 $loteModelo = LoteModeloRecibido::create([
                     'lote_id'                 => $loteId,
-                    'catalogo_equipo_id'      => $m['catalogo_equipo_id'] ?: null,
-                    'marca'                   => $m['marca'],
-                    'modelo'                  => $m['modelo'],
+                    'catalogo_equipo_id'      => $catItem->id,
+                    'marca'                   => $catItem->marca,
+                    'modelo'                  => $catItem->modelo,
                     'cantidad_recibida'       => $m['cantidad_recibida'],
                     'valor_unitario'          => is_numeric($m['valor_unitario'] ?? '') ? (float) $m['valor_unitario'] : null,
                     'clasificacion_puntos_id' => $m['clasificacion_puntos_id'] ?: null,
@@ -203,10 +190,10 @@ class RegistrarLote extends Component
                     $equipo = Equipo::create([
                         'numero_serie'           => $serie,
                         'lote_modelo_id'         => $loteModelo->id,
-                        'catalogo_equipo_id'     => $loteModelo->catalogo_equipo_id,
+                        'catalogo_equipo_id'     => $catItem->id,
                         'clasificacion_puntos_id' => $loteModelo->clasificacion_puntos_id,
-                        'marca'                  => $m['marca'],
-                        'modelo'                 => $m['modelo'],
+                        'marca'                  => $catItem->marca,
+                        'modelo'                 => $catItem->modelo,
                         'estatus_ciclo'          => 'PREPARACION',
                         'estatus_area'           => 'SIN_ASIGNAR',
                         'registrado_por_user_id' => Auth::id(),
@@ -234,8 +221,6 @@ class RegistrarLote extends Component
         $this->modelos = [
             [
                 'catalogo_equipo_id'      => null,
-                'marca'                   => '',
-                'modelo'                  => '',
                 'cantidad_recibida'       => 1,
                 'valor_unitario'          => '',
                 'clasificacion_puntos_id' => null,

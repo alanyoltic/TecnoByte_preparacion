@@ -290,7 +290,14 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
         ->middleware('permiso:modulo.administracion')
         ->name('administracion.dashboard');
 // Catálogo de Equipos
-Route::get('/preparacion/catalogo-equipos', \App\Livewire\Preparacion\CatalogoEquipos::class)->name('preparacion.catalogo-equipos');
+Route::get('/preparacion/catalogo-equipos', \App\Livewire\Preparacion\CatalogoEquipos::class)
+    ->middleware('permiso:prep.inventario.gestion')
+    ->name('preparacion.catalogo-equipos');
+
+// Estadísticas
+Route::get('/preparacion/estadisticas-equipos', \App\Livewire\Preparacion\Dashboard\EstadisticasEquipos::class)
+    ->middleware('permiso:prep.inventario.gestion')
+    ->name('preparacion.estadisticas-equipos');
 });
 
 require __DIR__.'/auth.php';

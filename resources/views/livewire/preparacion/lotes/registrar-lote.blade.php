@@ -110,78 +110,46 @@
 
         <div class="space-y-4">
             @foreach($modelos as $index => $modelo)
-                <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.2fr)_80px_100px_minmax(0,1fr)_36px_32px] gap-2 items-end"
+                <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_80px_100px_minmax(0,1fr)_36px_32px] gap-3 items-end"
                      wire:key="modelo-{{ $index }}">
 
-                    {{-- Selector de Marca (Catálogo) --}}
+                    {{-- Selector de Marca (Filtro) --}}
                     <div class="space-y-1.5">
                         @if($index === 0)
-                            <label class="text-[0.7rem] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Marca Catálogo</label>
+                            <label class="text-[0.7rem] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Marca</label>
                         @endif
                         <select wire:model.live="modelos.{{ $index }}.temp_marca"
-                                class="w-full px-2 py-2 rounded-xl
-                                       bg-slate-100 dark:bg-slate-800/60
+                                class="w-full px-3 py-2 rounded-xl
+                                       bg-slate-50 dark:bg-slate-800/60
                                        border border-slate-300/80 dark:border-slate-700
-                                       text-slate-900 dark:text-slate-100 text-xs
+                                       text-slate-900 dark:text-slate-100 text-sm
                                        focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none">
-                            <option value="">— Marca —</option>
+                            <option value="">— Seleccionar —</option>
                             @foreach($marcas as $mName)
                                 <option value="{{ $mName }}">{{ $mName }}</option>
                             @endforeach
                         </select>
                     </div>
 
-                    {{-- Marca (Texto) --}}
+                    {{-- Selector de Modelo Oficial --}}
                     <div class="space-y-1.5">
                         @if($index === 0)
-                            <label class="text-[0.7rem] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Marca final</label>
+                            <label class="text-[0.7rem] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Modelo Oficial</label>
                         @endif
-                        <input type="text"
-                               wire:model="modelos.{{ $index }}.marca"
-                               placeholder="Ej: Dell"
-                               class="w-full px-3 py-2 rounded-xl
-                                      bg-white/70 dark:bg-slate-900/40
-                                      border border-slate-300/80 dark:border-slate-700
-                                      text-slate-900 dark:text-slate-100 text-xs
-                                      focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none">
-                        @error('modelos.'.$index.'.marca')
-                            <p class="text-[0.65rem] text-red-400 mt-0.5">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    {{-- Selector de Modelo (Catálogo) --}}
-                    <div class="space-y-1.5">
-                        @if($index === 0)
-                            <label class="text-[0.7rem] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Modelo Catálogo</label>
-                        @endif
-                        <select wire:model.live="modelos.{{ $index }}.catalogo_equipo_id"
-                                class="w-full px-2 py-2 rounded-xl
-                                       bg-slate-100 dark:bg-slate-800/60
+                        <select wire:model="modelos.{{ $index }}.catalogo_equipo_id"
+                                class="w-full px-3 py-2 rounded-xl
+                                       bg-slate-50 dark:bg-slate-800/60
                                        border border-slate-300/80 dark:border-slate-700
-                                       text-slate-900 dark:text-slate-100 text-xs
+                                       text-slate-900 dark:text-slate-100 text-sm
                                        focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none
-                                       {{ !empty($modelo['catalogo_equipo_id']) ? 'border-emerald-500/50' : '' }}">
-                            <option value="">— Modelo —</option>
+                                       {{ empty($modelo['temp_marca']) ? 'opacity-50 cursor-not-allowed' : '' }}"
+                                {{ empty($modelo['temp_marca']) ? 'disabled' : '' }}>
+                            <option value="">— Seleccionar modelo —</option>
                             @foreach($modelo['modelos_filtrados'] ?? [] as $mCat)
                                 <option value="{{ $mCat['id'] }}">{{ $mCat['modelo'] }}</option>
                             @endforeach
                         </select>
-                    </div>
-
-                    {{-- Modelo (Texto) --}}
-                    <div class="space-y-1.5">
-                        @if($index === 0)
-                            <label class="text-[0.7rem] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Modelo final</label>
-                        @endif
-                        <input type="text"
-                               wire:model="modelos.{{ $index }}.modelo"
-                               placeholder="Ej: Precision 5770"
-                               class="w-full px-3 py-2 rounded-xl
-                                      bg-white/70 dark:bg-slate-900/40
-                                      border border-slate-300/80 dark:border-slate-700
-                                      text-slate-900 dark:text-slate-100 text-xs
-                                      focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none">
-                        @error('modelos.'.$index.'.modelo')
+                        @error('modelos.'.$index.'.catalogo_equipo_id')
                             <p class="text-[0.65rem] text-red-400 mt-0.5">{{ $message }}</p>
                         @enderror
                     </div>
