@@ -1,4 +1,7 @@
+<div>
+<x-tb-background>
 <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10 space-y-6">
+    <x-toast />
     
     <x-topbar
         title="Estadísticas Detalladas de Inventario"
@@ -6,25 +9,46 @@
     />
 
     {{-- Filtros Avanzados --}}
-    <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/60 dark:border-slate-800/60 rounded-3xl p-4 shadow-sm flex flex-col xl:flex-row gap-4 items-center justify-between">
+    <div class="bg-white/80 dark:bg-slate-950/60
+                backdrop-blur-xl dark:backdrop-blur-2xl
+                border border-slate-200/80 dark:border-white/10
+                rounded-2xl p-5
+                shadow-md shadow-slate-900/10
+                dark:shadow-lg dark:shadow-slate-900/30
+                flex flex-col xl:flex-row gap-4 items-center justify-between
+                transition-all duration-300
+                hover:-translate-y-1
+                hover:shadow-lg hover:shadow-indigo-500/20
+                dark:hover:shadow-2xl dark:hover:shadow-indigo-500/25
+                hover:border-[#3B82F6]/70 dark:hover:border-indigo-400/50">
         <div class="flex items-center gap-2 w-full xl:w-auto">
             <svg class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
             </svg>
             <span class="text-sm font-semibold text-slate-600 dark:text-slate-300">Filtros:</span>
         </div>
-        
+
         <div class="flex flex-col sm:flex-row w-full xl:w-auto gap-3 flex-wrap">
             {{-- Orden --}}
             <select wire:model.live="orden"
-                    class="w-full sm:w-40 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm focus:ring-2 focus:ring-[#FF9521] outline-none">
+                    class="w-full sm:w-40 rounded-2xl
+                           bg-white/90 dark:bg-slate-900/70
+                           border border-white/60 dark:border-slate-600/70
+                           text-sm text-slate-900 dark:text-slate-100
+                           px-3 py-2
+                           focus:outline-none focus:ring-2 focus:ring-blue-500/70">
                 <option value="total_desc">Mayor cantidad</option>
                 <option value="marca_asc">Alfabético</option>
             </select>
 
             {{-- Tipo de Equipo --}}
             <select wire:model.live="filtroTipo"
-                    class="w-full sm:w-40 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm focus:ring-2 focus:ring-[#FF9521] outline-none">
+                    class="w-full sm:w-40 rounded-2xl
+                           bg-white/90 dark:bg-slate-900/70
+                           border border-white/60 dark:border-slate-600/70
+                           text-sm text-slate-900 dark:text-slate-100
+                           px-3 py-2
+                           focus:outline-none focus:ring-2 focus:ring-blue-500/70">
                 <option value="">Todos los Tipos</option>
                 @foreach($listaTipos as $tipo)
                     <option value="{{ $tipo }}">{{ $tipo }}</option>
@@ -33,7 +57,12 @@
 
             {{-- Marca --}}
             <select wire:model.live="filtroMarca"
-                    class="w-full sm:w-48 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm focus:ring-2 focus:ring-[#FF9521] outline-none">
+                    class="w-full sm:w-48 rounded-2xl
+                           bg-white/90 dark:bg-slate-900/70
+                           border border-white/60 dark:border-slate-600/70
+                           text-sm text-slate-900 dark:text-slate-100
+                           px-3 py-2
+                           focus:outline-none focus:ring-2 focus:ring-blue-500/70">
                 <option value="">Todas las Marcas</option>
                 @foreach($listaMarcas as $marca)
                     <option value="{{ $marca }}">{{ $marca }}</option>
@@ -50,97 +79,323 @@
                 <input type="text"
                        wire:model.live.debounce.300ms="search"
                        placeholder="Buscar modelo o marca..."
-                       class="w-full pl-10 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm focus:ring-2 focus:ring-[#FF9521] outline-none">
+                       class="w-full pl-10 pr-3 py-2 rounded-2xl
+                              bg-white/80 dark:bg-slate-900/60
+                              border border-white/60 dark:border-slate-700/70
+                              text-sm text-slate-900 dark:text-slate-100
+                              placeholder:text-slate-400 dark:placeholder:text-slate-500
+                              shadow-md shadow-slate-900/10 dark:shadow-xl dark:shadow-slate-950/60
+                              focus:outline-none focus:ring-2 focus:ring-blue-500/70 focus:border-blue-500/70
+                              backdrop-blur-xl">
             </div>
         </div>
     </div>
 
     {{-- Tarjetas de Resumen Global (Detallado) --}}
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-        
-        {{-- Fila 1: General y Operativos --}}
-        <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/60 dark:border-slate-800/60 rounded-2xl p-3 shadow-sm flex flex-col items-center justify-center text-center">
-            <span class="text-2xl font-black text-slate-800 dark:text-slate-100">{{ number_format($totales['general']) }}</span>
-            <span class="text-[0.60rem] font-bold uppercase tracking-wider text-slate-500 mt-1">Total Inv.</span>
+    <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-4">
+
+        {{-- Total Recibido --}}
+        <div
+            class="rounded-2xl
+                   bg-white/80 dark:bg-slate-950/60
+                   border border-slate-200/80 dark:border-white/10
+                   backdrop-blur-xl dark:backdrop-blur-2xl
+                   px-4 py-3
+                   shadow-md shadow-slate-900/10
+                   dark:shadow-lg dark:shadow-slate-900/30
+                   transition-all duration-300
+                   hover:-translate-y-1
+                   hover:shadow-lg hover:shadow-sky-500/20
+                   dark:hover:shadow-2xl dark:hover:shadow-sky-500/25
+                   hover:border-sky-400/70 dark:hover:border-sky-300/50"
+        >
+            <p class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                Total Recibido
+            </p>
+            <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-50">
+                {{ number_format($totales['general']) }}
+            </p>
         </div>
 
-        <div class="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 rounded-2xl p-3 shadow-sm flex flex-col items-center justify-center text-center">
-            <span class="text-xl font-bold text-slate-600 dark:text-slate-300">{{ number_format($totales['espera']) }}</span>
-            <span class="text-[0.60rem] font-bold uppercase tracking-wider text-slate-500 mt-1">En Espera</span>
+        {{-- Disponibles (en lote, sin serie aún) --}}
+        <div
+            class="rounded-2xl
+                   bg-slate-50/90 dark:bg-slate-900/40
+                   border border-slate-200/80 dark:border-slate-500/70
+                   backdrop-blur-xl dark:backdrop-blur-2xl
+                   px-4 py-3
+                   shadow-md shadow-slate-900/10
+                   dark:shadow-lg dark:shadow-slate-900/30
+                   transition-all duration-300
+                   hover:-translate-y-1
+                   hover:shadow-lg hover:shadow-slate-400/30
+                   dark:hover:shadow-2xl dark:hover:shadow-slate-400/25
+                   hover:border-slate-400/70"
+        >
+            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                Disponibles
+            </p>
+            <p class="mt-2 text-2xl font-bold text-slate-600 dark:text-slate-300">
+                {{ number_format($totales['sin_registrar']) }}
+            </p>
         </div>
 
-        <div class="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/50 rounded-2xl p-3 shadow-sm flex flex-col items-center justify-center text-center">
-            <span class="text-xl font-bold text-blue-600 dark:text-blue-400">{{ number_format($totales['asignado']) }}</span>
-            <span class="text-[0.60rem] font-bold uppercase tracking-wider text-blue-500/80 mt-1">Asignados</span>
+        {{-- Sin Asignar --}}
+        <div
+            class="rounded-2xl
+                   bg-violet-50/90 dark:bg-violet-950/40
+                   border border-violet-200/80 dark:border-violet-500/70
+                   backdrop-blur-xl dark:backdrop-blur-2xl
+                   px-4 py-3
+                   shadow-md shadow-violet-900/10
+                   dark:shadow-lg dark:shadow-violet-900/30
+                   transition-all duration-300
+                   hover:-translate-y-1
+                   hover:shadow-lg hover:shadow-violet-500/40
+                   dark:hover:shadow-2xl dark:hover:shadow-violet-400/50
+                   hover:border-violet-400/70"
+        >
+            <p class="text-xs font-semibold text-violet-700 dark:text-violet-200 uppercase tracking-wide">
+                Sin Asignar
+            </p>
+            <p class="mt-2 text-2xl font-bold text-violet-800 dark:text-violet-100">
+                {{ number_format($totales['sin_asignar']) }}
+            </p>
         </div>
 
-        <div class="bg-[#FF9521]/10 border border-[#FF9521]/20 rounded-2xl p-3 shadow-sm flex flex-col items-center justify-center text-center">
-            <span class="text-xl font-bold text-[#FF9521]">{{ number_format($totales['proceso']) }}</span>
-            <span class="text-[0.60rem] font-bold uppercase tracking-wider text-[#FF9521]/80 mt-1">En Proceso</span>
+        {{-- Asignados --}}
+        <div
+            class="rounded-2xl
+                   bg-blue-50/90 dark:bg-blue-950/40
+                   border border-blue-200/80 dark:border-blue-500/70
+                   backdrop-blur-xl dark:backdrop-blur-2xl
+                   px-4 py-3
+                   shadow-md shadow-blue-900/10
+                   dark:shadow-lg dark:shadow-blue-900/30
+                   transition-all duration-300
+                   hover:-translate-y-1
+                   hover:shadow-lg hover:shadow-blue-500/40
+                   dark:hover:shadow-2xl dark:hover:shadow-blue-400/50
+                   hover:border-blue-400/70"
+        >
+            <p class="text-xs font-semibold text-blue-700 dark:text-blue-200 uppercase tracking-wide">
+                Asignados
+            </p>
+            <p class="mt-2 text-2xl font-bold text-blue-800 dark:text-blue-100">
+                {{ number_format($totales['asignado']) }}
+            </p>
         </div>
 
-        <div class="bg-purple-50/50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-800/50 rounded-2xl p-3 shadow-sm flex flex-col items-center justify-center text-center">
-            <span class="text-xl font-bold text-purple-600 dark:text-purple-400">{{ number_format($totales['calidad']) }}</span>
-            <span class="text-[0.60rem] font-bold uppercase tracking-wider text-purple-500/80 mt-1">En Calidad</span>
+        {{-- En Proceso --}}
+        <div
+            class="rounded-2xl
+                   bg-orange-50/90 dark:bg-orange-950/40
+                   border border-orange-200/80 dark:border-orange-500/70
+                   backdrop-blur-xl dark:backdrop-blur-2xl
+                   px-4 py-3
+                   shadow-md shadow-orange-900/10
+                   dark:shadow-lg dark:shadow-orange-900/30
+                   transition-all duration-300
+                   hover:-translate-y-1
+                   hover:shadow-lg hover:shadow-orange-500/40
+                   dark:hover:shadow-2xl dark:hover:shadow-orange-400/50
+                   hover:border-orange-400/70"
+        >
+            <p class="text-xs font-semibold text-orange-700 dark:text-orange-200 uppercase tracking-wide">
+                En Proceso
+            </p>
+            <p class="mt-2 text-2xl font-bold text-orange-800 dark:text-orange-100">
+                {{ number_format($totales['proceso']) }}
+            </p>
         </div>
 
-        {{-- Fila 2: Bloqueos y Salidas --}}
-        <div class="bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/50 rounded-2xl p-3 shadow-sm flex flex-col items-center justify-center text-center">
-            <span class="text-xl font-bold text-amber-600 dark:text-amber-400">{{ number_format($totales['pieza']) }}</span>
-            <span class="text-[0.60rem] font-bold uppercase tracking-wider text-amber-500/80 mt-1">Falta Pieza</span>
+        {{-- En Calidad --}}
+        <div
+            class="rounded-2xl
+                   bg-purple-50/90 dark:bg-purple-950/40
+                   border border-purple-200/80 dark:border-purple-500/70
+                   backdrop-blur-xl dark:backdrop-blur-2xl
+                   px-4 py-3
+                   shadow-md shadow-purple-900/10
+                   dark:shadow-lg dark:shadow-purple-900/30
+                   transition-all duration-300
+                   hover:-translate-y-1
+                   hover:shadow-lg hover:shadow-purple-500/40
+                   dark:hover:shadow-2xl dark:hover:shadow-purple-400/50
+                   hover:border-purple-400/70"
+        >
+            <p class="text-xs font-semibold text-purple-700 dark:text-purple-200 uppercase tracking-wide">
+                En Calidad
+            </p>
+            <p class="mt-2 text-2xl font-bold text-purple-800 dark:text-purple-100">
+                {{ number_format($totales['calidad']) }}
+            </p>
         </div>
 
-        <div class="bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-800/50 rounded-2xl p-3 shadow-sm flex flex-col items-center justify-center text-center">
-            <span class="text-xl font-bold text-red-600 dark:text-red-400">{{ number_format($totales['garantia']) }}</span>
-            <span class="text-[0.60rem] font-bold uppercase tracking-wider text-red-500/80 mt-1">Garantías</span>
+        {{-- Falta Pieza --}}
+        <div
+            class="rounded-2xl
+                   bg-amber-50/90 dark:bg-amber-950/40
+                   border border-amber-200/80 dark:border-amber-500/70
+                   backdrop-blur-xl dark:backdrop-blur-2xl
+                   px-4 py-3
+                   shadow-md shadow-amber-900/10
+                   dark:shadow-lg dark:shadow-amber-900/30
+                   transition-all duration-300
+                   hover:-translate-y-1
+                   hover:shadow-lg hover:shadow-amber-500/40
+                   dark:hover:shadow-2xl dark:hover:shadow-amber-400/50
+                   hover:border-amber-400/70"
+        >
+            <p class="text-xs font-semibold text-amber-700 dark:text-amber-200 uppercase tracking-wide">
+                Falta Pieza
+            </p>
+            <p class="mt-2 text-2xl font-bold text-amber-800 dark:text-amber-100">
+                {{ number_format($totales['pieza']) }}
+            </p>
         </div>
 
-        <div class="bg-rose-50/50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-800/50 rounded-2xl p-3 shadow-sm flex flex-col items-center justify-center text-center">
-            <span class="text-xl font-bold text-rose-600 dark:text-rose-400">{{ number_format($totales['desarme']) }}</span>
-            <span class="text-[0.60rem] font-bold uppercase tracking-wider text-rose-500/80 mt-1">Desarme</span>
+        {{-- Garantías --}}
+        <div
+            class="rounded-2xl
+                   bg-red-50/90 dark:bg-red-950/40
+                   border border-red-200/80 dark:border-red-500/70
+                   backdrop-blur-xl dark:backdrop-blur-2xl
+                   px-4 py-3
+                   shadow-md shadow-red-900/10
+                   dark:shadow-lg dark:shadow-red-900/30
+                   transition-all duration-300
+                   hover:-translate-y-1
+                   hover:shadow-lg hover:shadow-red-500/40
+                   dark:hover:shadow-2xl dark:hover:shadow-red-400/50
+                   hover:border-red-400/70"
+        >
+            <p class="text-xs font-semibold text-red-700 dark:text-red-200 uppercase tracking-wide">
+                Garantías
+            </p>
+            <p class="mt-2 text-2xl font-bold text-red-800 dark:text-red-100">
+                {{ number_format($totales['garantia']) }}
+            </p>
         </div>
 
-        <div class="bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/50 rounded-2xl p-3 shadow-sm flex flex-col items-center justify-center text-center">
-            <span class="text-xl font-bold text-emerald-600 dark:text-emerald-400">{{ number_format($totales['finalizado']) }}</span>
-            <span class="text-[0.60rem] font-bold uppercase tracking-wider text-emerald-500/80 mt-1">Finalizados</span>
+        {{-- Desarme --}}
+        <div
+            class="rounded-2xl
+                   bg-rose-50/90 dark:bg-rose-950/40
+                   border border-rose-200/80 dark:border-rose-500/70
+                   backdrop-blur-xl dark:backdrop-blur-2xl
+                   px-4 py-3
+                   shadow-md shadow-rose-900/10
+                   dark:shadow-lg dark:shadow-rose-900/30
+                   transition-all duration-300
+                   hover:-translate-y-1
+                   hover:shadow-lg hover:shadow-rose-500/40
+                   dark:hover:shadow-2xl dark:hover:shadow-rose-400/50
+                   hover:border-rose-400/70"
+        >
+            <p class="text-xs font-semibold text-rose-700 dark:text-rose-200 uppercase tracking-wide">
+                Desarme
+            </p>
+            <p class="mt-2 text-2xl font-bold text-rose-800 dark:text-rose-100">
+                {{ number_format($totales['desarme']) }}
+            </p>
         </div>
 
-        <div class="bg-teal-50/50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-800/50 rounded-2xl p-3 shadow-sm flex flex-col items-center justify-center text-center">
-            <span class="text-xl font-bold text-teal-600 dark:text-teal-400">{{ number_format($totales['transferido']) }}</span>
-            <span class="text-[0.60rem] font-bold uppercase tracking-wider text-teal-500/80 mt-1">Transferidos</span>
+        {{-- Aprobados --}}
+        <div
+            class="rounded-2xl
+                   bg-emerald-50/90 dark:bg-emerald-950/40
+                   border border-emerald-200/80 dark:border-emerald-500/70
+                   backdrop-blur-xl dark:backdrop-blur-2xl
+                   px-4 py-3
+                   shadow-md shadow-emerald-900/10
+                   dark:shadow-lg dark:shadow-emerald-900/30
+                   transition-all duration-300
+                   hover:-translate-y-1
+                   hover:shadow-lg hover:shadow-emerald-500/40
+                   dark:hover:shadow-2xl dark:hover:shadow-emerald-400/50
+                   hover:border-emerald-400/70"
+        >
+            <p class="text-xs font-semibold text-emerald-700 dark:text-emerald-200 uppercase tracking-wide">
+                Aprobados
+            </p>
+            <p class="mt-2 text-2xl font-bold text-emerald-800 dark:text-emerald-100">
+                {{ number_format($totales['finalizado']) }}
+            </p>
         </div>
+
+        {{-- Transferidos --}}
+        <div
+            class="rounded-2xl
+                   bg-teal-50/90 dark:bg-teal-950/40
+                   border border-teal-200/80 dark:border-teal-500/70
+                   backdrop-blur-xl dark:backdrop-blur-2xl
+                   px-4 py-3
+                   shadow-md shadow-teal-900/10
+                   dark:shadow-lg dark:shadow-teal-900/30
+                   transition-all duration-300
+                   hover:-translate-y-1
+                   hover:shadow-lg hover:shadow-teal-500/40
+                   dark:hover:shadow-2xl dark:hover:shadow-teal-400/50
+                   hover:border-teal-400/70"
+        >
+            <p class="text-xs font-semibold text-teal-700 dark:text-teal-200 uppercase tracking-wide">
+                Transferidos
+            </p>
+            <p class="mt-2 text-2xl font-bold text-teal-800 dark:text-teal-100">
+                {{ number_format($totales['transferido']) }}
+            </p>
+        </div>
+
     </div>
 
     {{-- Tabla Concentrada por Marca y Modelo --}}
-    <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/60 dark:border-slate-800/60 rounded-3xl overflow-hidden shadow-sm">
+    <div class="bg-white/80 dark:bg-slate-950/60
+                backdrop-blur-xl dark:backdrop-blur-2xl
+                border border-slate-200/80 dark:border-white/10
+                rounded-2xl overflow-hidden
+                shadow-md shadow-slate-900/10
+                dark:shadow-lg dark:shadow-slate-900/30
+                transition-all duration-300
+                hover:-translate-y-1
+                hover:shadow-lg hover:shadow-indigo-500/20
+                dark:hover:shadow-2xl dark:hover:shadow-indigo-500/25
+                hover:border-[#3B82F6]/70 dark:hover:border-indigo-400/50">
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse min-w-[1200px]">
+            <table class="w-full text-left border-collapse min-w-[1400px]">
                 <thead>
-                    <tr class="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800">
-                        <th class="px-5 py-3 text-[0.65rem] font-bold uppercase tracking-wider text-slate-500 w-[22%]">Modelo del Equipo</th>
-                        <th class="px-3 py-3 text-[0.65rem] font-bold uppercase tracking-wider text-center text-slate-500">Espera</th>
+                    <tr class="bg-slate-100 border-b border-slate-200 dark:bg-slate-950/90 dark:border-slate-800/80">
+                        <th class="px-5 py-3 text-[0.65rem] font-bold uppercase tracking-wider text-slate-500 w-[18%]">Modelo del Equipo</th>
+                        <th class="px-3 py-3 text-[0.65rem] font-black uppercase tracking-wider text-center text-slate-400 bg-slate-100/50 dark:bg-slate-800" title="Equipos recibidos en lote sin número de serie escaneado aún (físicos en bodega)">Disponibles</th>
+                        <th class="px-3 py-3 text-[0.65rem] font-bold uppercase tracking-wider text-center text-slate-500">Sin Asig.</th>
                         <th class="px-3 py-3 text-[0.65rem] font-bold uppercase tracking-wider text-center text-blue-500">Asig.</th>
                         <th class="px-3 py-3 text-[0.65rem] font-bold uppercase tracking-wider text-center text-[#FF9521]">Proceso</th>
                         <th class="px-3 py-3 text-[0.65rem] font-bold uppercase tracking-wider text-center text-amber-500">Pieza</th>
                         <th class="px-3 py-3 text-[0.65rem] font-bold uppercase tracking-wider text-center text-red-500">Gtía.</th>
                         <th class="px-3 py-3 text-[0.65rem] font-bold uppercase tracking-wider text-center text-rose-500">Desarme</th>
                         <th class="px-3 py-3 text-[0.65rem] font-bold uppercase tracking-wider text-center text-purple-500">Calidad</th>
-                        <th class="px-3 py-3 text-[0.65rem] font-bold uppercase tracking-wider text-center text-emerald-500">Fin.</th>
+                        <th class="px-3 py-3 text-[0.65rem] font-bold uppercase tracking-wider text-center text-emerald-500">Aprob.</th>
                         <th class="px-3 py-3 text-[0.65rem] font-bold uppercase tracking-wider text-center text-teal-500">Transf.</th>
-                        <th class="px-5 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-right text-slate-800 dark:text-slate-200 border-l border-slate-200 dark:border-slate-700">Total</th>
+                        <th class="px-5 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-right text-slate-800 dark:text-slate-200 border-l border-slate-200 dark:border-slate-700">Total Físico</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800/50">
                     @forelse($estadisticas as $marca => $datosMarca)
-                        
+
                         {{-- Cabecera de la Marca --}}
                         <tr class="bg-slate-50/40 dark:bg-slate-800/40 border-t-2 border-t-slate-200 dark:border-t-slate-700">
-                            <td colspan="10" class="px-5 py-2">
+                            <td colspan="1" class="px-5 py-2">
                                 <span class="text-[0.8rem] font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest">{{ $marca }}</span>
                             </td>
+                            <td class="px-3 py-2 text-center bg-slate-100/50 dark:bg-slate-800">
+                                <span class="text-xs font-black text-slate-400">
+                                    {{ number_format($datosMarca['total_marca_sin_reg']) }}
+                                </span>
+                            </td>
+                            <td colspan="9"></td>
                             <td class="px-5 py-2 text-right border-l border-slate-200 dark:border-slate-700">
-                                <span class="px-2 py-0.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-[0.7rem] font-black text-slate-700 dark:text-slate-300 shadow-sm">
-                                    {{ number_format($datosMarca['total_marca']) }}
+                                <span class="px-2 py-0.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-[0.7rem] font-black text-slate-700 dark:text-slate-300 shadow-sm" title="Total de equipos con serie física (excluye aire)">
+                                    {{ number_format($datosMarca['total_marca_fisicos']) }}
                                 </span>
                             </td>
                         </tr>
@@ -156,11 +411,20 @@
                                         @endif
                                     </div>
                                 </td>
-                                
-                                {{-- Espera --}}
+
+                                {{-- Sin Registrar (Aire) --}}
+                                <td class="px-3 py-2.5 text-center bg-slate-100/30 dark:bg-slate-800/50">
+                                    @if($m->sin_registrar > 0)
+                                        <span class="text-xs font-black text-slate-500 dark:text-slate-400">{{ $m->sin_registrar }}</span>
+                                    @else
+                                        <span class="text-[0.65rem] text-slate-300/50 dark:text-slate-700/50">-</span>
+                                    @endif
+                                </td>
+
+                                {{-- Sin Asignar --}}
                                 <td class="px-3 py-2.5 text-center">
-                                    @if($m->c_espera > 0)
-                                        <span class="text-xs font-medium text-slate-500">{{ $m->c_espera }}</span>
+                                    @if($m->c_sin_asignar > 0)
+                                        <span class="text-xs font-medium text-slate-600">{{ $m->c_sin_asignar }}</span>
                                     @else
                                         <span class="text-[0.65rem] text-slate-300 dark:text-slate-700">-</span>
                                     @endif
@@ -248,7 +512,7 @@
                         @endforeach
                     @empty
                         <tr>
-                            <td colspan="11" class="px-6 py-16 text-center">
+                            <td colspan="12" class="px-6 py-16 text-center">
                                 <div class="flex flex-col items-center justify-center space-y-3">
                                     <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                                         <svg class="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -264,4 +528,6 @@
             </table>
         </div>
     </div>
+</div>
+</x-tb-background>
 </div>
