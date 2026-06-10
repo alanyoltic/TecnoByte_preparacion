@@ -28,10 +28,10 @@
             <span class="text-sm font-semibold text-slate-600 dark:text-slate-300">Filtros:</span>
         </div>
 
-        <div class="flex flex-col sm:flex-row w-full xl:w-auto gap-3 flex-wrap">
+        <div class="flex flex-col sm:flex-row w-full xl:w-auto gap-3 flex-wrap items-center">
             {{-- Orden --}}
             <select wire:model.live="orden"
-                    class="w-full sm:w-40 rounded-2xl
+                    class="w-full sm:w-36 rounded-2xl
                            bg-white/90 dark:bg-slate-900/70
                            border border-white/60 dark:border-slate-600/70
                            text-sm text-slate-900 dark:text-slate-100
@@ -43,7 +43,7 @@
 
             {{-- Tipo de Equipo --}}
             <select wire:model.live="filtroTipo"
-                    class="w-full sm:w-40 rounded-2xl
+                    class="w-full sm:w-36 rounded-2xl
                            bg-white/90 dark:bg-slate-900/70
                            border border-white/60 dark:border-slate-600/70
                            text-sm text-slate-900 dark:text-slate-100
@@ -57,7 +57,7 @@
 
             {{-- Marca --}}
             <select wire:model.live="filtroMarca"
-                    class="w-full sm:w-48 rounded-2xl
+                    class="w-full sm:w-40 rounded-2xl
                            bg-white/90 dark:bg-slate-900/70
                            border border-white/60 dark:border-slate-600/70
                            text-sm text-slate-900 dark:text-slate-100
@@ -69,8 +69,22 @@
                 @endforeach
             </select>
 
+            {{-- Modelo (reactivo a marca) --}}
+            <select wire:model.live="filtroModelo"
+                    class="w-full sm:w-48 rounded-2xl
+                           bg-white/90 dark:bg-slate-900/70
+                           border border-white/60 dark:border-slate-600/70
+                           text-sm text-slate-900 dark:text-slate-100
+                           px-3 py-2
+                           focus:outline-none focus:ring-2 focus:ring-blue-500/70">
+                <option value="">Todos los Modelos</option>
+                @foreach($listaModelos as $modelo)
+                    <option value="{{ $modelo }}">{{ $modelo }}</option>
+                @endforeach
+            </select>
+
             {{-- Búsqueda Texto --}}
-            <div class="relative w-full sm:w-64">
+            <div class="relative w-full sm:w-56">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -78,7 +92,7 @@
                 </div>
                 <input type="text"
                        wire:model.live.debounce.300ms="search"
-                       placeholder="Buscar modelo o marca..."
+                       placeholder="Buscar..."
                        class="w-full pl-10 pr-3 py-2 rounded-2xl
                               bg-white/80 dark:bg-slate-900/60
                               border border-white/60 dark:border-slate-700/70
@@ -88,264 +102,168 @@
                               focus:outline-none focus:ring-2 focus:ring-blue-500/70 focus:border-blue-500/70
                               backdrop-blur-xl">
             </div>
+
+            {{-- Botón limpiar filtros --}}
+            @if($filtroMarca || $filtroTipo || $filtroModelo || $filtroEstatus || $search)
+                <button wire:click="limpiarFiltros"
+                        class="flex items-center gap-1.5 px-3 py-2 rounded-2xl
+                               bg-red-50 dark:bg-red-950/40
+                               border border-red-200 dark:border-red-500/50
+                               text-xs font-semibold text-red-600 dark:text-red-300
+                               hover:bg-red-100 dark:hover:bg-red-900/50
+                               transition-all duration-200 whitespace-nowrap">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Limpiar filtros
+                </button>
+            @endif
         </div>
     </div>
 
-    {{-- Tarjetas de Resumen Global (Detallado) --}}
+    {{-- Tarjetas de Resumen — Clickables para filtrar la tabla por estatus --}}
+    @php $fe = $filtroEstatus; @endphp
     <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-4">
 
-        {{-- Total Recibido --}}
-        <div
-            class="rounded-2xl
-                   bg-white/80 dark:bg-slate-950/60
-                   border border-slate-200/80 dark:border-white/10
+        {{-- Total Preparación — Muestra todo (limpia filtro de estatus) --}}
+        <button wire:click="filtrarPorEstatus('')" type="button"
+            class="text-left rounded-2xl px-4 py-3 w-full
                    backdrop-blur-xl dark:backdrop-blur-2xl
-                   px-4 py-3
-                   shadow-md shadow-slate-900/10
-                   dark:shadow-lg dark:shadow-slate-900/30
-                   transition-all duration-300
-                   hover:-translate-y-1
-                   hover:shadow-lg hover:shadow-sky-500/20
-                   dark:hover:shadow-2xl dark:hover:shadow-sky-500/25
-                   hover:border-sky-400/70 dark:hover:border-sky-300/50"
+                   transition-all duration-200 active:scale-[0.97] cursor-pointer select-none
+                   {{ $fe === '' 
+                       ? 'bg-sky-50 dark:bg-sky-950/50 border-2 border-sky-400 dark:border-sky-400 shadow-lg shadow-sky-500/25 -translate-y-0.5' 
+                       : 'bg-white/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-white/10 shadow-md shadow-slate-900/10 dark:shadow-lg dark:shadow-slate-900/30 hover:-translate-y-1 hover:border-sky-400/70' }}"
         >
-            <p class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
-                Total Recibido
-            </p>
-            <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-50">
-                {{ number_format($totales['general']) }}
-            </p>
-        </div>
+            <p class="text-xs font-semibold uppercase tracking-wide {{ $fe === '' ? 'text-sky-600 dark:text-sky-300' : 'text-slate-500 dark:text-slate-400' }}">Total Prep.</p>
+            <p class="mt-2 text-2xl font-bold {{ $fe === '' ? 'text-sky-700 dark:text-sky-200' : 'text-slate-900 dark:text-slate-50' }}">{{ number_format($totales['general']) }}</p>
+            @if($fe === '')<span class="mt-1 inline-block text-[0.6rem] font-bold text-sky-500 dark:text-sky-400 uppercase tracking-wider">✔ Todos</span>@endif
+        </button>
 
-        {{-- Disponibles (en lote, sin serie aún) --}}
-        <div
-            class="rounded-2xl
-                   bg-slate-50/90 dark:bg-slate-900/40
-                   border border-slate-200/80 dark:border-slate-500/70
+        {{-- Disponibles --}}
+        <button wire:click="filtrarPorEstatus('disponibles')" type="button"
+            class="text-left rounded-2xl px-4 py-3 w-full
                    backdrop-blur-xl dark:backdrop-blur-2xl
-                   px-4 py-3
-                   shadow-md shadow-slate-900/10
-                   dark:shadow-lg dark:shadow-slate-900/30
-                   transition-all duration-300
-                   hover:-translate-y-1
-                   hover:shadow-lg hover:shadow-slate-400/30
-                   dark:hover:shadow-2xl dark:hover:shadow-slate-400/25
-                   hover:border-slate-400/70"
+                   transition-all duration-200 active:scale-[0.97] cursor-pointer select-none
+                   {{ $fe === 'disponibles'
+                       ? 'bg-slate-100/90 dark:bg-slate-800/60 border-2 border-slate-500 dark:border-slate-400 shadow-lg shadow-slate-500/20 -translate-y-0.5'
+                       : 'bg-slate-50/90 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-500/70 shadow-md shadow-slate-900/10 hover:-translate-y-1 hover:border-slate-400/70' }}"
         >
-            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                Disponibles
-            </p>
-            <p class="mt-2 text-2xl font-bold text-slate-600 dark:text-slate-300">
-                {{ number_format($totales['sin_registrar']) }}
-            </p>
-        </div>
-
-        {{-- Sin Asignar --}}
-        <div
-            class="rounded-2xl
-                   bg-violet-50/90 dark:bg-violet-950/40
-                   border border-violet-200/80 dark:border-violet-500/70
-                   backdrop-blur-xl dark:backdrop-blur-2xl
-                   px-4 py-3
-                   shadow-md shadow-violet-900/10
-                   dark:shadow-lg dark:shadow-violet-900/30
-                   transition-all duration-300
-                   hover:-translate-y-1
-                   hover:shadow-lg hover:shadow-violet-500/40
-                   dark:hover:shadow-2xl dark:hover:shadow-violet-400/50
-                   hover:border-violet-400/70"
-        >
-            <p class="text-xs font-semibold text-violet-700 dark:text-violet-200 uppercase tracking-wide">
-                Sin Asignar
-            </p>
-            <p class="mt-2 text-2xl font-bold text-violet-800 dark:text-violet-100">
-                {{ number_format($totales['sin_asignar']) }}
-            </p>
-        </div>
+            <p class="text-xs font-semibold uppercase tracking-wide {{ $fe === 'disponibles' ? 'text-slate-700 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400' }}">Disponibles</p>
+            <p class="mt-2 text-2xl font-bold {{ $fe === 'disponibles' ? 'text-slate-800 dark:text-slate-100' : 'text-slate-600 dark:text-slate-300' }}">{{ number_format($totales['disponibles']) }}</p>
+            @if($fe === 'disponibles')<span class="mt-1 inline-block text-[0.6rem] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">✔ Filtro activo</span>@endif
+        </button>
 
         {{-- Asignados --}}
-        <div
-            class="rounded-2xl
-                   bg-blue-50/90 dark:bg-blue-950/40
-                   border border-blue-200/80 dark:border-blue-500/70
+        <button wire:click="filtrarPorEstatus('asignado')" type="button"
+            class="text-left rounded-2xl px-4 py-3 w-full
                    backdrop-blur-xl dark:backdrop-blur-2xl
-                   px-4 py-3
-                   shadow-md shadow-blue-900/10
-                   dark:shadow-lg dark:shadow-blue-900/30
-                   transition-all duration-300
-                   hover:-translate-y-1
-                   hover:shadow-lg hover:shadow-blue-500/40
-                   dark:hover:shadow-2xl dark:hover:shadow-blue-400/50
-                   hover:border-blue-400/70"
+                   transition-all duration-200 active:scale-[0.97] cursor-pointer select-none
+                   {{ $fe === 'asignado'
+                       ? 'bg-blue-100/90 dark:bg-blue-900/50 border-2 border-blue-500 dark:border-blue-400 shadow-lg shadow-blue-500/25 -translate-y-0.5'
+                       : 'bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-500/70 shadow-md shadow-blue-900/10 hover:-translate-y-1 hover:border-blue-400/70' }}"
         >
-            <p class="text-xs font-semibold text-blue-700 dark:text-blue-200 uppercase tracking-wide">
-                Asignados
-            </p>
-            <p class="mt-2 text-2xl font-bold text-blue-800 dark:text-blue-100">
-                {{ number_format($totales['asignado']) }}
-            </p>
-        </div>
+            <p class="text-xs font-semibold uppercase tracking-wide {{ $fe === 'asignado' ? 'text-blue-700 dark:text-blue-200' : 'text-blue-600 dark:text-blue-300' }}">Asignados</p>
+            <p class="mt-2 text-2xl font-bold {{ $fe === 'asignado' ? 'text-blue-800 dark:text-blue-100' : 'text-blue-700 dark:text-blue-200' }}">{{ number_format($totales['asignado']) }}</p>
+            @if($fe === 'asignado')<span class="mt-1 inline-block text-[0.6rem] font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider">✔ Filtro activo</span>@endif
+        </button>
 
         {{-- En Proceso --}}
-        <div
-            class="rounded-2xl
-                   bg-orange-50/90 dark:bg-orange-950/40
-                   border border-orange-200/80 dark:border-orange-500/70
+        <button wire:click="filtrarPorEstatus('proceso')" type="button"
+            class="text-left rounded-2xl px-4 py-3 w-full
                    backdrop-blur-xl dark:backdrop-blur-2xl
-                   px-4 py-3
-                   shadow-md shadow-orange-900/10
-                   dark:shadow-lg dark:shadow-orange-900/30
-                   transition-all duration-300
-                   hover:-translate-y-1
-                   hover:shadow-lg hover:shadow-orange-500/40
-                   dark:hover:shadow-2xl dark:hover:shadow-orange-400/50
-                   hover:border-orange-400/70"
+                   transition-all duration-200 active:scale-[0.97] cursor-pointer select-none
+                   {{ $fe === 'proceso'
+                       ? 'bg-orange-100/90 dark:bg-orange-900/50 border-2 border-orange-500 dark:border-orange-400 shadow-lg shadow-orange-500/25 -translate-y-0.5'
+                       : 'bg-orange-50/90 dark:bg-orange-950/40 border border-orange-200/80 dark:border-orange-500/70 shadow-md shadow-orange-900/10 hover:-translate-y-1 hover:border-orange-400/70' }}"
         >
-            <p class="text-xs font-semibold text-orange-700 dark:text-orange-200 uppercase tracking-wide">
-                En Proceso
-            </p>
-            <p class="mt-2 text-2xl font-bold text-orange-800 dark:text-orange-100">
-                {{ number_format($totales['proceso']) }}
-            </p>
-        </div>
+            <p class="text-xs font-semibold uppercase tracking-wide {{ $fe === 'proceso' ? 'text-orange-700 dark:text-orange-200' : 'text-orange-600 dark:text-orange-300' }}">En Proceso</p>
+            <p class="mt-2 text-2xl font-bold {{ $fe === 'proceso' ? 'text-orange-800 dark:text-orange-100' : 'text-orange-700 dark:text-orange-200' }}">{{ number_format($totales['proceso']) }}</p>
+            @if($fe === 'proceso')<span class="mt-1 inline-block text-[0.6rem] font-bold text-orange-500 dark:text-orange-400 uppercase tracking-wider">✔ Filtro activo</span>@endif
+        </button>
 
         {{-- En Calidad --}}
-        <div
-            class="rounded-2xl
-                   bg-purple-50/90 dark:bg-purple-950/40
-                   border border-purple-200/80 dark:border-purple-500/70
+        <button wire:click="filtrarPorEstatus('calidad')" type="button"
+            class="text-left rounded-2xl px-4 py-3 w-full
                    backdrop-blur-xl dark:backdrop-blur-2xl
-                   px-4 py-3
-                   shadow-md shadow-purple-900/10
-                   dark:shadow-lg dark:shadow-purple-900/30
-                   transition-all duration-300
-                   hover:-translate-y-1
-                   hover:shadow-lg hover:shadow-purple-500/40
-                   dark:hover:shadow-2xl dark:hover:shadow-purple-400/50
-                   hover:border-purple-400/70"
+                   transition-all duration-200 active:scale-[0.97] cursor-pointer select-none
+                   {{ $fe === 'calidad'
+                       ? 'bg-purple-100/90 dark:bg-purple-900/50 border-2 border-purple-500 dark:border-purple-400 shadow-lg shadow-purple-500/25 -translate-y-0.5'
+                       : 'bg-purple-50/90 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-500/70 shadow-md shadow-purple-900/10 hover:-translate-y-1 hover:border-purple-400/70' }}"
         >
-            <p class="text-xs font-semibold text-purple-700 dark:text-purple-200 uppercase tracking-wide">
-                En Calidad
-            </p>
-            <p class="mt-2 text-2xl font-bold text-purple-800 dark:text-purple-100">
-                {{ number_format($totales['calidad']) }}
-            </p>
-        </div>
+            <p class="text-xs font-semibold uppercase tracking-wide {{ $fe === 'calidad' ? 'text-purple-700 dark:text-purple-200' : 'text-purple-600 dark:text-purple-300' }}">En Calidad</p>
+            <p class="mt-2 text-2xl font-bold {{ $fe === 'calidad' ? 'text-purple-800 dark:text-purple-100' : 'text-purple-700 dark:text-purple-200' }}">{{ number_format($totales['calidad']) }}</p>
+            @if($fe === 'calidad')<span class="mt-1 inline-block text-[0.6rem] font-bold text-purple-500 dark:text-purple-400 uppercase tracking-wider">✔ Filtro activo</span>@endif
+        </button>
 
         {{-- Falta Pieza --}}
-        <div
-            class="rounded-2xl
-                   bg-amber-50/90 dark:bg-amber-950/40
-                   border border-amber-200/80 dark:border-amber-500/70
+        <button wire:click="filtrarPorEstatus('pieza')" type="button"
+            class="text-left rounded-2xl px-4 py-3 w-full
                    backdrop-blur-xl dark:backdrop-blur-2xl
-                   px-4 py-3
-                   shadow-md shadow-amber-900/10
-                   dark:shadow-lg dark:shadow-amber-900/30
-                   transition-all duration-300
-                   hover:-translate-y-1
-                   hover:shadow-lg hover:shadow-amber-500/40
-                   dark:hover:shadow-2xl dark:hover:shadow-amber-400/50
-                   hover:border-amber-400/70"
+                   transition-all duration-200 active:scale-[0.97] cursor-pointer select-none
+                   {{ $fe === 'pieza'
+                       ? 'bg-amber-100/90 dark:bg-amber-900/50 border-2 border-amber-500 dark:border-amber-400 shadow-lg shadow-amber-500/25 -translate-y-0.5'
+                       : 'bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-500/70 shadow-md shadow-amber-900/10 hover:-translate-y-1 hover:border-amber-400/70' }}"
         >
-            <p class="text-xs font-semibold text-amber-700 dark:text-amber-200 uppercase tracking-wide">
-                Falta Pieza
-            </p>
-            <p class="mt-2 text-2xl font-bold text-amber-800 dark:text-amber-100">
-                {{ number_format($totales['pieza']) }}
-            </p>
-        </div>
+            <p class="text-xs font-semibold uppercase tracking-wide {{ $fe === 'pieza' ? 'text-amber-700 dark:text-amber-200' : 'text-amber-600 dark:text-amber-300' }}">Falta Pieza</p>
+            <p class="mt-2 text-2xl font-bold {{ $fe === 'pieza' ? 'text-amber-800 dark:text-amber-100' : 'text-amber-700 dark:text-amber-200' }}">{{ number_format($totales['pieza']) }}</p>
+            @if($fe === 'pieza')<span class="mt-1 inline-block text-[0.6rem] font-bold text-amber-500 dark:text-amber-400 uppercase tracking-wider">✔ Filtro activo</span>@endif
+        </button>
 
         {{-- Garantías --}}
-        <div
-            class="rounded-2xl
-                   bg-red-50/90 dark:bg-red-950/40
-                   border border-red-200/80 dark:border-red-500/70
+        <button wire:click="filtrarPorEstatus('garantia')" type="button"
+            class="text-left rounded-2xl px-4 py-3 w-full
                    backdrop-blur-xl dark:backdrop-blur-2xl
-                   px-4 py-3
-                   shadow-md shadow-red-900/10
-                   dark:shadow-lg dark:shadow-red-900/30
-                   transition-all duration-300
-                   hover:-translate-y-1
-                   hover:shadow-lg hover:shadow-red-500/40
-                   dark:hover:shadow-2xl dark:hover:shadow-red-400/50
-                   hover:border-red-400/70"
+                   transition-all duration-200 active:scale-[0.97] cursor-pointer select-none
+                   {{ $fe === 'garantia'
+                       ? 'bg-red-100/90 dark:bg-red-900/50 border-2 border-red-500 dark:border-red-400 shadow-lg shadow-red-500/25 -translate-y-0.5'
+                       : 'bg-red-50/90 dark:bg-red-950/40 border border-red-200/80 dark:border-red-500/70 shadow-md shadow-red-900/10 hover:-translate-y-1 hover:border-red-400/70' }}"
         >
-            <p class="text-xs font-semibold text-red-700 dark:text-red-200 uppercase tracking-wide">
-                Garantías
-            </p>
-            <p class="mt-2 text-2xl font-bold text-red-800 dark:text-red-100">
-                {{ number_format($totales['garantia']) }}
-            </p>
-        </div>
+            <p class="text-xs font-semibold uppercase tracking-wide {{ $fe === 'garantia' ? 'text-red-700 dark:text-red-200' : 'text-red-600 dark:text-red-300' }}">Garantías</p>
+            <p class="mt-2 text-2xl font-bold {{ $fe === 'garantia' ? 'text-red-800 dark:text-red-100' : 'text-red-700 dark:text-red-200' }}">{{ number_format($totales['garantia']) }}</p>
+            @if($fe === 'garantia')<span class="mt-1 inline-block text-[0.6rem] font-bold text-red-500 dark:text-red-400 uppercase tracking-wider">✔ Filtro activo</span>@endif
+        </button>
 
         {{-- Desarme --}}
-        <div
-            class="rounded-2xl
-                   bg-rose-50/90 dark:bg-rose-950/40
-                   border border-rose-200/80 dark:border-rose-500/70
+        <button wire:click="filtrarPorEstatus('desarme')" type="button"
+            class="text-left rounded-2xl px-4 py-3 w-full
                    backdrop-blur-xl dark:backdrop-blur-2xl
-                   px-4 py-3
-                   shadow-md shadow-rose-900/10
-                   dark:shadow-lg dark:shadow-rose-900/30
-                   transition-all duration-300
-                   hover:-translate-y-1
-                   hover:shadow-lg hover:shadow-rose-500/40
-                   dark:hover:shadow-2xl dark:hover:shadow-rose-400/50
-                   hover:border-rose-400/70"
+                   transition-all duration-200 active:scale-[0.97] cursor-pointer select-none
+                   {{ $fe === 'desarme'
+                       ? 'bg-rose-100/90 dark:bg-rose-900/50 border-2 border-rose-500 dark:border-rose-400 shadow-lg shadow-rose-500/25 -translate-y-0.5'
+                       : 'bg-rose-50/90 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-500/70 shadow-md shadow-rose-900/10 hover:-translate-y-1 hover:border-rose-400/70' }}"
         >
-            <p class="text-xs font-semibold text-rose-700 dark:text-rose-200 uppercase tracking-wide">
-                Desarme
-            </p>
-            <p class="mt-2 text-2xl font-bold text-rose-800 dark:text-rose-100">
-                {{ number_format($totales['desarme']) }}
-            </p>
-        </div>
+            <p class="text-xs font-semibold uppercase tracking-wide {{ $fe === 'desarme' ? 'text-rose-700 dark:text-rose-200' : 'text-rose-600 dark:text-rose-300' }}">Desarme</p>
+            <p class="mt-2 text-2xl font-bold {{ $fe === 'desarme' ? 'text-rose-800 dark:text-rose-100' : 'text-rose-700 dark:text-rose-200' }}">{{ number_format($totales['desarme']) }}</p>
+            @if($fe === 'desarme')<span class="mt-1 inline-block text-[0.6rem] font-bold text-rose-500 dark:text-rose-400 uppercase tracking-wider">✔ Filtro activo</span>@endif
+        </button>
 
         {{-- Aprobados --}}
-        <div
-            class="rounded-2xl
-                   bg-emerald-50/90 dark:bg-emerald-950/40
-                   border border-emerald-200/80 dark:border-emerald-500/70
+        <button wire:click="filtrarPorEstatus('finalizado')" type="button"
+            class="text-left rounded-2xl px-4 py-3 w-full
                    backdrop-blur-xl dark:backdrop-blur-2xl
-                   px-4 py-3
-                   shadow-md shadow-emerald-900/10
-                   dark:shadow-lg dark:shadow-emerald-900/30
-                   transition-all duration-300
-                   hover:-translate-y-1
-                   hover:shadow-lg hover:shadow-emerald-500/40
-                   dark:hover:shadow-2xl dark:hover:shadow-emerald-400/50
-                   hover:border-emerald-400/70"
+                   transition-all duration-200 active:scale-[0.97] cursor-pointer select-none
+                   {{ $fe === 'finalizado'
+                       ? 'bg-emerald-100/90 dark:bg-emerald-900/50 border-2 border-emerald-500 dark:border-emerald-400 shadow-lg shadow-emerald-500/25 -translate-y-0.5'
+                       : 'bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-500/70 shadow-md shadow-emerald-900/10 hover:-translate-y-1 hover:border-emerald-400/70' }}"
         >
-            <p class="text-xs font-semibold text-emerald-700 dark:text-emerald-200 uppercase tracking-wide">
-                Aprobados
-            </p>
-            <p class="mt-2 text-2xl font-bold text-emerald-800 dark:text-emerald-100">
-                {{ number_format($totales['finalizado']) }}
-            </p>
-        </div>
+            <p class="text-xs font-semibold uppercase tracking-wide {{ $fe === 'finalizado' ? 'text-emerald-700 dark:text-emerald-200' : 'text-emerald-600 dark:text-emerald-300' }}">Aprobados</p>
+            <p class="mt-2 text-2xl font-bold {{ $fe === 'finalizado' ? 'text-emerald-800 dark:text-emerald-100' : 'text-emerald-700 dark:text-emerald-200' }}">{{ number_format($totales['finalizado']) }}</p>
+            @if($fe === 'finalizado')<span class="mt-1 inline-block text-[0.6rem] font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-wider">✔ Filtro activo</span>@endif
+        </button>
 
         {{-- Transferidos --}}
-        <div
-            class="rounded-2xl
-                   bg-teal-50/90 dark:bg-teal-950/40
-                   border border-teal-200/80 dark:border-teal-500/70
+        <button wire:click="filtrarPorEstatus('transferido')" type="button"
+            class="text-left rounded-2xl px-4 py-3 w-full
                    backdrop-blur-xl dark:backdrop-blur-2xl
-                   px-4 py-3
-                   shadow-md shadow-teal-900/10
-                   dark:shadow-lg dark:shadow-teal-900/30
-                   transition-all duration-300
-                   hover:-translate-y-1
-                   hover:shadow-lg hover:shadow-teal-500/40
-                   dark:hover:shadow-2xl dark:hover:shadow-teal-400/50
-                   hover:border-teal-400/70"
+                   transition-all duration-200 active:scale-[0.97] cursor-pointer select-none
+                   {{ $fe === 'transferido'
+                       ? 'bg-teal-100/90 dark:bg-teal-900/50 border-2 border-teal-500 dark:border-teal-400 shadow-lg shadow-teal-500/25 -translate-y-0.5'
+                       : 'bg-teal-50/90 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-500/70 shadow-md shadow-teal-900/10 hover:-translate-y-1 hover:border-teal-400/70' }}"
         >
-            <p class="text-xs font-semibold text-teal-700 dark:text-teal-200 uppercase tracking-wide">
-                Transferidos
-            </p>
-            <p class="mt-2 text-2xl font-bold text-teal-800 dark:text-teal-100">
-                {{ number_format($totales['transferido']) }}
-            </p>
-        </div>
+            <p class="text-xs font-semibold uppercase tracking-wide {{ $fe === 'transferido' ? 'text-teal-700 dark:text-teal-200' : 'text-teal-600 dark:text-teal-300' }}">Transferidos</p>
+            <p class="mt-2 text-2xl font-bold {{ $fe === 'transferido' ? 'text-teal-800 dark:text-teal-100' : 'text-teal-700 dark:text-teal-200' }}">{{ number_format($totales['transferido']) }}</p>
+            @if($fe === 'transferido')<span class="mt-1 inline-block text-[0.6rem] font-bold text-teal-500 dark:text-teal-400 uppercase tracking-wider">✔ Filtro activo</span>@endif
+        </button>
 
     </div>
 
@@ -366,8 +284,7 @@
                 <thead>
                     <tr class="bg-slate-100 border-b border-slate-200 dark:bg-slate-950/90 dark:border-slate-800/80">
                         <th class="px-5 py-3 text-[0.65rem] font-bold uppercase tracking-wider text-slate-500 w-[18%]">Modelo del Equipo</th>
-                        <th class="px-3 py-3 text-[0.65rem] font-black uppercase tracking-wider text-center text-slate-400 bg-slate-100/50 dark:bg-slate-800" title="Equipos recibidos en lote sin número de serie escaneado aún (físicos en bodega)">Disponibles</th>
-                        <th class="px-3 py-3 text-[0.65rem] font-bold uppercase tracking-wider text-center text-slate-500">Sin Asig.</th>
+                        <th class="px-3 py-3 text-[0.65rem] font-black uppercase tracking-wider text-center text-slate-400 bg-slate-100/50 dark:bg-slate-800" title="Equipos en bodega: sin serie escaneada + con serie pero sin asignar aún">Disponibles</th>
                         <th class="px-3 py-3 text-[0.65rem] font-bold uppercase tracking-wider text-center text-blue-500">Asig.</th>
                         <th class="px-3 py-3 text-[0.65rem] font-bold uppercase tracking-wider text-center text-[#FF9521]">Proceso</th>
                         <th class="px-3 py-3 text-[0.65rem] font-bold uppercase tracking-wider text-center text-amber-500">Pieza</th>
@@ -389,12 +306,12 @@
                             </td>
                             <td class="px-3 py-2 text-center bg-slate-100/50 dark:bg-slate-800">
                                 <span class="text-xs font-black text-slate-400">
-                                    {{ number_format($datosMarca['total_marca_sin_reg']) }}
+                                    {{ number_format($datosMarca['total_marca_disponibles']) }}
                                 </span>
                             </td>
-                            <td colspan="9"></td>
+                            <td colspan="8"></td>
                             <td class="px-5 py-2 text-right border-l border-slate-200 dark:border-slate-700">
-                                <span class="px-2 py-0.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-[0.7rem] font-black text-slate-700 dark:text-slate-300 shadow-sm" title="Total de equipos con serie física (excluye aire)">
+                                <span class="px-2 py-0.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-[0.7rem] font-black text-slate-700 dark:text-slate-300 shadow-sm" title="Total de equipos con número de serie en el sistema">
                                     {{ number_format($datosMarca['total_marca_fisicos']) }}
                                 </span>
                             </td>
@@ -412,21 +329,12 @@
                                     </div>
                                 </td>
 
-                                {{-- Sin Registrar (Aire) --}}
+                                {{-- Disponibles (sin serie + con serie sin asignar) --}}
                                 <td class="px-3 py-2.5 text-center bg-slate-100/30 dark:bg-slate-800/50">
-                                    @if($m->sin_registrar > 0)
-                                        <span class="text-xs font-black text-slate-500 dark:text-slate-400">{{ $m->sin_registrar }}</span>
+                                    @if($m->disponibles > 0)
+                                        <span class="text-xs font-black text-slate-500 dark:text-slate-400">{{ $m->disponibles }}</span>
                                     @else
                                         <span class="text-[0.65rem] text-slate-300/50 dark:text-slate-700/50">-</span>
-                                    @endif
-                                </td>
-
-                                {{-- Sin Asignar --}}
-                                <td class="px-3 py-2.5 text-center">
-                                    @if($m->c_sin_asignar > 0)
-                                        <span class="text-xs font-medium text-slate-600">{{ $m->c_sin_asignar }}</span>
-                                    @else
-                                        <span class="text-[0.65rem] text-slate-300 dark:text-slate-700">-</span>
                                     @endif
                                 </td>
 
@@ -512,7 +420,7 @@
                         @endforeach
                     @empty
                         <tr>
-                            <td colspan="12" class="px-6 py-16 text-center">
+                            <td colspan="11" class="px-6 py-16 text-center">
                                 <div class="flex flex-col items-center justify-center space-y-3">
                                     <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                                         <svg class="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

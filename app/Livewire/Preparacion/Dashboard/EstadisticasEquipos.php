@@ -11,30 +11,32 @@ use Illuminate\Support\Facades\DB;
 #[Layout('layouts.app', ['pageTitle' => 'Estadísticas Detalladas de Equipos'])]
 class EstadisticasEquipos extends Component
 {
-    public $search = '';
-    public $filtroMarca = '';
-    public $filtroTipo = '';
-    public $orden = 'total_desc'; // total_desc, marca_asc
+    public $search        = '';
+    public $filtroMarca   = '';
+    public $filtroTipo    = '';
+    public $filtroModelo  = '';
+    public $filtroEstatus = '';
+    public $orden         = 'total_desc'; // total_desc, marca_asc
 
     public $estadisticas = [];
-    public $listaMarcas = [];
-    public $listaTipos = [];
-    
+    public $listaMarcas  = [];
+    public $listaTipos   = [];
+    public $listaModelos = [];
+
     public $totales = [
-        'general'      => 0, 
-        'sin_registrar'=> 0, 
-        'sin_asignar'  => 0, 
-        'asignado'     => 0,
-        'proceso'      => 0,
-        'pieza'        => 0,
-        'garantia'     => 0,
-        'desarme'      => 0,
-        'calidad'      => 0,
-        'finalizado'   => 0,
-        'transferido'  => 0,
+        'general'     => 0, // Total Preparación: todo lo recibido en lote
+        'disponibles' => 0, // Sin serie aún + con serie pero sin asignar (en bodega)
+        'asignado'    => 0,
+        'proceso'     => 0,
+        'pieza'       => 0,
+        'garantia'    => 0,
+        'desarme'     => 0,
+        'calidad'     => 0,
+        'finalizado'  => 0,
+        'transferido' => 0,
     ];
 
-    public function mount()
+    public function mount(): void
     {
         $this->listaMarcas = CatalogoEquipo::where('activo', true)
             ->distinct()
@@ -49,13 +51,47 @@ class EstadisticasEquipos extends Component
             ->orderBy('tipo_equipo')
             ->pluck('tipo_equipo')
             ->toArray();
-            
+
+        $this->actualizarListaModelos();
         $this->cargarEstadisticas();
     }
 
-    public function updated($propertyName)
+    public function updated(string $propertyName): void
     {
-        // Al actualizar cualquier filtro, recargamos
+        // Si cambia la marca, resetear modelo y recargar lista de modelos
+        if ($propertyName === 'filtroMarca') {
+            $this->filtroModelo = '';
+            $this->actualizarListaModelos();
+        }
+        $this->cargarEstadisticas();
+    }
+
+    /** Lista de modelos filtrada por la marca activa (para el select de modelo) */
+    public function actualizarListaModelos(): void
+    {
+        $q = CatalogoEquipo::where('activo', true)->distinct()->orderBy('modelo');
+        if (!empty($this->filtroMarca)) {
+            $q->where('marca', $this->filtroMarca);
+        }
+        $this->listaModelos = $q->pluck('modelo')->toArray();
+    }
+
+    /** Activa/desactiva el filtro de estatus al hacer clic en una tarjeta */
+    public function filtrarPorEstatus(string $estatus): void
+    {
+        $this->filtroEstatus = ($this->filtroEstatus === $estatus) ? '' : $estatus;
+        $this->cargarEstadisticas();
+    }
+
+    /** Limpia todos los filtros de una vez */
+    public function limpiarFiltros(): void
+    {
+        $this->filtroEstatus = '';
+        $this->filtroMarca   = '';
+        $this->filtroTipo    = '';
+        $this->filtroModelo  = '';
+        $this->search        = '';
+        $this->actualizarListaModelos();
         $this->cargarEstadisticas();
     }
 
@@ -121,6 +157,10 @@ class EstadisticasEquipos extends Component
             $query->where('c.tipo_equipo', $this->filtroTipo);
         }
 
+        if (!empty($this->filtroModelo)) {
+            $query->where('c.modelo', $this->filtroModelo);
+        }
+
         if (!empty($this->search)) {
             $query->where(function($q) {
                 $q->where('c.modelo', 'LIKE', '%' . $this->search . '%')
@@ -140,51 +180,65 @@ class EstadisticasEquipos extends Component
         // Estructuramos la data
         $agrupado = [];
         $totales = [
-            'general'      => 0,
-            'sin_registrar'=> 0,
-            'sin_asignar'  => 0,
-            'asignado'     => 0,
-            'proceso'      => 0,
-            'pieza'        => 0,
-            'garantia'     => 0,
-            'desarme'      => 0,
-            'calidad'      => 0,
-            'finalizado'   => 0,
-            'transferido'  => 0,
+            'general'     => 0, // Total Preparación: todo lo recibido en lote
+            'disponibles' => 0, // Sin serie aún + con serie pero sin asignar (en bodega)
+            'asignado'    => 0,
+            'proceso'     => 0,
+            'pieza'       => 0,
+            'garantia'    => 0,
+            'desarme'     => 0,
+            'calidad'     => 0,
+            'finalizado'  => 0,
+            'transferido' => 0,
         ];
 
         foreach ($data as $row) {
-            // "Disponibles" = equipos recibidos en lote que aún no tienen número de serie en el sistema.
-            // NO son "aire" ni "prometidos": son equipos físicos en bodega pendientes de escanear.
-            // Si hay más físicos que lote (alta manual sin lote), lo topamos a 0.
-            $disponibles = max(0, $row->total_recibido - $row->total_equipos);
-            $row->sin_registrar = $disponibles;
+            // Equipos en bodega sin serie escaneada aún
+            $sin_serie   = max(0, $row->total_recibido - $row->total_equipos);
+            $disponibles = $sin_serie + $row->c_sin_asignar;
+            $row->disponibles = $disponibles;
+
+            // ✔ Totales se acumulan SIEMPRE — las tarjetas muestran conteo global
+            //   (independientemente del filtro de estatus activo)
+            $totales['general']    += max($row->total_recibido, $row->total_equipos);
+            $totales['disponibles']+= $disponibles;
+            $totales['asignado']   += $row->c_asignado;
+            $totales['proceso']    += $row->c_proceso;
+            $totales['pieza']      += $row->c_pieza;
+            $totales['garantia']   += $row->c_garantia;
+            $totales['desarme']    += $row->c_desarme;
+            $totales['calidad']    += $row->c_calidad;
+            $totales['finalizado'] += $row->c_finalizado;
+            $totales['transferido']+= $row->c_transferido;
+
+            // ▼ Filtro de estatus: solo afecta qué filas aparecen en la tabla
+            if ($this->filtroEstatus !== '') {
+                $pasaFiltro = match($this->filtroEstatus) {
+                    'disponibles' => $disponibles > 0,
+                    'asignado'    => $row->c_asignado > 0,
+                    'proceso'     => $row->c_proceso > 0,
+                    'pieza'       => $row->c_pieza > 0,
+                    'garantia'    => $row->c_garantia > 0,
+                    'desarme'     => $row->c_desarme > 0,
+                    'calidad'     => $row->c_calidad > 0,
+                    'finalizado'  => $row->c_finalizado > 0,
+                    'transferido' => $row->c_transferido > 0,
+                    default       => true,
+                };
+                if (!$pasaFiltro) continue;
+            }
 
             if (!isset($agrupado[$row->marca])) {
                 $agrupado[$row->marca] = [
-                    'total_marca_fisicos' => 0,
-                    'total_marca_sin_reg' => 0,
-                    'modelos' => []
+                    'total_marca_fisicos'     => 0,
+                    'total_marca_disponibles' => 0,
+                    'modelos'                 => []
                 ];
             }
 
-            $agrupado[$row->marca]['modelos'][] = $row;
-            $agrupado[$row->marca]['total_marca_fisicos'] += $row->total_equipos;
-            $agrupado[$row->marca]['total_marca_sin_reg'] += $disponibles;
-
-            // Totales generales:
-            // general = total recibido en lote (base real); si hay más físicos (alta manual), usamos el mayor
-            $totales['general']      += max($row->total_recibido, $row->total_equipos);
-            $totales['sin_registrar']+= $disponibles;
-            $totales['sin_asignar']  += $row->c_sin_asignar;
-            $totales['asignado']     += $row->c_asignado;
-            $totales['proceso']      += $row->c_proceso;
-            $totales['pieza']        += $row->c_pieza;
-            $totales['garantia']     += $row->c_garantia;
-            $totales['desarme']      += $row->c_desarme;
-            $totales['calidad']      += $row->c_calidad;
-            $totales['finalizado']   += $row->c_finalizado;
-            $totales['transferido']  += $row->c_transferido;
+            $agrupado[$row->marca]['modelos'][]               = $row;
+            $agrupado[$row->marca]['total_marca_fisicos']     += $row->total_equipos;
+            $agrupado[$row->marca]['total_marca_disponibles'] += $disponibles;
         }
 
         // Si ordenamos por marca_asc, aseguramos que el array asociativo esté en orden alfabético de llaves
