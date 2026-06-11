@@ -17,6 +17,7 @@ class EstadisticasEquipos extends Component
     public $filtroModelo  = '';
     public $filtroEstatus = '';
     public $orden         = 'total_desc'; // total_desc, marca_asc
+    public $vistaActiva   = 'tabla';      // tabla, donut, barras, apiladas
 
     public $estadisticas = [];
     public $listaMarcas  = [];
@@ -93,6 +94,120 @@ class EstadisticasEquipos extends Component
         $this->search        = '';
         $this->actualizarListaModelos();
         $this->cargarEstadisticas();
+    }
+
+    /** Cambia la vista activa (tabla, donut, barras, apiladas) */
+    public function cambiarVista(string $vista): void
+    {
+        $this->vistaActiva = $vista;
+    }
+
+    /** Prepara los datos en formato JSON para las gráficas de ApexCharts */
+    public function getDatosGraficasProperty(): array
+    {
+        $fe = $this->filtroEstatus;
+
+        // Función auxiliar para aplicar el filtro de estatus a las gráficas:
+        // Si hay un filtro activo (ej. 'calidad'), ponemos en 0 los demás estatus
+        // para que las gráficas reflejen exactamente lo que el usuario seleccionó.
+        $val = function($estatus, $valor) use ($fe) {
+            return ($fe === '' || $fe === $estatus) ? $valor : 0;
+        };
+
+        // ── Datos para Donut: distribución de estatus ──
+        $d_disp = $d_asig = $d_proc = $d_piez = $d_gara = $d_desa = $d_cali = $d_apro = $d_tran = 0;
+        foreach ($this->estadisticas as $datosMarca) {
+            foreach ($datosMarca['modelos'] as $m) {
+                $d_disp += $val('disponibles', $m->disponibles);
+                $d_asig += $val('asignado', $m->c_asignado);
+                $d_proc += $val('proceso', $m->c_proceso);
+                $d_piez += $val('pieza', $m->c_pieza);
+                $d_gara += $val('garantia', $m->c_garantia);
+                $d_desa += $val('desarme', $m->c_desarme ?? 0);
+                $d_cali += $val('calidad', $m->c_calidad);
+                $d_apro += $val('finalizado', $m->c_finalizado);
+                $d_tran += $val('transferido', $m->c_transferido);
+            }
+        }
+        $donut = [
+            'labels'  => ['Disponibles','Asignados','En Proceso','Piezas','Garantía','Desarme','Calidad','Aprobados','Transferidos'],
+            'series'  => [$d_disp, $d_asig, $d_proc, $d_piez, $d_gara, $d_desa, $d_cali, $d_apro, $d_tran],
+            'colors' => ['#64748b','#3b82f6','#FF9521','#f59e0b','#ef4444','#f43f5e','#a855f7','#10b981','#14b8a6'],
+        ];
+
+        // ── Datos para Barras: top modelos por cantidad ──
+        $modelos = [];
+        foreach ($this->estadisticas as $marca => $datosMarca) {
+            foreach ($datosMarca['modelos'] as $m) {
+                $modelos[] = $m;
+            }
+        }
+        
+        // El sort original era por total_recibido. Si hay filtro, ordenamos por la métrica relevante.
+        usort($modelos, function($a, $b) use ($fe, $val) {
+            $totalA = $val('disponibles',$a->disponibles) + $val('asignado',$a->c_asignado) + $val('proceso',$a->c_proceso) + $val('pieza',$a->c_pieza) + $val('garantia',$a->c_garantia) + $val('desarme',$a->c_desarme ?? 0) + $val('calidad',$a->c_calidad) + $val('finalizado',$a->c_finalizado) + $val('transferido',$a->c_transferido);
+            $totalB = $val('disponibles',$b->disponibles) + $val('asignado',$b->c_asignado) + $val('proceso',$b->c_proceso) + $val('pieza',$b->c_pieza) + $val('garantia',$b->c_garantia) + $val('desarme',$b->c_desarme ?? 0) + $val('calidad',$b->c_calidad) + $val('finalizado',$b->c_finalizado) + $val('transferido',$b->c_transferido);
+            
+            return ($fe === '') ? ($b->total_recibido <=> $a->total_recibido) : ($totalB <=> $totalA);
+        });
+        
+        $topModelos = array_slice($modelos, 0, 15);
+
+        $barras = [
+            'categorias' => array_map(fn($m) => mb_substr($m->modelo, 0, 20), $topModelos),
+            'series' => [
+                ['name' => 'Disponibles',  'data' => array_map(fn($m) => $val('disponibles', $m->disponibles),  $topModelos), 'color' => '#64748b'],
+                ['name' => 'Asignados',    'data' => array_map(fn($m) => $val('asignado', $m->c_asignado),   $topModelos), 'color' => '#3b82f6'],
+                ['name' => 'En Proceso',   'data' => array_map(fn($m) => $val('proceso', $m->c_proceso),    $topModelos), 'color' => '#FF9521'],
+                ['name' => 'Piezas',       'data' => array_map(fn($m) => $val('pieza', $m->c_pieza),      $topModelos), 'color' => '#f59e0b'],
+                ['name' => 'Garantía',     'data' => array_map(fn($m) => $val('garantia', $m->c_garantia),   $topModelos), 'color' => '#ef4444'],
+                ['name' => 'Calidad',      'data' => array_map(fn($m) => $val('calidad', $m->c_calidad),    $topModelos), 'color' => '#a855f7'],
+                ['name' => 'Aprobados',    'data' => array_map(fn($m) => $val('finalizado', $m->c_finalizado), $topModelos), 'color' => '#10b981'],
+            ],
+        ];
+
+        // ── Datos para Apiladas: por marca ──
+        $marcasKeys = array_keys($this->estadisticas);
+        $apiladasSeries = [
+            ['name' => 'Disponibles',  'data' => [], 'color' => '#64748b'],
+            ['name' => 'Asignados',    'data' => [], 'color' => '#3b82f6'],
+            ['name' => 'En Proceso',   'data' => [], 'color' => '#FF9521'],
+            ['name' => 'Piezas',       'data' => [], 'color' => '#f59e0b'],
+            ['name' => 'Garantía',     'data' => [], 'color' => '#ef4444'],
+            ['name' => 'Calidad',      'data' => [], 'color' => '#a855f7'],
+            ['name' => 'Aprobados',    'data' => [], 'color' => '#10b981'],
+            ['name' => 'Transferidos', 'data' => [], 'color' => '#14b8a6'],
+        ];
+
+        foreach ($marcasKeys as $marca) {
+            $dm = $this->estadisticas[$marca];
+            $disp = $asig = $proc = $piez = $gara = $cali = $apro = $tran = 0;
+            foreach ($dm['modelos'] as $m) {
+                $disp += $val('disponibles', $m->disponibles);
+                $asig += $val('asignado', $m->c_asignado);
+                $proc += $val('proceso', $m->c_proceso);
+                $piez += $val('pieza', $m->c_pieza);
+                $gara += $val('garantia', $m->c_garantia);
+                $cali += $val('calidad', $m->c_calidad);
+                $apro += $val('finalizado', $m->c_finalizado);
+                $tran += $val('transferido', $m->c_transferido);
+            }
+            $apiladasSeries[0]['data'][] = $disp;
+            $apiladasSeries[1]['data'][] = $asig;
+            $apiladasSeries[2]['data'][] = $proc;
+            $apiladasSeries[3]['data'][] = $piez;
+            $apiladasSeries[4]['data'][] = $gara;
+            $apiladasSeries[5]['data'][] = $cali;
+            $apiladasSeries[6]['data'][] = $apro;
+            $apiladasSeries[7]['data'][] = $tran;
+        }
+
+        $apiladas = [
+            'categorias' => array_values($marcasKeys),
+            'series'     => $apiladasSeries,
+        ];
+
+        return compact('donut', 'barras', 'apiladas');
     }
 
     public function cargarEstadisticas()

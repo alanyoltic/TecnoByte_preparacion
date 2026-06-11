@@ -1,4 +1,12 @@
-<div>
+<div x-data x-init="
+    let _scrollY = 0;
+    Livewire.hook('commit', ({ succeed }) => {
+        _scrollY = window.scrollY;
+        succeed(({ snapshot, effect }) => {
+            requestAnimationFrame(() => window.scrollTo({ top: _scrollY, behavior: 'instant' }));
+        });
+    });
+">
 <x-tb-background>
 <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10 space-y-6">
     <x-toast />
@@ -267,7 +275,77 @@
 
     </div>
 
-    {{-- Tabla Concentrada por Marca y Modelo --}}
+    {{-- ═══ Selector de Vista ═══ --}}
+    <div class="bg-white/80 dark:bg-slate-950/60
+                backdrop-blur-xl dark:backdrop-blur-2xl
+                border border-slate-200/80 dark:border-white/10
+                rounded-2xl p-3
+                shadow-md shadow-slate-900/10
+                dark:shadow-lg dark:shadow-slate-900/30
+                flex items-center justify-between">
+        <div class="flex items-center gap-1.5">
+            {{-- Tabla --}}
+            <button wire:click="cambiarVista('tabla')" type="button"
+                class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
+                       transition-all duration-200 active:scale-[0.96]
+                       {{ $vistaActiva === 'tabla'
+                           ? 'bg-[#FF9521]/10 dark:bg-[#FF9521]/20 border-2 border-[#FF9521] text-[#FF9521] shadow-md shadow-[#FF9521]/20'
+                           : 'bg-transparent border border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-700 dark:hover:text-slate-200' }}">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18M3 6h18M3 18h18"/>
+                </svg>
+                Tabla
+            </button>
+
+            {{-- Donut --}}
+            <button wire:click="cambiarVista('donut')" type="button"
+                class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
+                       transition-all duration-200 active:scale-[0.96]
+                       {{ $vistaActiva === 'donut'
+                           ? 'bg-[#FF9521]/10 dark:bg-[#FF9521]/20 border-2 border-[#FF9521] text-[#FF9521] shadow-md shadow-[#FF9521]/20'
+                           : 'bg-transparent border border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-700 dark:hover:text-slate-200' }}">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/>
+                </svg>
+                Donut
+            </button>
+
+            {{-- Barras --}}
+            <button wire:click="cambiarVista('barras')" type="button"
+                class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
+                       transition-all duration-200 active:scale-[0.96]
+                       {{ $vistaActiva === 'barras'
+                           ? 'bg-[#FF9521]/10 dark:bg-[#FF9521]/20 border-2 border-[#FF9521] text-[#FF9521] shadow-md shadow-[#FF9521]/20'
+                           : 'bg-transparent border border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-700 dark:hover:text-slate-200' }}">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                Barras
+            </button>
+
+            {{-- Apiladas --}}
+            <button wire:click="cambiarVista('apiladas')" type="button"
+                class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
+                       transition-all duration-200 active:scale-[0.96]
+                       {{ $vistaActiva === 'apiladas'
+                           ? 'bg-[#FF9521]/10 dark:bg-[#FF9521]/20 border-2 border-[#FF9521] text-[#FF9521] shadow-md shadow-[#FF9521]/20'
+                           : 'bg-transparent border border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-700 dark:hover:text-slate-200' }}">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 17h6M9 13h6M9 9h2"/>
+                </svg>
+                Por Marca
+            </button>
+        </div>
+
+        <span class="text-xs text-slate-400 dark:text-slate-500 hidden sm:inline-block">
+            {{ count($estadisticas) }} marca(s) · {{ collect($estadisticas)->sum(fn($m) => count($m['modelos'])) }} modelo(s)
+        </span>
+    </div>
+
+    {{-- ═══ VISTA: Tabla ═══ --}}
+    @if($vistaActiva === 'tabla')
     <div class="bg-white/80 dark:bg-slate-950/60
                 backdrop-blur-xl dark:backdrop-blur-2xl
                 border border-slate-200/80 dark:border-white/10
@@ -436,6 +514,314 @@
             </table>
         </div>
     </div>
+    @endif
+
+    {{-- ═══ VISTA: Donut ═══ --}}
+    @if($vistaActiva === 'donut')
+    @php $graficas = $this->datosGraficas; $chartKey = md5(json_encode($graficas)); @endphp
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {{-- Donut principal --}}
+        <div class="bg-white/80 dark:bg-slate-950/60
+                    backdrop-blur-xl dark:backdrop-blur-2xl
+                    border border-slate-200/80 dark:border-white/10
+                    rounded-2xl p-6
+                    shadow-md shadow-slate-900/10
+                    dark:shadow-lg dark:shadow-slate-900/30"
+             wire:key="donut-{{ $chartKey }}"
+             x-data="{
+                chart: null,
+                init() {
+                    const isDark = document.documentElement.classList.contains('dark');
+                    const data = @js($graficas['donut']);
+                    this.chart = new ApexCharts(this.$refs.donutChart, {
+                        chart: {
+                            type: 'donut',
+                            height: 420,
+                            background: 'transparent',
+                            fontFamily: 'Figtree, sans-serif',
+                            animations: { enabled: true, easing: 'easeinout', speed: 800 },
+                        },
+                        series: data.series,
+                        labels: data.labels,
+                        colors: data.colors,
+                        plotOptions: {
+                            pie: {
+                                donut: {
+                                    size: '65%',
+                                    labels: {
+                                        show: true,
+                                        name: { show: true, fontSize: '14px', fontWeight: 700, color: isDark ? '#e2e8f0' : '#334155' },
+                                        value: { show: true, fontSize: '28px', fontWeight: 800, color: isDark ? '#f1f5f9' : '#0f172a',
+                                                 formatter: (val) => parseInt(val).toLocaleString() },
+                                        total: {
+                                            show: true, label: 'Total',
+                                            fontSize: '13px', fontWeight: 600,
+                                            color: isDark ? '#94a3b8' : '#64748b',
+                                            formatter: (w) => w.globals.seriesTotals.reduce((a,b) => a+b, 0).toLocaleString()
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        dataLabels: { enabled: false },
+                        legend: {
+                            position: 'bottom', fontSize: '12px', fontWeight: 600,
+                            labels: { colors: isDark ? '#cbd5e1' : '#475569' },
+                            markers: { size: 6, offsetX: -4 },
+                            itemMargin: { horizontal: 10, vertical: 5 },
+                        },
+                        stroke: { width: 3, colors: [isDark ? '#020617' : '#ffffff'] },
+                        tooltip: {
+                            theme: isDark ? 'dark' : 'light',
+                            y: { formatter: (val) => val.toLocaleString() + ' equipos' }
+                        },
+                    });
+                    this.chart.render();
+                },
+                destroy() { if(this.chart) this.chart.destroy(); }
+             }"
+
+        >
+            <h3 class="text-sm font-bold text-slate-700 dark:text-slate-200 mb-4 uppercase tracking-wide">
+                Distribución General por Estatus
+            </h3>
+            <div x-ref="donutChart"></div>
+        </div>
+
+        {{-- Resumen lateral con barras horizontales --}}
+        <div class="bg-white/80 dark:bg-slate-950/60
+                    backdrop-blur-xl dark:backdrop-blur-2xl
+                    border border-slate-200/80 dark:border-white/10
+                    rounded-2xl p-6
+                    shadow-md shadow-slate-900/10
+                    dark:shadow-lg dark:shadow-slate-900/30"
+             wire:key="hbar-{{ $chartKey }}"
+             x-data="{
+                chart: null,
+                init() {
+                    const isDark = document.documentElement.classList.contains('dark');
+                    const data = @js($graficas['donut']);
+                    this.chart = new ApexCharts(this.$refs.hbarChart, {
+                        chart: {
+                            type: 'bar',
+                            height: 420,
+                            background: 'transparent',
+                            fontFamily: 'Figtree, sans-serif',
+                            toolbar: { show: false },
+                            animations: { enabled: true, easing: 'easeinout', speed: 800 },
+                        },
+                        series: [{ name: 'Equipos', data: data.series }],
+                        xaxis: {
+                            categories: data.labels,
+                            labels: { style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '11px', fontWeight: 600 } },
+                        },
+                        yaxis: {
+                            labels: { style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '11px' } },
+                        },
+                        plotOptions: {
+                            bar: {
+                                horizontal: true,
+                                borderRadius: 6,
+                                barHeight: '60%',
+                                distributed: true,
+                                dataLabels: { position: 'top' }
+                            }
+                        },
+                        colors: data.colors,
+                        dataLabels: {
+                            enabled: true,
+                            textAnchor: 'start',
+                            offsetX: 5,
+                            style: { fontSize: '11px', fontWeight: 700, colors: [isDark ? '#e2e8f0' : '#334155'] },
+                            formatter: (val) => val.toLocaleString(),
+                        },
+                        grid: {
+                            borderColor: isDark ? '#1e293b' : '#e2e8f0',
+                            strokeDashArray: 4,
+                            xaxis: { lines: { show: true } },
+                            yaxis: { lines: { show: false } },
+                        },
+                        legend: { show: false },
+                        tooltip: {
+                            theme: isDark ? 'dark' : 'light',
+                            y: { formatter: (val) => val.toLocaleString() + ' equipos' }
+                        },
+                    });
+                    this.chart.render();
+                },
+                destroy() { if(this.chart) this.chart.destroy(); }
+             }"
+
+        >
+            <h3 class="text-sm font-bold text-slate-700 dark:text-slate-200 mb-4 uppercase tracking-wide">
+                Comparación por Fase
+            </h3>
+            <div x-ref="hbarChart"></div>
+        </div>
+    </div>
+    @endif
+
+    {{-- ═══ VISTA: Barras (Top Modelos) ═══ --}}
+    @if($vistaActiva === 'barras')
+    @php $graficas = $this->datosGraficas; $chartKey = md5(json_encode($graficas)); @endphp
+    <div class="bg-white/80 dark:bg-slate-950/60
+                backdrop-blur-xl dark:backdrop-blur-2xl
+                border border-slate-200/80 dark:border-white/10
+                rounded-2xl p-6
+                shadow-md shadow-slate-900/10
+                dark:shadow-lg dark:shadow-slate-900/30"
+         wire:key="barras-{{ $chartKey }}"
+         x-data="{
+            chart: null,
+            init() {
+                const isDark = document.documentElement.classList.contains('dark');
+                const data = @js($graficas['barras']);
+                const series = data.series.map(s => ({ name: s.name, data: s.data }));
+                const colors = data.series.map(s => s.color);
+
+                this.chart = new ApexCharts(this.$refs.barrasChart, {
+                    chart: {
+                        type: 'bar',
+                        height: Math.max(450, data.categorias.length * 45),
+                        background: 'transparent',
+                        fontFamily: 'Figtree, sans-serif',
+                        stacked: false,
+                        toolbar: { show: true, tools: { download: true, selection: false, zoom: false, zoomin: false, zoomout: false, pan: false, reset: false } },
+                        animations: { enabled: true, easing: 'easeinout', speed: 1000, animateGradually: { enabled: true, delay: 80 } },
+                    },
+                    series: series,
+                    xaxis: {
+                        categories: data.categorias,
+                        labels: {
+                            style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '10px', fontWeight: 600 },
+                            rotate: -45, rotateAlways: data.categorias.length > 8,
+                            trim: true, maxHeight: 100,
+                        },
+                        axisBorder: { color: isDark ? '#334155' : '#cbd5e1' },
+                    },
+                    yaxis: {
+                        labels: { style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '11px' } },
+                    },
+                    plotOptions: {
+                        bar: {
+                            borderRadius: 4,
+                            columnWidth: '75%',
+                            dataLabels: { position: 'top' },
+                        }
+                    },
+                    colors: colors,
+                    dataLabels: { enabled: false },
+                    grid: {
+                        borderColor: isDark ? '#1e293b' : '#e2e8f0',
+                        strokeDashArray: 4,
+                    },
+                    legend: {
+                        position: 'top', fontSize: '11px', fontWeight: 600,
+                        labels: { colors: isDark ? '#cbd5e1' : '#475569' },
+                        markers: { size: 6, offsetX: -3 },
+                        itemMargin: { horizontal: 12, vertical: 5 },
+                    },
+                    tooltip: {
+                        theme: isDark ? 'dark' : 'light',
+                        shared: true, intersect: false,
+                        y: { formatter: (val) => (val ?? 0).toLocaleString() }
+                    },
+                });
+                this.chart.render();
+            },
+            destroy() { if(this.chart) this.chart.destroy(); }
+         }"
+
+    >
+        <h3 class="text-sm font-bold text-slate-700 dark:text-slate-200 mb-4 uppercase tracking-wide">
+            Top 15 Modelos — Distribución por Estatus
+        </h3>
+        <div x-ref="barrasChart"></div>
+    </div>
+    @endif
+
+    {{-- ═══ VISTA: Barras Apiladas (Por Marca) ═══ --}}
+    @if($vistaActiva === 'apiladas')
+    @php $graficas = $this->datosGraficas; $chartKey = md5(json_encode($graficas)); @endphp
+    <div class="bg-white/80 dark:bg-slate-950/60
+                backdrop-blur-xl dark:backdrop-blur-2xl
+                border border-slate-200/80 dark:border-white/10
+                rounded-2xl p-6
+                shadow-md shadow-slate-900/10
+                dark:shadow-lg dark:shadow-slate-900/30"
+         wire:key="apiladas-{{ $chartKey }}"
+         x-data="{
+            chart: null,
+            init() {
+                const isDark = document.documentElement.classList.contains('dark');
+                const data = @js($graficas['apiladas']);
+                const series = data.series.map(s => ({ name: s.name, data: s.data }));
+                const colors = data.series.map(s => s.color);
+
+                this.chart = new ApexCharts(this.$refs.apiladasChart, {
+                    chart: {
+                        type: 'bar',
+                        height: Math.max(500, data.categorias.length * 50),
+                        background: 'transparent',
+                        fontFamily: 'Figtree, sans-serif',
+                        stacked: true,
+                        stackType: 'normal',
+                        toolbar: { show: true, tools: { download: true, selection: false, zoom: false, zoomin: false, zoomout: false, pan: false, reset: false } },
+                        animations: { enabled: true, easing: 'easeinout', speed: 1000, animateGradually: { enabled: true, delay: 100 } },
+                    },
+                    series: series,
+                    xaxis: {
+                        categories: data.categorias,
+                        labels: {
+                            style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '11px', fontWeight: 700 },
+                        },
+                        axisBorder: { color: isDark ? '#334155' : '#cbd5e1' },
+                    },
+                    yaxis: {
+                        labels: { style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '11px' } },
+                        title: { text: 'Equipos', style: { color: isDark ? '#94a3b8' : '#64748b', fontSize: '12px', fontWeight: 600 } },
+                    },
+                    plotOptions: {
+                        bar: {
+                            horizontal: true,
+                            borderRadius: 4,
+                            barHeight: '65%',
+                            dataLabels: { total: { enabled: true, style: { fontSize: '11px', fontWeight: 800, color: isDark ? '#e2e8f0' : '#1e293b' } } },
+                        }
+                    },
+                    colors: colors,
+                    dataLabels: { enabled: false },
+                    grid: {
+                        borderColor: isDark ? '#1e293b' : '#e2e8f0',
+                        strokeDashArray: 4,
+                        xaxis: { lines: { show: true } },
+                        yaxis: { lines: { show: false } },
+                    },
+                    legend: {
+                        position: 'top', fontSize: '11px', fontWeight: 600,
+                        labels: { colors: isDark ? '#cbd5e1' : '#475569' },
+                        markers: { size: 6, offsetX: -3 },
+                        itemMargin: { horizontal: 12, vertical: 5 },
+                    },
+                    tooltip: {
+                        theme: isDark ? 'dark' : 'light',
+                        shared: true, intersect: false,
+                        y: { formatter: (val) => (val ?? 0).toLocaleString() + ' equipos' }
+                    },
+                });
+                this.chart.render();
+            },
+            destroy() { if(this.chart) this.chart.destroy(); }
+         }"
+
+    >
+        <h3 class="text-sm font-bold text-slate-700 dark:text-slate-200 mb-4 uppercase tracking-wide">
+            Composición por Marca — Barras Apiladas
+        </h3>
+        <div x-ref="apiladasChart"></div>
+    </div>
+    @endif
+
 </div>
 </x-tb-background>
 </div>
