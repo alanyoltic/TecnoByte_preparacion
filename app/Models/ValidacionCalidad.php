@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Collection;
 
 class ValidacionCalidad extends Model
 {
@@ -17,7 +16,8 @@ class ValidacionCalidad extends Model
     // CONSTANTES DE ESTADO
     // ──────────────────────────────────────────────────────────────────────
 
-    const APROBADO  = 'APROBADO';
+    const APROBADO = 'APROBADO';
+
     const RECHAZADO = 'RECHAZADO';
 
     // ──────────────────────────────────────────────────────────────────────
@@ -38,10 +38,10 @@ class ValidacionCalidad extends Model
 
     protected $casts = [
         'checklist_qué_salió_bien' => 'array',
-        'checklist_qué_salió_mal'  => 'array',
-        'calificacion_general'     => 'integer',
-        'created_at'               => 'datetime',
-        'updated_at'               => 'datetime',
+        'checklist_qué_salió_mal' => 'array',
+        'calificacion_general' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     // ──────────────────────────────────────────────────────────────────────
@@ -144,9 +144,9 @@ class ValidacionCalidad extends Model
     public function getLabelEstadoAttribute(): string
     {
         return match ($this->estado) {
-            self::APROBADO  => '✅ Aprobado',
+            self::APROBADO => '✅ Aprobado',
             self::RECHAZADO => '❌ Rechazado',
-            default         => $this->estado,
+            default => $this->estado,
         };
     }
 
@@ -226,23 +226,23 @@ class ValidacionCalidad extends Model
         $lines = [];
         $lines[] = "**Validación: {$this->labelEstado}**";
         $lines[] = "Validador: {$this->validadoPor->nombre}";
-        $lines[] = "Fecha: " . $this->created_at->format('d/m/Y H:i');
+        $lines[] = 'Fecha: '.$this->created_at->format('d/m/Y H:i');
 
         if ($this->estaRechazado()) {
             $lines[] = "**Motivo:** {$this->obtenerMotivo()}";
 
             $defectos = $this->obtenerDefectos();
-            if (!empty($defectos)) {
-                $lines[] = "**Qué salió mal:** " . implode(', ', $defectos);
+            if (! empty($defectos)) {
+                $lines[] = '**Qué salió mal:** '.implode(', ', $defectos);
             }
         }
 
         $aciertos = $this->obtenerAciertos();
-        if (!empty($aciertos)) {
-            $lines[] = "**Qué salió bien:** " . implode(', ', $aciertos);
+        if (! empty($aciertos)) {
+            $lines[] = '**Qué salió bien:** '.implode(', ', $aciertos);
         }
 
-        if (!empty(trim($this->notas_adicionales ?? ''))) {
+        if (! empty(trim($this->notas_adicionales ?? ''))) {
             $lines[] = "**Notas:** {$this->notas_adicionales}";
         }
 
@@ -260,14 +260,14 @@ class ValidacionCalidad extends Model
             $query->entreFechas($desde, $hasta);
         }
 
-        $total      = $query->count();
-        $aprobados  = (clone $query)->aprobadas()->count();
+        $total = $query->count();
+        $aprobados = (clone $query)->aprobadas()->count();
         $rechazados = (clone $query)->rechazadas()->count();
 
         return [
-            'total'       => $total,
-            'aprobados'   => $aprobados,
-            'rechazados'  => $rechazados,
+            'total' => $total,
+            'aprobados' => $aprobados,
+            'rechazados' => $rechazados,
             'tasa_aprobacion' => $total > 0 ? round(($aprobados / $total) * 100, 2) : 0,
         ];
     }
@@ -278,7 +278,7 @@ class ValidacionCalidad extends Model
     public static function estados(): array
     {
         return [
-            self::APROBADO  => '✅ Aprobado',
+            self::APROBADO => '✅ Aprobado',
             self::RECHAZADO => '❌ Rechazado',
         ];
     }

@@ -2,10 +2,10 @@
 
 namespace App\Livewire\Dashboard;
 
-use Livewire\Component;
-use App\Models\User;
 use App\Models\LiderModoTecnico;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 
 class ConfigurarLideresTecnicos extends Component
 {
@@ -31,10 +31,11 @@ class ConfigurarLideresTecnicos extends Component
             ])
             ->map(function ($u) {
                 $essTecnico = LiderModoTecnico::trabajaComoTecnico($u->id);
+
                 return [
-                    'id'      => $u->id,
-                    'nombre'  => trim($u->nombre . ' ' . $u->apellido_paterno),
-                    'esTecnico'  => $essTecnico,
+                    'id' => $u->id,
+                    'nombre' => trim($u->nombre.' '.$u->apellido_paterno),
+                    'esTecnico' => $essTecnico,
                 ];
             })
             ->toArray();
@@ -46,13 +47,13 @@ class ConfigurarLideresTecnicos extends Component
 
         if ($registro) {
             // Toggle: si está activo, desactivar; si está inactivo, activar
-            $registro->update(['es_tecnico' => !$registro->es_tecnico]);
+            $registro->update(['es_tecnico' => ! $registro->es_tecnico]);
             $estado = $registro->es_tecnico ? 'activado' : 'desactivado';
         } else {
             // No existe: crear como técnico
             LiderModoTecnico::create([
-                'lider_id'           => $liderId,
-                'es_tecnico'         => true,
+                'lider_id' => $liderId,
+                'es_tecnico' => true,
                 'configurado_por_id' => auth()->id(),
             ]);
             $estado = 'activado';
@@ -68,4 +69,3 @@ class ConfigurarLideresTecnicos extends Component
         return view('livewire.dashboard.configurar-lideres-tecnicos');
     }
 }
-

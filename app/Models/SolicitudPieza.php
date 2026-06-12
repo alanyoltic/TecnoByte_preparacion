@@ -88,7 +88,7 @@ class SolicitudPieza extends Model
 
     public function catalogoPieza(): BelongsTo
     {
-        return $this->belongsTo(CatalogoPieza::class, 'catalogo_pieza_id');
+        return $this->belongsTo(CatalogoPieza::class, 'catalogo_pieza_id')->withTrashed();
     }
 
     public function inventarioPieza(): BelongsTo

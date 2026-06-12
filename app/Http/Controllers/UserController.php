@@ -17,12 +17,14 @@ class UserController extends Controller
     private function roleSlug(?User $user = null): string
     {
         $u = $user ?: auth()->user();
+
         return strtolower((string) optional($u->role)->slug);
     }
 
     private function isGlobal(?User $user = null): bool
     {
         $slug = $this->roleSlug($user);
+
         return in_array($slug, ['ceo', 'admin', 'admin_sistema', 'sistemas'], true);
     }
 
@@ -188,14 +190,14 @@ class UserController extends Controller
         $allowedSlugs = $this->allowedRoleSlugsForEditor($auth);
 
         $rules = [
-            'nombre'           => ['required', 'string', 'max:255'],
-            'segundo_nombre'   => ['nullable', 'string', 'max:255'],
+            'nombre' => ['required', 'string', 'max:255'],
+            'segundo_nombre' => ['nullable', 'string', 'max:255'],
             'apellido_paterno' => ['required', 'string', 'max:255'],
             'apellido_materno' => ['nullable', 'string', 'max:255'],
             'fecha_nacimiento' => ['nullable', 'date', 'before_or_equal:today'],
-            'email'            => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
-            'password'         => ['nullable', 'confirmed', Rules\Password::defaults()],
-            'foto_perfil'      => ['nullable', 'image', 'max:20480'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
+            'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
+            'foto_perfil' => ['nullable', 'image', 'max:20480'],
         ];
 
         if ($isGlobal) {
@@ -206,7 +208,7 @@ class UserController extends Controller
             }
 
             $allowedRoleIds = Roles::whereIn('slug', $allowedSlugs)->pluck('id')->all();
-            $rules['role_id'] = ['required', 'integer', 'in:' . implode(',', $allowedRoleIds)];
+            $rules['role_id'] = ['required', 'integer', 'in:'.implode(',', $allowedRoleIds)];
         }
 
         $canEditDepartment = $this->isCeo($auth);
@@ -226,14 +228,14 @@ class UserController extends Controller
         }
 
         $payload = [
-            'nombre'           => $validated['nombre'],
-            'segundo_nombre'   => $validated['segundo_nombre'] ?? null,
+            'nombre' => $validated['nombre'],
+            'segundo_nombre' => $validated['segundo_nombre'] ?? null,
             'apellido_paterno' => $validated['apellido_paterno'],
             'apellido_materno' => $validated['apellido_materno'] ?? null,
             'fecha_nacimiento' => $validated['fecha_nacimiento'] ?? null,
-            'email'            => $validated['email'],
-            'foto_perfil'      => $validated['foto_perfil'] ?? $user->foto_perfil,
-            'role_id'          => $validated['role_id'],
+            'email' => $validated['email'],
+            'foto_perfil' => $validated['foto_perfil'] ?? $user->foto_perfil,
+            'role_id' => $validated['role_id'],
         ];
 
         $nuevoDepartamentoId = (int) ($validated['departamento_id'] ?? $user->departamento_id);
@@ -269,14 +271,13 @@ class UserController extends Controller
             ->with('status', 'Usuario actualizado exitosamente!');
     }
 
-
     public function baja(User $user)
-{
-    $user->update([
-        'is_active' => false,
-        'fecha_baja' => now(),
-    ]);
+    {
+        $user->update([
+            'is_active' => false,
+            'fecha_baja' => now(),
+        ]);
 
-    return back()->with('success', 'Usuario dado de baja correctamente.');
-}
+        return back()->with('success', 'Usuario dado de baja correctamente.');
+    }
 }

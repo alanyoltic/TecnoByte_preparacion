@@ -1,9 +1,8 @@
 <?php
 
 use Illuminate\Foundation\Application;
-use App\Http\Middleware\PermisoMiddleware;
 use Illuminate\Foundation\Configuration\Exceptions;
-use Illuminate\Foundation\Configuration\Middleware; 
+use Illuminate\Foundation\Configuration\Middleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -17,12 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'role'         => \App\Http\Middleware\CheckRole::class,
+            'role' => \App\Http\Middleware\CheckRole::class,
             'onlyAdminCeo' => \App\Http\Middleware\OnlyAdminCeo::class,
-            'role_depto'   => \App\Http\Middleware\EnsureUserHasRoleAndDepartamento::class,
-            'permiso'      => \App\Http\Middleware\PermisoMiddleware::class,
+            'role_depto' => \App\Http\Middleware\EnsureUserHasRoleAndDepartamento::class,
+            'permiso' => \App\Http\Middleware\PermisoMiddleware::class,
         ]);
     })
-    ->withExceptions(function (Exceptions $exceptions) {
-
-    })->create();
+    ->withExceptions(function (Exceptions $exceptions) {})->create();

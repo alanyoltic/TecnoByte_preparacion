@@ -66,6 +66,7 @@ class CatalogoPiezas extends Component
     public bool   $modalEliminar = false;
     public ?int   $eliminandoId  = null;
     public string $tipoEliminar  = '';
+    public bool   $puedeBorrarFisicamente = false;
 
     // ── Modal proveedor ───────────────────────────────────────────────────
     public bool   $modalProveedor       = false;
@@ -386,6 +387,8 @@ class CatalogoPiezas extends Component
     {
         $this->eliminandoId  = $id;
         $this->tipoEliminar  = 'catalogo';
+        $pieza = CatalogoPieza::findOrFail($id);
+        $this->puedeBorrarFisicamente = $pieza->sePuedeBorrarFisicamente();
         $this->modalEliminar = true;
     }
 
@@ -399,8 +402,52 @@ class CatalogoPiezas extends Component
     public function confirmarEliminar(): void
     {
         if ($this->tipoEliminar === 'catalogo') {
-            CatalogoPieza::findOrFail($this->eliminandoId)->delete();
-            $this->dispatch('toast', ['type' => 'success', 'message' => 'Pieza eliminada del catálogo.']);
+            $pieza = CatalogoPieza::findOrFail($this->eliminandoId);
+            
+            if ($pieza->sePuedeBorrarFisicamente()) {
+                // Borrado físico
+                $inventarios = $pieza->inventario()->get();
+                $compras = CompraInventarioItem::where('catalogo_pieza_id', $pieza->id)->get();
+                
+                $snapshot = [
+                    'pieza' => $pieza->toArray(),
+                    'inventario_piezas' => $inventarios->toArray(),
+                    'compras_inventario_items' => $compras->toArray(),
+                ];
+                
+                DB::table('catalogo_piezas_eliminaciones')->insert([
+                    'catalogo_pieza_id' => $pieza->id,
+                    'nombre' => $pieza->nombre,
+                    'categoria' => $pieza->categoria,
+                    'motivo' => 'Borrado Físico (sin uso)',
+                    'user_id' => auth()->id(),
+                    'snapshot' => json_encode($snapshot),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                
+                // Borrar relaciones físicas
+                InventarioPieza::where('catalogo_pieza_id', $pieza->id)->delete();
+                CompraInventarioItem::where('catalogo_pieza_id', $pieza->id)->delete();
+                $pieza->forceDelete();
+                
+                $this->dispatch('toast', ['type' => 'success', 'message' => 'Pieza y su historial eliminados físicamente del sistema.']);
+            } else {
+                // Borrado Lógico
+                DB::table('catalogo_piezas_eliminaciones')->insert([
+                    'catalogo_pieza_id' => $pieza->id,
+                    'nombre' => $pieza->nombre,
+                    'categoria' => $pieza->categoria,
+                    'motivo' => 'Borrado Lógico (Soft Delete)',
+                    'user_id' => auth()->id(),
+                    'snapshot' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                
+                $pieza->delete();
+                $this->dispatch('toast', ['type' => 'info', 'message' => 'Pieza ocultada del catálogo (se conservó su historial).']);
+            }
             unset($this->piezas);
         } elseif ($this->tipoEliminar === 'inventario') {
             InventarioPieza::findOrFail($this->eliminandoId)->delete();
@@ -410,6 +457,7 @@ class CatalogoPiezas extends Component
         $this->modalEliminar = false;
         $this->eliminandoId  = null;
         $this->tipoEliminar  = '';
+        $this->puedeBorrarFisicamente = false;
     }
 
     public function cerrarModalEliminar(): void
@@ -417,6 +465,7 @@ class CatalogoPiezas extends Component
         $this->modalEliminar = false;
         $this->eliminandoId  = null;
         $this->tipoEliminar  = '';
+        $this->puedeBorrarFisicamente = false;
     }
 
     // ══════════════════════════════════════════════════════════════════════

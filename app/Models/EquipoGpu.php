@@ -9,7 +9,7 @@ class EquipoGpu extends Model
     protected $table = 'equipo_gpus';
 
     protected $fillable = [
-        'equipo_id','tipo','activo','marca','modelo','vram','vram_unidad','notas',
+        'equipo_id', 'tipo', 'activo', 'marca', 'modelo', 'vram', 'vram_unidad', 'notas',
     ];
 
     protected $casts = [

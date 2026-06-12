@@ -13,20 +13,20 @@ return new class extends Migration
 
             // ── Quién asigna y a quién ────────────────────────────────────
             $table->foreignId('tecnico_id')
-                  ->constrained('users')
-                  ->cascadeOnDelete()
-                  ->comment('Técnico al que se le asigna el equipo');
+                ->constrained('users')
+                ->cascadeOnDelete()
+                ->comment('Técnico al que se le asigna el equipo');
 
             $table->foreignId('asignado_por_id')
-                  ->constrained('users')
-                  ->cascadeOnDelete()
-                  ->comment('Usuario que realizó la asignación (líder/gerente)');
+                ->constrained('users')
+                ->cascadeOnDelete()
+                ->comment('Usuario que realizó la asignación (líder/gerente)');
 
             // ── Qué equipo ────────────────────────────────────────────────
             $table->foreignId('equipo_id')
-                  ->constrained('equipos')
-                  ->cascadeOnDelete()
-                  ->comment('Equipo asignado');
+                ->constrained('equipos')
+                ->cascadeOnDelete()
+                ->comment('Equipo asignado');
 
             // ── Fechas ────────────────────────────────────────────────────
             $table->date('fecha_asignacion')->comment('Fecha en que se asignó el equipo');

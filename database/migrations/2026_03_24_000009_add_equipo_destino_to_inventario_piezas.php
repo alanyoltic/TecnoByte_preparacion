@@ -14,11 +14,11 @@ return new class extends Migration
         Schema::table('inventario_piezas', function (Blueprint $table) {
             // Campo para vincular la pieza al equipo donde se instaló
             $table->foreignId('equipo_destino_id')
-                  ->nullable()
-                  ->after('equipo_origen_id')
-                  ->constrained('equipos')
-                  ->onDelete('set null');
-            
+                ->nullable()
+                ->after('equipo_origen_id')
+                ->constrained('equipos')
+                ->onDelete('set null');
+
             // Agregar estado RESERVADA si no existe
             // Si ya tienes una columna estado, puedes ignorar esta línea
             // o ajustar los valores del enum según tu caso

@@ -2,8 +2,8 @@
 
 namespace Database\Seeders\Disabled;
 
-use App\Models\User;
 use App\Models\Roles;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -21,11 +21,11 @@ class UserSeeder extends Seeder
         User::updateOrCreate(
             ['email' => 'ceo@tecnobyte.com'],
             [
-                'nombre'            => 'Admin',
-                'apellido_paterno'  => 'CEO',
-                'password'          => Hash::make('password'),
-                'role_id'           => $ceoRoleId,
-                'is_active'         => true,
+                'nombre' => 'Admin',
+                'apellido_paterno' => 'CEO',
+                'password' => Hash::make('password'),
+                'role_id' => $ceoRoleId,
+                'is_active' => true,
             ]
         );
     }

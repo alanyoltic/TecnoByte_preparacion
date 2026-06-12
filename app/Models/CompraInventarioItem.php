@@ -26,7 +26,7 @@ class CompraInventarioItem extends Model
 
     public function catalogoPieza(): BelongsTo
     {
-        return $this->belongsTo(CatalogoPieza::class, 'catalogo_pieza_id');
+        return $this->belongsTo(CatalogoPieza::class, 'catalogo_pieza_id')->withTrashed();
     }
 
     public function almacen(): BelongsTo
@@ -41,7 +41,10 @@ class CompraInventarioItem extends Model
 
     public function subtotal(): float
     {
-        if (!$this->precio_unitario) return 0;
+        if (! $this->precio_unitario) {
+            return 0;
+        }
+
         return (float) ($this->precio_unitario * $this->cantidad);
     }
 }

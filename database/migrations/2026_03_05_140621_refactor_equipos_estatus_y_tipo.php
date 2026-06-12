@@ -22,21 +22,21 @@ return new class extends Migration
 
     private array $mapCiclo = [
         'PENDIENTE_PREPARACION' => 'CEDIS',
-        'EN_PREPARACION'        => 'PREPARACION',
-        'EN_QA'                 => 'CALIDAD',
-        'EN_VENTAS'             => 'VENTAS',
-        'APARTADO'              => 'APARTADO',
-        'VENDIDO'               => 'VENDIDO',
-        'BAJA'                  => 'SCRAP',
+        'EN_PREPARACION' => 'PREPARACION',
+        'EN_QA' => 'CALIDAD',
+        'EN_VENTAS' => 'VENTAS',
+        'APARTADO' => 'APARTADO',
+        'VENDIDO' => 'VENDIDO',
+        'BAJA' => 'SCRAP',
     ];
 
     private array $mapArea = [
-        'En Revisión'         => 'EN_PROCESO',
-        'Aprobado'            => 'LISTO',
-        'Pendiente Pieza'     => 'PENDIENTE_PIEZA',
-        'Pendiente Garantía'  => 'PENDIENTE_GARANTIA',
-        'Pendiente Deshueso'  => 'PENDIENTE_DESHUESO',
-        'Finalizado'          => 'TRANSFERIDO',
+        'En Revisión' => 'EN_PROCESO',
+        'Aprobado' => 'LISTO',
+        'Pendiente Pieza' => 'PENDIENTE_PIEZA',
+        'Pendiente Garantía' => 'PENDIENTE_GARANTIA',
+        'Pendiente Deshueso' => 'PENDIENTE_DESHUESO',
+        'Finalizado' => 'TRANSFERIDO',
     ];
 
     // =========================================================
@@ -50,7 +50,7 @@ return new class extends Migration
         // ----------------------------------------------------------
         Schema::table('equipos', function (Blueprint $table) {
             $table->string('estado_operativo', 60)->nullable()->change();
-            $table->string('estatus_general',  60)->nullable()->change();
+            $table->string('estatus_general', 60)->nullable()->change();
         });
 
         // ----------------------------------------------------------
@@ -84,7 +84,7 @@ return new class extends Migration
         // ----------------------------------------------------------
         Schema::table('equipos', function (Blueprint $table) {
             $table->renameColumn('estado_operativo', 'estatus_ciclo');
-            $table->renameColumn('estatus_general',  'estatus_area');
+            $table->renameColumn('estatus_general', 'estatus_area');
         });
 
         // ----------------------------------------------------------
@@ -156,7 +156,7 @@ return new class extends Migration
         // Volver a VARCHAR para poder manipular datos
         Schema::table('equipos', function (Blueprint $table) {
             $table->string('estatus_ciclo', 60)->nullable()->change();
-            $table->string('estatus_area',  60)->nullable()->change();
+            $table->string('estatus_area', 60)->nullable()->change();
         });
 
         // Revertir datos
@@ -175,7 +175,7 @@ return new class extends Migration
         // Renombrar de vuelta
         Schema::table('equipos', function (Blueprint $table) {
             $table->renameColumn('estatus_ciclo', 'estado_operativo');
-            $table->renameColumn('estatus_area',  'estatus_general');
+            $table->renameColumn('estatus_area', 'estatus_general');
         });
 
         // Restaurar ENUMs originales

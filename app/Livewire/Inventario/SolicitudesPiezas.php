@@ -13,15 +13,21 @@ class SolicitudesPiezas extends Component
     use WithPagination;
 
     public string $filtroEstatus = 'PENDIENTE';
+
     public string $busqueda = '';
+
     public bool $esTecnico = false;
 
     public bool $modalConfirmar = false;
+
     public ?SolicitudPieza $solicitudSeleccionada = null;
+
     public bool $funciono = true;
+
     public string $notasConfirmacion = '';
 
-    public bool $modalEliminar  = false;
+    public bool $modalEliminar = false;
+
     public ?int $eliminarSolicitudId = null;
 
     protected $queryString = ['filtroEstatus', 'busqueda'];
@@ -55,50 +61,48 @@ class SolicitudesPiezas extends Component
             ])
             ->where(function ($q) use ($authId) {
                 $q->where('solicitado_por_id', $authId)
-                  ->orWhere('reasignado_a_id', $authId);
+                    ->orWhere('reasignado_a_id', $authId);
             })
             ->when($this->filtroEstatus !== 'TODAS', function ($q) use ($authId) {
                 match ($this->filtroEstatus) {
                     // Tecnico tabs
-                    'POR_RESTOCK'     => $q->whereIn('estatus', [SolicitudPieza::PENDIENTE_COMPRA, SolicitudPieza::COMPRADA])
-                                           ->where(fn ($q2) => $q2->whereNull('reasignado_a_id')->orWhereColumn('reasignado_a_id', 'solicitado_por_id')),
-                    'EN_CALIDAD'      => $q->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', true),
-                    'FINALIZADO_TEC'  => $q->where(fn ($q2) =>
-                                            $q2->where('estatus', SolicitudPieza::CANCELADA)
-                                               ->orWhere(fn ($q3) => $q3->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', false))
-                                               ->orWhere(fn ($q4) => $q4->whereNotNull('reasignado_a_id')
-                                                                        ->whereColumn('reasignado_a_id', '!=', 'solicitado_por_id')
-                                                                        ->where('solicitado_por_id', $authId))
-                                        ),
+                    'POR_RESTOCK' => $q->whereIn('estatus', [SolicitudPieza::PENDIENTE_COMPRA, SolicitudPieza::COMPRADA])
+                        ->where(fn ($q2) => $q2->whereNull('reasignado_a_id')->orWhereColumn('reasignado_a_id', 'solicitado_por_id')),
+                    'EN_CALIDAD' => $q->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', true),
+                    'FINALIZADO_TEC' => $q->where(fn ($q2) => $q2->where('estatus', SolicitudPieza::CANCELADA)
+                        ->orWhere(fn ($q3) => $q3->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', false))
+                        ->orWhere(fn ($q4) => $q4->whereNotNull('reasignado_a_id')
+                            ->whereColumn('reasignado_a_id', '!=', 'solicitado_por_id')
+                            ->where('solicitado_por_id', $authId))
+                    ),
                     'REQUIERE_REASIGNACION' => $q->where('estatus', SolicitudPieza::REQUIERE_REASIGNACION),
                     // Standard status filter (for lider tabs and tecnico PENDIENTE/SURTIDA_INVENTARIO)
-                    default           => $q->where('estatus', $this->filtroEstatus)
-                                           ->when(
-                                               $this->esTecnico && !in_array($this->filtroEstatus, [SolicitudPieza::CONFIRMADA, SolicitudPieza::CANCELADA]),
-                                               fn ($q2) => $q2->where(fn ($q3) => $q3->whereNull('reasignado_a_id')->orWhereColumn('reasignado_a_id', 'solicitado_por_id'))
-                                           ),
+                    default => $q->where('estatus', $this->filtroEstatus)
+                        ->when(
+                            $this->esTecnico && ! in_array($this->filtroEstatus, [SolicitudPieza::CONFIRMADA, SolicitudPieza::CANCELADA]),
+                            fn ($q2) => $q2->where(fn ($q3) => $q3->whereNull('reasignado_a_id')->orWhereColumn('reasignado_a_id', 'solicitado_por_id'))
+                        ),
                 };
             })
             ->when($this->busqueda, function ($q) {
                 $q->where(function ($sq) {
-                    $sq->whereHas('catalogoPieza', fn ($c) =>
-                        $c->where('nombre', 'like', '%' . $this->busqueda . '%')
+                    $sq->whereHas('catalogoPieza', fn ($c) => $c->where('nombre', 'like', '%'.$this->busqueda.'%')
                     )
-                    ->orWhere('descripcion_libre', 'like', '%' . $this->busqueda . '%')
-                    ->orWhere('categoria_solicitada', 'like', '%' . $this->busqueda . '%')
-                    ->orWhere('detalle_solicitado', 'like', '%' . $this->busqueda . '%')
-                    ->orWhereHas('equipo', function ($e) {
-                        $bId = is_numeric(trim($this->busqueda)) ? (int) trim($this->busqueda) : -1;
-                        $e->where('numero_serie', 'like', '%' . $this->busqueda . '%')
-                          ->orWhere('modelo', 'like', '%' . $this->busqueda . '%')
-                          ->orWhere('id', $bId);
-                    })
-                    ->orWhereHas('asignacionEquipo.equipo', function ($e) {
-                        $bId = is_numeric(trim($this->busqueda)) ? (int) trim($this->busqueda) : -1;
-                        $e->where('numero_serie', 'like', '%' . $this->busqueda . '%')
-                          ->orWhere('modelo', 'like', '%' . $this->busqueda . '%')
-                          ->orWhere('id', $bId);
-                    });
+                        ->orWhere('descripcion_libre', 'like', '%'.$this->busqueda.'%')
+                        ->orWhere('categoria_solicitada', 'like', '%'.$this->busqueda.'%')
+                        ->orWhere('detalle_solicitado', 'like', '%'.$this->busqueda.'%')
+                        ->orWhereHas('equipo', function ($e) {
+                            $bId = is_numeric(trim($this->busqueda)) ? (int) trim($this->busqueda) : -1;
+                            $e->where('numero_serie', 'like', '%'.$this->busqueda.'%')
+                                ->orWhere('modelo', 'like', '%'.$this->busqueda.'%')
+                                ->orWhere('id', $bId);
+                        })
+                        ->orWhereHas('asignacionEquipo.equipo', function ($e) {
+                            $bId = is_numeric(trim($this->busqueda)) ? (int) trim($this->busqueda) : -1;
+                            $e->where('numero_serie', 'like', '%'.$this->busqueda.'%')
+                                ->orWhere('modelo', 'like', '%'.$this->busqueda.'%')
+                                ->orWhere('id', $bId);
+                        });
                 });
             })
             ->orderByRaw("FIELD(estatus, 'SURTIDA_INVENTARIO', 'COMPRADA', 'PENDIENTE', 'REQUIERE_REASIGNACION', 'PENDIENTE_COMPRA', 'CONFIRMADA', 'CANCELADA')")
@@ -108,7 +112,7 @@ class SolicitudesPiezas extends Component
         // ── Contadores ────────────────────────────────────────────────────────
         $base = SolicitudPieza::where(function ($q) use ($authId) {
             $q->where('solicitado_por_id', $authId)
-              ->orWhere('reasignado_a_id', $authId);
+                ->orWhere('reasignado_a_id', $authId);
         });
 
         // Delegadas: creadas por mí pero asignadas a otro
@@ -119,31 +123,29 @@ class SolicitudesPiezas extends Component
             ->count();
 
         // Base sin delegadas (para tabs que no las incluyen)
-        $baseSinDel = (clone $base)->where(fn ($q) =>
-            $q->whereNull('reasignado_a_id')
-              ->orWhereColumn('reasignado_a_id', 'solicitado_por_id')
+        $baseSinDel = (clone $base)->where(fn ($q) => $q->whereNull('reasignado_a_id')
+            ->orWhereColumn('reasignado_a_id', 'solicitado_por_id')
         );
 
         $contadores = [
             // Tecnico
-            'por_confirmar'      => (clone $baseSinDel)->where('estatus', SolicitudPieza::PENDIENTE)->count(),
-            'restock'            => (clone $baseSinDel)->whereIn('estatus', [SolicitudPieza::PENDIENTE_COMPRA, SolicitudPieza::COMPRADA])->count(),
-            'lista'              => (clone $baseSinDel)->where('estatus', SolicitudPieza::SURTIDA_INVENTARIO)->count(),
-            'en_calidad'         => (clone $base)->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', true)->count(),
-            'reasignacion'       => (clone $base)->where('estatus', SolicitudPieza::REQUIERE_REASIGNACION)->count(),
-            'finalizado_tec'     => (clone $base)->where(fn ($q) =>
-                                        $q->where('estatus', SolicitudPieza::CANCELADA)
-                                          ->orWhere(fn ($q2) => $q2->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', false))
-                                    )->count() + $delegadasCount,
+            'por_confirmar' => (clone $baseSinDel)->where('estatus', SolicitudPieza::PENDIENTE)->count(),
+            'restock' => (clone $baseSinDel)->whereIn('estatus', [SolicitudPieza::PENDIENTE_COMPRA, SolicitudPieza::COMPRADA])->count(),
+            'lista' => (clone $baseSinDel)->where('estatus', SolicitudPieza::SURTIDA_INVENTARIO)->count(),
+            'en_calidad' => (clone $base)->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', true)->count(),
+            'reasignacion' => (clone $base)->where('estatus', SolicitudPieza::REQUIERE_REASIGNACION)->count(),
+            'finalizado_tec' => (clone $base)->where(fn ($q) => $q->where('estatus', SolicitudPieza::CANCELADA)
+                ->orWhere(fn ($q2) => $q2->where('estatus', SolicitudPieza::CONFIRMADA)->where('funciono', false))
+            )->count() + $delegadasCount,
             // Lider (old tabs)
-            'pendientes'        => (clone $base)->where('estatus', SolicitudPieza::PENDIENTE)->count(),
-            'surtidas'          => (clone $base)->where('estatus', SolicitudPieza::SURTIDA_INVENTARIO)->count(),
+            'pendientes' => (clone $base)->where('estatus', SolicitudPieza::PENDIENTE)->count(),
+            'surtidas' => (clone $base)->where('estatus', SolicitudPieza::SURTIDA_INVENTARIO)->count(),
             'pendientes_compra' => (clone $base)->where('estatus', SolicitudPieza::PENDIENTE_COMPRA)->count(),
-            'compradas'         => (clone $base)->where('estatus', SolicitudPieza::COMPRADA)->count(),
-            'confirmadas'       => (clone $base)->where('estatus', SolicitudPieza::CONFIRMADA)->count(),
-            'canceladas'        => (clone $base)->where('estatus', SolicitudPieza::CANCELADA)->count(),
+            'compradas' => (clone $base)->where('estatus', SolicitudPieza::COMPRADA)->count(),
+            'confirmadas' => (clone $base)->where('estatus', SolicitudPieza::CONFIRMADA)->count(),
+            'canceladas' => (clone $base)->where('estatus', SolicitudPieza::CANCELADA)->count(),
             // Todos
-            'todas'             => (clone $base)->count(),
+            'todas' => (clone $base)->count(),
         ];
 
         return view('livewire.inventario.solicitudes-piezas', compact('solicitudes', 'contadores'));
@@ -166,11 +168,13 @@ class SolicitudesPiezas extends Component
 
         if ((int) $solicitud->solicitado_por_id !== (int) auth()->id()) {
             $this->dispatch('toast', type: 'error', message: 'Solo quien creo la solicitud puede eliminarla.');
+
             return;
         }
 
         if ($solicitud->estatus !== SolicitudPieza::PENDIENTE) {
             $this->dispatch('toast', type: 'error', message: 'Solo se pueden eliminar solicitudes que aun esten pendientes.');
+
             return;
         }
 
@@ -180,7 +184,9 @@ class SolicitudesPiezas extends Component
 
     public function confirmarEliminar(): void
     {
-        if (!$this->eliminarSolicitudId) return;
+        if (! $this->eliminarSolicitudId) {
+            return;
+        }
 
         $solicitud = SolicitudPieza::findOrFail($this->eliminarSolicitudId);
 
@@ -188,6 +194,7 @@ class SolicitudesPiezas extends Component
             || $solicitud->estatus !== SolicitudPieza::PENDIENTE) {
             $this->dispatch('toast', type: 'error', message: 'No se puede eliminar esta solicitud.');
             $this->cerrarModalEliminar();
+
             return;
         }
 
@@ -208,13 +215,15 @@ class SolicitudesPiezas extends Component
         $solicitud = SolicitudPieza::with(['inventarioPieza.almacen', 'equipo', 'asignacionEquipo.equipo'])
             ->findOrFail($id);
 
-        if (!$this->esResponsableDeSolicitud($solicitud)) {
+        if (! $this->esResponsableDeSolicitud($solicitud)) {
             $this->dispatch('toast', type: 'error', message: 'Solo el tecnico responsable puede gestionar esta instalacion.');
+
             return;
         }
 
         if ($solicitud->estatus !== SolicitudPieza::SURTIDA_INVENTARIO) {
             $this->dispatch('toast', type: 'error', message: 'La pieza aun no esta lista para instalar.');
+
             return;
         }
 
@@ -226,10 +235,13 @@ class SolicitudesPiezas extends Component
 
     public function iniciarDesdeModal(): void
     {
-        if (!$this->solicitudSeleccionada) return;
+        if (! $this->solicitudSeleccionada) {
+            return;
+        }
 
-        if (!$this->esResponsableDeSolicitud($this->solicitudSeleccionada)) {
+        if (! $this->esResponsableDeSolicitud($this->solicitudSeleccionada)) {
             $this->dispatch('toast', type: 'error', message: 'No tienes permiso.');
+
             return;
         }
 
@@ -239,9 +251,10 @@ class SolicitudesPiezas extends Component
 
     public function confirmarConResultado(bool $funciono): void
     {
-        if (!$this->solicitudSeleccionada || !$this->esResponsableDeSolicitud($this->solicitudSeleccionada)) {
+        if (! $this->solicitudSeleccionada || ! $this->esResponsableDeSolicitud($this->solicitudSeleccionada)) {
             $this->dispatch('toast', type: 'error', message: 'No tienes permiso para cerrar esta solicitud.');
             $this->cerrarModal();
+
             return;
         }
 
@@ -259,7 +272,7 @@ class SolicitudesPiezas extends Component
 
             $this->cerrarModal();
         } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Error al confirmar: ' . $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: 'Error al confirmar: '.$e->getMessage());
         }
     }
 

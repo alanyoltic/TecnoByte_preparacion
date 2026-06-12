@@ -9,7 +9,7 @@ class EmpleadoDelMes extends Model
     protected $table = 'empleados_del_mes';
 
     protected $fillable = [
-        'month','user_id','titulo','mensaje','is_active'
+        'month', 'user_id', 'titulo', 'mensaje', 'is_active',
     ];
 
     public function user()

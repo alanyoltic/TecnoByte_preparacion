@@ -10,10 +10,10 @@ return new class extends Migration
     {
         Schema::table('solicitudes_piezas', function (Blueprint $table) {
             $table->foreignId('reasignado_a_id')
-                  ->nullable()
-                  ->after('respondida_por_id')
-                  ->constrained('users')
-                  ->nullOnDelete();
+                ->nullable()
+                ->after('respondida_por_id')
+                ->constrained('users')
+                ->nullOnDelete();
             $table->timestamp('reasignada_en')->nullable()->after('reasignado_a_id');
         });
     }

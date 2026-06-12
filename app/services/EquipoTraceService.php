@@ -33,12 +33,12 @@ class EquipoTraceService
         }
 
         EquipoAuditoria::create([
-            'equipo_id'  => $equipo->id,
-            'user_id'    => (int) auth()->id(),
-            'accion'     => $accion,
-            'motivo'     => filled($motivo) ? trim($motivo) : null,
-            'cambios'    => $cambios ?: null,
-            'ip'         => request()->ip(),
+            'equipo_id' => $equipo->id,
+            'user_id' => (int) auth()->id(),
+            'accion' => $accion,
+            'motivo' => filled($motivo) ? trim($motivo) : null,
+            'cambios' => $cambios ?: null,
+            'ip' => request()->ip(),
             'user_agent' => request()->userAgent(),
         ]);
     }
@@ -48,26 +48,26 @@ class EquipoTraceService
         $equipo->loadMissing(['gpus', 'baterias', 'monitor', 'movimientos', 'estancias']);
 
         return EquipoEliminacion::create([
-            'accion'             => 'ELIMINACION_INTENTO',
+            'accion' => 'ELIMINACION_INTENTO',
             'equipo_id_original' => $equipo->id,
-            'numero_serie'       => $equipo->numero_serie ?: ('SIN_SERIE_' . $equipo->id),
-            'codigo'             => $equipo->codigo,
-            'tipo_equipo'        => $equipo->tipo_equipo,
-            'marca'              => $equipo->marca,
-            'modelo'             => $equipo->modelo,
-            'user_id'            => (int) auth()->id(),
-            'motivo'             => trim($motivo),
-            'snapshot'           => [
-                'equipo'     => $equipo->toArray(),
-                'gpus'       => $equipo->gpus->toArray(),
-                'baterias'   => $equipo->baterias->toArray(),
-                'monitor'    => $equipo->monitor?->toArray(),
+            'numero_serie' => $equipo->numero_serie ?: ('SIN_SERIE_'.$equipo->id),
+            'codigo' => $equipo->codigo,
+            'tipo_equipo' => $equipo->tipo_equipo,
+            'marca' => $equipo->marca,
+            'modelo' => $equipo->modelo,
+            'user_id' => (int) auth()->id(),
+            'motivo' => trim($motivo),
+            'snapshot' => [
+                'equipo' => $equipo->toArray(),
+                'gpus' => $equipo->gpus->toArray(),
+                'baterias' => $equipo->baterias->toArray(),
+                'monitor' => $equipo->monitor?->toArray(),
                 'auditorias' => EquipoAuditoria::where('equipo_id', $equipo->id)->get()->toArray(),
-                'movimientos'=> $equipo->movimientos->toArray(),
-                'estancias'  => $equipo->estancias->toArray(),
+                'movimientos' => $equipo->movimientos->toArray(),
+                'estancias' => $equipo->estancias->toArray(),
             ],
-            'ip'                 => request()->ip(),
-            'user_agent'         => substr((string) request()->userAgent(), 0, 250),
+            'ip' => request()->ip(),
+            'user_agent' => substr((string) request()->userAgent(), 0, 250),
         ]);
     }
 
@@ -82,7 +82,7 @@ class EquipoTraceService
 
         $registro->update([
             'accion' => 'ELIMINACION_FALLIDA',
-            'motivo' => trim($registro->motivo . ' | Error: ' . $detalle),
+            'motivo' => trim($registro->motivo.' | Error: '.$detalle),
         ]);
     }
 
@@ -156,4 +156,3 @@ class EquipoTraceService
             ->values();
     }
 }
-

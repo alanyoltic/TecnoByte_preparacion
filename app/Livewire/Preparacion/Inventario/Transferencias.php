@@ -2,17 +2,18 @@
 
 namespace App\Livewire\Preparacion\Inventario;
 
+use App\Models\Transferencia;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
-use App\Models\Transferencia;
 
 #[Layout('layouts.app', ['pageTitle' => 'Transferencias'])]
 class Transferencias extends Component
 {
     use WithPagination;
 
-    public string $search       = '';
+    public string $search = '';
+
     public string $filtroEstado = 'todos';
 
     public function mount(): void
@@ -35,7 +36,7 @@ class Transferencias extends Component
         $user = auth()->user();
 
         // Query base con filtro de visibilidad por rol
-        $baseQuery = fn() => $user->aplicarFiltroVisibilidadTransferencias(
+        $baseQuery = fn () => $user->aplicarFiltroVisibilidadTransferencias(
             Transferencia::query()
         );
 
@@ -49,8 +50,8 @@ class Transferencias extends Component
         if ($this->filtroEstado !== 'todos') {
             $estadoDb = match ($this->filtroEstado) {
                 'PENDIENTE' => 'ENVIADA',
-                'APROBADA'  => 'ACEPTADA',
-                default     => $this->filtroEstado,
+                'APROBADA' => 'ACEPTADA',
+                default => $this->filtroEstado,
             };
 
             $query->where('estatus', $estadoDb);
@@ -60,9 +61,9 @@ class Transferencias extends Component
             $search = $this->search;
             $query->where(function ($q) use ($search) {
                 $q->where('id', 'like', "%{$search}%")
-                  ->orWhereHas('origen',  fn($q2) => $q2->where('nombre', 'like', "%{$search}%"))
-                  ->orWhereHas('destino', fn($q2) => $q2->where('nombre', 'like', "%{$search}%"))
-                  ->orWhereHas('creador', fn($q2) => $q2->where('name',   'like', "%{$search}%"));
+                    ->orWhereHas('origen', fn ($q2) => $q2->where('nombre', 'like', "%{$search}%"))
+                    ->orWhereHas('destino', fn ($q2) => $q2->where('nombre', 'like', "%{$search}%"))
+                    ->orWhereHas('creador', fn ($q2) => $q2->where('name', 'like', "%{$search}%"));
             });
         }
 
@@ -72,9 +73,9 @@ class Transferencias extends Component
         return view('livewire.preparacion.inventario.transferencias', [
             'transferencias' => $query->paginate(15),
             'stats' => [
-                'total'    => (clone $statsBase)->count(),
+                'total' => (clone $statsBase)->count(),
                 'borrador' => (clone $statsBase)->where('estatus', 'BORRADOR')->count(),
-                'pendiente'=> (clone $statsBase)->where('estatus', 'ENVIADA')->count(),
+                'pendiente' => (clone $statsBase)->where('estatus', 'ENVIADA')->count(),
                 'aprobada' => (clone $statsBase)->where('estatus', 'ACEPTADA')->count(),
             ],
         ]);

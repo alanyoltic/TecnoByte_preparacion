@@ -2,15 +2,15 @@
 
 namespace App\Livewire\Preparacion\Inventario;
 
-use Livewire\Attributes\Layout;
-use Livewire\Component;
-use Livewire\WithPagination;
-use App\Models\Equipo;
 use App\Models\AsignacionEquipo;
+use App\Models\Equipo;
 use App\Models\Lote;
 use App\Models\Proveedor;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Layout;
+use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('layouts.app', ['pageTitle' => 'Inventario listo'])]
 class InventarioListo extends Component
@@ -21,53 +21,58 @@ class InventarioListo extends Component
 
     // Filtros / búsqueda
     public $search = '';
-    public $filtroEstado = 'todos';
-    public $filtroLote = 'todos';
-    public $filtroProveedor = 'todos';
-    public $filtroRegistradoPor = 'todos';
-    public $colaboradores = []; 
 
+    public $filtroEstado = 'todos';
+
+    public $filtroLote = 'todos';
+
+    public $filtroProveedor = 'todos';
+
+    public $filtroRegistradoPor = 'todos';
+
+    public $colaboradores = [];
 
     // Catálogos
     public $lotes = [];
+
     public $proveedores = [];
 
     // Tarjetas de totales
     public $stats = [
-        'total'          => 0,
-        'sin_asignar'    => 0,
-        'por_hacer'      => 0,
-        'en_calidad'     => 0,
-        'finalizado'     => 0,
+        'total' => 0,
+        'sin_asignar' => 0,
+        'por_hacer' => 0,
+        'en_calidad' => 0,
+        'finalizado' => 0,
     ];
 
     // (Opcional pero útil) mantener filtros en la URL
     protected $queryString = [
-        'search'         => ['except' => ''],
-        'filtroEstado'   => ['except' => 'todos'],
-        'filtroLote'     => ['except' => 'todos'],
-        'filtroProveedor'=> ['except' => 'todos'],
-        
+        'search' => ['except' => ''],
+        'filtroEstado' => ['except' => 'todos'],
+        'filtroLote' => ['except' => 'todos'],
+        'filtroProveedor' => ['except' => 'todos'],
+
     ];
 
-public function mount()
-{
-    $this->autorizarVisualizacion();
+    public function mount()
+    {
+        $this->autorizarVisualizacion();
 
-    $this->lotes = Lote::orderBy('fecha_llegada', 'desc')->get();
-    $this->proveedores = Proveedor::orderBy('nombre_empresa', 'asc')->get();
+        $this->lotes = Lote::orderBy('fecha_llegada', 'desc')->get();
+        $this->proveedores = Proveedor::orderBy('nombre_empresa', 'asc')->get();
 
-    $this->calcularStats();
+        $this->calcularStats();
 
-    $this->colaboradores = User::withoutGlobalScopes()
-        ->select('id', 'nombre')
-        ->whereNull('deleted_at')
-        ->where('is_active', true)
-        ->orderBy('nombre')
-        ->get()
-        ->map(fn ($u) => ['id' => $u->id, 'nombre' => $u->nombre])
-        ->toArray();
-}
+        $this->colaboradores = User::withoutGlobalScopes()
+            ->select('id', 'nombre')
+            ->whereNull('deleted_at')
+            ->where('is_active', true)
+            ->orderBy('nombre')
+            ->get()
+            ->map(fn ($u) => ['id' => $u->id, 'nombre' => $u->nombre])
+            ->toArray();
+    }
 
     private function autorizarVisualizacion(): void
     {
@@ -79,8 +84,9 @@ public function mount()
         abort_unless(auth()->user()?->tienePermiso('prep.inventario.ver'), 403);
 
         $equipo = Equipo::find($equipoId);
-        if (!$equipo || $equipo->estatus_area !== Equipo::AREA_EN_CALIDAD) {
+        if (! $equipo || $equipo->estatus_area !== Equipo::AREA_EN_CALIDAD) {
             $this->dispatch('toast', type: 'error', message: 'El equipo no está en calidad.');
+
             return;
         }
 
@@ -100,7 +106,6 @@ public function mount()
         $this->calcularStats();
         $this->dispatch('toast', type: 'success', message: 'Equipo validado. Listo para ventas.');
     }
-
 
     /** Cuando cambia cualquiera de estos campos, regresamos a la página 1 */
     public function updatingSearch()
@@ -127,7 +132,6 @@ public function mount()
     {
         $this->resetPage();
     }
-
 
     protected function calcularStats(): void
     {
@@ -164,26 +168,26 @@ public function mount()
 
     public function render()
     {
-         $query = Equipo::query()
-        ->with([
-            'loteModelo.lote.proveedor',
-            'registradoPor' => fn($q) => $q->withoutGlobalScopes(),
-            'monitor',
-            'gpus',
+        $query = Equipo::query()
+            ->with([
+                'loteModelo.lote.proveedor',
+                'registradoPor' => fn ($q) => $q->withoutGlobalScopes(),
+                'monitor',
+                'gpus',
             ])
             ->orderByDesc('created_at');
 
         // 🔍 Búsqueda rápida
         if (trim($this->search) !== '') {
-            $search = '%' . trim($this->search) . '%';
+            $search = '%'.trim($this->search).'%';
 
             $rawId = trim($this->search);
             $query->where(function ($q) use ($search, $rawId) {
                 $q->where('numero_serie', 'like', $search)
-                  ->orWhere('marca', 'like', $search)
-                  ->orWhere('modelo', 'like', $search)
-                  ->orWhere('tipo_equipo', 'like', $search)
-                  ->orWhere('id', is_numeric($rawId) ? (int)$rawId : -1);
+                    ->orWhere('marca', 'like', $search)
+                    ->orWhere('modelo', 'like', $search)
+                    ->orWhere('tipo_equipo', 'like', $search)
+                    ->orWhere('id', is_numeric($rawId) ? (int) $rawId : -1);
             });
         }
 
@@ -211,7 +215,6 @@ public function mount()
             $q->where('registrado_por_user_id', $this->filtroRegistradoPor);
         });
 
-
         // Paginación final
         $equipos = $query->paginate(15);
 
@@ -220,10 +223,10 @@ public function mount()
         $this->calcularStats();
 
         return view('livewire.preparacion.inventario.inventario-listo', [
-            'equipos'      => $equipos,
-            'lotes'        => $this->lotes,
-            'proveedores'  => $this->proveedores,
-            'stats'        => $this->stats,
+            'equipos' => $equipos,
+            'lotes' => $this->lotes,
+            'proveedores' => $this->proveedores,
+            'stats' => $this->stats,
         ]);
     }
 }

@@ -1,17 +1,19 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\AfterLoginRedirectController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\Auth\RegisteredUserController;
-use App\Http\Controllers\AfterLoginRedirectController;
-use App\Livewire\Preparacion\Equipos\MiTrabajo;
+use App\Livewire\Dashboard\Dashboard;
+use App\Livewire\Inventario\GestionSolicitudesPiezas;
+use App\Livewire\Inventario\SolicitudesPiezas;
+use App\Livewire\Preparacion\Calidad\GestionCalidad;
 use App\Livewire\Preparacion\Equipos\Asignaciones;
+use App\Livewire\Preparacion\Equipos\EditarEquipo;
+use App\Livewire\Preparacion\Equipos\MiTrabajo;
+use App\Livewire\Preparacion\Equipos\RegistrarEquipo;
 use App\Livewire\Preparacion\Inventario\CatalogoPiezas;
 use App\Livewire\Preparacion\Inventario\ComprasInventario;
-use App\Livewire\Preparacion\Equipos\EditarEquipo;
-use App\Livewire\Preparacion\Equipos\RegistrarEquipo;
 use App\Livewire\Preparacion\Inventario\GestionInventario;
 use App\Livewire\Preparacion\Inventario\InventarioListo;
 use App\Livewire\Preparacion\Inventario\ResumenInventario;
@@ -20,14 +22,8 @@ use App\Livewire\Preparacion\Inventario\TransferenciasCrear;
 use App\Livewire\Preparacion\Lotes\EditarLote;
 use App\Livewire\Preparacion\Lotes\ListaLotes;
 use App\Livewire\Preparacion\Lotes\RegistrarLote;
-use App\Livewire\Inventario\SolicitudesPiezas;
-use App\Livewire\Inventario\GestionSolicitudesPiezas;
-use App\Livewire\Dashboard\Dashboard;
-use App\Livewire\Preparacion\Calidad\GestionCalidad;
-
-
 use App\Models\Equipo;
-
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -69,11 +65,11 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
     */
     Route::get('/equipos/{equipo}/etiqueta-comando', function (Equipo $equipo) {
 
-        $titulo = strtoupper(trim(($equipo->marca ?? '') . ' ' . ($equipo->modelo ?? '')));
-        $serie  = $equipo->numero_serie ?? (string) $equipo->id;
+        $titulo = strtoupper(trim(($equipo->marca ?? '').' '.($equipo->modelo ?? '')));
+        $serie = $equipo->numero_serie ?? (string) $equipo->id;
 
         $titulo = preg_replace('/[^A-Z0-9 \-\_]/i', '', $titulo);
-        $serie  = preg_replace('/[^A-Z0-9\-\_]/i', '', $serie);
+        $serie = preg_replace('/[^A-Z0-9\-\_]/i', '', $serie);
 
         $lines = [];
         $lines[] = 'SIZE 77 mm,50 mm';
@@ -83,18 +79,17 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
         $lines[] = 'SPEED 4';
         $lines[] = 'DIRECTION 0';
         $lines[] = 'REFERENCE 0,0';
-        $lines[] = 'TEXT 40,60,"0",0,2,2,"' . $titulo . '"';
-        $lines[] = 'TEXT 40,120,"0",0,1,1,"SERIE: ' . $serie . '"';
-        $lines[] = 'BARCODE 140,200,"128",60,1,0,2,2,"' . $serie . '"';
-        $lines[] = 'TEXT 170,270,"0",0,1,1,"*' . $serie . '*"';
+        $lines[] = 'TEXT 40,60,"0",0,2,2,"'.$titulo.'"';
+        $lines[] = 'TEXT 40,120,"0",0,1,1,"SERIE: '.$serie.'"';
+        $lines[] = 'BARCODE 140,200,"128",60,1,0,2,2,"'.$serie.'"';
+        $lines[] = 'TEXT 170,270,"0",0,1,1,"*'.$serie.'*"';
         $lines[] = 'PRINT 1,1';
 
         return response(implode("\r\n", $lines), 200)
             ->header('Content-Type', 'text/plain; charset=US-ASCII');
 
     })->middleware('permiso:prep.equipos.imprimir')
-      ->name('equipos.etiqueta.comando');
-
+        ->name('equipos.etiqueta.comando');
 
     /*
     |--------------------------------------------------------------------------
@@ -120,10 +115,7 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
             ->middleware('permiso:prep.transferencias.crear')
             ->name('inventario.prep.transferencias.crear');
 
-
-
-            });
-
+    });
 
     /*
     |--------------------------------------------------------------------------
@@ -146,7 +138,6 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
             ->name('equipos.editar');
     });
 
-
     /*
     |--------------------------------------------------------------------------
     | LOTES (GLOBAL)
@@ -168,18 +159,11 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
             ->name('lotes.edit');
     });
 
-    
     /*
     |--------------------------------------------------------------------------
     | TRANSFERENCIAS (GLOBAL)
     |--------------------------------------------------------------------------
     */
-
-
-
-
-
-
 
     /*
     |--------------------------------------------------------------------------
@@ -196,7 +180,6 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
         ->middleware('permiso:prep.equipos.ver')
         ->name('preparacion.mi-trabajo');
 
-
     Route::get('/preparacion/asignaciones', Asignaciones::class)
         ->middleware('permiso:prep.inventario.gestion')
         ->name('preparacion.asignaciones');
@@ -205,29 +188,27 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
         ->middleware('permiso:prep.calidad.validar')
         ->name('preparacion.calidad');
 
-        Route::get('/preparacion/catalogo-piezas', CatalogoPiezas::class)
-            ->middleware('permiso:prep.inventario.gestion')
-            ->name('preparacion.catalogo-piezas');
+    Route::get('/preparacion/catalogo-piezas', CatalogoPiezas::class)
+        ->middleware('permiso:prep.inventario.gestion')
+        ->name('preparacion.catalogo-piezas');
 
-        Route::get('/inventario/compras', ComprasInventario::class)
-            ->middleware('permiso:prep.inventario.gestion')
-            ->name('inventario.compras');
+    Route::get('/inventario/compras', ComprasInventario::class)
+        ->middleware('permiso:prep.inventario.gestion')
+        ->name('inventario.compras');
 
     Route::middleware(['auth'])->group(function () {
-    
-    // Vista de solicitudes de piezas (técnico — filtrada por auth)
-    Route::get('/inventario/piezas/solicitudes', SolicitudesPiezas::class)
-        ->name('inventario.piezas.solicitudes')
-        ->middleware('permiso:prep.equipos.ver');
 
-    // Vista de gestión de solicitudes (líder/gerente)
-    Route::get('/inventario/piezas/gestionar', GestionSolicitudesPiezas::class)
-        ->name('inventario.solicitudes.gestionar')
-        ->middleware('permiso:prep.inventario.gestion');
+        // Vista de solicitudes de piezas (técnico — filtrada por auth)
+        Route::get('/inventario/piezas/solicitudes', SolicitudesPiezas::class)
+            ->name('inventario.piezas.solicitudes')
+            ->middleware('permiso:prep.equipos.ver');
 
-});
- 
+        // Vista de gestión de solicitudes (líder/gerente)
+        Route::get('/inventario/piezas/gestionar', GestionSolicitudesPiezas::class)
+            ->name('inventario.solicitudes.gestionar')
+            ->middleware('permiso:prep.inventario.gestion');
 
+    });
 
     /*
     |--------------------------------------------------------------------------
@@ -262,11 +243,10 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
                 ->middleware('permiso:sistema.avisos.ver')
                 ->name('avisos.index');
 
-                Route::patch('/usuarios/{user}/baja', [UserController::class, 'baja'])
-    ->name('usuarios.baja')
-    ->middleware('permiso:sistema.usuarios.editar');
+            Route::patch('/usuarios/{user}/baja', [UserController::class, 'baja'])
+                ->name('usuarios.baja')
+                ->middleware('permiso:sistema.usuarios.editar');
         });
-
 
     /*
     |--------------------------------------------------------------------------
@@ -289,15 +269,15 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
     Route::view('/administracion/dashboard', 'administracion.dashboard')
         ->middleware('permiso:modulo.administracion')
         ->name('administracion.dashboard');
-// Catálogo de Equipos
-Route::get('/preparacion/catalogo-equipos', \App\Livewire\Preparacion\CatalogoEquipos::class)
-    ->middleware('permiso:prep.inventario.gestion')
-    ->name('preparacion.catalogo-equipos');
+    // Catálogo de Equipos
+    Route::get('/preparacion/catalogo-equipos', \App\Livewire\Preparacion\CatalogoEquipos::class)
+        ->middleware('permiso:prep.inventario.gestion')
+        ->name('preparacion.catalogo-equipos');
 
-// Estadísticas
-Route::get('/preparacion/estadisticas-equipos', \App\Livewire\Preparacion\Dashboard\EstadisticasEquipos::class)
-    ->middleware('permiso:prep.inventario.gestion')
-    ->name('preparacion.estadisticas-equipos');
+    // Estadísticas
+    Route::get('/preparacion/estadisticas-equipos', \App\Livewire\Preparacion\Dashboard\EstadisticasEquipos::class)
+        ->middleware('permiso:prep.inventario.gestion')
+        ->name('preparacion.estadisticas-equipos');
 });
 
 require __DIR__.'/auth.php';

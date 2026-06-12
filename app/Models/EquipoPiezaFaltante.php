@@ -24,6 +24,6 @@ class EquipoPiezaFaltante extends Model
 
     public function pieza()
     {
-        return $this->belongsTo(CatalogoPieza::class, 'pieza_id');
+        return $this->belongsTo(CatalogoPieza::class, 'pieza_id')->withTrashed();
     }
 }

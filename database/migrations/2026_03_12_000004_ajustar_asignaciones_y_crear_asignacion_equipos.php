@@ -19,15 +19,15 @@ return new class extends Migration
 
             // Agregar referencia al modelo del lote
             $table->foreignId('lote_modelo_id')
-                  ->after('asignado_por_id')
-                  ->constrained('lote_modelos_recibidos')
-                  ->cascadeOnDelete()
-                  ->comment('Modelo específico del lote a preparar');
+                ->after('asignado_por_id')
+                ->constrained('lote_modelos_recibidos')
+                ->cascadeOnDelete()
+                ->comment('Modelo específico del lote a preparar');
 
             // Cantidad de equipos asignados de ese modelo
             $table->unsignedSmallInteger('cantidad')
-                  ->after('lote_modelo_id')
-                  ->comment('Cuántos equipos de ese modelo se asignan');
+                ->after('lote_modelo_id')
+                ->comment('Cuántos equipos de ese modelo se asignan');
 
             $table->index('lote_modelo_id');
         });
@@ -39,14 +39,14 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('asignacion_id')
-                  ->constrained('asignaciones')
-                  ->cascadeOnDelete()
-                  ->comment('Asignación genérica a la que pertenece');
+                ->constrained('asignaciones')
+                ->cascadeOnDelete()
+                ->comment('Asignación genérica a la que pertenece');
 
             $table->foreignId('equipo_id')
-                  ->constrained('equipos')
-                  ->cascadeOnDelete()
-                  ->comment('Equipo específico (escaneado por el técnico)');
+                ->constrained('equipos')
+                ->cascadeOnDelete()
+                ->comment('Equipo específico (escaneado por el técnico)');
 
             // ── Tiempos ───────────────────────────────────────────────────
             $table->timestamp('inicio_en')->nullable()->comment('Cuando el técnico empieza a trabajarlo');
@@ -84,8 +84,8 @@ return new class extends Migration
             $table->dropColumn(['lote_modelo_id', 'cantidad']);
 
             $table->foreignId('equipo_id')
-                  ->constrained('equipos')
-                  ->cascadeOnDelete();
+                ->constrained('equipos')
+                ->cascadeOnDelete();
         });
     }
 };

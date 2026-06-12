@@ -14,7 +14,7 @@ class LotesResumenSheet implements FromCollection, WithHeadings
             ->join('lotes as l', 'lmr.lote_id', '=', 'l.id')
             ->leftJoin('equipos as e', function ($join) {
                 $join->on('e.lote_modelo_id', '=', 'lmr.id')
-                     ->whereNull('e.deleted_at');
+                    ->whereNull('e.deleted_at');
             })
             ->selectRaw('
                 l.nombre_lote,

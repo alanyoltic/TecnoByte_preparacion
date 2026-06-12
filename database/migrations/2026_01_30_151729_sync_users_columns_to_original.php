@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -12,42 +12,42 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
 
             // Nombres/apellidos
-            if (!Schema::hasColumn('users', 'segundo_nombre')) {
+            if (! Schema::hasColumn('users', 'segundo_nombre')) {
                 $table->string('segundo_nombre')->nullable()->after('nombre');
             }
-            if (!Schema::hasColumn('users', 'apellido_paterno')) {
+            if (! Schema::hasColumn('users', 'apellido_paterno')) {
                 $table->string('apellido_paterno')->nullable()->after('segundo_nombre');
             }
-            if (!Schema::hasColumn('users', 'apellido_materno')) {
+            if (! Schema::hasColumn('users', 'apellido_materno')) {
                 $table->string('apellido_materno')->nullable()->after('apellido_paterno');
             }
 
             // Activo
-            if (!Schema::hasColumn('users', 'is_active')) {
+            if (! Schema::hasColumn('users', 'is_active')) {
                 $table->boolean('is_active')->default(true)->after('password');
             }
 
             // Foto
-            if (!Schema::hasColumn('users', 'foto_perfil')) {
+            if (! Schema::hasColumn('users', 'foto_perfil')) {
                 $table->string('foto_perfil')->nullable()->after('sucursal_id');
             }
 
             // Soft deletes
-            if (!Schema::hasColumn('users', 'deleted_at')) {
+            if (! Schema::hasColumn('users', 'deleted_at')) {
                 $table->softDeletes();
             }
 
             // Relaciones (si no existen)
-            if (!Schema::hasColumn('users', 'role_id')) {
+            if (! Schema::hasColumn('users', 'role_id')) {
                 $table->foreignId('role_id')->nullable()->constrained('roles');
             }
-            if (!Schema::hasColumn('users', 'departamento_id')) {
+            if (! Schema::hasColumn('users', 'departamento_id')) {
                 $table->foreignId('departamento_id')->nullable()->constrained('departamento');
             }
-            if (!Schema::hasColumn('users', 'puesto_id')) {
+            if (! Schema::hasColumn('users', 'puesto_id')) {
                 $table->foreignId('puesto_id')->nullable()->constrained('puestos');
             }
-            if (!Schema::hasColumn('users', 'sucursal_id')) {
+            if (! Schema::hasColumn('users', 'sucursal_id')) {
                 $table->foreignId('sucursal_id')->nullable()->constrained('sucursales');
             }
         });
@@ -62,7 +62,7 @@ return new class extends Migration
         // Si role_id quedó nullable pero tú lo quieres obligatorio:
         // llena los NULL con algún rol base existente (ajusta slug si aplica)
         if (Schema::hasColumn('users', 'role_id')) {
-            $rolId = DB::table('roles')->whereIn('slug', ['tecnico','admin','ceo'])->value('id')
+            $rolId = DB::table('roles')->whereIn('slug', ['tecnico', 'admin', 'ceo'])->value('id')
                 ?? DB::table('roles')->orderBy('id')->value('id');
 
             if ($rolId) {

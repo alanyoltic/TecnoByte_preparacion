@@ -25,8 +25,8 @@ class PuestosSeeder extends Seeder
             DB::table('puestos')->updateOrInsert(
                 ['clave' => $p['clave']],
                 [
-                    'nombre'     => $p['nombre'],
-                    'activo'     => (int) $p['activo'],
+                    'nombre' => $p['nombre'],
+                    'activo' => (int) $p['activo'],
                     'updated_at' => now(),
                     'created_at' => DB::raw('COALESCE(created_at, NOW())'),
                 ]
@@ -43,13 +43,13 @@ class PuestosSeeder extends Seeder
         $depId = fn (string $clave) => DB::table('departamento')->where('clave', $clave)->value('id');
 
         $map = [
-            'PREPARACION'     => ['TECNICO'],
-            'SOPORTE'         => ['TECNICO'],
-            'VENTAS'          => ['VENDEDOR'],
-            'RRHH'            => ['RRHH'],
-            'ADMIN'           => ['ADMINISTRACION'],
-            'ADMINISTRACION'  => ['ADMINISTRACION'],
-            'MARKETING'       => ['MARKETING'],
+            'PREPARACION' => ['TECNICO'],
+            'SOPORTE' => ['TECNICO'],
+            'VENTAS' => ['VENDEDOR'],
+            'RRHH' => ['RRHH'],
+            'ADMIN' => ['ADMINISTRACION'],
+            'ADMINISTRACION' => ['ADMINISTRACION'],
+            'MARKETING' => ['MARKETING'],
         ];
 
         foreach ($map as $depClave => $puestosClaves) {
@@ -65,10 +65,10 @@ class PuestosSeeder extends Seeder
                 DB::table('departamento_puestos')->updateOrInsert(
                     [
                         'departamento_id' => $departamentoId,
-                        'puesto_id'       => $pId,
+                        'puesto_id' => $pId,
                     ],
                     [
-                        'activo'     => 1,
+                        'activo' => 1,
                         'updated_at' => now(),
                         'created_at' => DB::raw('COALESCE(created_at, NOW())'),
                     ]
@@ -117,8 +117,8 @@ class PuestosSeeder extends Seeder
 
             if ($target) {
                 DB::table('users')->where('id', $u->id)->update([
-                    'puesto_id'   => $puestoId($target),
-                    'updated_at'  => now(),
+                    'puesto_id' => $puestoId($target),
+                    'updated_at' => now(),
                 ]);
             }
         }

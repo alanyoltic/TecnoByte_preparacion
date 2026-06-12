@@ -2,11 +2,11 @@
 
 namespace App\Services;
 
-use App\Models\Transferencia;
 use App\Models\AlmacenEncargado;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Carbon;
+use App\Models\Transferencia;
 use Exception;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class TransferenciaService
 {
@@ -24,7 +24,7 @@ class TransferenciaService
             ->where('activo', 1)
             ->where(function ($q) {
                 $q->whereNull('hasta')
-                  ->orWhere('hasta', '>=', Carbon::now());
+                    ->orWhere('hasta', '>=', Carbon::now());
             })
             ->where('desde', '<=', Carbon::now())
             ->exists();
@@ -36,7 +36,7 @@ class TransferenciaService
             throw new Exception('La transferencia no está en estado BORRADOR.');
         }
 
-        if (!$this->esEncargadoActivo($transferencia->almacen_origen_id)) {
+        if (! $this->esEncargadoActivo($transferencia->almacen_origen_id)) {
             throw new Exception('No eres encargado del almacén origen.');
         }
 
@@ -46,7 +46,7 @@ class TransferenciaService
 
         $transferencia->update([
             'estatus' => 'ENVIADA',
-            'enviada_at' => now()
+            'enviada_at' => now(),
         ]);
     }
 
@@ -56,14 +56,14 @@ class TransferenciaService
             throw new Exception('La transferencia no está en estado ENVIADA.');
         }
 
-        if (!$this->esEncargadoActivo($transferencia->almacen_destino_id)) {
+        if (! $this->esEncargadoActivo($transferencia->almacen_destino_id)) {
             throw new Exception('No eres encargado del almacén destino.');
         }
 
         $transferencia->update([
             'estatus' => 'ACEPTADA',
             'approved_by' => $this->user->id,
-            'aprobada_at' => now()
+            'aprobada_at' => now(),
         ]);
 
         // 🔥 ETAPA 3 aplicará movimientos reales aquí
@@ -75,7 +75,7 @@ class TransferenciaService
             throw new Exception('Solo se pueden rechazar transferencias ENVIADAS.');
         }
 
-        if (!$this->esEncargadoActivo($transferencia->almacen_destino_id)) {
+        if (! $this->esEncargadoActivo($transferencia->almacen_destino_id)) {
             throw new Exception('No eres encargado del almacén destino.');
         }
 
@@ -83,7 +83,7 @@ class TransferenciaService
             'estatus' => 'RECHAZADA',
             'approved_by' => $this->user->id,
             'aprobada_at' => now(),
-            'observaciones' => $motivo
+            'observaciones' => $motivo,
         ]);
     }
 }

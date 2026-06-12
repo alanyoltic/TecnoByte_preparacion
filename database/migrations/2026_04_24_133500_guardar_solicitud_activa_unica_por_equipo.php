@@ -17,16 +17,16 @@ return new class extends Migration
     public function up(): void
     {
         // Normaliza equipo_id en registros legacy para poder aplicar unicidad por equipo.
-        DB::statement("
+        DB::statement('
             UPDATE solicitudes_piezas sp
             INNER JOIN asignacion_equipos ae ON ae.id = sp.asignacion_equipo_id
             SET sp.equipo_id = ae.equipo_id
             WHERE sp.equipo_id IS NULL
-        ");
+        ');
 
         $this->cancelarDuplicadasActivas();
 
-        if (!Schema::hasColumn('solicitudes_piezas', 'active_equipo_id')) {
+        if (! Schema::hasColumn('solicitudes_piezas', 'active_equipo_id')) {
             DB::statement("
                 ALTER TABLE solicitudes_piezas
                 ADD COLUMN active_equipo_id BIGINT UNSIGNED
@@ -40,28 +40,28 @@ return new class extends Migration
             ");
         }
 
-        if (!$this->tieneIndice('solicitudes_piezas', 'solicitudes_piezas_active_equipo_unique')) {
-            DB::statement("
+        if (! $this->tieneIndice('solicitudes_piezas', 'solicitudes_piezas_active_equipo_unique')) {
+            DB::statement('
                 ALTER TABLE solicitudes_piezas
                 ADD UNIQUE INDEX solicitudes_piezas_active_equipo_unique (active_equipo_id)
-            ");
+            ');
         }
     }
 
     public function down(): void
     {
         if ($this->tieneIndice('solicitudes_piezas', 'solicitudes_piezas_active_equipo_unique')) {
-            DB::statement("
+            DB::statement('
                 ALTER TABLE solicitudes_piezas
                 DROP INDEX solicitudes_piezas_active_equipo_unique
-            ");
+            ');
         }
 
         if (Schema::hasColumn('solicitudes_piezas', 'active_equipo_id')) {
-            DB::statement("
+            DB::statement('
                 ALTER TABLE solicitudes_piezas
                 DROP COLUMN active_equipo_id
-            ");
+            ');
         }
     }
 
@@ -83,19 +83,19 @@ return new class extends Migration
                 ->pluck('id');
 
             $idConservado = $idsActivos->shift();
-            if (!$idConservado || $idsActivos->isEmpty()) {
+            if (! $idConservado || $idsActivos->isEmpty()) {
                 continue;
             }
 
             DB::table('solicitudes_piezas')
                 ->whereIn('id', $idsActivos->all())
                 ->update([
-                    'estatus'         => 'CANCELADA',
-                    'respondida_en'   => now(),
+                    'estatus' => 'CANCELADA',
+                    'respondida_en' => now(),
                     'notas_respuesta' => DB::raw(
                         "TRIM(CONCAT(IFNULL(notas_respuesta, ''), ' | Auto-cancelada por migracion: solicitud activa duplicada del mismo equipo.'))"
                     ),
-                    'updated_at'      => now(),
+                    'updated_at' => now(),
                 ]);
         }
     }
@@ -107,6 +107,6 @@ return new class extends Migration
             [$indexName]
         );
 
-        return !empty($res);
+        return ! empty($res);
     }
 };

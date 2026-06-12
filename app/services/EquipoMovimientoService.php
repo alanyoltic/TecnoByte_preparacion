@@ -2,14 +2,13 @@
 
 namespace App\Services;
 
-use App\Models\Equipo;
 use App\Models\Almacen;
-use App\Models\EquipoMovimiento;
+use App\Models\Equipo;
 use App\Models\EquipoEstancia;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
+use App\Models\EquipoMovimiento;
 use Exception;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class EquipoMovimientoService
 {
@@ -50,7 +49,7 @@ class EquipoMovimientoService
     /**
      * Mueve un equipo a otro almacén.
      */
-        public function mover(
+    public function mover(
         Equipo $equipo,
         Almacen $destino,
         string $tipo = 'MOVER_ALMACEN',
@@ -62,7 +61,7 @@ class EquipoMovimientoService
 
             $usuario = auth()->user();
 
-            if (!$usuario) {
+            if (! $usuario) {
                 throw new \Exception('Usuario no autenticado.');
             }
 
@@ -83,7 +82,7 @@ class EquipoMovimientoService
                 ->lockForUpdate()
                 ->first();
 
-            if (!$estanciaActual) {
+            if (! $estanciaActual) {
                 throw new \Exception('No existe estancia abierta.');
             }
 
@@ -97,22 +96,22 @@ class EquipoMovimientoService
 
             // Abrir nueva estancia
             EquipoEstancia::create([
-                'equipo_id'  => $equipo->id,
+                'equipo_id' => $equipo->id,
                 'almacen_id' => $destino->id,
-                'inicio_at'  => $ahora,
-                'abierto_por'=> $usuario->id,
+                'inicio_at' => $ahora,
+                'abierto_por' => $usuario->id,
             ]);
 
             // Registrar movimiento
             EquipoMovimiento::create([
-                'equipo_id'         => $equipo->id,
-                'tipo'              => $tipo,
-                'desde_almacen_id'  => $almacenActualId,
-                'hacia_almacen_id'  => $destino->id,
-                'motivo'            => $motivo,
-                'created_by'        => $usuario->id,
-                'ip'                => request()->ip(),
-                'user_agent'        => request()->userAgent(),
+                'equipo_id' => $equipo->id,
+                'tipo' => $tipo,
+                'desde_almacen_id' => $almacenActualId,
+                'hacia_almacen_id' => $destino->id,
+                'motivo' => $motivo,
+                'created_by' => $usuario->id,
+                'ip' => request()->ip(),
+                'user_agent' => request()->userAgent(),
             ]);
 
             // Actualizar equipo
@@ -121,6 +120,7 @@ class EquipoMovimientoService
             ]);
         });
     }
+
     /**
      * Abre la primera estancia de un equipo (por ejemplo al darlo de alta).
      */
@@ -136,7 +136,7 @@ class EquipoMovimientoService
 
             $usuario = Auth::user();
 
-            if (!$usuario) {
+            if (! $usuario) {
                 throw new Exception('Usuario no autenticado.');
             }
 
@@ -158,21 +158,21 @@ class EquipoMovimientoService
             $ahora = now();
 
             EquipoEstancia::create([
-                'equipo_id'  => $equipo->id,
+                'equipo_id' => $equipo->id,
                 'almacen_id' => $almacen->id,
-                'inicio_at'  => $ahora,
-                'abierto_por'=> $usuario->id,
+                'inicio_at' => $ahora,
+                'abierto_por' => $usuario->id,
             ]);
 
             EquipoMovimiento::create([
-                'equipo_id'         => $equipo->id,
-                'tipo'              => $tipo,
-                'desde_almacen_id'  => null,
-                'hacia_almacen_id'  => $almacen->id,
-                'motivo'            => $motivo,
-                'created_by'        => $usuario->id,
-                'ip'                => request()->ip(),
-                'user_agent'        => request()->userAgent(),
+                'equipo_id' => $equipo->id,
+                'tipo' => $tipo,
+                'desde_almacen_id' => null,
+                'hacia_almacen_id' => $almacen->id,
+                'motivo' => $motivo,
+                'created_by' => $usuario->id,
+                'ip' => request()->ip(),
+                'user_agent' => request()->userAgent(),
             ]);
 
             $equipo->update([

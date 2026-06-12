@@ -2,20 +2,20 @@
 
 namespace App\Exports;
 
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use Maatwebsite\Excel\Events\AfterSheet;
 
-class ResumenEjecutivoSheet implements FromCollection, WithStrictNullComparison, WithEvents
+class ResumenEjecutivoSheet implements FromCollection, WithEvents, WithStrictNullComparison
 {
     protected $rowPositions = [];
 
     public function collection()
     {
-        $rows = new Collection();
+        $rows = new Collection;
         $columnas = 7;
 
         $pad = function ($array) use ($columnas) {
@@ -38,7 +38,7 @@ class ResumenEjecutivoSheet implements FromCollection, WithStrictNullComparison,
         $currentRow++;
 
         $this->rowPositions['tabla1_header'] = $currentRow;
-        $rows->push($pad(['Marca','Modelo','Total']));
+        $rows->push($pad(['Marca', 'Modelo', 'Total']));
         $currentRow++;
 
         $conteo = DB::table('equipos')
@@ -79,7 +79,7 @@ class ResumenEjecutivoSheet implements FromCollection, WithStrictNullComparison,
             ->join('lotes as l', 'lmr.lote_id', '=', 'l.id')
             ->leftJoin('equipos as e', function ($join) {
                 $join->on('e.lote_modelo_id', '=', 'lmr.id')
-                     ->whereNull('e.deleted_at');
+                    ->whereNull('e.deleted_at');
             })
             ->selectRaw('
                 l.nombre_lote,
@@ -119,7 +119,7 @@ class ResumenEjecutivoSheet implements FromCollection, WithStrictNullComparison,
                     'Total Lote',
                     'Creados',
                     'Pendientes',
-                    '% Avance'
+                    '% Avance',
                 ]));
                 $this->rowPositions['tabla2_headers'][] = $currentRow;
                 $currentRow++;
@@ -136,7 +136,7 @@ class ResumenEjecutivoSheet implements FromCollection, WithStrictNullComparison,
                 $a->cantidad_recibida,
                 $a->creados,
                 $pendientes,
-                $porcentaje
+                $porcentaje,
             ]));
 
             $currentRow++;
@@ -165,14 +165,14 @@ class ResumenEjecutivoSheet implements FromCollection, WithStrictNullComparison,
             'Total Recibido',
             'Finalizados',
             'Libres',
-            '% Avance'
+            '% Avance',
         ]));
         $currentRow++;
 
         $modelosGlobal = DB::table('lote_modelos_recibidos as lmr')
             ->leftJoin('equipos as e', function ($join) {
                 $join->on('e.lote_modelo_id', '=', 'lmr.id')
-                     ->whereNull('e.deleted_at');
+                    ->whereNull('e.deleted_at');
             })
             ->selectRaw('
                 UPPER(TRIM(lmr.marca)) as marca_normalizada,
@@ -203,7 +203,7 @@ class ResumenEjecutivoSheet implements FromCollection, WithStrictNullComparison,
                 $m->total_recibido,
                 $m->total_finalizados,
                 $libres,
-                $porcentaje
+                $porcentaje,
             ]));
 
             $currentRow++;
@@ -227,52 +227,52 @@ class ResumenEjecutivoSheet implements FromCollection, WithStrictNullComparison,
                 $azul = '1E3A8A';
                 $azulClaro = 'DBEAFE';
 
-                foreach(range('A','G') as $col) {
+                foreach (range('A', 'G') as $col) {
                     $sheet->getColumnDimension($col)->setAutoSize(true);
                 }
 
                 // Títulos principales
-                foreach (['tabla1_title','tabla2_title','tabla3_title'] as $key) {
-                    if(isset($this->rowPositions[$key])) {
+                foreach (['tabla1_title', 'tabla2_title', 'tabla3_title'] as $key) {
+                    if (isset($this->rowPositions[$key])) {
                         $sheet->getStyle("A{$this->rowPositions[$key]}:G{$this->rowPositions[$key]}")
                             ->applyFromArray([
-                                'font' => ['bold' => true, 'size' => 14, 'color'=>['rgb'=>'FFFFFF']],
-                                'fill' => ['fillType'=>'solid','startColor'=>['rgb'=>$azul]]
+                                'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => 'FFFFFF']],
+                                'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => $azul]],
                             ]);
                     }
                 }
 
                 // Headers
-                foreach (['tabla1_header','tabla3_header'] as $key) {
-                    if(isset($this->rowPositions[$key])) {
+                foreach (['tabla1_header', 'tabla3_header'] as $key) {
+                    if (isset($this->rowPositions[$key])) {
                         $sheet->getStyle("A{$this->rowPositions[$key]}:G{$this->rowPositions[$key]}")
                             ->applyFromArray([
-                                'font' => ['bold'=>true],
-                                'fill'=>['fillType'=>'solid','startColor'=>['rgb'=>$azulClaro]]
+                                'font' => ['bold' => true],
+                                'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => $azulClaro]],
                             ]);
                     }
                 }
 
-                if(isset($this->rowPositions['tabla2_headers'])){
-                    foreach($this->rowPositions['tabla2_headers'] as $row){
+                if (isset($this->rowPositions['tabla2_headers'])) {
+                    foreach ($this->rowPositions['tabla2_headers'] as $row) {
                         $sheet->getStyle("A{$row}:G{$row}")
                             ->applyFromArray([
-                                'font'=>['bold'=>true],
-                                'fill'=>['fillType'=>'solid','startColor'=>['rgb'=>$azulClaro]]
+                                'font' => ['bold' => true],
+                                'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => $azulClaro]],
                             ]);
                     }
                 }
 
                 // Total libres resaltado
-                if(isset($this->rowPositions['total_libres'])){
+                if (isset($this->rowPositions['total_libres'])) {
                     $sheet->getStyle("A{$this->rowPositions['total_libres']}:G{$this->rowPositions['total_libres']}")
                         ->applyFromArray([
-                            'font'=>['bold'=>true,'size'=>12],
-                            'fill'=>['fillType'=>'solid','startColor'=>['rgb'=>'FEF3C7']]
+                            'font' => ['bold' => true, 'size' => 12],
+                            'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FEF3C7']],
                         ]);
                 }
 
-            }
+            },
         ];
     }
 }

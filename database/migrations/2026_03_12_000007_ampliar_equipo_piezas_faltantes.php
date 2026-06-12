@@ -11,25 +11,25 @@ return new class extends Migration
         Schema::table('equipo_piezas_faltantes', function (Blueprint $table) {
             // Ligar con la solicitud operativa
             $table->foreignId('solicitud_pieza_id')
-                  ->nullable()
-                  ->after('estatus_pieza')
-                  ->constrained('solicitudes_piezas')
-                  ->nullOnDelete()
-                  ->comment('Solicitud generada para conseguir esta pieza');
+                ->nullable()
+                ->after('estatus_pieza')
+                ->constrained('solicitudes_piezas')
+                ->nullOnDelete()
+                ->comment('Solicitud generada para conseguir esta pieza');
 
             // Por si la pieza no está en catálogo
             $table->string('descripcion_libre', 255)
-                  ->nullable()
-                  ->after('solicitud_pieza_id')
-                  ->comment('Descripción libre si la pieza no está en catálogo');
+                ->nullable()
+                ->after('solicitud_pieza_id')
+                ->comment('Descripción libre si la pieza no está en catálogo');
 
             // Auditoría
             $table->foreignId('registrado_por_id')
-                  ->nullable()
-                  ->after('descripcion_libre')
-                  ->constrained('users')
-                  ->nullOnDelete()
-                  ->comment('Técnico que registró la pieza faltante');
+                ->nullable()
+                ->after('descripcion_libre')
+                ->constrained('users')
+                ->nullOnDelete()
+                ->comment('Técnico que registró la pieza faltante');
 
             $table->timestamps();
         });

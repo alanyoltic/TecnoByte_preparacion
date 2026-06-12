@@ -25,7 +25,7 @@ return new class extends Migration
                 'ENVIADA',
                 'ACEPTADA',
                 'RECHAZADA',
-                'CANCELADA'
+                'CANCELADA',
             ])->default('BORRADOR');
 
             $table->timestamp('enviada_at')->nullable();

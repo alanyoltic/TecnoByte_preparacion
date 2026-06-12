@@ -19,16 +19,21 @@ class ClasificacionPuntos extends Model
 
     protected $casts = [
         'puntos_base' => 'decimal:2',
-        'activo'      => 'boolean',
+        'activo' => 'boolean',
     ];
 
     // ── Constantes de claves ───────────────────────────────────────────────
-    const BASICO      = 'A';
-    const ESTANDAR    = 'B';
-    const INTERMEDIO  = 'C';
-    const AVANZADO    = 'D';
-    const PREMIUM     = 'E';
-    const DESHUESO    = 'F';
+    const BASICO = 'A';
+
+    const ESTANDAR = 'B';
+
+    const INTERMEDIO = 'C';
+
+    const AVANZADO = 'D';
+
+    const PREMIUM = 'E';
+
+    const DESHUESO = 'F';
 
     // ── Scopes ────────────────────────────────────────────────────────────
     public function scopeActivos($query)
@@ -53,8 +58,8 @@ class ClasificacionPuntos extends Model
         return static::activos()
             ->orderBy('clave')
             ->get()
-            ->mapWithKeys(fn($c) => [
-                $c->clave => "{$c->clave} — {$c->nombre} ({$c->puntos_base} pts)"
+            ->mapWithKeys(fn ($c) => [
+                $c->clave => "{$c->clave} — {$c->nombre} ({$c->puntos_base} pts)",
             ])
             ->toArray();
     }

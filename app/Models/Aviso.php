@@ -2,16 +2,19 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 class Aviso extends Model
 {
     public const MAX_ACTIVE_VISIBLE = 10;
+
     public const DASHBOARD_LIMIT = 5;
+
     public const TAGS = ['INFO', 'IMPORTANTE', 'TIP', 'META'];
+
     public const COLORS = ['slate', 'amber', 'blue', 'emerald', 'rose'];
 
     protected $table = 'avisos';
@@ -31,9 +34,9 @@ class Aviso extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
-        'pinned'    => 'boolean',
+        'pinned' => 'boolean',
         'starts_at' => 'datetime',
-        'ends_at'   => 'datetime',
+        'ends_at' => 'datetime',
     ];
 
     public function creador(): BelongsTo

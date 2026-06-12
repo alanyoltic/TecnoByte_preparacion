@@ -17,27 +17,32 @@ class PuntoTecnico extends Model
     ];
 
     protected $casts = [
-        'puntos_base'          => 'decimal:2',
-        'porcentaje_aplicado'  => 'decimal:2',
-        'puntos_final'         => 'decimal:2',
-        'ajuste_manual'        => 'decimal:2',
+        'puntos_base' => 'decimal:2',
+        'porcentaje_aplicado' => 'decimal:2',
+        'puntos_final' => 'decimal:2',
+        'ajuste_manual' => 'decimal:2',
     ];
 
     // ── Roles ─────────────────────────────────────────────────────────────
-    const COMPLETO           = 'COMPLETO';
-    const PIEZA_PENDIENTE    = 'PIEZA_PENDIENTE';    // Tech terminó equipo, falta pieza
-    const PIEZA_COMPLETADA  = 'PIEZA_COMPLETADA';    // Tech terminó pieza
-    const PIEZA_INSTALADA    = self::PIEZA_COMPLETADA; // Alias legacy
-    const GARANTIA           = 'GARANTIA';
-    const DESPIECE           = 'DESPIECE';
+    const COMPLETO = 'COMPLETO';
+
+    const PIEZA_PENDIENTE = 'PIEZA_PENDIENTE';    // Tech terminó equipo, falta pieza
+
+    const PIEZA_COMPLETADA = 'PIEZA_COMPLETADA';    // Tech terminó pieza
+
+    const PIEZA_INSTALADA = self::PIEZA_COMPLETADA; // Alias legacy
+
+    const GARANTIA = 'GARANTIA';
+
+    const DESPIECE = 'DESPIECE';
 
     // ── Porcentajes por rol — todos los caminos otorgan el 100% del equipo ──
     const PORCENTAJES = [
-        self::COMPLETO        => 100.00,
+        self::COMPLETO => 100.00,
         self::PIEZA_PENDIENTE => 100.00,
         self::PIEZA_INSTALADA => 100.00,
-        self::GARANTIA        => 100.00,
-        self::DESPIECE        => 100.00,
+        self::GARANTIA => 100.00,
+        self::DESPIECE => 100.00,
     ];
 
     // ── Relaciones ────────────────────────────────────────────────────────
@@ -79,27 +84,27 @@ class PuntoTecnico extends Model
      * Llamar desde AsignacionEquipo cuando cambia el camino.
      */
     public static function registrar(
-        int    $tecnicoId,
-        int    $asignacionEquipoId,
+        int $tecnicoId,
+        int $asignacionEquipoId,
         string $rol,
-        float  $puntosBase,
-        ?int   $clasificacionId = null,
+        float $puntosBase,
+        ?int $clasificacionId = null,
     ): self {
         // CAMBIO: Siempre 100% en terminación de equipos
         // El 40/60 de piezas se maneja aparte por el gerente
-        $porcentaje  = 100.00;
-        $puntosCalc  = round($puntosBase * ($porcentaje / 100), 2);
+        $porcentaje = 100.00;
+        $puntosCalc = round($puntosBase * ($porcentaje / 100), 2);
 
         return static::create([
-            'tecnico_id'              => $tecnicoId,
-            'asignacion_equipo_id'    => $asignacionEquipoId,
+            'tecnico_id' => $tecnicoId,
+            'asignacion_equipo_id' => $asignacionEquipoId,
             'clasificacion_puntos_id' => $clasificacionId,
-            'puntos_base'             => $puntosBase,
-            'porcentaje_aplicado'     => $porcentaje,
-            'puntos_final'            => $puntosCalc,
-            'ajuste_manual'           => 0,
-            'rol_en_equipo'           => $rol,
-            'periodo'                 => now()->format('Y-m'),
+            'puntos_base' => $puntosBase,
+            'porcentaje_aplicado' => $porcentaje,
+            'puntos_final' => $puntosCalc,
+            'ajuste_manual' => 0,
+            'rol_en_equipo' => $rol,
+            'periodo' => now()->format('Y-m'),
         ]);
     }
 
@@ -130,11 +135,11 @@ class PuntoTecnico extends Model
     public static function labelsRol(): array
     {
         return [
-            self::COMPLETO      => 'Equipo completado (100%)',
+            self::COMPLETO => 'Equipo completado (100%)',
             self::PIEZA_PENDIENTE => 'Pieza pendiente (100%)',
             self::PIEZA_INSTALADA => 'Pieza instalada (100%)',
-            self::GARANTIA      => 'Canalizado a garantía (100%)',
-            self::DESPIECE      => 'Enviado a despiece (100%)',
+            self::GARANTIA => 'Canalizado a garantía (100%)',
+            self::DESPIECE => 'Enviado a despiece (100%)',
         ];
     }
 }

@@ -9,9 +9,9 @@ class ReportePreparacionPlaneacionExport implements WithMultipleSheets
     public function sheets(): array
     {
         return [
-            new EquiposActivosSheet(),
-            new LotesPendientesSheet(),
-            new ResumenEjecutivoSheet(),
+            new EquiposActivosSheet,
+            new LotesPendientesSheet,
+            new ResumenEjecutivoSheet,
         ];
     }
 }

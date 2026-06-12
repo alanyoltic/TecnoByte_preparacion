@@ -2,18 +2,18 @@
 
 namespace App\Services;
 
-use App\Models\Equipo;
-use App\Models\AsignacionEquipo;
-use App\Models\ValidacionCalidad;
 use App\Models\Asignacion;
-use Illuminate\Support\Facades\DB;
+use App\Models\AsignacionEquipo;
+use App\Models\Equipo;
+use App\Models\ValidacionCalidad;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class CalidadService
 {
     /**
      * Valida (aprueba) un equipo en calidad.
-     * 
+     *
      * Transición: EN_CALIDAD → FINALIZADO
      * AsignacionEquipo.camino: EN_CALIDAD → COMPLETADO
      */
@@ -41,13 +41,13 @@ class CalidadService
 
             // Crear registro de validación (APROBADO)
             $validacion = ValidacionCalidad::create([
-                'equipo_id'                  => $equipoId,
-                'asignacion_equipo_id'       => $ae->id,
-                'validado_por_user_id'       => Auth::id(),
-                'estado'                     => ValidacionCalidad::APROBADO,
-                'calificacion_general'       => $calificacion,
-                'checklist_qué_salió_bien'   => $qsalioBien ?? [],
-                'notas_adicionales'          => $notas,
+                'equipo_id' => $equipoId,
+                'asignacion_equipo_id' => $ae->id,
+                'validado_por_user_id' => Auth::id(),
+                'estado' => ValidacionCalidad::APROBADO,
+                'calificacion_general' => $calificacion,
+                'checklist_qué_salió_bien' => $qsalioBien ?? [],
+                'notas_adicionales' => $notas,
             ]);
 
             // Actualizar asignación_equipo: EN_CALIDAD → COMPLETADO
@@ -68,10 +68,10 @@ class CalidadService
 
     /**
      * Rechaza un equipo en calidad y lo regresa a EN_PROCESO.
-     * 
+     *
      * Transición: EN_CALIDAD → EN_PROCESO
      * AsignacionEquipo.camino: EN_CALIDAD → EN_PROCESO
-     * 
+     *
      * El equipo vuelve a manos del técnico original.
      */
     public function rechazarEquipo(
@@ -106,27 +106,27 @@ class CalidadService
 
             // Crear registro de validación (RECHAZADO)
             $validacion = ValidacionCalidad::create([
-                'equipo_id'                  => $equipoId,
-                'asignacion_equipo_id'       => $ae->id,
-                'validado_por_user_id'       => Auth::id(),
-                'estado'                     => ValidacionCalidad::RECHAZADO,
-                'motivo'                     => trim($motivo),
-                'checklist_qué_salió_mal'    => $qSalioMal ?? [],
-                'checklist_qué_salió_bien'   => $qSalioBien ?? [],
-                'calificacion_general'       => $calificacion,
-                'notas_adicionales'          => $notas,
+                'equipo_id' => $equipoId,
+                'asignacion_equipo_id' => $ae->id,
+                'validado_por_user_id' => Auth::id(),
+                'estado' => ValidacionCalidad::RECHAZADO,
+                'motivo' => trim($motivo),
+                'checklist_qué_salió_mal' => $qSalioMal ?? [],
+                'checklist_qué_salió_bien' => $qSalioBien ?? [],
+                'calificacion_general' => $calificacion,
+                'notas_adicionales' => $notas,
             ]);
 
             // Actualizar asignación_equipo: EN_CALIDAD → EN_PROCESO
             $ae->update([
-                'camino'       => AsignacionEquipo::EN_PROCESO,
+                'camino' => AsignacionEquipo::EN_PROCESO,
                 'rechazado_en' => now(),
                 'num_rechazos' => ($ae->num_rechazos ?? 0) + 1,
             ]);
 
             // Actualizar equipo: EN_CALIDAD → EN_PROCESO (vuelve a preparación)
             $equipo->update([
-                'estatus_area'  => Equipo::AREA_EN_PROCESO,
+                'estatus_area' => Equipo::AREA_EN_PROCESO,
                 'estatus_ciclo' => Equipo::CICLO_PREPARACION,
             ]);
 

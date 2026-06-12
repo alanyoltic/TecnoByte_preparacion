@@ -1950,7 +1950,11 @@
                     </h4>
                     <p class="text-sm text-slate-500 dark:text-slate-400">
                         @if($tipoEliminar === 'catalogo')
-                            Se eliminará la pieza del catálogo y todo su historial de inventario.
+                            @if($puedeBorrarFisicamente)
+                                <strong class="text-rose-600 dark:text-rose-400">Advertencia:</strong> Se eliminará físicamente esta pieza del catálogo junto con su registro de compras, inventario y gastos asociados, y dejarán de contarse en el sistema.
+                            @else
+                                <strong class="text-amber-600 dark:text-amber-400">Aviso (Borrado Lógico):</strong> Esta pieza no se puede eliminar completamente porque ya tiene usos, solicitudes o piezas faltantes registradas en otros módulos. En su lugar, se ocultará del catálogo, pero se conservará su historial de compras y gastos intactos.
+                            @endif
                         @else
                             Se eliminará esta entrada del inventario.
                         @endif

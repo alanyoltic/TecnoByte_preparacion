@@ -169,18 +169,18 @@ class RegisteredUserController extends Controller
         }
 
         $rules = [
-            'nombre'            => ['required', 'string', 'max:255'],
-            'segundo_nombre'    => ['nullable', 'string', 'max:255'],
-            'apellido_paterno'  => ['required', 'string', 'max:255'],
-            'apellido_materno'  => ['nullable', 'string', 'max:255'],
-            'fecha_nacimiento'  => ['nullable', 'date', 'before_or_equal:today'],
+            'nombre' => ['required', 'string', 'max:255'],
+            'segundo_nombre' => ['nullable', 'string', 'max:255'],
+            'apellido_paterno' => ['required', 'string', 'max:255'],
+            'apellido_materno' => ['nullable', 'string', 'max:255'],
+            'fecha_nacimiento' => ['nullable', 'date', 'before_or_equal:today'],
 
-            'email'             => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
-            'password'          => ['required', 'confirmed', Rules\Password::defaults()],
-            'foto_perfil'       => ['nullable', 'image', 'max:20480'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'foto_perfil' => ['nullable', 'image', 'max:20480'],
 
             // Global puede elegir; no-global se fuerza al del usuario activo.
-            'departamento_id'   => $isGlobalCreator
+            'departamento_id' => $isGlobalCreator
                 ? ['required', 'integer', 'exists:departamento,id']
                 : ['nullable', 'integer'],
         ];
@@ -189,7 +189,7 @@ class RegisteredUserController extends Controller
             $rules['role_id'] = ['required', 'integer', 'exists:roles,id'];
         } else {
             $rolesPermitidos = Roles::whereIn('slug', $allowedSlugs)->pluck('id')->all();
-            $rules['role_id'] = ['required', 'integer', 'in:' . implode(',', $rolesPermitidos)];
+            $rules['role_id'] = ['required', 'integer', 'in:'.implode(',', $rolesPermitidos)];
         }
 
         $validated = $request->validate($rules);
@@ -213,19 +213,19 @@ class RegisteredUserController extends Controller
         }
 
         User::create([
-            'nombre'           => $validated['nombre'],
-            'segundo_nombre'   => $validated['segundo_nombre'] ?? null,
+            'nombre' => $validated['nombre'],
+            'segundo_nombre' => $validated['segundo_nombre'] ?? null,
             'apellido_paterno' => $validated['apellido_paterno'],
             'apellido_materno' => $validated['apellido_materno'] ?? null,
             'fecha_nacimiento' => $validated['fecha_nacimiento'] ?? null,
 
-            'email'            => $validated['email'],
-            'role_id'          => $validated['role_id'],
-            'departamento_id'  => $validated['departamento_id'] ?? null,
-            'puesto_id'        => $puestoId,
+            'email' => $validated['email'],
+            'role_id' => $validated['role_id'],
+            'departamento_id' => $validated['departamento_id'] ?? null,
+            'puesto_id' => $puestoId,
 
-            'password'         => Hash::make($validated['password']),
-            'foto_perfil'      => $fotoPath,
+            'password' => Hash::make($validated['password']),
+            'foto_perfil' => $fotoPath,
         ]);
 
         return redirect()

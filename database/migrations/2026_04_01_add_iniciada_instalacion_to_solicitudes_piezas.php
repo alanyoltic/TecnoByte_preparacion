@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::table('solicitudes_piezas', function (Blueprint $table) {
             $table->timestamp('iniciada_instalacion_en')
-                  ->nullable()
-                  ->after('reasignada_en');
+                ->nullable()
+                ->after('reasignada_en');
         });
     }
 

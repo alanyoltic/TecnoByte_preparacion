@@ -26,17 +26,16 @@ class CoreEstructuraSeeder extends Seeder
                 DB::table('sucursales')->updateOrInsert(
                     ['clave' => $s['clave']],
                     [
-                        'nombre'     => $s['nombre'],
+                        'nombre' => $s['nombre'],
                         'es_virtual' => $s['es_virtual'],
-                        'activo'     => $s['activo'],
+                        'activo' => $s['activo'],
                         'updated_at' => now(),
                         'created_at' => DB::raw('COALESCE(created_at, NOW())'),
                     ]
                 );
             }
 
-            $sucursalId = fn(string $clave) =>
-                (int) DB::table('sucursales')->where('clave', $clave)->value('id');
+            $sucursalId = fn (string $clave) => (int) DB::table('sucursales')->where('clave', $clave)->value('id');
 
             // =========================
             // 2) DEPARTAMENTOS (antes "areas")
@@ -52,8 +51,8 @@ class CoreEstructuraSeeder extends Seeder
                 DB::table('departamento')->updateOrInsert(
                     ['clave' => $d['clave']],
                     [
-                        'nombre'     => $d['nombre'],
-                        'activo'     => $d['activo'],
+                        'nombre' => $d['nombre'],
+                        'activo' => $d['activo'],
                         'updated_at' => now(),
                         'created_at' => DB::raw('COALESCE(created_at, NOW())'),
                     ]
@@ -61,8 +60,7 @@ class CoreEstructuraSeeder extends Seeder
             }
 
             // ✅ ESTE ES EL QUE TE FALTA
-            $departamentoId = fn(string $clave) =>
-                (int) DB::table('departamento')->where('clave', $clave)->value('id');
+            $departamentoId = fn (string $clave) => (int) DB::table('departamento')->where('clave', $clave)->value('id');
 
             // =========================
             // 3) ALMACENES
@@ -73,7 +71,7 @@ class CoreEstructuraSeeder extends Seeder
                 ['clave' => 'preparacion_cedis',      'nombre' => 'PREPARACION CEDIS',                   'sucursal' => 'cedis',  'departamento' => 'preparacion',        'tipo' => 'AREA'],
                 ['clave' => 'entradas_cedis',         'nombre' => 'ENTRADAS CEDIS',                      'sucursal' => 'zibata', 'departamento' => 'preparacion',        'tipo' => 'AREA'],
                 ['clave' => 'stock_cedis',            'nombre' => 'Stock CEDIS',                         'sucursal' => 'cedis',  'departamento' => 'preparacion',        'tipo' => 'AREA'],
-                ['clave' => 'listos_venta_cedis',      'nombre' => 'LISTOS PARA VENTA ALMACENADO EN CEDIS','sucursal'=> 'cedis',  'departamento' => 'preparacion',        'tipo' => 'AREA'],
+                ['clave' => 'listos_venta_cedis',      'nombre' => 'LISTOS PARA VENTA ALMACENADO EN CEDIS', 'sucursal' => 'cedis',  'departamento' => 'preparacion',        'tipo' => 'AREA'],
                 ['clave' => 'mini_bodega',            'nombre' => 'MINI BODEGA',                         'sucursal' => 'cedis',  'departamento' => 'preparacion',        'tipo' => 'AREA'],
 
                 ['clave' => 'venta_colaboradores',    'nombre' => 'VENTA EQUIPOS COLABORADORES',         'sucursal' => 'cedis',  'departamento' => 'ventas',             'tipo' => 'AREA'],
@@ -82,13 +80,13 @@ class CoreEstructuraSeeder extends Seeder
 
                 ['clave' => 'tienda_corregidora',      'nombre' => 'TIENDA CORREGIDORA',                  'sucursal' => 'pv_qro', 'departamento' => 'ventas',             'tipo' => 'AREA'],
                 ['clave' => 'apartados_pv',            'nombre' => 'APARTADOS PV',                        'sucursal' => 'pv_qro', 'departamento' => 'ventas',             'tipo' => 'AREA'],
-                ['clave' => 'corregidora_ventas_linea','nombre' => 'CORREGIDORA VENTAS LINEA',            'sucursal' => 'pv_qro', 'departamento' => 'ventas',             'tipo' => 'ONLINE'],
+                ['clave' => 'corregidora_ventas_linea', 'nombre' => 'CORREGIDORA VENTAS LINEA',            'sucursal' => 'pv_qro', 'departamento' => 'ventas',             'tipo' => 'ONLINE'],
 
                 ['clave' => 'tienda_leon',             'nombre' => 'TIENDA LEON',                         'sucursal' => 'leon',   'departamento' => 'ventas',             'tipo' => 'AREA'],
 
                 ['clave' => 'refacciones',             'nombre' => 'REFACCIONES',                         'sucursal' => 'mant_garantias', 'departamento' => 'soporte_garantias', 'tipo' => 'AREA'],
                 ['clave' => 'garantias_posventa',      'nombre' => 'GARANTIAS POSVENTA',                  'sucursal' => 'mant_garantias', 'departamento' => 'soporte_garantias', 'tipo' => 'AREA'],
-                ['clave' => 'equipos_cambios_garantia','nombre' => 'EQUIPOS CAMBIOS DE GARANTIA',         'sucursal' => 'mant_garantias', 'departamento' => 'soporte_garantias', 'tipo' => 'AREA'],
+                ['clave' => 'equipos_cambios_garantia', 'nombre' => 'EQUIPOS CAMBIOS DE GARANTIA',         'sucursal' => 'mant_garantias', 'departamento' => 'soporte_garantias', 'tipo' => 'AREA'],
                 ['clave' => 'actualizacion_posventa',  'nombre' => 'ACTUALIZACION EQUIPOS POSVENTA',      'sucursal' => 'mant_garantias', 'departamento' => 'soporte_garantias', 'tipo' => 'AREA'],
 
                 ['clave' => 'garantias_proveedores',   'nombre' => 'GARANTIAS PROVEEDORES',               'sucursal' => 'cedis',  'departamento' => 'soporte_garantias', 'tipo' => 'AREA'],
@@ -100,12 +98,12 @@ class CoreEstructuraSeeder extends Seeder
                 DB::table('almacenes')->updateOrInsert(
                     ['clave' => $a['clave']],
                     [
-                        'nombre'          => $a['nombre'],
-                        'tipo'            => $a['tipo'],
-                        'sucursal_id'     => $sucursalId($a['sucursal']),
+                        'nombre' => $a['nombre'],
+                        'tipo' => $a['tipo'],
+                        'sucursal_id' => $sucursalId($a['sucursal']),
                         'departamento_id' => $departamentoId($a['departamento']),
-                        'updated_at'      => now(),
-                        'created_at'      => DB::raw('COALESCE(created_at, NOW())'),
+                        'updated_at' => now(),
+                        'created_at' => DB::raw('COALESCE(created_at, NOW())'),
                     ]
                 );
             }

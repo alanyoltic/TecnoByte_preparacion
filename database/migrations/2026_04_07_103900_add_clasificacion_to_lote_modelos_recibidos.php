@@ -10,10 +10,10 @@ return new class extends Migration
     {
         Schema::table('lote_modelos_recibidos', function (Blueprint $table) {
             $table->foreignId('clasificacion_puntos_id')
-                  ->nullable()
-                  ->after('cantidad_recibida')
-                  ->constrained('clasificaciones_puntos')
-                  ->nullOnDelete();
+                ->nullable()
+                ->after('cantidad_recibida')
+                ->constrained('clasificaciones_puntos')
+                ->nullOnDelete();
         });
     }
 

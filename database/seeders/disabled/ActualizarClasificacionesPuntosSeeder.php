@@ -4,7 +4,6 @@ namespace Database\Seeders\Disabled;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use App\Models\ClasificacionPuntos;
 
 class ActualizarClasificacionesPuntosSeeder extends Seeder
 {
@@ -13,7 +12,7 @@ class ActualizarClasificacionesPuntosSeeder extends Seeder
      * - Actualiza clasificaciones existentes con nuevos valores
      * - Recalcula puntos_final en puntos_tecnicos basado en los nuevos valores
      * - NO crea clasificaciones para equipos sin ellas
-     * 
+     *
      * Valores correctos:
      * A = 1.0, B = 1.4, C = 1.2, D = 1.4, E = 1.8, F = 0.5
      */
@@ -94,19 +93,19 @@ class ActualizarClasificacionesPuntosSeeder extends Seeder
             ->orderBy('clasificaciones_puntos.clave')
             ->get();
 
-        $this->command->info("\n" . str_repeat('=', 60));
+        $this->command->info("\n".str_repeat('=', 60));
         $this->command->info('RESUMEN DE EQUIPOS POR CLASIFICACIÓN');
         $this->command->info(str_repeat('=', 60));
 
         foreach ($distribucion as $row) {
             $clave = $row->clave ?? 'SIN ASIGNAR';
             $total = $row->total;
-            $puntos = $row->puntos_base ? $row->puntos_base . ' pts' : 'N/A';
-            $this->command->line(sprintf("  %s: %3d equipos (%s)", $clave, $total, $puntos));
+            $puntos = $row->puntos_base ? $row->puntos_base.' pts' : 'N/A';
+            $this->command->line(sprintf('  %s: %3d equipos (%s)', $clave, $total, $puntos));
         }
 
         $this->command->info(str_repeat('=', 60));
         $this->command->info("Total equipos con clasificación: {$totalEquiposConClasificacion}");
-        $this->command->info("✓ Actualización completada exitosamente");
+        $this->command->info('✓ Actualización completada exitosamente');
     }
 }

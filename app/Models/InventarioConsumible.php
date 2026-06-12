@@ -22,15 +22,3 @@ class InventarioConsumible extends Model
         return $this->belongsTo(Almacen::class);
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-

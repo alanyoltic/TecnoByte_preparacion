@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::table('lote_modelos_recibidos', function (Blueprint $table) {
             $table->decimal('valor_unitario', 10, 2)
-                  ->nullable()
-                  ->after('cantidad_recibida')
-                  ->comment('Precio unitario por equipo de este modelo en el lote');
+                ->nullable()
+                ->after('cantidad_recibida')
+                ->comment('Precio unitario por equipo de este modelo en el lote');
         });
     }
 

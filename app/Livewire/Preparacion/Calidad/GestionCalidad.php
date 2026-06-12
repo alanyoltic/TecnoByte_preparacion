@@ -2,15 +2,12 @@
 
 namespace App\Livewire\Preparacion\Calidad;
 
-use Livewire\Component;
-use Livewire\WithPagination;
-use Livewire\Attributes\Layout;
 use App\Models\Equipo;
-use App\Models\AsignacionEquipo;
 use App\Models\ValidacionCalidad;
 use App\Services\CalidadService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Layout;
+use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('layouts.app', ['pageTitle' => 'Gestión de Calidad'])]
 class GestionCalidad extends Component
@@ -24,29 +21,41 @@ class GestionCalidad extends Component
     // ──────────────────────────────────────────────────────────────────────
 
     public string $search = '';
+
     public string $filtroEstado = 'en_calidad'; // 'en_calidad' | 'validados' | 'rechazados' | 'todos'
+
     public string $filtroValidador = '';
+
     public int $perPage = 25;
-    
+
     // Modales
     public bool $modalValidar = false;
+
     public bool $modalRechazar = false;
+
     public ?int $equipoSeleccionadoId = null;
 
     // Formulario validación
     public ?int $calificacion = null;
+
     public array $qSalioBien = [];
+
     public string $notasValidacion = '';
 
     // Formulario rechazo
     public string $motivoRechazo = '';
+
     public array $qSalioMal = [];
+
     public array $qSalioBienRechazo = [];
+
     public ?int $calificacionRechazo = null;
+
     public string $notasRechazo = '';
 
     // Errores
     public string $error = '';
+
     public string $errorRechazo = '';
 
     // ──────────────────────────────────────────────────────────────────────
@@ -76,9 +85,10 @@ class GestionCalidad extends Component
     public function abrirValidar(int $equipoId): void
     {
         $equipo = Equipo::findOrFail($equipoId);
-        
+
         if ($equipo->estatus_area !== Equipo::AREA_EN_CALIDAD) {
             $this->dispatch('toast', type: 'error', message: 'Equipo no está en calidad.');
+
             return;
         }
 
@@ -95,8 +105,8 @@ class GestionCalidad extends Component
         $this->error = '';
 
         try {
-            $service = new CalidadService();
-            
+            $service = new CalidadService;
+
             $validacion = $service->validarEquipo(
                 equipoId: $this->equipoSeleccionadoId,
                 calificacion: $this->calificacion,
@@ -104,8 +114,8 @@ class GestionCalidad extends Component
                 notas: trim($this->notasValidacion) ?: null
             );
 
-            $this->dispatch('toast', 
-                type: 'success', 
+            $this->dispatch('toast',
+                type: 'success',
                 title: 'Equipo validado',
                 message: 'El equipo ha sido aprobado y está listo para ventas.'
             );
@@ -114,7 +124,7 @@ class GestionCalidad extends Component
             $this->resetPage();
         } catch (\Throwable $e) {
             $this->error = "Error al validar: {$e->getMessage()}";
-            \Log::error('validarEquipo error: ' . $e->getMessage());
+            \Log::error('validarEquipo error: '.$e->getMessage());
         }
     }
 
@@ -124,9 +134,10 @@ class GestionCalidad extends Component
     public function abrirRechazar(int $equipoId): void
     {
         $equipo = Equipo::findOrFail($equipoId);
-        
+
         if ($equipo->estatus_area !== Equipo::AREA_EN_CALIDAD) {
             $this->dispatch('toast', type: 'error', message: 'Equipo no está en calidad.');
+
             return;
         }
 
@@ -145,12 +156,13 @@ class GestionCalidad extends Component
         // Validar motivo obligatorio
         if (empty(trim($this->motivoRechazo))) {
             $this->errorRechazo = 'El motivo del rechazo es obligatorio.';
+
             return;
         }
 
         try {
-            $service = new CalidadService();
-            
+            $service = new CalidadService;
+
             $validacion = $service->rechazarEquipo(
                 equipoId: $this->equipoSeleccionadoId,
                 motivo: trim($this->motivoRechazo),
@@ -160,8 +172,8 @@ class GestionCalidad extends Component
                 notas: trim($this->notasRechazo) ?: null
             );
 
-            $this->dispatch('toast', 
-                type: 'warning', 
+            $this->dispatch('toast',
+                type: 'warning',
                 title: 'Equipo rechazado',
                 message: 'El equipo ha vuelto a preparación. El técnico recibirá la notificación.'
             );
@@ -170,7 +182,7 @@ class GestionCalidad extends Component
             $this->resetPage();
         } catch (\Throwable $e) {
             $this->errorRechazo = "Error al rechazar: {$e->getMessage()}";
-            \Log::error('rechazarEquipo error: ' . $e->getMessage());
+            \Log::error('rechazarEquipo error: '.$e->getMessage());
         }
     }
 
@@ -223,9 +235,9 @@ class GestionCalidad extends Component
         $query = Equipo::query()
             ->with([
                 'loteModelo.lote.proveedor',
-                'registradoPor' => fn($q) => $q->withoutGlobalScopes(),
-                'validacionesCalidad' => fn($q) => $q->latest(),
-                'asignacionEquipos' => fn($q) => $q->latest('fin_en'),
+                'registradoPor' => fn ($q) => $q->withoutGlobalScopes(),
+                'validacionesCalidad' => fn ($q) => $q->latest(),
+                'asignacionEquipos' => fn ($q) => $q->latest('fin_en'),
             ])
             ->orderByDesc('created_at');
 
@@ -234,27 +246,27 @@ class GestionCalidad extends Component
             $query->where('estatus_area', Equipo::AREA_EN_CALIDAD);
         } elseif ($this->filtroEstado === 'validados') {
             $query->whereIn('estatus_area', [Equipo::AREA_FINALIZADO])
-                  ->whereHas('validacionesCalidad', function ($q) {
-                      $q->where('estado', ValidacionCalidad::APROBADO);
-                  });
+                ->whereHas('validacionesCalidad', function ($q) {
+                    $q->where('estado', ValidacionCalidad::APROBADO);
+                });
         } elseif ($this->filtroEstado === 'rechazados') {
             $query->where('estatus_area', Equipo::AREA_EN_PROCESO)
-                  ->whereHas('validacionesCalidad', function ($q) {
-                      $q->where('estado', ValidacionCalidad::RECHAZADO);
-                  });
+                ->whereHas('validacionesCalidad', function ($q) {
+                    $q->where('estado', ValidacionCalidad::RECHAZADO);
+                });
         }
         // 'todos' no agrega filtro
 
         // Búsqueda
         if (trim($this->search) !== '') {
-            $search = '%' . trim($this->search) . '%';
+            $search = '%'.trim($this->search).'%';
             $rawId = trim($this->search);
 
             $query->where(function ($q) use ($search, $rawId) {
                 $q->where('numero_serie', 'like', $search)
-                  ->orWhere('marca', 'like', $search)
-                  ->orWhere('modelo', 'like', $search)
-                  ->orWhere('id', is_numeric($rawId) ? (int)$rawId : -1);
+                    ->orWhere('marca', 'like', $search)
+                    ->orWhere('modelo', 'like', $search)
+                    ->orWhere('id', is_numeric($rawId) ? (int) $rawId : -1);
             });
         }
 
@@ -272,12 +284,12 @@ class GestionCalidad extends Component
     public function stats()
     {
         return [
-            'en_calidad'  => Equipo::where('estatus_area', Equipo::AREA_EN_CALIDAD)->count(),
-            'validados'   => Equipo::where('estatus_area', Equipo::AREA_FINALIZADO)
-                                ->whereHas('validacionesCalidad', function ($q) {
-                                    $q->where('estado', ValidacionCalidad::APROBADO);
-                                })->count(),
-            'rechazados'  => ValidacionCalidad::where('estado', ValidacionCalidad::RECHAZADO)->count(),
+            'en_calidad' => Equipo::where('estatus_area', Equipo::AREA_EN_CALIDAD)->count(),
+            'validados' => Equipo::where('estatus_area', Equipo::AREA_FINALIZADO)
+                ->whereHas('validacionesCalidad', function ($q) {
+                    $q->where('estado', ValidacionCalidad::APROBADO);
+                })->count(),
+            'rechazados' => ValidacionCalidad::where('estado', ValidacionCalidad::RECHAZADO)->count(),
         ];
     }
 

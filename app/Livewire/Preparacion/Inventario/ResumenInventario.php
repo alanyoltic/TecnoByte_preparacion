@@ -9,11 +9,10 @@ use App\Models\Roles;
 use App\Models\User;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use Spatie\Browsershot\Browsershot;
 use Livewire\WithPagination;
-use Illuminate\Support\Facades\Storage;
-use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\IOFactory;
+use PhpOffice\PhpWord\PhpWord;
+use Spatie\Browsershot\Browsershot;
 
 #[Layout('layouts.app', ['pageTitle' => 'Resumen de inventario'])]
 class ResumenInventario extends Component
@@ -23,46 +22,62 @@ class ResumenInventario extends Component
     protected $paginationTheme = 'tailwind';
 
     public ?int $tecnico_id = null;
+
     public array $tecnicos = [];
 
     // Filtros
     public ?string $search = null;
+
     public string $filtroEstado = 'todos';
-    public string $filtroLote   = 'todos';
+
+    public string $filtroLote = 'todos';
+
     public string $filtroProveedor = 'todos';
 
     // Filtros avanzados
     public ?string $fechaDesde = null;
+
     public ?string $fechaHasta = null;
+
     public string $filtroTipoEquipo = 'todos';
-    public string $filtroArea       = 'todos';
-    public string $filtroGpu        = 'todos';     // todos|dedicada|sin_dedicada
-    public string $filtroBateria    = 'todos';     // todos|baja|media|alta
-    public string $filtroSO         = 'todos';
+
+    public string $filtroArea = 'todos';
+
+    public string $filtroGpu = 'todos';     // todos|dedicada|sin_dedicada
+
+    public string $filtroBateria = 'todos';     // todos|baja|media|alta
+
+    public string $filtroSO = 'todos';
 
     public int $perPage = 25;
 
     // Opciones precargadas
     public $lotes = [];
-    public $proveedores = [];
-    public $tiposEquipo = [];
-    public $areas = [];
-    public $sistemasOperativos = [];
-    public array $selected = [];
 
+    public $proveedores = [];
+
+    public $tiposEquipo = [];
+
+    public $areas = [];
+
+    public $sistemasOperativos = [];
+
+    public array $selected = [];
 
     // Modal Resumen
     public bool $modalResumen = false;
+
     public ?Equipo $equipoResumen = null;
 
     // 🔥 ESTO ES LO QUE TE ESTÁ FALTANDO (tu Blade usa estas vars)
     public string $resumenTitulo = '';
+
     public array $resumenLineas = [];
 
-
-
     public bool $modalComparar = false;
+
     public array $comparacion = [];
+
     public array $comparacionResumen = [];
 
     public function mount(): void
@@ -89,10 +104,10 @@ class ResumenInventario extends Component
         $this->tecnicos = User::query()
             ->select('id', 'nombre')
             ->whereNull('deleted_at')
-            ->when($rolTecnicoId, fn($q) => $q->where('role_id', $rolTecnicoId))
+            ->when($rolTecnicoId, fn ($q) => $q->where('role_id', $rolTecnicoId))
             ->orderBy('nombre')
             ->get()
-            ->map(fn($u) => ['id' => $u->id, 'nombre' => $u->nombre])
+            ->map(fn ($u) => ['id' => $u->id, 'nombre' => $u->nombre])
             ->toArray();
     }
 
@@ -104,8 +119,8 @@ class ResumenInventario extends Component
     public function updating($name): void
     {
         if (in_array($name, [
-            'search','tecnico_id','filtroEstado','filtroLote','filtroProveedor','perPage',
-            'fechaDesde','fechaHasta','filtroTipoEquipo','filtroArea','filtroGpu','filtroBateria','filtroSO',
+            'search', 'tecnico_id', 'filtroEstado', 'filtroLote', 'filtroProveedor', 'perPage',
+            'fechaDesde', 'fechaHasta', 'filtroTipoEquipo', 'filtroArea', 'filtroGpu', 'filtroBateria', 'filtroSO',
         ], true)) {
             $this->resetPage();
         }
@@ -171,23 +186,31 @@ class ResumenInventario extends Component
                         ->orWhere('marca', 'like', "%{$s}%")
                         ->orWhere('modelo', 'like', "%{$s}%")
                         ->orWhere('tipo_equipo', 'like', "%{$s}%")
-                        ->orWhere('id', is_numeric($s) ? (int)$s : -1);
+                        ->orWhere('id', is_numeric($s) ? (int) $s : -1);
                 });
             })
-            ->when($this->filtroEstado !== 'todos', fn($q) => $q->where('estatus_area', $this->filtroEstado))
+            ->when($this->filtroEstado !== 'todos', fn ($q) => $q->where('estatus_area', $this->filtroEstado))
             ->when($this->filtroLote !== 'todos', function ($q) {
-                $q->whereHas('loteModelo.lote', fn($q2) => $q2->where('id', $this->filtroLote));
+                $q->whereHas('loteModelo.lote', fn ($q2) => $q2->where('id', $this->filtroLote));
             })
             ->when($this->filtroProveedor !== 'todos', function ($q) {
-                $q->whereHas('loteModelo.lote.proveedor', fn($q2) => $q2->where('id', $this->filtroProveedor));
+                $q->whereHas('loteModelo.lote.proveedor', fn ($q2) => $q2->where('id', $this->filtroProveedor));
             })
-            ->when($this->tecnico_id, fn($q) => $q->where('registrado_por_user_id', $this->tecnico_id));
+            ->when($this->tecnico_id, fn ($q) => $q->where('registrado_por_user_id', $this->tecnico_id));
 
-        if ($this->fechaDesde) $q->whereDate('created_at', '>=', $this->fechaDesde);
-        if ($this->fechaHasta) $q->whereDate('created_at', '<=', $this->fechaHasta);
+        if ($this->fechaDesde) {
+            $q->whereDate('created_at', '>=', $this->fechaDesde);
+        }
+        if ($this->fechaHasta) {
+            $q->whereDate('created_at', '<=', $this->fechaHasta);
+        }
 
-        if ($this->filtroTipoEquipo !== 'todos') $q->where('tipo_equipo', $this->filtroTipoEquipo);
-        if ($this->filtroArea !== 'todos') $q->where('area_tienda', $this->filtroArea);
+        if ($this->filtroTipoEquipo !== 'todos') {
+            $q->where('tipo_equipo', $this->filtroTipoEquipo);
+        }
+        if ($this->filtroArea !== 'todos') {
+            $q->where('area_tienda', $this->filtroArea);
+        }
 
         // ✅ GPU (ya no usar columnas legacy)
         if ($this->filtroGpu === 'dedicada') {
@@ -202,17 +225,19 @@ class ResumenInventario extends Component
 
         // ✅ Batería (tabla equipo_baterias: salud_percent)
         if ($this->filtroBateria === 'baja') {
-            $q->whereHas('baterias', fn($b) => $b->whereNotNull('salud_percent')->where('salud_percent', '<', 70));
+            $q->whereHas('baterias', fn ($b) => $b->whereNotNull('salud_percent')->where('salud_percent', '<', 70));
         } elseif ($this->filtroBateria === 'media') {
-            $q->whereHas('baterias', fn($b) => $b->whereNotNull('salud_percent')->whereBetween('salud_percent', [70, 89]));
+            $q->whereHas('baterias', fn ($b) => $b->whereNotNull('salud_percent')->whereBetween('salud_percent', [70, 89]));
         } elseif ($this->filtroBateria === 'alta') {
-            $q->whereHas('baterias', fn($b) => $b->whereNotNull('salud_percent')->where('salud_percent', '>=', 90));
+            $q->whereHas('baterias', fn ($b) => $b->whereNotNull('salud_percent')->where('salud_percent', '>=', 90));
         }
 
-        if ($this->filtroSO !== 'todos') $q->where('sistema_operativo', $this->filtroSO);
+        if ($this->filtroSO !== 'todos') {
+            $q->where('sistema_operativo', $this->filtroSO);
+        }
 
         // Nuevo: más nuevo (registrado) primero
-return $q->orderByDesc('created_at')->orderByDesc('id');
+        return $q->orderByDesc('created_at')->orderByDesc('id');
 
     }
 
@@ -222,16 +247,13 @@ return $q->orderByDesc('created_at')->orderByDesc('id');
      */
     protected function buildResumen(Equipo $e): array
     {
-        $tituloBase = trim(($e->marca ?? '') . ' ' . ($e->modelo ?? ''));
+        $tituloBase = trim(($e->marca ?? '').' '.($e->modelo ?? ''));
 
         $emoji = '🔥';
 
         $titulo = $tituloBase
             ? "{$emoji} {$tituloBase} {$emoji}"
             : "{$emoji} Equipo {$emoji}";
-
-
-        
 
         // CPU
         $cpuParts = array_filter([
@@ -266,19 +288,23 @@ return $q->orderByDesc('created_at')->orderByDesc('id');
 
             if ($e->monitor->origen_pantalla === 'INTEGRADA') {
                 $pantalla = trim("Pantalla de {$pulgadas} pulgadas");
-                if ($res) $pantalla .= " · {$res}";
+                if ($res) {
+                    $pantalla .= " · {$res}";
+                }
             } else {
                 // externa
-                if ((int)$e->monitor->incluido === 1) {
+                if ((int) $e->monitor->incluido === 1) {
                     $pantalla = trim("Monitor incluido {$pulgadas}");
-                    if ($res) $pantalla .= " · {$res}";
+                    if ($res) {
+                        $pantalla .= " · {$res}";
+                    }
                 }
             }
         }
 
         // GPUs
         $gpuIntegrada = $e->gpus?->firstWhere('tipo', 'INTEGRADA');
-        $gpuDedicada  = $e->gpus?->firstWhere('tipo', 'DEDICADA');
+        $gpuDedicada = $e->gpus?->firstWhere('tipo', 'DEDICADA');
 
         $gpuIntTxt = null;
         if ($gpuIntegrada) {
@@ -296,13 +322,13 @@ return $q->orderByDesc('created_at')->orderByDesc('id');
         $batLineas = [];
         if ($bats->count() > 0) {
             foreach ($bats->values() as $i => $b) {
-                $idx = $bats->count() > 1 ? ('Batería ' . ($i + 1) . ': ') : '';
-                $salud = is_null($b->salud_percent) ? null : (int)$b->salud_percent;
+                $idx = $bats->count() > 1 ? ('Batería '.($i + 1).': ') : '';
+                $salud = is_null($b->salud_percent) ? null : (int) $b->salud_percent;
                 $funcional = is_null($salud) ? null : ($salud >= 60);
 
                 $texto = $idx;
                 if (is_null($salud)) {
-                    $texto .= "Batería registrada";
+                    $texto .= 'Batería registrada';
                 } else {
                     $texto .= $funcional ? "Batería funcional ({$salud}%)" : "Batería NO funcional ({$salud}%)";
                 }
@@ -324,10 +350,18 @@ return $q->orderByDesc('created_at')->orderByDesc('id');
 
         // Puertos (ejemplos)
         $puertos = [];
-        if ($e->puertos_hdmi) $puertos[] = "{$e->puertos_hdmi} Puerto HDMI";
-        if ($e->puertos_usb_30) $puertos[] = "{$e->puertos_usb_30} Puerto(s) USB 3.0";
-        if ($e->puertos_usb_c) $puertos[] = "{$e->puertos_usb_c} Puerto(s) tipo C";
-        if ($puertos) $extras = array_merge($extras, $puertos);
+        if ($e->puertos_hdmi) {
+            $puertos[] = "{$e->puertos_hdmi} Puerto HDMI";
+        }
+        if ($e->puertos_usb_30) {
+            $puertos[] = "{$e->puertos_usb_30} Puerto(s) USB 3.0";
+        }
+        if ($e->puertos_usb_c) {
+            $puertos[] = "{$e->puertos_usb_c} Puerto(s) tipo C";
+        }
+        if ($puertos) {
+            $extras = array_merge($extras, $puertos);
+        }
 
         // Teclado
         if ($e->teclado_idioma && $e->teclado_idioma !== 'N/A') {
@@ -337,95 +371,125 @@ return $q->orderByDesc('created_at')->orderByDesc('id');
         $lineas = [];
 
         // helper local
-$push = function (string $label, ?string $value, ?string $icon = null) use (&$lineas) {
-    $value = trim((string) $value);
-    if ($value !== '') {
-        $lineas[] = [
-            'label' => $label,
-            'text'  => $value,
-            'icon'  => $icon, // puede ser null para exports
-        ];
-    }
-};
+        $push = function (string $label, ?string $value, ?string $icon = null) use (&$lineas) {
+            $value = trim((string) $value);
+            if ($value !== '') {
+                $lineas[] = [
+                    'label' => $label,
+                    'text' => $value,
+                    'icon' => $icon, // puede ser null para exports
+                ];
+            }
+        };
 
-// ORDEN PRINCIPAL
-$push('CPU', $cpu, '💻');
-$push('RAM', $ram, '📀');
-$push('ALMACENAMIENTO', $storage, '💾');
-$push('PANTALLA / MONITOR', $pantalla, '🖥️');
+        // ORDEN PRINCIPAL
+        $push('CPU', $cpu, '💻');
+        $push('RAM', $ram, '📀');
+        $push('ALMACENAMIENTO', $storage, '💾');
+        $push('PANTALLA / MONITOR', $pantalla, '🖥️');
 
-// GPU
-if ($gpuIntTxt) $push('GPU INTEGRADA', $gpuIntTxt, '🚀');
-if ($gpuDedTxt) $push('GPU DEDICADA', $gpuDedTxt, '🎮');
+        // GPU
+        if ($gpuIntTxt) {
+            $push('GPU INTEGRADA', $gpuIntTxt, '🚀');
+        }
+        if ($gpuDedTxt) {
+            $push('GPU DEDICADA', $gpuDedTxt, '🎮');
+        }
 
-// Baterías
-foreach ($batLineas as $btxt) {
-    $push('BATERÍA', $btxt, '🔋');
-}
+        // Baterías
+        foreach ($batLineas as $btxt) {
+            $push('BATERÍA', $btxt, '🔋');
+        }
 
-// ✅ EXTRAS CON ETIQUETAS
-if ($e->puertos_conectividad) {
-    $push('CONECTIVIDAD', $e->puertos_conectividad, '📌');
-}
-if ($e->dispositivos_entrada) {
-    $push('ENTRADA / PERIFÉRICOS', $e->dispositivos_entrada, '📌');
-}
-if ($e->ethernet_tiene) {
+        // ✅ EXTRAS CON ETIQUETAS
+        if ($e->puertos_conectividad) {
+            $push('CONECTIVIDAD', $e->puertos_conectividad, '📌');
+        }
+        if ($e->dispositivos_entrada) {
+            $push('ENTRADA / PERIFÉRICOS', $e->dispositivos_entrada, '📌');
+        }
+        if ($e->ethernet_tiene) {
 
-    $ethernetTexto = $e->ethernet_es_gigabit
-        ? 'Ethernet Gigabit'
-        : 'Ethernet NO gigabit';
+            $ethernetTexto = $e->ethernet_es_gigabit
+                ? 'Ethernet Gigabit'
+                : 'Ethernet NO gigabit';
 
-    $push('RED ETHERNET', $ethernetTexto, '📌');
-}
+            $push('RED ETHERNET', $ethernetTexto, '📌');
+        }
 
+        // Puertos específicos (ejemplos)
+        $usb = [];
 
-// Puertos específicos (ejemplos)
-$usb = [];
+        if ($e->puertos_usb_2) {
+            $usb[] = "{$e->puertos_usb_2}x USB 2.0";
+        }
+        if ($e->puertos_usb_30) {
+            $usb[] = "{$e->puertos_usb_30}x USB 3.0";
+        }
+        if ($e->puertos_usb_31) {
+            $usb[] = "{$e->puertos_usb_31}x USB 3.1";
+        }
+        if ($e->puertos_usb_32) {
+            $usb[] = "{$e->puertos_usb_32}x USB 3.2";
+        }
+        if ($e->puertos_usb_c) {
+            $usb[] = "{$e->puertos_usb_c}x USB-C";
+        }
 
-if ($e->puertos_usb_2)  $usb[] = "{$e->puertos_usb_2}x USB 2.0";
-if ($e->puertos_usb_30) $usb[] = "{$e->puertos_usb_30}x USB 3.0";
-if ($e->puertos_usb_31) $usb[] = "{$e->puertos_usb_31}x USB 3.1";
-if ($e->puertos_usb_32) $usb[] = "{$e->puertos_usb_32}x USB 3.2";
-if ($e->puertos_usb_c)  $usb[] = "{$e->puertos_usb_c}x USB-C";
+        if (! empty($usb)) {
+            $push('PUERTOS USB', implode(' · ', $usb), '📌');
+        }
 
-if (!empty($usb)) {
-    $push('PUERTOS USB', implode(' · ', $usb), '📌');
-}
+        $video = [];
 
+        if ($e->puertos_hdmi) {
+            $video[] = "{$e->puertos_hdmi}x HDMI";
+        }
+        if ($e->puertos_mini_hdmi) {
+            $video[] = "{$e->puertos_mini_hdmi}x Mini HDMI";
+        }
+        if ($e->puertos_vga) {
+            $video[] = "{$e->puertos_vga}x VGA";
+        }
+        if ($e->puertos_dvi) {
+            $video[] = "{$e->puertos_dvi}x DVI";
+        }
+        if ($e->puertos_displayport) {
+            $video[] = "{$e->puertos_displayport}x DisplayPort";
+        }
+        if ($e->puertos_mini_dp) {
+            $video[] = "{$e->puertos_mini_dp}x Mini DP";
+        }
 
-$video = [];
+        if (! empty($video)) {
+            $push('PUERTOS DE VIDEO', implode(' · ', $video), '📌');
+        }
 
-if ($e->puertos_hdmi)        $video[] = "{$e->puertos_hdmi}x HDMI";
-if ($e->puertos_mini_hdmi)   $video[] = "{$e->puertos_mini_hdmi}x Mini HDMI";
-if ($e->puertos_vga)         $video[] = "{$e->puertos_vga}x VGA";
-if ($e->puertos_dvi)         $video[] = "{$e->puertos_dvi}x DVI";
-if ($e->puertos_displayport) $video[] = "{$e->puertos_displayport}x DisplayPort";
-if ($e->puertos_mini_dp)     $video[] = "{$e->puertos_mini_dp}x Mini DP";
+        $slots = [];
 
-if (!empty($video)) {
-    $push('PUERTOS DE VIDEO', implode(' · ', $video), '📌');
-}
+        if ($e->slots_alm_ssd) {
+            $slots[] = "{$e->slots_alm_ssd}x SSD SATA";
+        }
+        if ($e->slots_alm_m2) {
+            $slots[] = "{$e->slots_alm_m2}x M.2";
+        }
+        if ($e->slots_alm_m2_micro) {
+            $slots[] = "{$e->slots_alm_m2_micro}x M.2 Micro";
+        }
+        if ($e->slots_alm_hdd) {
+            $slots[] = "{$e->slots_alm_hdd}x HDD";
+        }
+        if ($e->slots_alm_msata) {
+            $slots[] = "{$e->slots_alm_msata}x mSATA";
+        }
 
+        if (! empty($slots)) {
+            $push('SLOTS DE ALMACENAMIENTO', implode(' · ', $slots), '📌');
+        }
 
-$slots = [];
-
-if ($e->slots_alm_ssd)      $slots[] = "{$e->slots_alm_ssd}x SSD SATA";
-if ($e->slots_alm_m2)       $slots[] = "{$e->slots_alm_m2}x M.2";
-if ($e->slots_alm_m2_micro) $slots[] = "{$e->slots_alm_m2_micro}x M.2 Micro";
-if ($e->slots_alm_hdd)      $slots[] = "{$e->slots_alm_hdd}x HDD";
-if ($e->slots_alm_msata)    $slots[] = "{$e->slots_alm_msata}x mSATA";
-
-if (!empty($slots)) {
-    $push('SLOTS DE ALMACENAMIENTO', implode(' · ', $slots), '📌');
-}
-
-
-
-if ($e->teclado_idioma && $e->teclado_idioma !== 'N/A') {
-    $push('TECLADO', $e->teclado_idioma, '📌');
-}
-
+        if ($e->teclado_idioma && $e->teclado_idioma !== 'N/A') {
+            $push('TECLADO', $e->teclado_idioma, '📌');
+        }
 
         return [$titulo ?: 'Equipo', $lineas];
 
@@ -436,16 +500,16 @@ if ($e->teclado_idioma && $e->teclado_idioma !== 'N/A') {
         $equipos = $this->equiposQuery()->paginate($this->perPage);
 
         $stats = [
-            'total'        => Equipo::count(),
-            'en_revision'  => Equipo::where('estatus_area', Equipo::AREA_EN_PROCESO)->count(),
-            'aprobados'    => Equipo::where('estatus_area', Equipo::AREA_EN_CALIDAD)->count(),
-            'finalizados'  => Equipo::where('estatus_area', Equipo::AREA_FINALIZADO)->count(),
+            'total' => Equipo::count(),
+            'en_revision' => Equipo::where('estatus_area', Equipo::AREA_EN_PROCESO)->count(),
+            'aprobados' => Equipo::where('estatus_area', Equipo::AREA_EN_CALIDAD)->count(),
+            'finalizados' => Equipo::where('estatus_area', Equipo::AREA_FINALIZADO)->count(),
         ];
 
         return view('livewire.preparacion.inventario.resumen-inventario', [
             'equipos' => $equipos,
-            'stats'   => $stats,
-            'lotes'   => $this->lotes,
+            'stats' => $stats,
+            'lotes' => $this->lotes,
             'proveedores' => $this->proveedores,
             'tiposEquipo' => $this->tiposEquipo,
             'areas' => $this->areas,
@@ -455,218 +519,201 @@ if ($e->teclado_idioma && $e->teclado_idioma !== 'N/A') {
             // ✅ ESTO ARREGLA tu Undefined variable $resumenTitulo
             'resumenTitulo' => $this->resumenTitulo,
             'resumenLineas' => $this->resumenLineas,
-            'modalResumen'  => $this->modalResumen,
+            'modalResumen' => $this->modalResumen,
             'equipoResumen' => $this->equipoResumen,
         ]);
     }
 
-public function exportarSeleccionWord()
-{
-    $this->autorizarResumen();
+    public function exportarSeleccionWord()
+    {
+        $this->autorizarResumen();
 
-    if (empty($this->selected)) {
-        return; // o un toast si usas
-    }
+        if (empty($this->selected)) {
+            return; // o un toast si usas
+        }
 
-    $equipos = Equipo::query()
-        ->with(['loteModelo.lote.proveedor', 'gpus', 'baterias', 'monitor'])
-        ->whereIn('id', $this->selected)
-        ->orderBy('id')
-        ->get();
+        $equipos = Equipo::query()
+            ->with(['loteModelo.lote.proveedor', 'gpus', 'baterias', 'monitor'])
+            ->whereIn('id', $this->selected)
+            ->orderBy('id')
+            ->get();
 
-    if ($equipos->isEmpty()) {
-        return;
-    }
+        if ($equipos->isEmpty()) {
+            return;
+        }
 
-    $phpWord = new PhpWord();
-    $phpWord->setDefaultFontName('Calibri');
-    $phpWord->setDefaultFontSize(11);
+        $phpWord = new PhpWord;
+        $phpWord->setDefaultFontName('Calibri');
+        $phpWord->setDefaultFontSize(11);
 
-    $section = $phpWord->addSection([
-        'marginTop' => 900,
-        'marginBottom' => 900,
-        'marginLeft' => 900,
-        'marginRight' => 900,
-    ]);
-
-    // Estilos simples
-    $titleStyle = ['bold' => true, 'size' => 16];
-    $subStyle   = ['bold' => true, 'size' => 11];
-    $mutedStyle = ['italic' => true, 'color' => '666666'];
-
-    foreach ($equipos->values() as $idx => $e) {
-        // Título (marca + modelo)
-        $titulo = collect([$e->marca, $e->modelo])->filter()->implode(' ');
-        $titulo = $titulo !== '' ? $titulo : 'Equipo';
-
-        $section->addText($titulo, $titleStyle);
-        $section->addText("Serie: " . ($e->numero_serie ?? '—'), $subStyle);
-
-        // Resumen (usa tu buildResumen ya existente)
-        [$resTitulo, $lineas] = $this->buildResumen($e);
-
-        $section->addTextBreak(1);
-
-        // ✅ FORMATO EDITABLE: tabla “icon | texto”
-        $table = $section->addTable([
-            'borderSize' => 6,
-            'borderColor' => 'CCCCCC',
-            'cellMargin' => 100,
+        $section = $phpWord->addSection([
+            'marginTop' => 900,
+            'marginBottom' => 900,
+            'marginLeft' => 900,
+            'marginRight' => 900,
         ]);
 
-        if (!empty($lineas)) {
-            foreach ($lineas as $l) {
-                $icon = is_array($l) ? ($l['icon'] ?? '•') : '•';
-                $text = is_array($l) ? ($l['text'] ?? '') : (string)$l;
+        // Estilos simples
+        $titleStyle = ['bold' => true, 'size' => 16];
+        $subStyle = ['bold' => true, 'size' => 11];
+        $mutedStyle = ['italic' => true, 'color' => '666666'];
 
-                $table->addRow();
-                $table->addCell(700)->addText($icon);
-                $table->addCell(9000)->addText($text);
+        foreach ($equipos->values() as $idx => $e) {
+            // Título (marca + modelo)
+            $titulo = collect([$e->marca, $e->modelo])->filter()->implode(' ');
+            $titulo = $titulo !== '' ? $titulo : 'Equipo';
+
+            $section->addText($titulo, $titleStyle);
+            $section->addText('Serie: '.($e->numero_serie ?? '—'), $subStyle);
+
+            // Resumen (usa tu buildResumen ya existente)
+            [$resTitulo, $lineas] = $this->buildResumen($e);
+
+            $section->addTextBreak(1);
+
+            // ✅ FORMATO EDITABLE: tabla “icon | texto”
+            $table = $section->addTable([
+                'borderSize' => 6,
+                'borderColor' => 'CCCCCC',
+                'cellMargin' => 100,
+            ]);
+
+            if (! empty($lineas)) {
+                foreach ($lineas as $l) {
+                    $icon = is_array($l) ? ($l['icon'] ?? '•') : '•';
+                    $text = is_array($l) ? ($l['text'] ?? '') : (string) $l;
+
+                    $table->addRow();
+                    $table->addCell(700)->addText($icon);
+                    $table->addCell(9000)->addText($text);
+                }
+            } else {
+                $section->addText('Sin información para este equipo.', $mutedStyle);
             }
-        } else {
-            $section->addText('Sin información para este equipo.', $mutedStyle);
+
+            // ✅ Separación POR EQUIPO (1 página por equipo)
+            if ($idx < $equipos->count() - 1) {
+                $section->addPageBreak();
+            }
         }
 
-        // ✅ Separación POR EQUIPO (1 página por equipo)
-        if ($idx < $equipos->count() - 1) {
-            $section->addPageBreak();
+        // Guardar temporal y descargar
+        $dir = storage_path('app/exports');
+        if (! is_dir($dir)) {
+            mkdir($dir, 0775, true);
         }
+
+        $filename = 'ResumenEquipos_'.now()->format('Ymd_His').'.docx';
+        $fullpath = $dir.DIRECTORY_SEPARATOR.$filename;
+
+        IOFactory::createWriter($phpWord, 'Word2007')->save($fullpath);
+
+        return response()->download($fullpath)->deleteFileAfterSend(true);
     }
 
-    // Guardar temporal y descargar
-    $dir = storage_path('app/exports');
-    if (!is_dir($dir)) mkdir($dir, 0775, true);
+    public function exportarSeleccionPdf()
+    {
+        $this->autorizarResumen();
 
-    $filename = 'ResumenEquipos_' . now()->format('Ymd_His') . '.docx';
-    $fullpath = $dir . DIRECTORY_SEPARATOR . $filename;
+        if (empty($this->selected)) {
+            return;
+        }
 
-    IOFactory::createWriter($phpWord, 'Word2007')->save($fullpath);
+        $equipos = Equipo::query()
+            ->with(['loteModelo.lote.proveedor', 'gpus', 'baterias', 'monitor'])
+            ->whereIn('id', $this->selected)
+            ->orderBy('id')
+            ->get();
 
-    return response()->download($fullpath)->deleteFileAfterSend(true);
-}
+        if ($equipos->isEmpty()) {
+            return;
+        }
 
+        $items = $equipos->map(function ($e) {
+            [$titulo, $lineas] = $this->buildResumen($e);
 
-public function exportarSeleccionPdf()
-{
-    $this->autorizarResumen();
+            return [
+                'titulo' => $titulo ?: trim(($e->marca ?? '').' '.($e->modelo ?? '')) ?: 'Equipo',
+                'serie' => $e->numero_serie ?? '—',
+                'lineas' => $lineas ?? [],
+            ];
+        })->values()->all();
 
-    if (empty($this->selected)) {
-        return;
+        $html = view('pdf.resumen-equipos', [
+            'items' => $items,
+        ])->render();
+
+        $browsershot = Browsershot::html($html)
+            ->format('A4')
+            ->margins(10, 10, 10, 10);
+
+        if (app()->environment('production')) {
+            $browsershot
+                ->setChromePath('/usr/bin/chromium-browser')
+                ->addChromiumArguments([
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                ]);
+        }
+
+        $pdf = $browsershot->pdf();
+
+        $filename = 'ResumenEquipos_'.now()->format('Ymd_His').'.pdf';
+
+        return response()->streamDownload(function () use ($pdf) {
+            echo $pdf;
+        }, $filename);
     }
 
-    $equipos = Equipo::query()
-        ->with(['loteModelo.lote.proveedor', 'gpus', 'baterias', 'monitor'])
-        ->whereIn('id', $this->selected)
-        ->orderBy('id')
-        ->get();
+    private function agruparConDiferencias($equipos, $campo = null, $callback = null)
+    {
+        $agrupado = $callback
+            ? $equipos->groupBy($callback)
+            : $equipos->groupBy($campo);
 
-    if ($equipos->isEmpty()) {
-        return;
+        $resultado = [];
+
+        $maxCantidad = $agrupado->map->count()->max();
+
+        foreach ($agrupado as $valor => $grupo) {
+
+            $cantidad = $grupo->count();
+
+            $resultado[$valor ?: 'N/A'] = [
+                'cantidad' => $cantidad,
+                'diferente' => $cantidad < $maxCantidad,
+                'equipos' => $cantidad < $maxCantidad
+                    ? $grupo->map(fn ($e) => $e->numero_serie)->toArray()
+                    : [],
+            ];
+        }
+
+        return $resultado;
     }
 
-    $items = $equipos->map(function ($e) {
-        [$titulo, $lineas] = $this->buildResumen($e);
+    public function compararSeleccion()
+    {
+        $this->autorizarResumen();
 
-        return [
-            'titulo' => $titulo ?: trim(($e->marca ?? '') . ' ' . ($e->modelo ?? '')) ?: 'Equipo',
-            'serie'  => $e->numero_serie ?? '—',
-            'lineas' => $lineas ?? [],
+        if (count($this->selected) < 2) {
+            return;
+        }
+
+        $equipos = Equipo::with(['gpus', 'monitor'])
+            ->whereIn('id', $this->selected)
+            ->get();
+
+        $this->comparacionResumen = [
+            'CPU' => $this->agruparConDiferencias($equipos, 'procesador_modelo'),
+            'RAM' => $this->agruparConDiferencias($equipos, 'ram_total'),
+            'ALMACENAMIENTO' => $this->agruparConDiferencias($equipos, 'almacenamiento_principal_capacidad'),
+            'PANTALLA' => $this->agruparConDiferencias(
+                $equipos,
+                null,
+                fn ($e) => optional($e->monitor)->pulgadas
+            ),
         ];
-    })->values()->all();
 
-    $html = view('pdf.resumen-equipos', [
-        'items' => $items,
-    ])->render();
-
-$browsershot = Browsershot::html($html)
-    ->format('A4')
-    ->margins(10, 10, 10, 10);
-
-if (app()->environment('production')) {
-    $browsershot
-        ->setChromePath('/usr/bin/chromium-browser')
-        ->addChromiumArguments([
-            '--no-sandbox',
-            '--disable-setuid-sandbox'
-        ]);
-}
-
-$pdf = $browsershot->pdf();
-
-
-    $filename = 'ResumenEquipos_' . now()->format('Ymd_His') . '.pdf';
-
-    return response()->streamDownload(function () use ($pdf) {
-        echo $pdf;
-    }, $filename);
-}
-
-
-
-private function agruparConDiferencias($equipos, $campo = null, $callback = null)
-{
-    $agrupado = $callback
-        ? $equipos->groupBy($callback)
-        : $equipos->groupBy($campo);
-
-    $resultado = [];
-
-    $maxCantidad = $agrupado->map->count()->max();
-
-    foreach ($agrupado as $valor => $grupo) {
-
-        $cantidad = $grupo->count();
-
-        $resultado[$valor ?: 'N/A'] = [
-            'cantidad' => $cantidad,
-            'diferente' => $cantidad < $maxCantidad,
-            'equipos' => $cantidad < $maxCantidad
-                ? $grupo->map(fn($e) => $e->numero_serie)->toArray()
-                : [],
-        ];
+        $this->modalComparar = true;
     }
-
-    return $resultado;
-}
-
-
-
-
-
-
-public function compararSeleccion()
-{
-    $this->autorizarResumen();
-
-    if (count($this->selected) < 2) return;
-
-    $equipos = Equipo::with(['gpus','monitor'])
-        ->whereIn('id', $this->selected)
-        ->get();
-
-    $this->comparacionResumen = [
-        'CPU' => $this->agruparConDiferencias($equipos, 'procesador_modelo'),
-        'RAM' => $this->agruparConDiferencias($equipos, 'ram_total'),
-        'ALMACENAMIENTO' => $this->agruparConDiferencias($equipos, 'almacenamiento_principal_capacidad'),
-        'PANTALLA' => $this->agruparConDiferencias(
-            $equipos,
-            null,
-            fn($e) => optional($e->monitor)->pulgadas
-        ),
-    ];
-
-    $this->modalComparar = true;
-}
-
-
-
-
-
-
-
-    
-
-
-
-
 }

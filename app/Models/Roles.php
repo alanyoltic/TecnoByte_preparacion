@@ -9,7 +9,5 @@ class Roles extends Model
 {
     use HasFactory;
 
-    
-
     protected $guarded = [];
 }

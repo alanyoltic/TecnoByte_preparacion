@@ -101,8 +101,8 @@ trait TieneRolTransferencias
 
             return $query->where(function ($q) use ($almacenesDepto) {
                 $q->whereIn('almacen_origen_id', $almacenesDepto)
-                  ->orWhereIn('almacen_destino_id', $almacenesDepto)
-                  ->orWhere('created_by', $this->id);
+                    ->orWhereIn('almacen_destino_id', $almacenesDepto)
+                    ->orWhere('created_by', $this->id);
             });
         }
 
@@ -111,7 +111,7 @@ trait TieneRolTransferencias
 
         return $query->where(function ($q) use ($almacenesEncargado) {
             $q->whereIn('almacen_origen_id', $almacenesEncargado)
-              ->orWhereIn('almacen_destino_id', $almacenesEncargado);
+                ->orWhereIn('almacen_destino_id', $almacenesEncargado);
         });
     }
 
@@ -127,12 +127,12 @@ trait TieneRolTransferencias
         return Almacen::where('activo', 1)
             ->whereHas('encargados', function ($q) {
                 $q->where('user_id', $this->id)
-                  ->where('activo', 1)
-                  ->where('desde', '<=', Carbon::now())
-                  ->where(function ($q2) {
-                      $q2->whereNull('hasta')
-                         ->orWhere('hasta', '>=', Carbon::now());
-                  });
+                    ->where('activo', 1)
+                    ->where('desde', '<=', Carbon::now())
+                    ->where(function ($q2) {
+                        $q2->whereNull('hasta')
+                            ->orWhere('hasta', '>=', Carbon::now());
+                    });
             })
             ->orderBy('nombre')
             ->get();

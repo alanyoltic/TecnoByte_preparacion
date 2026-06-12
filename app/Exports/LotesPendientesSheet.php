@@ -2,24 +2,24 @@
 
 namespace App\Exports;
 
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
-use Illuminate\Support\Collection;
 
 class LotesPendientesSheet implements FromCollection, WithHeadings
 {
     public function collection()
     {
-        $rows = new Collection();
+        $rows = new Collection;
 
-$lotes = DB::table('lote_modelos_recibidos as lmr')
-    ->join('lotes as l', 'lmr.lote_id', '=', 'l.id')
-    ->leftJoin('equipos as e', function ($join) {
-        $join->on('e.lote_modelo_id', '=', 'lmr.id')
-             ->whereNull('e.deleted_at');
-    })
-    ->selectRaw('
+        $lotes = DB::table('lote_modelos_recibidos as lmr')
+            ->join('lotes as l', 'lmr.lote_id', '=', 'l.id')
+            ->leftJoin('equipos as e', function ($join) {
+                $join->on('e.lote_modelo_id', '=', 'lmr.id')
+                    ->whereNull('e.deleted_at');
+            })
+            ->selectRaw('
         l.nombre_lote,
         l.fecha_llegada,
         lmr.marca,
@@ -27,15 +27,15 @@ $lotes = DB::table('lote_modelos_recibidos as lmr')
         lmr.cantidad_recibida,
         COUNT(e.id) as total_creados
     ')
-    ->groupBy(
-        'lmr.id',
-        'l.nombre_lote',
-        'l.fecha_llegada',
-        'lmr.marca',
-        'lmr.modelo',
-        'lmr.cantidad_recibida'
-    )
-    ->get();
+            ->groupBy(
+                'lmr.id',
+                'l.nombre_lote',
+                'l.fecha_llegada',
+                'lmr.marca',
+                'lmr.modelo',
+                'lmr.cantidad_recibida'
+            )
+            ->get();
 
         foreach ($lotes as $lote) {
 
@@ -48,7 +48,7 @@ $lotes = DB::table('lote_modelos_recibidos as lmr')
                     'fecha_llegada' => $lote->fecha_llegada,
                     'marca' => $lote->marca,
                     'modelo' => $lote->modelo,
-                    'estatus' => 'PENDIENTE POR CREAR'
+                    'estatus' => 'PENDIENTE POR CREAR',
                 ]);
             }
         }
@@ -63,7 +63,7 @@ $lotes = DB::table('lote_modelos_recibidos as lmr')
             'Fecha Llegada',
             'Marca',
             'Modelo',
-            'Estatus'
+            'Estatus',
         ];
     }
 }

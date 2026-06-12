@@ -4,9 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Equipo extends Model
 {
@@ -22,30 +21,47 @@ class Equipo extends Model
      * estatus_ciclo — dónde está el equipo en su vida dentro de TecnoByte.
      * Lo ven todos los módulos del ERP.
      */
-    const CICLO_CEDIS       = 'CEDIS';
+    const CICLO_CEDIS = 'CEDIS';
+
     const CICLO_PREPARACION = 'PREPARACION';
-    const CICLO_CALIDAD     = 'CALIDAD';
-    const CICLO_VENTAS      = 'VENTAS';
-    const CICLO_APARTADO    = 'APARTADO';
-    const CICLO_VENDIDO     = 'VENDIDO';
-    const CICLO_SCRAP       = 'SCRAP';
+
+    const CICLO_CALIDAD = 'CALIDAD';
+
+    const CICLO_VENTAS = 'VENTAS';
+
+    const CICLO_APARTADO = 'APARTADO';
+
+    const CICLO_VENDIDO = 'VENDIDO';
+
+    const CICLO_SCRAP = 'SCRAP';
 
     /**
      * estatus_area — detalle interno dentro del área que lo tiene.
      * Preparación lo usa para saber en qué etapa está el trabajo.
      */
-    const AREA_EN_ESPERA          = 'EN_ESPERA';
-    const AREA_SIN_ASIGNAR        = 'SIN_ASIGNAR';
-    const AREA_ASIGNADO           = 'ASIGNADO';
-    const AREA_EN_PROCESO         = 'EN_PROCESO';
-    const AREA_EN_CALIDAD         = 'EN_CALIDAD';
-    const AREA_FINALIZADO         = 'FINALIZADO';
-    const AREA_TRANSFERIDO        = 'TRANSFERIDO';
-    const AREA_PENDIENTE_PIEZA    = 'PENDIENTE_PIEZA';
+    const AREA_EN_ESPERA = 'EN_ESPERA';
+
+    const AREA_SIN_ASIGNAR = 'SIN_ASIGNAR';
+
+    const AREA_ASIGNADO = 'ASIGNADO';
+
+    const AREA_EN_PROCESO = 'EN_PROCESO';
+
+    const AREA_EN_CALIDAD = 'EN_CALIDAD';
+
+    const AREA_FINALIZADO = 'FINALIZADO';
+
+    const AREA_TRANSFERIDO = 'TRANSFERIDO';
+
+    const AREA_PENDIENTE_PIEZA = 'PENDIENTE_PIEZA';
+
     const AREA_PENDIENTE_GARANTIA = 'PENDIENTE_GARANTIA';
-    const AREA_PENDIENTE_DESARME  = 'PENDIENTE_DESARME';
-    const AREA_GARANTIA_INT       = 'GARANTIA_INT';
-    const AREA_GARANTIA_EXT       = 'GARANTIA_EXT';
+
+    const AREA_PENDIENTE_DESARME = 'PENDIENTE_DESARME';
+
+    const AREA_GARANTIA_INT = 'GARANTIA_INT';
+
+    const AREA_GARANTIA_EXT = 'GARANTIA_EXT';
 
     // =========================================================
     // REGLAS DE TRANSICIÓN
@@ -58,23 +74,23 @@ class Equipo extends Model
      * Clave = estado actual, Valor = estados a los que puede ir.
      */
     private array $transicionesCiclo = [
-        self::CICLO_CEDIS       => [self::CICLO_PREPARACION],
+        self::CICLO_CEDIS => [self::CICLO_PREPARACION],
         self::CICLO_PREPARACION => [self::CICLO_CALIDAD, self::CICLO_VENTAS, self::CICLO_SCRAP],
-        self::CICLO_CALIDAD     => [self::CICLO_VENTAS, self::CICLO_PREPARACION],
-        self::CICLO_VENTAS      => [self::CICLO_APARTADO, self::CICLO_VENDIDO],
-        self::CICLO_APARTADO    => [self::CICLO_VENTAS, self::CICLO_VENDIDO],
-        self::CICLO_VENDIDO     => [], // Estado final
-        self::CICLO_SCRAP       => [], // Estado final
+        self::CICLO_CALIDAD => [self::CICLO_VENTAS, self::CICLO_PREPARACION],
+        self::CICLO_VENTAS => [self::CICLO_APARTADO, self::CICLO_VENDIDO],
+        self::CICLO_APARTADO => [self::CICLO_VENTAS, self::CICLO_VENDIDO],
+        self::CICLO_VENDIDO => [], // Estado final
+        self::CICLO_SCRAP => [], // Estado final
     ];
 
     /**
      * Transiciones válidas para estatus_area dentro de preparación.
      */
     private array $transicionesArea = [
-        self::AREA_EN_ESPERA          => [self::AREA_ASIGNADO, self::AREA_EN_PROCESO],
-        self::AREA_SIN_ASIGNAR        => [self::AREA_ASIGNADO, self::AREA_EN_PROCESO],
-        self::AREA_ASIGNADO           => [self::AREA_EN_PROCESO],
-        self::AREA_EN_PROCESO         => [
+        self::AREA_EN_ESPERA => [self::AREA_ASIGNADO, self::AREA_EN_PROCESO],
+        self::AREA_SIN_ASIGNAR => [self::AREA_ASIGNADO, self::AREA_EN_PROCESO],
+        self::AREA_ASIGNADO => [self::AREA_EN_PROCESO],
+        self::AREA_EN_PROCESO => [
             self::AREA_EN_CALIDAD,
             self::AREA_PENDIENTE_PIEZA,
             self::AREA_PENDIENTE_GARANTIA,
@@ -82,14 +98,14 @@ class Equipo extends Model
             self::AREA_GARANTIA_INT,
             self::AREA_GARANTIA_EXT,
         ],
-        self::AREA_EN_CALIDAD         => [self::AREA_FINALIZADO, self::AREA_EN_PROCESO],
-        self::AREA_FINALIZADO         => [self::AREA_TRANSFERIDO],
-        self::AREA_TRANSFERIDO        => [], // Final para preparacion
-        self::AREA_PENDIENTE_PIEZA    => [self::AREA_EN_PROCESO, self::AREA_EN_CALIDAD],
+        self::AREA_EN_CALIDAD => [self::AREA_FINALIZADO, self::AREA_EN_PROCESO],
+        self::AREA_FINALIZADO => [self::AREA_TRANSFERIDO],
+        self::AREA_TRANSFERIDO => [], // Final para preparacion
+        self::AREA_PENDIENTE_PIEZA => [self::AREA_EN_PROCESO, self::AREA_EN_CALIDAD],
         self::AREA_PENDIENTE_GARANTIA => [self::AREA_EN_PROCESO],
-        self::AREA_PENDIENTE_DESARME  => [self::AREA_EN_PROCESO],
-        self::AREA_GARANTIA_INT       => [self::AREA_EN_PROCESO],
-        self::AREA_GARANTIA_EXT       => [self::AREA_EN_PROCESO],
+        self::AREA_PENDIENTE_DESARME => [self::AREA_EN_PROCESO],
+        self::AREA_GARANTIA_INT => [self::AREA_EN_PROCESO],
+        self::AREA_GARANTIA_EXT => [self::AREA_EN_PROCESO],
     ];
 
     /**
@@ -99,6 +115,7 @@ class Equipo extends Model
     public function puedeTransicionarCicloA(string $nuevoEstatus): bool
     {
         $permitidos = $this->transicionesCiclo[$this->estatus_ciclo] ?? [];
+
         return in_array($nuevoEstatus, $permitidos, true);
     }
 
@@ -109,6 +126,7 @@ class Equipo extends Model
     public function puedeTransicionarAreaA(string $nuevoEstatus): bool
     {
         $permitidos = $this->transicionesArea[$this->estatus_area] ?? [];
+
         return in_array($nuevoEstatus, $permitidos, true);
     }
 
@@ -138,8 +156,8 @@ class Equipo extends Model
         return match ($estatusArea) {
             self::AREA_EN_CALIDAD,
             self::AREA_FINALIZADO,
-            self::AREA_TRANSFERIDO  => self::CICLO_CALIDAD,
-            default                 => self::CICLO_PREPARACION,
+            self::AREA_TRANSFERIDO => self::CICLO_CALIDAD,
+            default => self::CICLO_PREPARACION,
         };
     }
 
@@ -215,31 +233,31 @@ class Equipo extends Model
     public static function labelsCiclo(): array
     {
         return [
-            self::CICLO_CEDIS       => 'CEDIS',
+            self::CICLO_CEDIS => 'CEDIS',
             self::CICLO_PREPARACION => 'En Preparación',
-            self::CICLO_CALIDAD     => 'En Calidad',
-            self::CICLO_VENTAS      => 'En Ventas',
-            self::CICLO_APARTADO    => 'Apartado',
-            self::CICLO_VENDIDO     => 'Vendido',
-            self::CICLO_SCRAP       => 'Scrap / Baja',
+            self::CICLO_CALIDAD => 'En Calidad',
+            self::CICLO_VENTAS => 'En Ventas',
+            self::CICLO_APARTADO => 'Apartado',
+            self::CICLO_VENDIDO => 'Vendido',
+            self::CICLO_SCRAP => 'Scrap / Baja',
         ];
     }
 
     public static function labelsArea(): array
     {
         return [
-            self::AREA_EN_ESPERA          => 'En espera',
-            self::AREA_SIN_ASIGNAR        => 'Sin asignar',
-            self::AREA_ASIGNADO           => 'Asignado',
-            self::AREA_EN_PROCESO         => 'En proceso',
-            self::AREA_EN_CALIDAD         => 'En calidad',
-            self::AREA_FINALIZADO         => 'Finalizado',
-            self::AREA_TRANSFERIDO        => 'Transferido',
-            self::AREA_PENDIENTE_PIEZA    => 'Pendiente pieza',
+            self::AREA_EN_ESPERA => 'En espera',
+            self::AREA_SIN_ASIGNAR => 'Sin asignar',
+            self::AREA_ASIGNADO => 'Asignado',
+            self::AREA_EN_PROCESO => 'En proceso',
+            self::AREA_EN_CALIDAD => 'En calidad',
+            self::AREA_FINALIZADO => 'Finalizado',
+            self::AREA_TRANSFERIDO => 'Transferido',
+            self::AREA_PENDIENTE_PIEZA => 'Pendiente pieza',
             self::AREA_PENDIENTE_GARANTIA => 'Pendiente garantía',
-            self::AREA_PENDIENTE_DESARME  => 'Pendiente desarme',
-            self::AREA_GARANTIA_INT       => 'Garantía interna',
-            self::AREA_GARANTIA_EXT       => 'Garantía externa',
+            self::AREA_PENDIENTE_DESARME => 'Pendiente desarme',
+            self::AREA_GARANTIA_INT => 'Garantía interna',
+            self::AREA_GARANTIA_EXT => 'Garantía externa',
         ];
     }
 
@@ -333,10 +351,10 @@ class Equipo extends Model
     // =========================================================
 
     protected $casts = [
-        'puertos_usb'    => 'array',
-        'puertos_video'  => 'array',
-        'lectores'       => 'array',
+        'puertos_usb' => 'array',
+        'puertos_video' => 'array',
+        'lectores' => 'array',
         'ram_es_soldada' => 'boolean',
-        'ram_sin_slots'  => 'boolean',
+        'ram_sin_slots' => 'boolean',
     ];
 }

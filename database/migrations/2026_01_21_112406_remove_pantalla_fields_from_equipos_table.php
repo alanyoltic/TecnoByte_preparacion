@@ -32,19 +32,19 @@ return new class extends Migration
     {
         Schema::table('equipos', function (Blueprint $table) {
             // Se restauran por si haces rollback
-            if (!Schema::hasColumn('equipos', 'pantalla_pulgadas')) {
+            if (! Schema::hasColumn('equipos', 'pantalla_pulgadas')) {
                 $table->string('pantalla_pulgadas', 10)->nullable();
             }
 
-            if (!Schema::hasColumn('equipos', 'pantalla_resolucion')) {
+            if (! Schema::hasColumn('equipos', 'pantalla_resolucion')) {
                 $table->string('pantalla_resolucion', 20)->nullable();
             }
 
-            if (!Schema::hasColumn('equipos', 'pantalla_es_touch')) {
+            if (! Schema::hasColumn('equipos', 'pantalla_es_touch')) {
                 $table->boolean('pantalla_es_touch')->default(false);
             }
 
-            if (!Schema::hasColumn('equipos', 'pantalla_tipo')) {
+            if (! Schema::hasColumn('equipos', 'pantalla_tipo')) {
                 $table->string('pantalla_tipo', 20)->nullable();
             }
         });

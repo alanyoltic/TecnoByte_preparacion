@@ -16,8 +16,8 @@ class CompraInventario extends Model
     ];
 
     protected $casts = [
-        'fecha_compra'    => 'date',
-        'total_estimado'  => 'decimal:2',
+        'fecha_compra' => 'date',
+        'total_estimado' => 'decimal:2',
     ];
 
     public function proveedor(): BelongsTo

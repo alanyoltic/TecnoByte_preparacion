@@ -19,27 +19,30 @@ class InventarioPieza extends Model
     ];
 
     protected $casts = [
-        'costo'              => 'decimal:2',
-        'fecha_ingreso'      => 'date',
-        'cantidad_inicial'   => 'integer',
-        'cantidad_disponible'=> 'integer',
+        'costo' => 'decimal:2',
+        'fecha_ingreso' => 'date',
+        'cantidad_inicial' => 'integer',
+        'cantidad_disponible' => 'integer',
         'cantidad_reservada' => 'integer',
-        'cantidad_usada'     => 'integer',
-        'cantidad_baja'      => 'integer',
+        'cantidad_usada' => 'integer',
+        'cantidad_baja' => 'integer',
     ];
 
-    const COMPRA   = 'COMPRA';
+    const COMPRA = 'COMPRA';
+
     const DESHUESO = 'DESHUESO';
 
-    const DISPONIBLE   = 'DISPONIBLE';
-    const AGOTADA      = 'AGOTADA';
+    const DISPONIBLE = 'DISPONIBLE';
+
+    const AGOTADA = 'AGOTADA';
+
     const DADA_DE_BAJA = 'DADA_DE_BAJA';
 
     // ── Relaciones ────────────────────────────────────────────────────
 
     public function catalogoPieza(): BelongsTo
     {
-        return $this->belongsTo(CatalogoPieza::class, 'catalogo_pieza_id');
+        return $this->belongsTo(CatalogoPieza::class, 'catalogo_pieza_id')->withTrashed();
     }
 
     public function compraItem(): BelongsTo
@@ -105,9 +108,9 @@ class InventarioPieza extends Model
     public function darDeBaja(): void
     {
         $this->update([
-            'estatus'            => self::DADA_DE_BAJA,
-            'cantidad_baja'      => $this->cantidad_baja + $this->cantidad_disponible,
-            'cantidad_disponible'=> 0,
+            'estatus' => self::DADA_DE_BAJA,
+            'cantidad_baja' => $this->cantidad_baja + $this->cantidad_disponible,
+            'cantidad_disponible' => 0,
         ]);
     }
 
@@ -116,6 +119,7 @@ class InventarioPieza extends Model
     {
         if ($this->origen === self::DESHUESO) {
             $equipo = $this->equipoOrigen;
+
             return $equipo
                 ? "Computadora Despiece — {$equipo->numero_serie}"
                 : 'Pendiente Despiece';
@@ -124,7 +128,8 @@ class InventarioPieza extends Model
         $compra = $this->compraItem?->compra;
         if ($compra) {
             $proveedor = $compra->proveedor->nombre_empresa ?? '?';
-            $folio     = $compra->folio ? " #{$compra->folio}" : '';
+            $folio = $compra->folio ? " #{$compra->folio}" : '';
+
             return "Compra{$folio} — {$proveedor}";
         }
 

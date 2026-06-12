@@ -28,7 +28,7 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
 
-        if (!$user->is_active) {
+        if (! $user->is_active) {
             Auth::logout();
 
             return back()->withErrors([
@@ -40,8 +40,6 @@ class AuthenticatedSessionController extends Controller
 
         return redirect()->intended(route('dashboard', absolute: false));
     }
-
-    
 
     /**
      * Destroy an authenticated session.

@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -14,29 +14,29 @@ return new class extends Migration
     {
         Schema::table('solicitudes_piezas', function (Blueprint $table) {
             // Agregar campos de confirmación (si no existen)
-            if (!Schema::hasColumn('solicitudes_piezas', 'instalada')) {
+            if (! Schema::hasColumn('solicitudes_piezas', 'instalada')) {
                 $table->boolean('instalada')->default(false)->after('notas_respuesta');
             }
-            
-            if (!Schema::hasColumn('solicitudes_piezas', 'funciono')) {
+
+            if (! Schema::hasColumn('solicitudes_piezas', 'funciono')) {
                 $table->boolean('funciono')->nullable()->after('instalada');
             }
-            
-            if (!Schema::hasColumn('solicitudes_piezas', 'confirmada_en')) {
+
+            if (! Schema::hasColumn('solicitudes_piezas', 'confirmada_en')) {
                 $table->timestamp('confirmada_en')->nullable()->after('funciono');
             }
-            
-            if (!Schema::hasColumn('solicitudes_piezas', 'notas_confirmacion')) {
+
+            if (! Schema::hasColumn('solicitudes_piezas', 'notas_confirmacion')) {
                 $table->text('notas_confirmacion')->nullable()->after('confirmada_en');
             }
-            
+
             // Agregar campo equipo_id para trazabilidad directa (opcional, compatible con asignacion_equipo_id)
-            if (!Schema::hasColumn('solicitudes_piezas', 'equipo_id')) {
+            if (! Schema::hasColumn('solicitudes_piezas', 'equipo_id')) {
                 $table->foreignId('equipo_id')
-                      ->nullable()
-                      ->after('asignacion_equipo_id')
-                      ->constrained('equipos')
-                      ->onDelete('cascade');
+                    ->nullable()
+                    ->after('asignacion_equipo_id')
+                    ->constrained('equipos')
+                    ->onDelete('cascade');
             }
         });
 
@@ -62,19 +62,19 @@ return new class extends Migration
                 $table->dropForeign(['equipo_id']);
                 $table->dropColumn('equipo_id');
             }
-            
+
             if (Schema::hasColumn('solicitudes_piezas', 'notas_confirmacion')) {
                 $table->dropColumn('notas_confirmacion');
             }
-            
+
             if (Schema::hasColumn('solicitudes_piezas', 'confirmada_en')) {
                 $table->dropColumn('confirmada_en');
             }
-            
+
             if (Schema::hasColumn('solicitudes_piezas', 'funciono')) {
                 $table->dropColumn('funciono');
             }
-            
+
             if (Schema::hasColumn('solicitudes_piezas', 'instalada')) {
                 $table->dropColumn('instalada');
             }

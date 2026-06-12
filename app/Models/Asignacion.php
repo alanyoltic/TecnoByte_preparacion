@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Asignacion extends Model
 {
@@ -27,14 +27,18 @@ class Asignacion extends Model
 
     protected $casts = [
         'fecha_asignacion' => 'date',
-        'fecha_entrega'    => 'date',
+        'fecha_entrega' => 'date',
     ];
 
-    const PENDIENTE  = 'PENDIENTE';
+    const PENDIENTE = 'PENDIENTE';
+
     const EN_PROCESO = 'EN_PROCESO';
-    const ENTREGADO  = 'ENTREGADO';
-    const VALIDADO   = 'VALIDADO';
-    const CANCELADO  = 'CANCELADO';
+
+    const ENTREGADO = 'ENTREGADO';
+
+    const VALIDADO = 'VALIDADO';
+
+    const CANCELADO = 'CANCELADO';
 
     public function tecnico(): BelongsTo
     {
@@ -101,11 +105,11 @@ class Asignacion extends Model
     public static function labelsEstatus(): array
     {
         return [
-            self::PENDIENTE  => 'Pendiente',
+            self::PENDIENTE => 'Pendiente',
             self::EN_PROCESO => 'En Proceso',
-            self::ENTREGADO  => 'Entregado',
-            self::VALIDADO   => 'Validado',
-            self::CANCELADO  => 'Cancelado',
+            self::ENTREGADO => 'Entregado',
+            self::VALIDADO => 'Validado',
+            self::CANCELADO => 'Cancelado',
         ];
     }
 

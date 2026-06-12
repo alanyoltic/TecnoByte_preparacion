@@ -28,7 +28,7 @@ return new class extends Migration
 
             if (preg_match('/^\[(.+?)\]\s*(.*)$/u', $descripcion, $matches) === 1) {
                 $categoria = trim((string) ($matches[1] ?? '')) ?: null;
-                $detalle   = trim((string) ($matches[2] ?? '')) ?: null;
+                $detalle = trim((string) ($matches[2] ?? '')) ?: null;
 
                 return [$categoria, $detalle];
             }
@@ -37,7 +37,7 @@ return new class extends Migration
 
             if (is_array($partes) && count($partes) === 2) {
                 $categoria = trim((string) ($partes[0] ?? '')) ?: null;
-                $detalle   = trim((string) ($partes[1] ?? '')) ?: null;
+                $detalle = trim((string) ($partes[1] ?? '')) ?: null;
 
                 return [$categoria, $detalle];
             }
@@ -64,7 +64,7 @@ return new class extends Migration
                         ->where('id', $solicitud->id)
                         ->update([
                             'categoria_solicitada' => $categoria,
-                            'detalle_solicitado'   => $detalle,
+                            'detalle_solicitado' => $detalle,
                         ]);
                 }
             });

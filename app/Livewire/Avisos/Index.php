@@ -2,31 +2,42 @@
 
 namespace App\Livewire\Avisos;
 
-use Livewire\Component;
-use Livewire\WithPagination;
 use App\Models\Aviso;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
+use Livewire\Component;
+use Livewire\WithPagination;
 
 class Index extends Component
 {
     use WithPagination;
 
     public $search = '';
+
     public $filter = 'activos'; // activos | inactivos | todos
 
     public $modalOpen = false;
+
     public $editingId = null;
 
     public $titulo = '';
+
     public $texto = '';
+
     public $tag = 'INFO';
+
     public $color = 'slate';
+
     public $icono = '';
+
     public $is_active = true;
+
     public $pinned = false;
+
     public $starts_at = null;
+
     public $ends_at = null;
+
     public bool $puedeGestionar = false;
 
     protected $queryString = [
@@ -74,16 +85,16 @@ class Index extends Component
         $aviso = Aviso::findOrFail($id);
 
         $this->editingId = $aviso->id;
-        $this->titulo    = $aviso->titulo;
-        $this->texto     = $aviso->texto;
-        $this->tag       = $aviso->tag;
-        $this->color     = $this->colorPorTag((string) $aviso->tag);
-        $this->icono     = $aviso->icono ?? '';
+        $this->titulo = $aviso->titulo;
+        $this->texto = $aviso->texto;
+        $this->tag = $aviso->tag;
+        $this->color = $this->colorPorTag((string) $aviso->tag);
+        $this->icono = $aviso->icono ?? '';
         $this->is_active = (bool) $aviso->is_active;
-        $this->pinned    = (bool) $aviso->pinned;
+        $this->pinned = (bool) $aviso->pinned;
 
         $this->starts_at = $aviso->starts_at ? $aviso->starts_at->format('Y-m-d\TH:i') : null;
-        $this->ends_at   = $aviso->ends_at ? $aviso->ends_at->format('Y-m-d\TH:i') : null;
+        $this->ends_at = $aviso->ends_at ? $aviso->ends_at->format('Y-m-d\TH:i') : null;
 
         $this->modalOpen = true;
     }
@@ -98,16 +109,16 @@ class Index extends Component
         $this->editingId = null;
 
         $this->titulo = '';
-        $this->texto  = '';
-        $this->tag    = 'INFO';
-        $this->color  = $this->colorPorTag($this->tag);
-        $this->icono  = '';
+        $this->texto = '';
+        $this->tag = 'INFO';
+        $this->color = $this->colorPorTag($this->tag);
+        $this->icono = '';
 
         $this->is_active = true;
-        $this->pinned    = false;
+        $this->pinned = false;
 
         $this->starts_at = null;
-        $this->ends_at   = null;
+        $this->ends_at = null;
     }
 
     public function save(): void
@@ -119,14 +130,14 @@ class Index extends Component
 
         $this->validate([
             'titulo' => 'required|string|max:120',
-            'texto'  => 'required|string|max:2000',
-            'tag'    => ['required', 'string', Rule::in(Aviso::tags())],
-            'color'  => ['required', 'string', Rule::in(Aviso::colors())],
-            'icono'  => 'nullable|string|max:16',
+            'texto' => 'required|string|max:2000',
+            'tag' => ['required', 'string', Rule::in(Aviso::tags())],
+            'color' => ['required', 'string', Rule::in(Aviso::colors())],
+            'icono' => 'nullable|string|max:16',
             'is_active' => 'boolean',
-            'pinned'    => 'boolean',
+            'pinned' => 'boolean',
             'starts_at' => 'nullable|date',
-            'ends_at'   => 'nullable|date|after_or_equal:starts_at',
+            'ends_at' => 'nullable|date|after_or_equal:starts_at',
         ]);
 
         if ((bool) $this->is_active && ! Aviso::canActivate($this->editingId ? (int) $this->editingId : null)) {
@@ -134,21 +145,22 @@ class Index extends Component
                 'type' => 'error',
                 'message' => 'Ya se alcanzó el límite de avisos activos y vigentes. Desactiva o reprograma uno antes de publicar.',
             ]);
+
             return;
         }
 
         $iconoNormalizado = trim((string) $this->icono);
 
         $payload = [
-            'titulo'    => $this->titulo,
-            'texto'     => $this->texto,
-            'tag'       => $this->tag,
-            'color'     => $this->color,
-            'icono'     => $iconoNormalizado !== '' ? $iconoNormalizado : null,
+            'titulo' => $this->titulo,
+            'texto' => $this->texto,
+            'tag' => $this->tag,
+            'color' => $this->color,
+            'icono' => $iconoNormalizado !== '' ? $iconoNormalizado : null,
             'is_active' => (bool) $this->is_active,
-            'pinned'    => (bool) $this->pinned,
+            'pinned' => (bool) $this->pinned,
             'starts_at' => $this->starts_at ? Carbon::parse($this->starts_at) : null,
-            'ends_at'   => $this->ends_at ? Carbon::parse($this->ends_at) : null,
+            'ends_at' => $this->ends_at ? Carbon::parse($this->ends_at) : null,
         ];
 
         if ($this->editingId) {
@@ -178,10 +190,11 @@ class Index extends Component
                 'type' => 'error',
                 'message' => 'No se puede publicar: el límite de avisos activos y vigentes ya fue alcanzado.',
             ]);
+
             return;
         }
 
-        $aviso->is_active = !$aviso->is_active;
+        $aviso->is_active = ! $aviso->is_active;
         $aviso->save();
 
         $this->dispatch('toast', [
@@ -194,7 +207,7 @@ class Index extends Component
     {
         $this->autorizarGestionAvisos();
         $aviso = Aviso::findOrFail($id);
-        $aviso->pinned = !$aviso->pinned;
+        $aviso->pinned = ! $aviso->pinned;
         $aviso->save();
 
         $this->dispatch('toast', [
@@ -226,7 +239,7 @@ class Index extends Component
         }
 
         if ($this->search !== '') {
-            $s = '%' . $this->search . '%';
+            $s = '%'.$this->search.'%';
             $q->where(function ($sub) use ($s) {
                 $sub->where('titulo', 'like', $s)
                     ->orWhere('texto', 'like', $s)

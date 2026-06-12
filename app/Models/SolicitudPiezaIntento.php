@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -16,11 +17,11 @@ class SolicitudPiezaIntento extends Model
     ];
 
     protected $casts = [
-        'asignado_en'             => 'datetime',
+        'asignado_en' => 'datetime',
         'iniciada_instalacion_en' => 'datetime',
-        'confirmada_en'           => 'datetime',
-        'funciono'                => 'boolean',
-        'puntos_override'         => 'decimal:2',
+        'confirmada_en' => 'datetime',
+        'funciono' => 'boolean',
+        'puntos_override' => 'decimal:2',
     ];
 
     public function solicitudPieza(): BelongsTo

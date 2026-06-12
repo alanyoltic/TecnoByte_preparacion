@@ -22,19 +22,27 @@ class AsignacionEquipo extends Model
 
     protected $casts = [
         'inicio_en' => 'datetime',
-        'fin_en'    => 'datetime',
+        'fin_en' => 'datetime',
     ];
 
     // ── Constantes de camino ──────────────────────────────────────────────
-    const PENDIENTE        = 'PENDIENTE';
-    const PRE_ASIGNADO     = 'PRE_ASIGNADO';
-    const EN_PROCESO       = 'EN_PROCESO';
-    const EN_CALIDAD       = 'EN_CALIDAD';
-    const COMPLETADO       = 'COMPLETADO';
-    const PIEZA_PENDIENTE  = 'PIEZA_PENDIENTE';
+    const PENDIENTE = 'PENDIENTE';
+
+    const PRE_ASIGNADO = 'PRE_ASIGNADO';
+
+    const EN_PROCESO = 'EN_PROCESO';
+
+    const EN_CALIDAD = 'EN_CALIDAD';
+
+    const COMPLETADO = 'COMPLETADO';
+
+    const PIEZA_PENDIENTE = 'PIEZA_PENDIENTE';
+
     const GARANTIA_INTERNA = 'GARANTIA_INTERNA';
+
     const GARANTIA_EXTERNA = 'GARANTIA_EXTERNA';
-    const DESPIECE         = 'DESPIECE';
+
+    const DESPIECE = 'DESPIECE';
 
     // ── Relaciones ────────────────────────────────────────────────────────
     public function asignacion(): BelongsTo
@@ -82,15 +90,18 @@ class AsignacionEquipo extends Model
     /** Minutos que lleva o llevó trabajándose */
     public function minutosEnProceso(): int
     {
-        if (! $this->inicio_en) return 0;
+        if (! $this->inicio_en) {
+            return 0;
+        }
         $fin = $this->fin_en ?? now();
+
         return (int) $this->inicio_en->diffInMinutes($fin);
     }
 
     /** Si el técnico ya terminó con este equipo (bien o mal) */
     public function estaTerminado(): bool
     {
-        return !in_array($this->camino, [self::PENDIENTE, self::PRE_ASIGNADO, self::EN_PROCESO]) && $this->fin_en !== null;
+        return ! in_array($this->camino, [self::PENDIENTE, self::PRE_ASIGNADO, self::EN_PROCESO]) && $this->fin_en !== null;
     }
 
     /** Si el equipo está activo (trabajándose o por iniciar) */
@@ -109,21 +120,22 @@ class AsignacionEquipo extends Model
     public function fueRechazadoEnCalidad(): bool
     {
         $validacion = $this->ultimaValidacion();
+
         return $validacion && $validacion->estaRechazado();
     }
 
     public static function labelsCamino(): array
     {
         return [
-            self::PENDIENTE        => 'Por iniciar',
-            self::PRE_ASIGNADO     => 'Pre-asignado',
-            self::EN_PROCESO       => 'En Proceso',
-            self::EN_CALIDAD       => 'En Calidad',
-            self::COMPLETADO       => 'Completado',
-            self::PIEZA_PENDIENTE  => 'Pieza Pendiente',
+            self::PENDIENTE => 'Por iniciar',
+            self::PRE_ASIGNADO => 'Pre-asignado',
+            self::EN_PROCESO => 'En Proceso',
+            self::EN_CALIDAD => 'En Calidad',
+            self::COMPLETADO => 'Completado',
+            self::PIEZA_PENDIENTE => 'Pieza Pendiente',
             self::GARANTIA_INTERNA => 'Garantía Interna',
             self::GARANTIA_EXTERNA => 'Garantía Externa',
-            self::DESPIECE         => 'Para Despiece',
+            self::DESPIECE => 'Para Despiece',
         ];
     }
 

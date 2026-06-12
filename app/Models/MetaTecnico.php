@@ -47,17 +47,17 @@ class MetaTecnico extends Model
      */
     public static function progreso(int $tecnicoId, ?string $periodo = null): array
     {
-        $periodo  = $periodo ?? now()->format('Y-m');
-        $puntos   = PuntoTecnico::totalDelPeriodo($tecnicoId, $periodo);
-        $meta     = static::obtenerMeta($tecnicoId, $periodo);
-        $pct      = $meta > 0 ? round(($puntos / $meta) * 100, 1) : 0;
+        $periodo = $periodo ?? now()->format('Y-m');
+        $puntos = PuntoTecnico::totalDelPeriodo($tecnicoId, $periodo);
+        $meta = static::obtenerMeta($tecnicoId, $periodo);
+        $pct = $meta > 0 ? round(($puntos / $meta) * 100, 1) : 0;
 
         return [
-            'puntos'      => $puntos,
-            'meta'        => $meta,
-            'porcentaje'  => $pct,
-            'cumplida'    => $puntos >= $meta,
-            'faltante'    => max($meta - $puntos, 0),
+            'puntos' => $puntos,
+            'meta' => $meta,
+            'porcentaje' => $pct,
+            'cumplida' => $puntos >= $meta,
+            'faltante' => max($meta - $puntos, 0),
         ];
     }
 }

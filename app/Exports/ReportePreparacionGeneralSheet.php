@@ -2,15 +2,15 @@
 
 namespace App\Exports;
 
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromCollection;
 
 class ReportePreparacionGeneralSheet implements FromCollection
 {
     public function collection()
     {
-        $rows = new Collection();
+        $rows = new Collection;
 
         /*
         |--------------------------------------------------------------------------
@@ -54,10 +54,10 @@ class ReportePreparacionGeneralSheet implements FromCollection
                 estatus_area,
                 COUNT(id) as total
             ')
-            ->groupBy('marca','modelo','estatus_ciclo','estatus_area')
+            ->groupBy('marca', 'modelo', 'estatus_ciclo', 'estatus_area')
             ->get();
 
-        $rows->push(['Marca','Modelo','Estado Operativo','Estatus General','Total']);
+        $rows->push(['Marca', 'Modelo', 'Estado Operativo', 'Estatus General', 'Total']);
 
         foreach ($finalizados as $f) {
             $rows->push([
@@ -65,7 +65,7 @@ class ReportePreparacionGeneralSheet implements FromCollection
                 $f->modelo,
                 $f->estatus_ciclo,
                 $f->estatus_area,
-                $f->total
+                $f->total,
             ]);
         }
 
@@ -84,7 +84,7 @@ class ReportePreparacionGeneralSheet implements FromCollection
             ->join('lotes as l', 'lmr.lote_id', '=', 'l.id')
             ->leftJoin('equipos as e', function ($join) {
                 $join->on('e.lote_modelo_id', '=', 'lmr.id')
-                     ->whereNull('e.deleted_at');
+                    ->whereNull('e.deleted_at');
             })
             ->selectRaw('
                 l.nombre_lote,
@@ -102,7 +102,7 @@ class ReportePreparacionGeneralSheet implements FromCollection
             )
             ->get();
 
-        $rows->push(['Lote','Marca','Modelo','Total Lote','Creados','Pendientes','% Avance']);
+        $rows->push(['Lote', 'Marca', 'Modelo', 'Total Lote', 'Creados', 'Pendientes', '% Avance']);
 
         foreach ($avance as $a) {
 
@@ -118,7 +118,7 @@ class ReportePreparacionGeneralSheet implements FromCollection
                 $a->cantidad_recibida,
                 $a->creados,
                 $pendientes,
-                $porcentaje
+                $porcentaje,
             ]);
         }
 
@@ -150,14 +150,14 @@ class ReportePreparacionGeneralSheet implements FromCollection
             'Total Recibido',
             'Total Creados',
             'Pendientes',
-            '% Global'
+            '% Global',
         ]);
 
         $rows->push([
             $totalRecibido,
             $totalCreados,
             $pendientes,
-            $porcentaje
+            $porcentaje,
         ]);
 
         return $rows;

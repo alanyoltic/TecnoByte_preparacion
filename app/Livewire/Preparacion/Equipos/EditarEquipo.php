@@ -2,25 +2,22 @@
 
 namespace App\Livewire\Preparacion\Equipos;
 
-use Livewire\Attributes\Layout;
-use Livewire\Component;
 use App\Livewire\Concerns\EquipoPortMaps;
 use App\Livewire\Preparacion\Forms\EquipoForm;
-use App\Models\{
-    Equipo,
-    Lote,
-    Proveedor,
-    LoteModeloRecibido,
-    EquipoBateria,
-    EquipoMonitor,
-    EquipoGpu
-};
-use Illuminate\Support\Facades\Auth;
+use App\Models\Equipo;
+use App\Models\EquipoBateria;
+use App\Models\EquipoGpu;
+use App\Models\EquipoMonitor;
+use App\Models\Lote;
+use App\Models\LoteModeloRecibido;
+use App\Models\Proveedor;
+use App\Services\EquipoTraceService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use App\Services\EquipoTraceService;
+use Livewire\Attributes\Layout;
+use Livewire\Component;
 
 #[Layout('layouts.app', ['pageTitle' => 'Editar equipo'])]
 class EditarEquipo extends Component
@@ -37,13 +34,18 @@ class EditarEquipo extends Component
     // Catálogos / listas (UI)
     // =======================
     public array $proveedores = [];
+
     public array $lotes = [];                 // OJO: aquí guardamos MODELOS (objetos) -> evita error fecha_llegada
+
     public array $modelosLote = [];
+
     public array $lotesTerminadosIds = [];
 
     public $almacenDestinoId;
-public $motivoTransferencia;
-public $almacenesDisponibles = [];
+
+    public $motivoTransferencia;
+
+    public $almacenesDisponibles = [];
 
     public array $monitorEntradasOptions = [
         'HDMI', 'Mini HDMI', 'VGA', 'DVI',
@@ -55,44 +57,44 @@ public $almacenesDisponibles = [];
     // Control de cambios (opcional)
     // =======================
     public array $baseline = [];
+
     public bool $hasChanges = false;
 
     // =======================
     // Lifecycle
     // =======================
 
-
-
     public ?string $motivo = null;     // input opcional
+
     public bool $pedirMotivo = false;  // para UI/validación
+
     public bool $guardadoPendienteConfirmacion = false;
 
     public bool $isHydrating = true;
 
-
     public function transferir()
-{
-    $this->autorizarEdicion();
+    {
+        $this->autorizarEdicion();
 
-    $this->validate([
-        'almacenDestinoId' => 'required|exists:almacenes,id',
-        'motivoTransferencia' => 'nullable|string|max:255',
-    ]);
+        $this->validate([
+            'almacenDestinoId' => 'required|exists:almacenes,id',
+            'motivoTransferencia' => 'nullable|string|max:255',
+        ]);
 
-    $destino = \App\Models\Almacen::find($this->almacenDestinoId);
+        $destino = \App\Models\Almacen::find($this->almacenDestinoId);
 
-    app(\App\Services\EquipoMovimientoService::class)
-        ->mover($this->equipo, $destino, 'MOVER_ALMACEN', $this->motivoTransferencia);
+        app(\App\Services\EquipoMovimientoService::class)
+            ->mover($this->equipo, $destino, 'MOVER_ALMACEN', $this->motivoTransferencia);
 
-    $this->equipo->refresh()->load([
-        'movimientos.desde',
-        'movimientos.hacia'
-    ]);
+        $this->equipo->refresh()->load([
+            'movimientos.desde',
+            'movimientos.hacia',
+        ]);
 
-    $this->reset(['almacenDestinoId', 'motivoTransferencia']);
+        $this->reset(['almacenDestinoId', 'motivoTransferencia']);
 
-    $this->dispatch('notify', type: 'success', message: 'Equipo transferido correctamente.');
-}
+        $this->dispatch('notify', type: 'success', message: 'Equipo transferido correctamente.');
+    }
 
     public function mount(Equipo $equipo): void
     {
@@ -100,14 +102,12 @@ public $almacenesDisponibles = [];
 
         $this->autorizarEdicion();
 
-    $this->almacenesDisponibles = \App\Models\Almacen::where('activo', 1)
-    ->orderBy('nombre')
-    ->get();
-
-
+        $this->almacenesDisponibles = \App\Models\Almacen::where('activo', 1)
+            ->orderBy('nombre')
+            ->get();
 
         $this->isHydrating = true;
-    
+
         $this->equipo = $equipo;
 
         // 1) Catálogos (como objetos)
@@ -136,12 +136,12 @@ public $almacenesDisponibles = [];
         // 5) Defaults sin pisar data existente
         $this->ensureDefaultsEnForm();
 
-    $this->baseline = method_exists($this->form, 'snapshotPersistible')
-        ? $this->form->snapshotPersistible()
-        : $this->form->all();
+        $this->baseline = method_exists($this->form, 'snapshotPersistible')
+            ? $this->form->snapshotPersistible()
+            : $this->form->all();
 
-    $this->hasChanges = false;
-    $this->isHydrating = false;
+        $this->hasChanges = false;
+        $this->isHydrating = false;
     }
 
     private function autorizarEdicion(): void
@@ -154,13 +154,13 @@ public $almacenesDisponibles = [];
         $f = $this->form;
 
         $f->almacenamiento_secundario_capacidad = $f->almacenamiento_secundario_capacidad ?: 'N/A';
-        $f->almacenamiento_secundario_tipo      = $f->almacenamiento_secundario_tipo ?: 'N/A';
-        $f->teclado_idioma                      = $f->teclado_idioma ?: 'N/A';
+        $f->almacenamiento_secundario_tipo = $f->almacenamiento_secundario_tipo ?: 'N/A';
+        $f->teclado_idioma = $f->teclado_idioma ?: 'N/A';
 
-        $f->bateria_tiene  = (bool) ($f->bateria_tiene ?? true);
+        $f->bateria_tiene = (bool) ($f->bateria_tiene ?? true);
         $f->bateria2_tiene = (bool) ($f->bateria2_tiene ?? false);
 
-        $f->ethernet_tiene      = (bool) ($f->ethernet_tiene ?? false);
+        $f->ethernet_tiene = (bool) ($f->ethernet_tiene ?? false);
         $f->ethernet_es_gigabit = (bool) ($f->ethernet_es_gigabit ?? false);
 
         $f->puertos_usb ??= [];
@@ -170,9 +170,9 @@ public $almacenesDisponibles = [];
         $f->monitor_entradas_rows ??= [];
 
         $f->gpu_integrada_tiene = (bool) ($f->gpu_integrada_tiene ?? false);
-        $f->gpu_dedicada_tiene  = (bool) ($f->gpu_dedicada_tiene ?? false);
+        $f->gpu_dedicada_tiene = (bool) ($f->gpu_dedicada_tiene ?? false);
         $f->gpu_integrada_vram_unidad = $f->gpu_integrada_vram_unidad ?: 'GB';
-        $f->gpu_dedicada_vram_unidad  = $f->gpu_dedicada_vram_unidad ?: 'GB';
+        $f->gpu_dedicada_vram_unidad = $f->gpu_dedicada_vram_unidad ?: 'GB';
 
         $f->monitor_incluido = $f->monitor_incluido ?: 'NO';
     }
@@ -181,10 +181,14 @@ public $almacenesDisponibles = [];
     {
         $f = $this->form;
 
-        if (!$f->lote_modelo_id) return;
+        if (! $f->lote_modelo_id) {
+            return;
+        }
 
         $lm = LoteModeloRecibido::with('lote')->find($f->lote_modelo_id);
-        if (!$lm) return;
+        if (! $lm) {
+            return;
+        }
 
         $f->lote_id = $lm->lote_id;
         $f->marca = $lm->marca;
@@ -194,7 +198,7 @@ public $almacenesDisponibles = [];
         $f->proveedor_id = $lm->lote?->proveedor_id ?? $this->equipo->proveedor_id;
 
         // Cargar modelos del lote para el select (incluye el actual aunque esté lleno)
-        $this->cargarModelosDelLote((int)$lm->lote_id, true);
+        $this->cargarModelosDelLote((int) $lm->lote_id, true);
     }
 
     private function hidratarRelacionadas(): void
@@ -210,9 +214,9 @@ public $almacenesDisponibles = [];
             if ($m->origen_pantalla === 'INTEGRADA') {
                 $f->monitor_incluido = 'NO';
 
-                $f->pantalla_pulgadas   = $m->pulgadas;
+                $f->pantalla_pulgadas = $m->pulgadas;
                 $f->pantalla_resolucion = $m->resolucion;
-                $f->pantalla_es_touch   = (bool)$m->es_touch;
+                $f->pantalla_es_touch = (bool) $m->es_touch;
 
                 // limpiar externo
                 $f->monitor_pulgadas = null;
@@ -226,28 +230,30 @@ public $almacenesDisponibles = [];
                 $f->monitor_detalles_funcionamiento_otro = null;
             } else {
                 // EXTERNA
-                $f->monitor_incluido = ((int)($m->incluido ?? 1) === 1) ? 'SI' : 'NO';
+                $f->monitor_incluido = ((int) ($m->incluido ?? 1) === 1) ? 'SI' : 'NO';
 
-                $f->monitor_pulgadas   = $m->pulgadas;
+                $f->monitor_pulgadas = $m->pulgadas;
                 $f->monitor_resolucion = $m->resolucion;
-                $f->monitor_es_touch   = (bool)$m->es_touch;
+                $f->monitor_es_touch = (bool) $m->es_touch;
 
                 // limpiar integrada
                 $f->pantalla_pulgadas = null;
                 $f->pantalla_resolucion = null;
                 $f->pantalla_es_touch = false;
 
-                $f->monitor_detalles_esteticos_checks = (string)($m->detalles_esteticos_checks ?? '');
-                $f->monitor_detalles_esteticos_otro  = (string)($m->detalles_esteticos_otro ?? '');
+                $f->monitor_detalles_esteticos_checks = (string) ($m->detalles_esteticos_checks ?? '');
+                $f->monitor_detalles_esteticos_otro = (string) ($m->detalles_esteticos_otro ?? '');
 
-                $f->monitor_detalles_funcionamiento_checks = (string)($m->detalles_funcionamiento_checks ?? '');
-                $f->monitor_detalles_funcionamiento_otro  = (string)($m->detalles_funcionamiento_otro ?? '');
+                $f->monitor_detalles_funcionamiento_checks = (string) ($m->detalles_funcionamiento_checks ?? '');
+                $f->monitor_detalles_funcionamiento_otro = (string) ($m->detalles_funcionamiento_otro ?? '');
 
                 // Entradas in_* -> rows
                 $rows = [];
                 foreach (EquipoPortMaps::MAP_MONITOR_IN as $label => $col) {
-                    $qty = (int)($m->{$col} ?? 0);
-                    if ($qty > 0) $rows[] = ['tipo' => $label, 'cantidad' => $qty];
+                    $qty = (int) ($m->{$col} ?? 0);
+                    if ($qty > 0) {
+                        $rows[] = ['tipo' => $label, 'cantidad' => $qty];
+                    }
                 }
                 $f->monitor_entradas_rows = $rows;
             }
@@ -258,11 +264,11 @@ public $almacenesDisponibles = [];
 
             $f->pantalla_pulgadas = $f->pantalla_pulgadas ?: null;
             $f->pantalla_resolucion = $f->pantalla_resolucion ?: null;
-            $f->pantalla_es_touch = (bool)($f->pantalla_es_touch ?? false);
+            $f->pantalla_es_touch = (bool) ($f->pantalla_es_touch ?? false);
 
             $f->monitor_pulgadas = $f->monitor_pulgadas ?: null;
             $f->monitor_resolucion = $f->monitor_resolucion ?: null;
-            $f->monitor_es_touch = (bool)($f->monitor_es_touch ?? false);
+            $f->monitor_es_touch = (bool) ($f->monitor_es_touch ?? false);
 
             $f->monitor_detalles_esteticos_checks = $f->monitor_detalles_esteticos_checks ?: '';
             $f->monitor_detalles_esteticos_otro = $f->monitor_detalles_esteticos_otro ?: null;
@@ -281,12 +287,12 @@ public $almacenesDisponibles = [];
 
         $f->bateria_tiene = $bats->isNotEmpty();
 
-        $f->bateria1_tipo  = $bats[0]->tipo ?? null;
-        $f->bateria1_salud = isset($bats[0]) ? (string)((int)$bats[0]->salud_percent) : null;
+        $f->bateria1_tipo = $bats[0]->tipo ?? null;
+        $f->bateria1_salud = isset($bats[0]) ? (string) ((int) $bats[0]->salud_percent) : null;
 
         $f->bateria2_tiene = isset($bats[1]);
-        $f->bateria2_tipo  = $bats[1]->tipo ?? null;
-        $f->bateria2_salud = isset($bats[1]) ? (string)((int)$bats[1]->salud_percent) : null;
+        $f->bateria2_tipo = $bats[1]->tipo ?? null;
+        $f->bateria2_salud = isset($bats[1]) ? (string) ((int) $bats[1]->salud_percent) : null;
 
         // =======================
         // GPUs (equipo_gpus)
@@ -294,7 +300,7 @@ public $almacenesDisponibles = [];
         $gpus = EquipoGpu::query()
             ->where('equipo_id', $this->equipo->id)
             ->get()
-            ->keyBy(fn ($g) => strtoupper((string)$g->tipo));
+            ->keyBy(fn ($g) => strtoupper((string) $g->tipo));
 
         $ig = $gpus->get('INTEGRADA');
         $dg = $gpus->get('DEDICADA');
@@ -302,16 +308,15 @@ public $almacenesDisponibles = [];
         $f->gpu_integrada_tiene = (bool) ($ig?->activo ?? false);
         $f->gpu_integrada_marca = $ig?->marca;
         $f->gpu_integrada_modelo = $ig?->modelo;
-        $f->gpu_integrada_vram = $ig?->vram !== null ? (string)((int)$ig->vram) : null;
+        $f->gpu_integrada_vram = $ig?->vram !== null ? (string) ((int) $ig->vram) : null;
         $f->gpu_integrada_vram_unidad = $ig?->vram_unidad ?: ($f->gpu_integrada_vram_unidad ?: 'GB');
 
         $f->gpu_dedicada_tiene = (bool) ($dg?->activo ?? false);
         $f->gpu_dedicada_marca = $dg?->marca;
         $f->gpu_dedicada_modelo = $dg?->modelo;
-        $f->gpu_dedicada_vram = $dg?->vram !== null ? (string)((int)$dg->vram) : null;
+        $f->gpu_dedicada_vram = $dg?->vram !== null ? (string) ((int) $dg->vram) : null;
         $f->gpu_dedicada_vram_unidad = $dg?->vram_unidad ?: ($f->gpu_dedicada_vram_unidad ?: 'GB');
     }
-
 
     private function hidratarDinamicosDesdeEquipo(): void
     {
@@ -321,11 +326,11 @@ public $almacenesDisponibles = [];
         $this->form->lectores = $this->buildRowsFromMap(EquipoPortMaps::MAP_LECTORES);
 
         $this->form->slots_almacenamiento = $this->buildRowsFromSlots([
-            'SSD'       => 'slots_alm_ssd',
-            'M.2'       => 'slots_alm_m2',
+            'SSD' => 'slots_alm_ssd',
+            'M.2' => 'slots_alm_m2',
             'M.2 MICRO' => 'slots_alm_m2_micro',
-            'HDD'       => 'slots_alm_hdd',
-            'MSATA'     => 'slots_alm_msata',
+            'HDD' => 'slots_alm_hdd',
+            'MSATA' => 'slots_alm_msata',
         ]);
 
         // 2) Parsear detalles_esteticos / detalles_funcionamiento a checks + otro
@@ -354,7 +359,9 @@ public $almacenesDisponibles = [];
             }
 
             $qty = is_numeric($val) ? (int) $val : 1;
-            if ($qty <= 0) continue;
+            if ($qty <= 0) {
+                continue;
+            }
 
             $rows[] = [
                 'tipo' => $label,
@@ -377,7 +384,9 @@ public $almacenesDisponibles = [];
             }
 
             $qty = is_numeric($val) ? (int) $val : 1;
-            if ($qty <= 0) continue;
+            if ($qty <= 0) {
+                continue;
+            }
 
             $rows[] = [
                 'tipo' => $label,
@@ -398,7 +407,9 @@ public $almacenesDisponibles = [];
     private function parseChecksAndOtro(string $text): array
     {
         $text = trim($text);
-        if ($text === '') return [[], null];
+        if ($text === '') {
+            return [[], null];
+        }
 
         $otro = null;
 
@@ -424,7 +435,6 @@ public $almacenesDisponibles = [];
         return [$checks, ($otro !== '' ? $otro : null)];
     }
 
-
     // =======================
     // Catálogos (igual que Registrar)
     // =======================
@@ -433,9 +443,9 @@ public $almacenesDisponibles = [];
         $this->proveedores = Proveedor::orderBy('nombre_empresa')->get()->all();
 
         $todosLotes = Lote::with([
-                'proveedor',
-                'modelosRecibidos' => fn ($q) => $q->withCount('equipos'),
-            ])
+            'proveedor',
+            'modelosRecibidos' => fn ($q) => $q->withCount('equipos'),
+        ])
             ->orderBy('fecha_llegada', 'desc')
             ->get();
 
@@ -446,6 +456,7 @@ public $almacenesDisponibles = [];
             $tienePendientes = $lote->modelosRecibidos->contains(function ($m) {
                 $total = (int) $m->cantidad_recibida;
                 $registrados = (int) ($m->equipos_count ?? 0);
+
                 return $registrados < $total;
             });
 
@@ -466,7 +477,7 @@ public $almacenesDisponibles = [];
             $yaIncluido = $lotesConPendientes->contains('id', $currentLoteId)
                 || $terminadosTomados->contains('id', $currentLoteId);
 
-            if (!$yaIncluido) {
+            if (! $yaIncluido) {
                 $loteActual = $lotesTerminados->firstWhere('id', $currentLoteId);
                 if ($loteActual) {
                     $terminadosTomados->push($loteActual);
@@ -491,21 +502,23 @@ public $almacenesDisponibles = [];
         $f->modelo = null;
         $this->modelosLote = [];
 
-        if (!$loteId) {
+        if (! $loteId) {
             $f->proveedor_id = null;
+
             return;
         }
 
         $lote = Lote::with(['proveedor', 'modelosRecibidos'])->find($loteId);
-        if (!$lote) {
+        if (! $lote) {
             $f->proveedor_id = null;
+
             return;
         }
 
         $f->proveedor_id = $lote->proveedor_id;
 
         // En editar: mostramos modelos del lote, incluyendo "llenos" pero marcados
-        $this->cargarModelosDelLote((int)$loteId, false);
+        $this->cargarModelosDelLote((int) $loteId, false);
     }
 
     private function cargarModelosDelLote(int $loteId, bool $includeAllEvenIfFull): void
@@ -524,13 +537,13 @@ public $almacenesDisponibles = [];
                 $registrados = (int) ($m->equipos_count ?? 0);
 
                 // Si este es el modelo actual del equipo, “liberamos” 1 del conteo para permitir permanecer
-                if ($actualModeloId && (int)$m->id === $actualModeloId && $actualEquipoId) {
+                if ($actualModeloId && (int) $m->id === $actualModeloId && $actualEquipoId) {
                     $registrados = max(0, $registrados - 1);
                 }
 
                 $hayCupo = $registrados < $total;
 
-                if (!$includeAllEvenIfFull && !$hayCupo && (int)$m->id !== $actualModeloId) {
+                if (! $includeAllEvenIfFull && ! $hayCupo && (int) $m->id !== $actualModeloId) {
                     // lo omitimos si está lleno y no es el actual
                     return null;
                 }
@@ -560,10 +573,14 @@ public $almacenesDisponibles = [];
         $f->marca = null;
         $f->modelo = null;
 
-        if (!$modeloId) return;
+        if (! $modeloId) {
+            return;
+        }
 
         $lm = LoteModeloRecibido::find($modeloId);
-        if (!$lm) return;
+        if (! $lm) {
+            return;
+        }
 
         $f->catalogo_equipo_id = $lm->catalogo_equipo_id;
         $f->marca = $lm->marca;
@@ -573,24 +590,61 @@ public $almacenesDisponibles = [];
     // =======================
     // Helpers UI dinámicos (EN FORM)
     // =======================
-    public function addPuertoUsb(): void { $this->form->puertos_usb[] = ['tipo' => '', 'cantidad' => 1]; }
-    public function removePuertoUsb($i): void { $this->unsetIndex($this->form->puertos_usb, $i); }
+    public function addPuertoUsb(): void
+    {
+        $this->form->puertos_usb[] = ['tipo' => '', 'cantidad' => 1];
+    }
 
-    public function addPuertoVideo(): void { $this->form->puertos_video[] = ['tipo' => '', 'cantidad' => 1]; }
-    public function removePuertoVideo($i): void { $this->unsetIndex($this->form->puertos_video, $i); }
+    public function removePuertoUsb($i): void
+    {
+        $this->unsetIndex($this->form->puertos_usb, $i);
+    }
 
-    public function addLector(): void { $this->form->lectores[] = ['tipo' => '', 'cantidad' => 1]; }
-    public function removeLector($i): void { $this->unsetIndex($this->form->lectores, $i); }
+    public function addPuertoVideo(): void
+    {
+        $this->form->puertos_video[] = ['tipo' => '', 'cantidad' => 1];
+    }
 
-    public function addSlotAlmacenamiento(): void { $this->form->slots_almacenamiento[] = ['tipo' => '', 'cantidad' => null]; }
-    public function removeSlotAlmacenamiento($i): void { $this->unsetIndex($this->form->slots_almacenamiento, $i); }
+    public function removePuertoVideo($i): void
+    {
+        $this->unsetIndex($this->form->puertos_video, $i);
+    }
 
-    public function addMonitorEntrada(): void { $this->form->monitor_entradas_rows[] = ['tipo' => '', 'cantidad' => 1]; }
-    public function removeMonitorEntrada($i): void { $this->unsetIndex($this->form->monitor_entradas_rows, $i); }
+    public function addLector(): void
+    {
+        $this->form->lectores[] = ['tipo' => '', 'cantidad' => 1];
+    }
+
+    public function removeLector($i): void
+    {
+        $this->unsetIndex($this->form->lectores, $i);
+    }
+
+    public function addSlotAlmacenamiento(): void
+    {
+        $this->form->slots_almacenamiento[] = ['tipo' => '', 'cantidad' => null];
+    }
+
+    public function removeSlotAlmacenamiento($i): void
+    {
+        $this->unsetIndex($this->form->slots_almacenamiento, $i);
+    }
+
+    public function addMonitorEntrada(): void
+    {
+        $this->form->monitor_entradas_rows[] = ['tipo' => '', 'cantidad' => 1];
+    }
+
+    public function removeMonitorEntrada($i): void
+    {
+        $this->unsetIndex($this->form->monitor_entradas_rows, $i);
+    }
 
     private function unsetIndex(array &$arr, $i): void
     {
-        if (!isset($arr[$i])) return;
+        if (! isset($arr[$i])) {
+            return;
+        }
         unset($arr[$i]);
         $arr = array_values($arr);
         $this->recalcChanges();
@@ -603,19 +657,20 @@ public $almacenesDisponibles = [];
     {
         $v = mb_strtolower(trim((string) $v));
         $v = preg_replace('/\s+/', ' ', $v);
+
         return $v;
     }
 
     private function isLaptopLikeTipo(?string $tipo): bool
     {
-        return in_array($this->tipoKey($tipo), ['laptop','2 en 1','all in one','tablet','gamer'], true)
-            || in_array(trim((string)$tipo), ['LAPTOP','2 EN 1','ALL IN ONE','TABLET','GAMER'], true);
+        return in_array($this->tipoKey($tipo), ['laptop', '2 en 1', 'all in one', 'tablet', 'gamer'], true)
+            || in_array(trim((string) $tipo), ['LAPTOP', '2 EN 1', 'ALL IN ONE', 'TABLET', 'GAMER'], true);
     }
 
     private function isPcLikeTipo(?string $tipo): bool
     {
-        return in_array($this->tipoKey($tipo), ['escritorio','micro pc',], true)
-            || in_array(trim((string)$tipo), ['ESCRITORIO','MICRO PC',], true);
+        return in_array($this->tipoKey($tipo), ['escritorio', 'micro pc'], true)
+            || in_array(trim((string) $tipo), ['ESCRITORIO', 'MICRO PC'], true);
     }
 
     public function getPantallaIntegradaProperty(): bool
@@ -633,22 +688,25 @@ public $almacenesDisponibles = [];
     // =======================
     public function updated($name, $value): void
     {
-        if ($this->isHydrating) return;
+        if ($this->isHydrating) {
+            return;
+        }
         $this->recalcChanges();
     }
 
-
     public function updatedFormEthernetTiene($value): void
     {
-        if (!(bool)$value) $this->form->ethernet_es_gigabit = false;
+        if (! (bool) $value) {
+            $this->form->ethernet_es_gigabit = false;
+        }
     }
 
     public function updatedFormTipoEquipo($value): void
     {
         $tipo = strtoupper(trim((string) $value));
 
-        $pantallaIntegrada = in_array($tipo, ['LAPTOP','2 EN 1','ALL IN ONE','TABLET','GAMER'], true);
-        $pantallaExterna   = in_array($tipo, ['ESCRITORIO','MICRO PC',], true);
+        $pantallaIntegrada = in_array($tipo, ['LAPTOP', '2 EN 1', 'ALL IN ONE', 'TABLET', 'GAMER'], true);
+        $pantallaExterna = in_array($tipo, ['ESCRITORIO', 'MICRO PC'], true);
 
         if ($pantallaIntegrada) {
             // Limpia monitor externo
@@ -726,12 +784,14 @@ public $almacenesDisponibles = [];
     {
         if ($value && ! $this->form->ram_es_soldada) {
             $this->form->ram_sin_slots = false;
+
             return;
         }
 
         if ($value) {
             $this->form->ram_slots_totales = '0';
             $this->form->ram_expansion_max = '0 GB';
+
             return;
         }
 
@@ -751,6 +811,7 @@ public $almacenesDisponibles = [];
             $this->form->ram_slots_totales = '';
             $this->form->ram_sin_slots = false;
             $this->form->ram_expansion_max = '';
+
             return;
         }
 
@@ -767,12 +828,14 @@ public $almacenesDisponibles = [];
     {
         if ($value === '0 GB' && ! $this->form->ram_es_soldada) {
             $this->form->ram_expansion_max = '';
+
             return;
         }
 
         if ($value === '0 GB') {
             $this->form->ram_slots_totales = '0';
             $this->form->ram_sin_slots = true;
+
             return;
         }
 
@@ -797,10 +860,11 @@ public $almacenesDisponibles = [];
     {
         if ($this->isLaptopLikeTipo($this->form->tipo_equipo)) {
             $this->form->gpu_integrada_tiene = true;
+
             return;
         }
 
-        if (!$this->form->gpu_integrada_tiene) {
+        if (! $this->form->gpu_integrada_tiene) {
             $this->form->gpu_integrada_marca = null;
             $this->form->gpu_integrada_modelo = null;
             $this->form->gpu_integrada_vram = null;
@@ -809,7 +873,7 @@ public $almacenesDisponibles = [];
 
     public function updatedFormGpuDedicadaTiene(): void
     {
-        if (!$this->form->gpu_dedicada_tiene) {
+        if (! $this->form->gpu_dedicada_tiene) {
             $this->form->gpu_dedicada_marca = null;
             $this->form->gpu_dedicada_modelo = null;
             $this->form->gpu_dedicada_vram = null;
@@ -819,14 +883,14 @@ public $almacenesDisponibles = [];
 
     public function updatedFormGpuIntegradaMarcaMode($value): void
     {
-        if ($value === 'MANUAL' && in_array($this->form->gpu_integrada_marca, ['INTEL','AMD','NVIDIA'], true)) {
+        if ($value === 'MANUAL' && in_array($this->form->gpu_integrada_marca, ['INTEL', 'AMD', 'NVIDIA'], true)) {
             $this->form->gpu_integrada_marca = '';
         }
     }
 
     public function updatedFormGpuDedicadaMarcaMode($value): void
     {
-        if ($value === 'MANUAL' && in_array($this->form->gpu_dedicada_marca, ['INTEL','AMD','NVIDIA'], true)) {
+        if ($value === 'MANUAL' && in_array($this->form->gpu_dedicada_marca, ['INTEL', 'AMD', 'NVIDIA'], true)) {
             $this->form->gpu_dedicada_marca = '';
         }
     }
@@ -845,7 +909,6 @@ public $almacenesDisponibles = [];
 
         $this->hasChanges = $current !== $this->baseline;
     }
-
 
     private function syncPuertosExpansionesToColumns(): void
     {
@@ -873,8 +936,6 @@ public $almacenesDisponibles = [];
         $this->applyAggregatesToEquipoColumns();
     }
 
-
-
     // =======================
     // Validación (prefijada a form.)
     // =======================
@@ -895,16 +956,16 @@ public $almacenesDisponibles = [];
         }
 
         $extra = [
-            'form.lote_id'        => 'required|exists:lotes,id',
+            'form.lote_id' => 'required|exists:lotes,id',
             'form.lote_modelo_id' => 'required|exists:lote_modelos_recibidos,id',
-            'form.proveedor_id'   => 'required|exists:proveedores,id',
+            'form.proveedor_id' => 'required|exists:proveedores,id',
 
-            'form.modelo'         => 'required|string|max:255',
+            'form.modelo' => 'required|string|max:255',
 
             'form.monitor_incluido' => 'nullable|in:SI,NO',
 
             'form.monitor_entradas_rows' => 'array',
-            'form.monitor_entradas_rows.*.tipo' => 'nullable|in:' . implode(',', $this->monitorEntradasOptions),
+            'form.monitor_entradas_rows.*.tipo' => 'nullable|in:'.implode(',', $this->monitorEntradasOptions),
             'form.monitor_entradas_rows.*.cantidad' => 'nullable|integer|min:1|max:10',
 
             'form.slots_almacenamiento' => 'array',
@@ -945,128 +1006,137 @@ public $almacenesDisponibles = [];
     private function prefixRules(array $rules): array
     {
         $out = [];
-        foreach ($rules as $k => $v) $out["form.$k"] = $v;
+        foreach ($rules as $k => $v) {
+            $out["form.$k"] = $v;
+        }
+
         return $out;
     }
 
-
-
-
     private function currentSnapshotForAudit(): array
-{
-    // Importante: antes de tomar snapshot, asegúrate que derivados (puertos/slots/etc) estén sincronizados
-    if (method_exists($this, 'syncPuertosExpansionesToColumns')) {
-        $this->syncPuertosExpansionesToColumns();
-    }
-
-    return method_exists($this->form, 'snapshotPersistible')
-        ? $this->form->snapshotPersistible()
-        : $this->form->all();
-}
-
-/**
- * Construye un diff simple:
- * [
- *   'campo' => ['from' => old, 'to' => new],
- *   ...
- * ]
- */
-private function buildAuditDiff(array $before, array $after): array
-{
-    // ignora ruido típico
-    $ignore = [
-        'updated_at', 'created_at',
-    ];
-
-    $diff = [];
-
-    // Unimos llaves (por si hay campos presentes en uno y no en otro)
-    $keys = array_unique(array_merge(array_keys($before), array_keys($after)));
-
-    foreach ($keys as $k) {
-        if (in_array($k, $ignore, true)) continue;
-
-        $old = $before[$k] ?? null;
-        $new = $after[$k] ?? null;
-
-        // Normaliza strings vacíos vs null para que no cuente como cambio “falso”
-        $oldN = $this->normAuditVal($old);
-        $newN = $this->normAuditVal($new);
-
-        if ($oldN !== $newN) {
-            $diff[$k] = ['from' => $old, 'to' => $new];
+    {
+        // Importante: antes de tomar snapshot, asegúrate que derivados (puertos/slots/etc) estén sincronizados
+        if (method_exists($this, 'syncPuertosExpansionesToColumns')) {
+            $this->syncPuertosExpansionesToColumns();
         }
+
+        return method_exists($this->form, 'snapshotPersistible')
+            ? $this->form->snapshotPersistible()
+            : $this->form->all();
     }
 
-    return $diff;
-}
+    /**
+     * Construye un diff simple:
+     * [
+     *   'campo' => ['from' => old, 'to' => new],
+     *   ...
+     * ]
+     */
+    private function buildAuditDiff(array $before, array $after): array
+    {
+        // ignora ruido típico
+        $ignore = [
+            'updated_at', 'created_at',
+        ];
 
-private function normAuditVal($v)
-{
-    // normaliza para comparar
-    if ($v === '') return null;
-    if (is_string($v)) return trim($v);
-    if (is_bool($v)) return (int)$v;
-    return $v;
-}
+        $diff = [];
 
-/**
- * Reglas:
- * - motivo obligatorio si: ELIMINADO, RESTAURADO (si lo manejas), REASIGNADO (lote/modelo/proveedor),
- *   o cambió numero_serie
- * - EDITADO normal: motivo opcional
- */
-private function classifyAuditAction(array $diff): array
-{
-    $keys = array_keys($diff);
+        // Unimos llaves (por si hay campos presentes en uno y no en otro)
+        $keys = array_unique(array_merge(array_keys($before), array_keys($after)));
 
-    $cambioRelacion = false;
-    foreach (['lote_id', 'lote_modelo_id', 'proveedor_id'] as $k) {
-        if (in_array($k, $keys, true)) {
-            $cambioRelacion = true;
-            break;
+        foreach ($keys as $k) {
+            if (in_array($k, $ignore, true)) {
+                continue;
+            }
+
+            $old = $before[$k] ?? null;
+            $new = $after[$k] ?? null;
+
+            // Normaliza strings vacíos vs null para que no cuente como cambio “falso”
+            $oldN = $this->normAuditVal($old);
+            $newN = $this->normAuditVal($new);
+
+            if ($oldN !== $newN) {
+                $diff[$k] = ['from' => $old, 'to' => $new];
+            }
         }
+
+        return $diff;
     }
 
-    $cambioSerie = in_array('numero_serie', $keys, true);
-
-    // Si tienes acciones de eliminar/restaurar en este mismo componente, aquí se detectan por diff
-    // (ejemplo: deleted_at)
-    if (in_array('deleted_at', $keys, true)) {
-        $to = $diff['deleted_at']['to'] ?? null;
-        if ($to !== null) {
-            return ['ELIMINADO', true];
+    private function normAuditVal($v)
+    {
+        // normaliza para comparar
+        if ($v === '') {
+            return null;
         }
-        return ['RESTAURADO', true];
+        if (is_string($v)) {
+            return trim($v);
+        }
+        if (is_bool($v)) {
+            return (int) $v;
+        }
+
+        return $v;
     }
 
-    if ($cambioRelacion) {
-        return ['REASIGNADO', true];
+    /**
+     * Reglas:
+     * - motivo obligatorio si: ELIMINADO, RESTAURADO (si lo manejas), REASIGNADO (lote/modelo/proveedor),
+     *   o cambió numero_serie
+     * - EDITADO normal: motivo opcional
+     */
+    private function classifyAuditAction(array $diff): array
+    {
+        $keys = array_keys($diff);
+
+        $cambioRelacion = false;
+        foreach (['lote_id', 'lote_modelo_id', 'proveedor_id'] as $k) {
+            if (in_array($k, $keys, true)) {
+                $cambioRelacion = true;
+                break;
+            }
+        }
+
+        $cambioSerie = in_array('numero_serie', $keys, true);
+
+        // Si tienes acciones de eliminar/restaurar en este mismo componente, aquí se detectan por diff
+        // (ejemplo: deleted_at)
+        if (in_array('deleted_at', $keys, true)) {
+            $to = $diff['deleted_at']['to'] ?? null;
+            if ($to !== null) {
+                return ['ELIMINADO', true];
+            }
+
+            return ['RESTAURADO', true];
+        }
+
+        if ($cambioRelacion) {
+            return ['REASIGNADO', true];
+        }
+
+        if ($cambioSerie) {
+            return ['SERIE_CAMBIADA', true];
+        }
+
+        return ['EDITADO', false];
     }
 
-    if ($cambioSerie) {
-        return ['SERIE_CAMBIADA', true];
+    private function registrarAuditoria(int $equipoId, string $accion, ?string $motivo, array $cambios): void
+    {
+        $equipo = $this->equipo;
+
+        if ((int) $equipo->id !== $equipoId) {
+            $equipo = Equipo::findOrFail($equipoId);
+        }
+
+        app(EquipoTraceService::class)->registrarAuditoria(
+            equipo: $equipo,
+            accion: $accion,
+            motivo: $motivo,
+            cambios: $cambios,
+        );
     }
-
-    return ['EDITADO', false];
-}
-
-private function registrarAuditoria(int $equipoId, string $accion, ?string $motivo, array $cambios): void
-{
-    $equipo = $this->equipo;
-
-    if ((int) $equipo->id !== $equipoId) {
-        $equipo = Equipo::findOrFail($equipoId);
-    }
-
-    app(EquipoTraceService::class)->registrarAuditoria(
-        equipo: $equipo,
-        accion: $accion,
-        motivo: $motivo,
-        cambios: $cambios,
-    );
-}
-
 
     // =======================
     // Guardar (update) - alias
@@ -1085,8 +1155,9 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
 
         $this->recalcChanges();
 
-        if (!$this->hasChanges) {
+        if (! $this->hasChanges) {
             $this->dispatch('toast', type: 'info', message: 'No hay cambios por guardar.');
+
             return;
         }
 
@@ -1094,26 +1165,27 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
         [$accion, $motivoRequerido] = $this->classifyAuditAction($diff);
 
         // Sin cambios críticos: guardar directo sin modal
-        if (!$motivoRequerido) {
+        if (! $motivoRequerido) {
             $this->motivo = null;
             $this->guardadoPendienteConfirmacion = false;
             $this->ejecutarGuardado();
+
             return;
         }
 
         // Hay cambios críticos: preparar datos para el modal
         $camposCriticos = ['lote_id', 'lote_modelo_id', 'proveedor_id', 'numero_serie'];
-        $etiquetas      = $this->etiquetasCampos();
+        $etiquetas = $this->etiquetasCampos();
 
-        $cambiosCriticos  = [];
+        $cambiosCriticos = [];
         $cambiosGenerales = [];
 
         foreach ($diff as $campo => $valores) {
             $entrada = [
-                'campo'    => $campo,
+                'campo' => $campo,
                 'etiqueta' => $etiquetas[$campo] ?? $campo,
-                'de'       => $this->formatearValorAudit($campo, $valores['from']),
-                'a'        => $this->formatearValorAudit($campo, $valores['to']),
+                'de' => $this->formatearValorAudit($campo, $valores['from']),
+                'a' => $this->formatearValorAudit($campo, $valores['to']),
             ];
 
             if (in_array($campo, $camposCriticos, true)) {
@@ -1127,9 +1199,9 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
         $this->guardadoPendienteConfirmacion = true;
 
         $this->dispatch('abrir-modal-confirmacion',
-            cambiosCriticos:  $cambiosCriticos,
+            cambiosCriticos: $cambiosCriticos,
             cambiosGenerales: $cambiosGenerales,
-            accion:           $accion,
+            accion: $accion,
         );
     }
 
@@ -1139,12 +1211,13 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
     {
         $this->autorizarEdicion();
 
-        if (!$this->guardadoPendienteConfirmacion) {
+        if (! $this->guardadoPendienteConfirmacion) {
             return;
         }
 
-        if (!filled($motivo)) {
+        if (! filled($motivo)) {
             $this->dispatch('toast', type: 'error', message: 'El motivo es obligatorio.');
+
             return;
         }
 
@@ -1159,10 +1232,10 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
         $f = $this->form;
 
         $f->almacenamiento_secundario_capacidad = $f->almacenamiento_secundario_capacidad ?: 'N/A';
-        $f->almacenamiento_secundario_tipo      = $f->almacenamiento_secundario_tipo ?: 'N/A';
-        $f->teclado_idioma                      = $f->teclado_idioma ?: 'N/A';
+        $f->almacenamiento_secundario_tipo = $f->almacenamiento_secundario_tipo ?: 'N/A';
+        $f->teclado_idioma = $f->teclado_idioma ?: 'N/A';
 
-        $f->detalles_esteticos      = $this->buildChecksText($f->detalles_esteticos_checks ?? [], $f->detalles_esteticos_otro);
+        $f->detalles_esteticos = $this->buildChecksText($f->detalles_esteticos_checks ?? [], $f->detalles_esteticos_otro);
         $f->detalles_funcionamiento = $this->buildChecksText($f->detalles_funcionamiento_checks ?? [], $f->detalles_funcionamiento_otro);
 
         $f->puertos_conectividad = $this->truncate($f->puertos_conectividad, 255);
@@ -1177,7 +1250,7 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
                 ->where('lote_id', $f->lote_id)
                 ->exists();
 
-            if (!$belongs) {
+            if (! $belongs) {
                 throw ValidationException::withMessages([
                     'form.lote_modelo_id' => 'El modelo seleccionado no pertenece al lote seleccionado.',
                 ]);
@@ -1199,18 +1272,18 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
                 ]);
             }
 
-            $diff    = $this->buildAuditDiff($this->baseline, $this->currentSnapshotForAudit());
+            $diff = $this->buildAuditDiff($this->baseline, $this->currentSnapshotForAudit());
             [$accion] = $this->classifyAuditAction($diff);
 
             $this->registrarAuditoria(
                 equipoId: (int) $this->equipo->id,
-                accion:   $accion,
-                motivo:   $this->motivo,
-                cambios:  $diff
+                accion: $accion,
+                motivo: $this->motivo,
+                cambios: $diff
             );
 
             $payload = $this->equipoPayloadParaUpdate();
-            $cols    = Schema::getColumnListing('equipos');
+            $cols = Schema::getColumnListing('equipos');
             $payload = array_intersect_key($payload, array_flip($cols));
             unset($payload['id'], $payload['created_at'], $payload['updated_at'], $payload['deleted_at']);
 
@@ -1226,7 +1299,7 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
             : $this->form->all();
 
         $this->hasChanges = false;
-        $this->motivo     = null;
+        $this->motivo = null;
 
         $this->dispatch('toast', type: 'success', message: 'Actualizado correctamente.');
         $this->resetValidation();
@@ -1236,40 +1309,42 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
     private function etiquetasCampos(): array
     {
         return [
-            'lote_id'                             => 'Lote',
-            'lote_modelo_id'                      => 'Modelo del lote',
-            'proveedor_id'                        => 'Proveedor',
-            'numero_serie'                        => 'Núm. de serie',
-            'marca'                               => 'Marca',
-            'modelo'                              => 'Modelo',
-            'tipo_equipo'                         => 'Tipo de equipo',
-            'sistema_operativo'                   => 'Sistema operativo',
-            'procesador_modelo'                   => 'Procesador',
-            'procesador_generacion'               => 'Generación CPU',
-            'procesador_nucleos'                  => 'Núcleos CPU',
-            'ram_total'                           => 'RAM total',
-            'ram_tipo'                            => 'Tipo RAM',
-            'almacenamiento_principal_capacidad'  => 'Almac. principal',
-            'almacenamiento_principal_tipo'       => 'Tipo almac. principal',
-            'estatus_area'                     => 'Estatus',
-            'ethernet_tiene'                      => 'Puerto Ethernet',
-            'puertos_conectividad'                => 'Conectividad',
-            'dispositivos_entrada'                => 'Dispositivos entrada',
-            'teclado_idioma'                      => 'Idioma teclado',
-            'notas_generales'                     => 'Notas generales',
-            'detalles_esteticos'                  => 'Detalles estéticos',
-            'detalles_funcionamiento'             => 'Detalles funcionamiento',
-            'bateria_tiene'                       => 'Tiene batería',
+            'lote_id' => 'Lote',
+            'lote_modelo_id' => 'Modelo del lote',
+            'proveedor_id' => 'Proveedor',
+            'numero_serie' => 'Núm. de serie',
+            'marca' => 'Marca',
+            'modelo' => 'Modelo',
+            'tipo_equipo' => 'Tipo de equipo',
+            'sistema_operativo' => 'Sistema operativo',
+            'procesador_modelo' => 'Procesador',
+            'procesador_generacion' => 'Generación CPU',
+            'procesador_nucleos' => 'Núcleos CPU',
+            'ram_total' => 'RAM total',
+            'ram_tipo' => 'Tipo RAM',
+            'almacenamiento_principal_capacidad' => 'Almac. principal',
+            'almacenamiento_principal_tipo' => 'Tipo almac. principal',
+            'estatus_area' => 'Estatus',
+            'ethernet_tiene' => 'Puerto Ethernet',
+            'puertos_conectividad' => 'Conectividad',
+            'dispositivos_entrada' => 'Dispositivos entrada',
+            'teclado_idioma' => 'Idioma teclado',
+            'notas_generales' => 'Notas generales',
+            'detalles_esteticos' => 'Detalles estéticos',
+            'detalles_funcionamiento' => 'Detalles funcionamiento',
+            'bateria_tiene' => 'Tiene batería',
         ];
     }
 
     // Formatea valores del diff para mostrarse legibles en el modal
     private function formatearValorAudit(string $campo, $valor): ?string
     {
-        if ($valor === null || $valor === '') return null;
+        if ($valor === null || $valor === '') {
+            return null;
+        }
 
         $boolCampos = ['ram_es_soldada', 'bateria_tiene', 'bateria2_tiene',
-                       'ethernet_tiene', 'ethernet_es_gigabit'];
+            'ethernet_tiene', 'ethernet_es_gigabit'];
 
         if (in_array($campo, $boolCampos, true)) {
             return $valor ? 'Sí' : 'No';
@@ -1277,21 +1352,27 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
 
         if ($campo === 'lote_id') {
             $lote = Lote::find($valor);
-            return $lote ? 'Lote ' . $lote->nombre_lote : (string) $valor;
+
+            return $lote ? 'Lote '.$lote->nombre_lote : (string) $valor;
         }
         if ($campo === 'lote_modelo_id') {
             $lm = LoteModeloRecibido::find($valor);
-            return $lm ? $lm->marca . ' ' . $lm->modelo : (string) $valor;
+
+            return $lm ? $lm->marca.' '.$lm->modelo : (string) $valor;
         }
         if ($campo === 'proveedor_id') {
             $prov = Proveedor::find($valor);
+
             return $prov ? $prov->nombre_empresa : (string) $valor;
         }
 
-        if (is_array($valor)) return implode(', ', $valor);
+        if (is_array($valor)) {
+            return implode(', ', $valor);
+        }
 
         $str = (string) $valor;
-        return mb_strlen($str) > 60 ? mb_substr($str, 0, 57) . '…' : $str;
+
+        return mb_strlen($str) > 60 ? mb_substr($str, 0, 57).'…' : $str;
     }
 
     public function actualizar(): void
@@ -1314,73 +1395,73 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
         return [
             // NO tocamos registrado_por_user_id en edición
 
-            'lote_modelo_id'     => $f->lote_modelo_id,
+            'lote_modelo_id' => $f->lote_modelo_id,
             'catalogo_equipo_id' => $f->catalogo_equipo_id,
-            'proveedor_id'       => $f->proveedor_id,
+            'proveedor_id' => $f->proveedor_id,
 
             // estatus_area NO se incluye: solo el sistema puede cambiar el estatus
 
-            'marca'             => $f->marca,
-            'modelo'            => $f->modelo,
-            'tipo_equipo'       => $f->tipo_equipo,
+            'marca' => $f->marca,
+            'modelo' => $f->modelo,
+            'tipo_equipo' => $f->tipo_equipo,
             'sistema_operativo' => $f->sistema_operativo,
-            'area_tienda'       => $f->area_tienda,
+            'area_tienda' => $f->area_tienda,
 
-            'procesador_modelo'     => $f->procesador_modelo,
+            'procesador_modelo' => $f->procesador_modelo,
             'procesador_generacion' => $f->procesador_generacion,
-            'procesador_nucleos'    => $f->procesador_nucleos,
+            'procesador_nucleos' => $f->procesador_nucleos,
             'procesador_frecuencia' => $f->procesador_frecuencia,
 
             'numero_serie' => $f->numero_serie,
 
-            'ram_total'            => $f->ram_total,
-            'ram_tipo'             => $f->ram_tipo,
-            'ram_es_soldada'       => (bool) $f->ram_es_soldada,
-            'ram_slots_totales'    => $f->ram_slots_totales,
-            'ram_expansion_max'    => $f->ram_expansion_max,
+            'ram_total' => $f->ram_total,
+            'ram_tipo' => $f->ram_tipo,
+            'ram_es_soldada' => (bool) $f->ram_es_soldada,
+            'ram_slots_totales' => $f->ram_slots_totales,
+            'ram_expansion_max' => $f->ram_expansion_max,
             'ram_cantidad_soldada' => $f->ram_cantidad_soldada,
 
-            'almacenamiento_principal_capacidad'  => $f->almacenamiento_principal_capacidad,
-            'almacenamiento_principal_tipo'       => $f->almacenamiento_principal_tipo,
+            'almacenamiento_principal_capacidad' => $f->almacenamiento_principal_capacidad,
+            'almacenamiento_principal_tipo' => $f->almacenamiento_principal_tipo,
             'almacenamiento_secundario_capacidad' => $f->almacenamiento_secundario_capacidad,
-            'almacenamiento_secundario_tipo'      => $f->almacenamiento_secundario_tipo,
+            'almacenamiento_secundario_tipo' => $f->almacenamiento_secundario_tipo,
 
-            'slots_alm_ssd'      => $f->slots_alm_ssd,
-            'slots_alm_m2'       => $f->slots_alm_m2,
+            'slots_alm_ssd' => $f->slots_alm_ssd,
+            'slots_alm_m2' => $f->slots_alm_m2,
             'slots_alm_m2_micro' => $f->slots_alm_m2_micro,
-            'slots_alm_hdd'      => $f->slots_alm_hdd,
-            'slots_alm_msata'    => $f->slots_alm_msata,
+            'slots_alm_hdd' => $f->slots_alm_hdd,
+            'slots_alm_msata' => $f->slots_alm_msata,
 
-            'ethernet_tiene'      => (bool) $f->ethernet_tiene,
+            'ethernet_tiene' => (bool) $f->ethernet_tiene,
             'ethernet_es_gigabit' => (bool) $f->ethernet_es_gigabit,
 
             'puertos_conectividad' => $f->puertos_conectividad,
             'dispositivos_entrada' => $f->dispositivos_entrada,
 
-            'puertos_hdmi'        => $f->puertos_hdmi,
-            'puertos_mini_hdmi'   => $f->puertos_mini_hdmi,
-            'puertos_vga'         => $f->puertos_vga,
-            'puertos_dvi'         => $f->puertos_dvi,
+            'puertos_hdmi' => $f->puertos_hdmi,
+            'puertos_mini_hdmi' => $f->puertos_mini_hdmi,
+            'puertos_vga' => $f->puertos_vga,
+            'puertos_dvi' => $f->puertos_dvi,
             'puertos_displayport' => $f->puertos_displayport,
-            'puertos_mini_dp'     => $f->puertos_mini_dp,
+            'puertos_mini_dp' => $f->puertos_mini_dp,
 
-            'puertos_usb_2'  => $f->puertos_usb_2,
+            'puertos_usb_2' => $f->puertos_usb_2,
             'puertos_usb_30' => $f->puertos_usb_30,
             'puertos_usb_31' => $f->puertos_usb_31,
             'puertos_usb_32' => $f->puertos_usb_32,
-            'puertos_usb_c'  => $f->puertos_usb_c,
+            'puertos_usb_c' => $f->puertos_usb_c,
 
-            'lectores_sd'      => $f->lectores_sd,
+            'lectores_sd' => $f->lectores_sd,
             'lectores_microsd' => $f->lectores_microsd,
-            'lectores_sc'      => $f->lectores_sc,
-            'lectores_esata'   => $f->lectores_esata,
-            'lectores_sim'     => $f->lectores_sim,
+            'lectores_sc' => $f->lectores_sc,
+            'lectores_esata' => $f->lectores_esata,
+            'lectores_sim' => $f->lectores_sim,
 
             'bateria_tiene' => (bool) $f->bateria_tiene,
 
-            'teclado_idioma'          => $f->teclado_idioma,
-            'notas_generales'         => $f->notas_generales,
-            'detalles_esteticos'      => $f->detalles_esteticos,
+            'teclado_idioma' => $f->teclado_idioma,
+            'notas_generales' => $f->notas_generales,
+            'detalles_esteticos' => $f->detalles_esteticos,
             'detalles_funcionamiento' => $f->detalles_funcionamiento,
         ];
     }
@@ -1388,79 +1469,79 @@ private function registrarAuditoria(int $equipoId, string $accion, ?string $moti
     // =======================
     // Relacionadas: Baterías
     // =======================
-private function guardarBaterias(int $equipoId): void
-{
-    $f = $this->form;
+    private function guardarBaterias(int $equipoId): void
+    {
+        $f = $this->form;
 
-    $existentes = EquipoBateria::where('equipo_id', $equipoId)
-        ->orderBy('id')
-        ->get()
-        ->values();
+        $existentes = EquipoBateria::where('equipo_id', $equipoId)
+            ->orderBy('id')
+            ->get()
+            ->values();
 
-    // Si ya no tiene baterías: borra las existentes (esto sí elimina, pero no crea nuevas)
-    if (! $f->bateria_tiene) {
-        if ($existentes->isNotEmpty()) {
-            EquipoBateria::where('equipo_id', $equipoId)->delete();
+        // Si ya no tiene baterías: borra las existentes (esto sí elimina, pero no crea nuevas)
+        if (! $f->bateria_tiene) {
+            if ($existentes->isNotEmpty()) {
+                EquipoBateria::where('equipo_id', $equipoId)->delete();
+            }
+
+            return;
         }
-        return;
-    }
 
-    // === BATERÍA 1 ===
-    if ($f->bateria1_tipo) {
-        if (isset($existentes[0])) {
-            $existentes[0]->update([
-                'tipo'          => $f->bateria1_tipo,
-                'salud_percent' => $f->bateria1_salud ?: null,
-                'notas'         => null,
-            ]);
+        // === BATERÍA 1 ===
+        if ($f->bateria1_tipo) {
+            if (isset($existentes[0])) {
+                $existentes[0]->update([
+                    'tipo' => $f->bateria1_tipo,
+                    'salud_percent' => $f->bateria1_salud ?: null,
+                    'notas' => null,
+                ]);
+            } else {
+                EquipoBateria::create([
+                    'equipo_id' => $equipoId,
+                    'tipo' => $f->bateria1_tipo,
+                    'salud_percent' => $f->bateria1_salud ?: null,
+                    'notas' => null,
+                ]);
+            }
         } else {
-            EquipoBateria::create([
-                'equipo_id'     => $equipoId,
-                'tipo'          => $f->bateria1_tipo,
-                'salud_percent' => $f->bateria1_salud ?: null,
-                'notas'         => null,
-            ]);
+            // si no hay tipo, y existe fila 1, podrías borrarla (opcional)
+            if (isset($existentes[0])) {
+                $existentes[0]->delete();
+            }
         }
-    } else {
-        // si no hay tipo, y existe fila 1, podrías borrarla (opcional)
-        if (isset($existentes[0])) {
-            $existentes[0]->delete();
-        }
-    }
 
-    // === BATERÍA 2 ===
-    $quiereBateria2 = (bool) $f->bateria2_tiene && (bool) $f->bateria2_tipo;
+        // === BATERÍA 2 ===
+        $quiereBateria2 = (bool) $f->bateria2_tiene && (bool) $f->bateria2_tipo;
 
-    if ($quiereBateria2) {
-        if (isset($existentes[1])) {
-            $existentes[1]->update([
-                'tipo'          => $f->bateria2_tipo,
-                'salud_percent' => $f->bateria2_salud ?: null,
-                'notas'         => null,
-            ]);
+        if ($quiereBateria2) {
+            if (isset($existentes[1])) {
+                $existentes[1]->update([
+                    'tipo' => $f->bateria2_tipo,
+                    'salud_percent' => $f->bateria2_salud ?: null,
+                    'notas' => null,
+                ]);
+            } else {
+                EquipoBateria::create([
+                    'equipo_id' => $equipoId,
+                    'tipo' => $f->bateria2_tipo,
+                    'salud_percent' => $f->bateria2_salud ?: null,
+                    'notas' => null,
+                ]);
+            }
         } else {
-            EquipoBateria::create([
-                'equipo_id'     => $equipoId,
-                'tipo'          => $f->bateria2_tipo,
-                'salud_percent' => $f->bateria2_salud ?: null,
-                'notas'         => null,
-            ]);
+            // si existe fila 2 y ya no debe estar, borrar solo esa
+            if (isset($existentes[1])) {
+                $existentes[1]->delete();
+            }
         }
-    } else {
-        // si existe fila 2 y ya no debe estar, borrar solo esa
-        if (isset($existentes[1])) {
-            $existentes[1]->delete();
+
+        // Si llegaran a existir más de 2 por datos viejos, limpia excedentes
+        if ($existentes->count() > 2) {
+            EquipoBateria::where('equipo_id', $equipoId)
+                ->whereNotIn('id', $existentes->take(2)->pluck('id'))
+                ->delete();
         }
     }
-
-    // Si llegaran a existir más de 2 por datos viejos, limpia excedentes
-    if ($existentes->count() > 2) {
-        EquipoBateria::where('equipo_id', $equipoId)
-            ->whereNotIn('id', $existentes->take(2)->pluck('id'))
-            ->delete();
-    }
-}
-
 
     // =======================
     // Relacionadas: Monitor/Pantalla
@@ -1475,18 +1556,19 @@ private function guardarBaterias(int $equipoId): void
                 ['equipo_id' => $equipoId],
                 [
                     'origen_pantalla' => 'INTEGRADA',
-                    'incluido'        => 1,
-                    'pulgadas'        => $f->pantalla_pulgadas ?: null,
-                    'resolucion'      => $f->pantalla_resolucion ?: null,
-                    'tipo_panel'      => $f->pantalla_tipo ?: null,
-                    'es_touch'        => (int) ((bool) $f->pantalla_es_touch),
+                    'incluido' => 1,
+                    'pulgadas' => $f->pantalla_pulgadas ?: null,
+                    'resolucion' => $f->pantalla_resolucion ?: null,
+                    'tipo_panel' => $f->pantalla_tipo ?: null,
+                    'es_touch' => (int) ((bool) $f->pantalla_es_touch),
                 ] + $this->monitorInputsPayload([]) // limpia entradas
             );
+
             return;
         }
 
         // EXTERNA
-        if (!$this->pantallaExterna) {
+        if (! $this->pantallaExterna) {
             return;
         }
 
@@ -1496,18 +1578,19 @@ private function guardarBaterias(int $equipoId): void
                 ['equipo_id' => $equipoId],
                 [
                     'origen_pantalla' => 'EXTERNA',
-                    'incluido'        => 0,
-                    'pulgadas'        => null,
-                    'resolucion'      => null,
-                    'tipo_panel'      => null,
-                    'es_touch'        => 0,
+                    'incluido' => 0,
+                    'pulgadas' => null,
+                    'resolucion' => null,
+                    'tipo_panel' => null,
+                    'es_touch' => 0,
 
-                    'detalles_esteticos_checks'      => null,
-                    'detalles_esteticos_otro'        => null,
+                    'detalles_esteticos_checks' => null,
+                    'detalles_esteticos_otro' => null,
                     'detalles_funcionamiento_checks' => null,
-                    'detalles_funcionamiento_otro'   => null,
+                    'detalles_funcionamiento_otro' => null,
                 ] + $this->monitorInputsPayload([])
             );
+
             return;
         }
 
@@ -1518,16 +1601,16 @@ private function guardarBaterias(int $equipoId): void
             ['equipo_id' => $equipoId],
             [
                 'origen_pantalla' => 'EXTERNA',
-                'incluido'        => 1,
-                'pulgadas'        => $f->monitor_pulgadas ?: null,
-                'resolucion'      => $f->monitor_resolucion ?: null,
-                'tipo_panel'      => $f->monitor_tipo_panel ?: null,
-                'es_touch'        => (int) ((bool) $f->monitor_es_touch),
+                'incluido' => 1,
+                'pulgadas' => $f->monitor_pulgadas ?: null,
+                'resolucion' => $f->monitor_resolucion ?: null,
+                'tipo_panel' => $f->monitor_tipo_panel ?: null,
+                'es_touch' => (int) ((bool) $f->monitor_es_touch),
 
-                'detalles_esteticos_checks'      => $this->truncate($f->monitor_detalles_esteticos_checks ?: null, 255),
-                'detalles_esteticos_otro'        => $this->truncate($f->monitor_detalles_esteticos_otro ?: null, 255),
+                'detalles_esteticos_checks' => $this->truncate($f->monitor_detalles_esteticos_checks ?: null, 255),
+                'detalles_esteticos_otro' => $this->truncate($f->monitor_detalles_esteticos_otro ?: null, 255),
                 'detalles_funcionamiento_checks' => $this->truncate($f->monitor_detalles_funcionamiento_checks ?: null, 255),
-                'detalles_funcionamiento_otro'   => $this->truncate($f->monitor_detalles_funcionamiento_otro ?: null, 255),
+                'detalles_funcionamiento_otro' => $this->truncate($f->monitor_detalles_funcionamiento_otro ?: null, 255),
             ] + $inputsPayload
         );
     }
@@ -1539,56 +1622,56 @@ private function guardarBaterias(int $equipoId): void
             $qty = (int) ($countsByLabel[$label] ?? 0);
             $payload[$col] = $qty > 0 ? $qty : null;
         }
+
         return $payload;
     }
 
     // =======================
     // Relacionadas: GPU (equipo_gpus)
     // =======================
-private function guardarGpus(int $equipoId): void
-{
-    $f = $this->form;
+    private function guardarGpus(int $equipoId): void
+    {
+        $f = $this->form;
 
-    $esLaptopLike = $this->isLaptopLikeTipo($f->tipo_equipo);
+        $esLaptopLike = $this->isLaptopLikeTipo($f->tipo_equipo);
 
-    // ===== INTEGRADA =====
-    $debeTenerIntegrada = (bool) $f->gpu_integrada_tiene || $esLaptopLike;
+        // ===== INTEGRADA =====
+        $debeTenerIntegrada = (bool) $f->gpu_integrada_tiene || $esLaptopLike;
 
-    if ($debeTenerIntegrada) {
-        EquipoGpu::updateOrCreate(
-            ['equipo_id' => $equipoId, 'tipo' => 'INTEGRADA'],
-            [
-                'activo'      => 1,
-                'marca'       => $f->gpu_integrada_marca ?: null,
-                'modelo'      => $f->gpu_integrada_modelo ?: null,
-                'vram'        => filled($f->gpu_integrada_vram) ? (int)$f->gpu_integrada_vram : null,
-                'vram_unidad' => filled($f->gpu_integrada_vram) ? ($f->gpu_integrada_vram_unidad ?: 'GB') : null,
-                'notas'       => null,
-            ]
-        );
-    } else {
-        // si realmente ya no debe existir
-        EquipoGpu::where('equipo_id', $equipoId)->where('tipo', 'INTEGRADA')->delete();
+        if ($debeTenerIntegrada) {
+            EquipoGpu::updateOrCreate(
+                ['equipo_id' => $equipoId, 'tipo' => 'INTEGRADA'],
+                [
+                    'activo' => 1,
+                    'marca' => $f->gpu_integrada_marca ?: null,
+                    'modelo' => $f->gpu_integrada_modelo ?: null,
+                    'vram' => filled($f->gpu_integrada_vram) ? (int) $f->gpu_integrada_vram : null,
+                    'vram_unidad' => filled($f->gpu_integrada_vram) ? ($f->gpu_integrada_vram_unidad ?: 'GB') : null,
+                    'notas' => null,
+                ]
+            );
+        } else {
+            // si realmente ya no debe existir
+            EquipoGpu::where('equipo_id', $equipoId)->where('tipo', 'INTEGRADA')->delete();
+        }
+
+        // ===== DEDICADA =====
+        if ((bool) $f->gpu_dedicada_tiene) {
+            EquipoGpu::updateOrCreate(
+                ['equipo_id' => $equipoId, 'tipo' => 'DEDICADA'],
+                [
+                    'activo' => 1,
+                    'marca' => $f->gpu_dedicada_marca ?: null,
+                    'modelo' => $f->gpu_dedicada_modelo ?: null,
+                    'vram' => filled($f->gpu_dedicada_vram) ? (int) $f->gpu_dedicada_vram : null,
+                    'vram_unidad' => filled($f->gpu_dedicada_vram) ? ($f->gpu_dedicada_vram_unidad ?: 'GB') : null,
+                    'notas' => null,
+                ]
+            );
+        } else {
+            EquipoGpu::where('equipo_id', $equipoId)->where('tipo', 'DEDICADA')->delete();
+        }
     }
-
-    // ===== DEDICADA =====
-    if ((bool) $f->gpu_dedicada_tiene) {
-        EquipoGpu::updateOrCreate(
-            ['equipo_id' => $equipoId, 'tipo' => 'DEDICADA'],
-            [
-                'activo'      => 1,
-                'marca'       => $f->gpu_dedicada_marca ?: null,
-                'modelo'      => $f->gpu_dedicada_modelo ?: null,
-                'vram'        => filled($f->gpu_dedicada_vram) ? (int)$f->gpu_dedicada_vram : null,
-                'vram_unidad' => filled($f->gpu_dedicada_vram) ? ($f->gpu_dedicada_vram_unidad ?: 'GB') : null,
-                'notas'       => null,
-            ]
-        );
-    } else {
-        EquipoGpu::where('equipo_id', $equipoId)->where('tipo', 'DEDICADA')->delete();
-    }
-}
-
 
     // =======================
     // Agregadores / Mappers (Form UI -> columnas Equipo)
@@ -1613,7 +1696,9 @@ private function guardarGpus(int $equipoId): void
 
         foreach ($rows as $row) {
             $k = trim((string) ($row[$keyField] ?? ''));
-            if ($k === '') continue;
+            if ($k === '') {
+                continue;
+            }
 
             $qty = 1;
             if ($qtyField) {
@@ -1627,20 +1712,19 @@ private function guardarGpus(int $equipoId): void
         return $counts;
     }
 
-private function applyMapCountsToEquipo(array $countsByLabel, array $mapLabelToEquipoColumn): void
-{
-    $f = $this->form;
+    private function applyMapCountsToEquipo(array $countsByLabel, array $mapLabelToEquipoColumn): void
+    {
+        $f = $this->form;
 
-    foreach ($mapLabelToEquipoColumn as $label => $col) {
-        $count = (int) ($countsByLabel[$label] ?? 0);
+        foreach ($mapLabelToEquipoColumn as $label => $col) {
+            $count = (int) ($countsByLabel[$label] ?? 0);
 
-        // Sobrescribe SIEMPRE:
-        // - cantidad si existe
-        // - null si ya no hay
-        $f->{$col} = $count > 0 ? (string) $count : null;
+            // Sobrescribe SIEMPRE:
+            // - cantidad si existe
+            // - null si ya no hay
+            $f->{$col} = $count > 0 ? (string) $count : null;
+        }
     }
-}
-
 
     private function mapSlotsToDbColumns(): void
     {
@@ -1654,7 +1738,9 @@ private function applyMapCountsToEquipo(array $countsByLabel, array $mapLabelToE
 
         foreach (($f->slots_almacenamiento ?? []) as $row) {
             $tipo = trim((string) ($row['tipo'] ?? ''));
-            if ($tipo === '' || !isset(EquipoPortMaps::MAP_SLOTS[$tipo])) continue;
+            if ($tipo === '' || ! isset(EquipoPortMaps::MAP_SLOTS[$tipo])) {
+                continue;
+            }
 
             $cant = $row['cantidad'] ?? null;
             $valor = (is_numeric($cant) && (int) $cant > 0) ? (string) ((int) $cant) : null;
@@ -1678,8 +1764,8 @@ private function applyMapCountsToEquipo(array $countsByLabel, array $mapLabelToE
 
         $txt = implode(', ', $checks);
 
-        if (!empty($otro)) {
-            $txt .= ($txt ? ' | ' : '') . 'Otro: ' . $otro;
+        if (! empty($otro)) {
+            $txt .= ($txt ? ' | ' : '').'Otro: '.$otro;
         }
 
         return $txt;
@@ -1687,8 +1773,11 @@ private function applyMapCountsToEquipo(array $countsByLabel, array $mapLabelToE
 
     private function truncate($value, int $max)
     {
-        if ($value === null) return null;
+        if ($value === null) {
+            return null;
+        }
         $value = (string) $value;
+
         return mb_strlen($value) > $max ? mb_substr($value, 0, $max) : $value;
     }
 

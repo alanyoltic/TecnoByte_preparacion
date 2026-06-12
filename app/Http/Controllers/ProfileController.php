@@ -38,7 +38,7 @@ class ProfileController extends Controller
                 'apellido_paterno' => ['required', 'string', 'max:255'],
                 'apellido_materno' => ['nullable', 'string', 'max:255'],
                 'fecha_nacimiento' => ['nullable', 'date', 'before_or_equal:today'],
-                'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+                'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
                 'password' => ['nullable', 'confirmed', Password::defaults()],
                 'foto_perfil' => ['nullable', 'image', 'max:20480'],
             ]);

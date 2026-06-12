@@ -2,9 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Roles;
-use App\Models\Puesto;
-use App\Models\Departamento;
 use App\Traits\TieneRolTransferencias;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -49,10 +46,10 @@ class User extends Authenticatable implements MustVerifyEmail
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'fecha_nacimiento'  => 'date',
-        'password'          => 'hashed',
-        'is_active'         => 'boolean',
-        'fecha_baja'        => 'datetime',
+        'fecha_nacimiento' => 'date',
+        'password' => 'hashed',
+        'is_active' => 'boolean',
+        'fecha_baja' => 'datetime',
     ];
 
     public function role()
@@ -99,7 +96,9 @@ class User extends Authenticatable implements MustVerifyEmail
             ->where('permisos.slug', $slug)
             ->exists();
 
-        if ($porRol) return true;
+        if ($porRol) {
+            return true;
+        }
 
         return \DB::table('usuario_permiso')
             ->join('permisos', 'permisos.id', '=', 'usuario_permiso.permiso_id')
@@ -115,9 +114,10 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function getNombreInicialAttribute()
     {
-        $nombre   = $this->nombre ?? '';
+        $nombre = $this->nombre ?? '';
         $apellido = $this->apellido_paterno ?? '';
-        $inicial  = $apellido ? strtoupper(mb_substr($apellido, 0, 1)) . '.' : '';
+        $inicial = $apellido ? strtoupper(mb_substr($apellido, 0, 1)).'.' : '';
+
         return trim("$nombre $inicial");
     }
 

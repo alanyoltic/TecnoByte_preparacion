@@ -2,16 +2,14 @@
 
 namespace Database\Seeders\Disabled;
 
-use Illuminate\Database\Seeder; 
-use Illuminate\Support\Facades\DB;
 use App\Models\Equipo;
-use App\Models\Proveedor;
 use App\Models\Lote;
 use App\Models\LoteModeloRecibido;
+use App\Models\Proveedor;
 use App\Models\User;
-use App\Models\Roles;
-use Illuminate\Support\Str;
-use Carbon\Carbon; // ¡Importante para las fechas!
+use Carbon\Carbon;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Str; // ¡Importante para las fechas!
 
 class EquiposViejosSeeder extends Seeder
 {
@@ -25,12 +23,12 @@ class EquiposViejosSeeder extends Seeder
         $string = @mb_convert_encoding($string, 'UTF-8', 'ISO-8859-1');
 
         // Si falla, usa este reemplazo de caracteres
-        $string = preg_replace('/[^\x20-\x7E\p{L}]/u', '', $string); 
+        $string = preg_replace('/[^\x20-\x7E\p{L}]/u', '', $string);
 
         // Limpia el símbolo específico de las pulgadas
         $string = str_replace('', '"', $string);
         $string = str_replace('´´', '"', $string);
-        
+
         return trim($string);
     }
 
@@ -60,7 +58,7 @@ class EquiposViejosSeeder extends Seeder
     {
         $nombreLimpio = $this->clean_string($nombreCompleto);
         if (empty($nombreLimpio)) {
-            $nombreLimpio = "SIN PROVEEDOR"; // Asigna uno por defecto si está vacío
+            $nombreLimpio = 'SIN PROVEEDOR'; // Asigna uno por defecto si está vacío
         }
 
         $proveedor = Proveedor::where('nombre_empresa', $nombreLimpio)->first();
@@ -72,39 +70,43 @@ class EquiposViejosSeeder extends Seeder
         $abbr = $baseAbbr;
         $counter = 1;
         while (Proveedor::where('abreviacion', $abbr)->exists()) {
-            $abbr = $baseAbbr . $counter;
+            $abbr = $baseAbbr.$counter;
             $counter++;
         }
 
         return Proveedor::create([
             'nombre_empresa' => $nombreLimpio,
-            'abreviacion' => $abbr
+            'abreviacion' => $abbr,
         ]);
     }
 
     public function run(): void
     {
         $this->command->info('Iniciando importación de CSV...');
-        
+
         $ceoUser = User::where('email', 'ceo@tecnobyte.com')->first();
-        if (!$ceoUser) { /* ... (código del CEO igual) ... */ }
+        if (! $ceoUser) { /* ... (código del CEO igual) ... */
+        }
 
         $proveedorSistema = $this->findOrCreateProveedor('Sistema (Migración)');
         $loteContenedor = Lote::firstOrCreate(/* ... (código del Lote igual) ... */);
         $cuotaContenedora = LoteModeloRecibido::firstOrCreate(/* ... (código de la Cuota igual) ... */);
-        
+
         $this->command->info('Lote contenedor creado/encontrado.');
 
         $path = database_path('seeders/data/equipos_viejos.csv');
-        if (!file_exists($path)) { /* ... (código del path igual) ... */ }
+        if (! file_exists($path)) { /* ... (código del path igual) ... */
+        }
 
         $file = fopen($path, 'r');
         $header = fgetcsv($file);
         $count = 0;
 
         while ($row = fgetcsv($file)) {
-            if (empty($row[0])) continue;
-            
+            if (empty($row[0])) {
+                continue;
+            }
+
             // --- ¡LIMPIEZA DE DATOS PRIMERO! ---
             // Le decimos a PHP que use UTF-8 para leer la fila
             $data = array_map('utf8_encode', $row);
@@ -115,32 +117,32 @@ class EquiposViejosSeeder extends Seeder
             }
 
             $proveedorReal = $this->findOrCreateProveedor($data['PROVEEDOR']);
-            
+
             // --- MAPEO CON LIMPIEZA ---
             try {
                 Equipo::firstOrCreate(
-                    ['numero_serie' => $this->clean_string($data['numero de serie'])], 
-                    [ 
+                    ['numero_serie' => $this->clean_string($data['numero de serie'])],
+                    [
                         'lote_modelo_id' => $cuotaContenedora->id,
                         'registrado_por_user_id' => $ceoUser->id,
                         'proveedor_id' => $proveedorReal->id,
                         'estatus_general' => 'Aprobado',
-                        
+
                         // ¡ARREGLO DE FECHA!
                         'created_at' => $this->parse_date($data['FECHA DE REGISTRO']),
-                        
+
                         // ¡ARREGLO DE STRINGS!
-                        'marca' => $this->clean_string($data['MODELOS']), 
+                        'marca' => $this->clean_string($data['MODELOS']),
                         'modelo' => $this->clean_string($data['Modelo del equipo']),
                         'tipo_equipo' => $this->clean_string($data['TIPO DE EQUIPO']),
                         'sistema_operativo' => $this->clean_string($data['SISTEMA OPERATIVO']),
                         'procesador_modelo' => $this->clean_string($data['MODELO DEL PROCESADOR Y FRECUENCIA EN GHZ']),
                         'procesador_generacion' => $this->clean_string($data['GENERACION']),
                         'procesador_nucleos' => (int) filter_var($this->clean_string($data['NUCLEOS']), FILTER_SANITIZE_NUMBER_INT),
-                        
+
                         // ¡ARREGLO DE PULGADAS!
                         'pantalla_pulgadas' => $this->clean_string($data['PULGADAS DEL MONITOR']),
-                        
+
                         'pantalla_resolucion' => $this->clean_string($data['RESOLUCION']),
                         'pantalla_es_touch' => (strtoupper($this->clean_string($data['TOUCH'])) == 'SI'),
                         'ram_total' => $this->clean_string($data['RAM TOTAL DEL EQUIPO PREPARADO']),
@@ -155,20 +157,20 @@ class EquiposViejosSeeder extends Seeder
                         'grafica_dedicada_modelo' => $this->clean_string($data['MODELO DE TARJETA DEDICada'] ?? null),
                         'grafica_dedicada_vram' => $this->clean_string($data['Cantidad de VRAM'] ?? null),
                         'grafica_integrada_modelo' => $this->clean_string($data['MODELO DE LA TARJETA INTEGRADA']),
-                        
+
                         // ¡ARREGLO DE 'ESPAÑOL'!
                         'teclado_idioma' => $this->clean_string($data['IDIOMA DEL TECLADO']),
-                        
+
                         'area_tienda' => $this->clean_string($data['AREA DE TIENDA']),
-                        'notas_generales' => "Detalles Estéticos: " . $this->clean_string($data['DETALLES ESTETICOS']) . " | Detalles Funcionales: " . $this->clean_string($data['DETALLES DE FUNCIONAMIENTO']),
+                        'notas_generales' => 'Detalles Estéticos: '.$this->clean_string($data['DETALLES ESTETICOS']).' | Detalles Funcionales: '.$this->clean_string($data['DETALLES DE FUNCIONAMIENTO']),
                     ]
                 );
                 $count++;
             } catch (\Exception $e) {
-                $this->command->warn("Error al importar N/S: " . $this->clean_string($data['numero de serie']) . " - " . $e->getMessage());
+                $this->command->warn('Error al importar N/S: '.$this->clean_string($data['numero de serie']).' - '.$e->getMessage());
             }
         }
-        
+
         fclose($file);
         $this->command->info("¡Importación completada! Se procesaron $count equipos (los duplicados se omitieron).");
     }

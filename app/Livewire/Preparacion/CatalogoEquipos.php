@@ -2,13 +2,12 @@
 
 namespace App\Livewire\Preparacion;
 
-use Livewire\Component;
-use Livewire\WithPagination;
 use App\Models\CatalogoEquipo;
 use App\Models\Equipo;
 use App\Models\LoteModeloRecibido;
 use Livewire\Attributes\Layout;
-use Illuminate\Support\Facades\DB;
+use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('layouts.app', ['pageTitle' => 'Catálogo de Equipos'])]
 class CatalogoEquipos extends Component
@@ -16,8 +15,15 @@ class CatalogoEquipos extends Component
     use WithPagination;
 
     public $search = '';
-    public $marca, $modelo, $tipo_equipo;
+
+    public $marca;
+
+    public $modelo;
+
+    public $tipo_equipo;
+
     public $editingId = null;
+
     public $confirmingDeletionId = null;
 
     protected $updatesQueryString = ['search'];
@@ -76,10 +82,12 @@ class CatalogoEquipos extends Component
 
     public function delete()
     {
-        if (!$this->confirmingDeletionId) return;
+        if (! $this->confirmingDeletionId) {
+            return;
+        }
 
         $item = CatalogoEquipo::findOrFail($this->confirmingDeletionId);
-        
+
         // Verificar si está en uso
         $usoLotes = LoteModeloRecibido::where('catalogo_equipo_id', $item->id)->exists();
         $usoEquipos = Equipo::where('catalogo_equipo_id', $item->id)->exists();
@@ -97,9 +105,9 @@ class CatalogoEquipos extends Component
     public function render()
     {
         $items = CatalogoEquipo::query()
-            ->where(function($q) {
-                $q->where('marca', 'like', '%' . $this->search . '%')
-                  ->orWhere('modelo', 'like', '%' . $this->search . '%');
+            ->where(function ($q) {
+                $q->where('marca', 'like', '%'.$this->search.'%')
+                    ->orWhere('modelo', 'like', '%'.$this->search.'%');
             })
             ->withCount(['lotesVinculados', 'equiposVinculados'])
             ->orderBy('marca')
@@ -107,7 +115,7 @@ class CatalogoEquipos extends Component
             ->paginate(15);
 
         return view('livewire.preparacion.catalogo-equipos', [
-            'items' => $items
+            'items' => $items,
         ]);
     }
 }

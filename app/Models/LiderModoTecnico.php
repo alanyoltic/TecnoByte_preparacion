@@ -58,4 +58,3 @@ class LiderModoTecnico extends Model
             ->toArray();
     }
 }
-

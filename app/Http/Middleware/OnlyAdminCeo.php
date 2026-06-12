@@ -9,7 +9,7 @@ class OnlyAdminCeo
 {
     public function handle($request, Closure $next)
     {
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return redirect()->route('login');
         }
 
@@ -17,9 +17,8 @@ class OnlyAdminCeo
         $rolesPermitidos = ['admin', 'admin_sistema', 'ceo'];
 
         // Si el usuario no tiene rol o su rol NO está permitido → 403
-        if (!Auth::user()->role || 
-            !in_array(Auth::user()->role->slug, $rolesPermitidos)) 
-        {
+        if (! Auth::user()->role ||
+            ! in_array(Auth::user()->role->slug, $rolesPermitidos)) {
             abort(403, 'No tienes permisos para acceder a esta sección.');
         }
 

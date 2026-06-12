@@ -107,7 +107,7 @@ class PermisosSeeder extends Seeder
         $mapaIds = [];
         foreach ($permisos as $permiso) {
             $id = DB::table('permisos')->insertGetId([
-                'slug'       => $permiso['slug'],
+                'slug' => $permiso['slug'],
                 'descripcion' => $permiso['descripcion'],
                 'created_at' => $now,
                 'updated_at' => $now,
@@ -233,26 +233,27 @@ class PermisosSeeder extends Seeder
         // 5. INSERTAR ROL_PERMISO
         // =====================================================================
         $matriz = [
-            'ceo'          => $ceo,
-            'admin_sistema'=> $adminSistema,
-            'gerente'      => $gerente,
-            'lider'        => $lider,
-            'tecnico'      => $tecnico,
-            'exhibicion'   => $exhibicion,
-            'calidad'      => $calidad,
-            'usuario'      => $usuarioPersonalizado,
+            'ceo' => $ceo,
+            'admin_sistema' => $adminSistema,
+            'gerente' => $gerente,
+            'lider' => $lider,
+            'tecnico' => $tecnico,
+            'exhibicion' => $exhibicion,
+            'calidad' => $calidad,
+            'usuario' => $usuarioPersonalizado,
         ];
 
         $inserts = [];
         foreach ($matriz as $rolSlug => $permisosIds) {
-            if (!isset($roles[$rolSlug])) {
+            if (! isset($roles[$rolSlug])) {
                 $this->command->warn("Rol [{$rolSlug}] no encontrado en BD, se omite.");
+
                 continue;
             }
             $rolId = $roles[$rolSlug];
             foreach ($permisosIds as $permisoId) {
                 $inserts[] = [
-                    'rol_id'     => $rolId,
+                    'rol_id' => $rolId,
                     'permiso_id' => $permisoId,
                 ];
             }
@@ -264,8 +265,8 @@ class PermisosSeeder extends Seeder
         }
 
         $this->command->info('Permisos y rol_permiso generados correctamente.');
-        $this->command->info('Total permisos: ' . count($permisos));
-        $this->command->info('Total asignaciones: ' . count($inserts));
+        $this->command->info('Total permisos: '.count($permisos));
+        $this->command->info('Total asignaciones: '.count($inserts));
     }
 
     // =========================================================
@@ -274,8 +275,8 @@ class PermisosSeeder extends Seeder
     private function slugsAIds(array $mapa, array $slugs): array
     {
         return array_values(array_filter(
-            array_map(fn($slug) => $mapa[$slug] ?? null, $slugs),
-            fn($id) => $id !== null
+            array_map(fn ($slug) => $mapa[$slug] ?? null, $slugs),
+            fn ($id) => $id !== null
         ));
     }
 }

@@ -1,20 +1,20 @@
-<?php 
+<?php
+
 namespace App\Livewire\Preparacion\Inventario;
 
-
 use App\Exports\EquiposExport;
-use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ReportePreparacionPlaneacionExport;
 use App\Models\Equipo;
 use App\Models\Lote;
 use App\Models\Proveedor;
 use App\Models\Roles;
 use App\Models\User;
+use App\Services\EquipoTraceService;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
-use App\Exports\ReportePreparacionPlaneacionExport;
-use App\Services\EquipoTraceService;
+use Maatwebsite\Excel\Facades\Excel;
 
 #[Layout('layouts.app', ['pageTitle' => 'Gestión de inventario'])]
 class GestionInventario extends Component
@@ -23,60 +23,70 @@ class GestionInventario extends Component
 
     protected $paginationTheme = 'tailwind';
 
-
     public ?int $tecnico_id = null;
+
     public array $tecnicos = [];
 
     // Filtros básicos
     public ?string $search = null;
+
     public string $filtroEstado = 'todos';
-    public string $filtroLote   = 'todos';
+
+    public string $filtroLote = 'todos';
+
     public string $filtroProveedor = 'todos';
 
     // Filtros avanzados
     public ?string $fechaDesde = null;
+
     public ?string $fechaHasta = null;
+
     public string $filtroTipoEquipo = 'todos';
-    public string $filtroArea       = 'todos';
-    public string $filtroGpu        = 'todos';   // todos | dedicada | sin_dedicada
-    public string $filtroBateria    = 'todos';   // todos | baja | media | alta
-    public string $filtroSO         = 'todos';
+
+    public string $filtroArea = 'todos';
+
+    public string $filtroGpu = 'todos';   // todos | dedicada | sin_dedicada
+
+    public string $filtroBateria = 'todos';   // todos | baja | media | alta
+
+    public string $filtroSO = 'todos';
 
     // Paginación
     public int $perPage = 25;
 
     // Selección masiva
     public array $selected = [];
+
     public bool $selectPage = false;
 
     // Opciones precargadas (para no consultar en cada render)
     public $lotes = [];
+
     public $proveedores = [];
+
     public $tiposEquipo = [];
+
     public $areas = [];
+
     public $sistemasOperativos = [];
+
     public array $estatusAreaOpciones = [];
 
+    public function descargarExcel()
+    {
+        $this->autorizarGestion();
 
-public function descargarExcel()
-{
-$this->autorizarGestion();
+        $equipos = Equipo::with([
+            'loteModelo.lote.proveedor',
+            'registradoPor',
+            'gpus',
+            'monitor',
+            'baterias',
+            'clasificacionPuntos',
+        ])->get();
 
-$equipos = Equipo::with([
-    'loteModelo.lote.proveedor',
-    'registradoPor',
-    'gpus',
-    'monitor',
-    'baterias',
-    'clasificacionPuntos',
-])->get();
-
-
-    return Excel::download(new EquiposExport($equipos), 'equipos.xlsx');
-}
-
-
-
+        return Excel::download(new EquiposExport($equipos), 'equipos.xlsx');
+    }
 
     public function mount(): void
     {
@@ -131,14 +141,8 @@ $equipos = Equipo::with([
             ->where('role_id', $rolTecnicoId)
             ->orderBy('nombre')
             ->get()
-            ->map(fn($u) => ['id' => $u->id, 'nombre' => $u->nombre])
+            ->map(fn ($u) => ['id' => $u->id, 'nombre' => $u->nombre])
             ->toArray();
-
-
-
-
-
-
 
     }
 
@@ -189,139 +193,142 @@ $equipos = Equipo::with([
         }
     }
 
-
     public bool $modalEliminarSeleccion = false;
+
     public string $motivo_eliminacion = '';
 
     public bool $modalCambiarEstatus = false;
+
     public string $nuevoEstatusSeleccionado = '';
 
-public function abrirEliminarSeleccion()
-{
-    $this->autorizarGestion();
+    public function abrirEliminarSeleccion()
+    {
+        $this->autorizarGestion();
 
-    if (count($this->selected) === 0) return;
-
-    $this->motivo_eliminacion = '';
-    $this->modalEliminarSeleccion = true;
-}
-
-public ?Equipo $equipoSeleccionado = null;
-
-
-public function verResumenEquipo($equipoId)
-{
-    $this->equipoSeleccionado = Equipo::with([
-        'loteModelo.lote.proveedor',
-        'registradoPor',
-        'gpus',
-        'monitor',
-        'baterias',
-    ])->findOrFail($equipoId);
-}
-
-
-
-public function confirmarEliminarSeleccion()
-{
-    // 1) Validación de motivo
-    $this->autorizarGestion();
-
-    if (empty(trim($this->motivo_eliminacion)) || strlen(trim($this->motivo_eliminacion)) < 8) {
-        $this->addError('motivo_eliminacion', 'Debes proporcionar un motivo detallado (mínimo 8 caracteres).');
-        return;
-    }
-
-    if (empty($this->selected)) {
-        $this->cerrarEliminarSeleccion();
-        return;
-    }
-
-    $traceService = app(EquipoTraceService::class);
-    $equipos = Equipo::withTrashed()->whereIn('id', $this->selected)->get();
-    $errores = [];
-    $eliminados = 0;
-
-    foreach ($equipos as $equipo) {
-        $snapshot = null;
-
-        if ($traceService->requiereSnapshotForense($equipo)) {
-            $snapshot = $traceService->crearSnapshotEliminacion($equipo, $this->motivo_eliminacion);
+        if (count($this->selected) === 0) {
+            return;
         }
 
-        try {
-            DB::transaction(function () use ($equipo) {
-                $equipo->gpus()->delete();
-                $equipo->baterias()->delete();
+        $this->motivo_eliminacion = '';
+        $this->modalEliminarSeleccion = true;
+    }
 
-                if ($equipo->monitor) {
-                    $equipo->monitor()->delete();
+    public ?Equipo $equipoSeleccionado = null;
+
+    public function verResumenEquipo($equipoId)
+    {
+        $this->equipoSeleccionado = Equipo::with([
+            'loteModelo.lote.proveedor',
+            'registradoPor',
+            'gpus',
+            'monitor',
+            'baterias',
+        ])->findOrFail($equipoId);
+    }
+
+    public function confirmarEliminarSeleccion()
+    {
+        // 1) Validación de motivo
+        $this->autorizarGestion();
+
+        if (empty(trim($this->motivo_eliminacion)) || strlen(trim($this->motivo_eliminacion)) < 8) {
+            $this->addError('motivo_eliminacion', 'Debes proporcionar un motivo detallado (mínimo 8 caracteres).');
+
+            return;
+        }
+
+        if (empty($this->selected)) {
+            $this->cerrarEliminarSeleccion();
+
+            return;
+        }
+
+        $traceService = app(EquipoTraceService::class);
+        $equipos = Equipo::withTrashed()->whereIn('id', $this->selected)->get();
+        $errores = [];
+        $eliminados = 0;
+
+        foreach ($equipos as $equipo) {
+            $snapshot = null;
+
+            if ($traceService->requiereSnapshotForense($equipo)) {
+                $snapshot = $traceService->crearSnapshotEliminacion($equipo, $this->motivo_eliminacion);
+            }
+
+            try {
+                DB::transaction(function () use ($equipo) {
+                    $equipo->gpus()->delete();
+                    $equipo->baterias()->delete();
+
+                    if ($equipo->monitor) {
+                        $equipo->monitor()->delete();
+                    }
+
+                    \App\Models\EquipoAuditoria::where('equipo_id', $equipo->id)->delete();
+                    $equipo->forceDelete();
+                });
+
+                if ($snapshot) {
+                    $traceService->marcarEliminacionConfirmada($snapshot);
                 }
 
-                \App\Models\EquipoAuditoria::where('equipo_id', $equipo->id)->delete();
-                $equipo->forceDelete();
-            });
+                $eliminados++;
+            } catch (\Throwable $e) {
+                if ($snapshot) {
+                    $traceService->marcarEliminacionFallida($snapshot, $e);
+                }
 
-            if ($snapshot) {
-                $traceService->marcarEliminacionConfirmada($snapshot);
+                $errores[] = $equipo->numero_serie ?: ('ID '.$equipo->id);
             }
-
-            $eliminados++;
-        } catch (\Throwable $e) {
-            if ($snapshot) {
-                $traceService->marcarEliminacionFallida($snapshot, $e);
-            }
-
-            $errores[] = $equipo->numero_serie ?: ('ID ' . $equipo->id);
         }
+
+        $this->selected = [];
+        $this->motivo_eliminacion = '';
+        $this->modalEliminarSeleccion = false;
+
+        if (! empty($errores)) {
+            $this->dispatch(
+                'toast',
+                type: 'error',
+                message: "Se eliminaron {$eliminados} equipo(s). Fallaron: ".implode(', ', $errores)
+            );
+
+            return;
+        }
+
+        $this->dispatch('toast', type: 'success', message: 'Equipo/s eliminado/s correctamente.');
     }
 
-    $this->selected = [];
-    $this->motivo_eliminacion = '';
-    $this->modalEliminarSeleccion = false;
-
-    if (!empty($errores)) {
-        $this->dispatch(
-            'toast',
-            type: 'error',
-            message: "Se eliminaron {$eliminados} equipo(s). Fallaron: " . implode(', ', $errores)
-        );
-        return;
+    public function cerrarEliminarSeleccion()
+    {
+        $this->modalEliminarSeleccion = false;
     }
 
-    $this->dispatch('toast', type: 'success', message: 'Equipo/s eliminado/s correctamente.');
-}
+    public function abrirModalCambiarEstatus(): void
+    {
+        $this->autorizarGestion();
 
+        if (empty($this->selected) || $this->nuevoEstatusSeleccionado === '') {
+            return;
+        }
 
-public function cerrarEliminarSeleccion()
-{
-    $this->modalEliminarSeleccion = false;
-}
+        $this->modalCambiarEstatus = true;
+    }
 
-public function abrirModalCambiarEstatus(): void
-{
-    $this->autorizarGestion();
+    public function confirmarCambiarEstatus(): void
+    {
+        $this->autorizarGestion();
 
-    if (empty($this->selected) || $this->nuevoEstatusSeleccionado === '') return;
+        $this->actualizarEstatusSeleccionado($this->nuevoEstatusSeleccionado);
+        $this->nuevoEstatusSeleccionado = '';
+        $this->modalCambiarEstatus = false;
+    }
 
-    $this->modalCambiarEstatus = true;
-}
-
-public function confirmarCambiarEstatus(): void
-{
-    $this->autorizarGestion();
-
-    $this->actualizarEstatusSeleccionado($this->nuevoEstatusSeleccionado);
-    $this->nuevoEstatusSeleccionado = '';
-    $this->modalCambiarEstatus = false;
-}
-
-public function cerrarModalCambiarEstatus(): void
-{
-    $this->modalCambiarEstatus = false;
-    $this->nuevoEstatusSeleccionado = '';
-}
-
+    public function cerrarModalCambiarEstatus(): void
+    {
+        $this->modalCambiarEstatus = false;
+        $this->nuevoEstatusSeleccionado = '';
+    }
 
     public function resetSelection(): void
     {
@@ -329,30 +336,26 @@ public function cerrarModalCambiarEstatus(): void
         $this->selectPage = false;
     }
 
-
-
-
-        public function resetFiltros(): void
+    public function resetFiltros(): void
     {
-        $this->search          = null;
-        $this->filtroEstado    = 'todos';
-        $this->filtroLote      = 'todos';
+        $this->search = null;
+        $this->filtroEstado = 'todos';
+        $this->filtroLote = 'todos';
         $this->filtroProveedor = 'todos';
-        $this->tecnico_id      = null;
-        $this->fechaDesde      = null;
-        $this->fechaHasta      = null;
+        $this->tecnico_id = null;
+        $this->fechaDesde = null;
+        $this->fechaHasta = null;
         $this->filtroTipoEquipo = 'todos';
-        $this->filtroArea       = 'todos';
-        $this->filtroGpu        = 'todos';
-        $this->filtroBateria    = 'todos';
-        $this->filtroSO         = 'todos';
+        $this->filtroArea = 'todos';
+        $this->filtroGpu = 'todos';
+        $this->filtroBateria = 'todos';
+        $this->filtroSO = 'todos';
 
         $this->perPage = 25;
 
         $this->resetSelection();
         $this->resetPage();
     }
-
 
     public function updatedSelectPage($value): void
     {
@@ -371,10 +374,6 @@ public function cerrarModalCambiarEstatus(): void
         }
     }
 
-
-    
-    
-
     /**
      * Query base con TODOS los filtros (básicos + avanzados)
      */
@@ -383,7 +382,7 @@ public function cerrarModalCambiarEstatus(): void
         $q = Equipo::query()
             ->with([
                 'loteModelo.lote.proveedor',
-                'registradoPor' => fn($q) => $q->withoutGlobalScopes(),
+                'registradoPor' => fn ($q) => $q->withoutGlobalScopes(),
             ])
             ->when($this->search, function ($q) {
                 $s = trim($this->search);
@@ -392,7 +391,7 @@ public function cerrarModalCambiarEstatus(): void
                         ->orWhere('marca', 'like', "%{$s}%")
                         ->orWhere('modelo', 'like', "%{$s}%")
                         ->orWhere('tipo_equipo', 'like', "%{$s}%")
-                        ->orWhere('id', is_numeric($s) ? (int)$s : -1);
+                        ->orWhere('id', is_numeric($s) ? (int) $s : -1);
                 });
             })
             ->when($this->filtroEstado !== 'todos', function ($q) {
@@ -410,11 +409,9 @@ public function cerrarModalCambiarEstatus(): void
             })
 
             ->when($this->tecnico_id, function ($q) {
-            $q->where('registrado_por_user_id', $this->tecnico_id);
-            
-            });
+                $q->where('registrado_por_user_id', $this->tecnico_id);
 
-            
+            });
 
         // Filtros por fecha
         if ($this->fechaDesde) {
@@ -445,13 +442,13 @@ public function cerrarModalCambiarEstatus(): void
         // Salud de batería
         if ($this->filtroBateria === 'baja') {
             $q->whereNotNull('bateria_salud_percent')
-              ->where('bateria_salud_percent', '<', 70);
+                ->where('bateria_salud_percent', '<', 70);
         } elseif ($this->filtroBateria === 'media') {
             $q->whereNotNull('bateria_salud_percent')
-              ->whereBetween('bateria_salud_percent', [70, 89]);
+                ->whereBetween('bateria_salud_percent', [70, 89]);
         } elseif ($this->filtroBateria === 'alta') {
             $q->whereNotNull('bateria_salud_percent')
-              ->where('bateria_salud_percent', '>=', 90);
+                ->where('bateria_salud_percent', '>=', 90);
         }
 
         // Sistema operativo
@@ -461,8 +458,6 @@ public function cerrarModalCambiarEstatus(): void
 
         return $q->orderByDesc('created_at');
     }
-
-    
 
     /**
      * Cambiar estatus masivo
@@ -477,13 +472,14 @@ public function cerrarModalCambiarEstatus(): void
 
         $permitidos = array_column($this->estatusAreaOpciones ?: $this->cargarEstatusAreaOpciones(), 'value');
 
-        if (!in_array($nuevoEstatus, $permitidos, true)) {
+        if (! in_array($nuevoEstatus, $permitidos, true)) {
             $this->dispatch('toast', type: 'error', message: 'Estatus no válido.');
+
             return;
         }
 
         Equipo::whereIn('id', $this->selected)->update([
-            'estatus_area'  => $nuevoEstatus,
+            'estatus_area' => $nuevoEstatus,
             'estatus_ciclo' => Equipo::cicloParaArea($nuevoEstatus),
         ]);
 
@@ -492,19 +488,17 @@ public function cerrarModalCambiarEstatus(): void
         $this->dispatch('toast', type: 'success', message: 'Se actualizó el estatus de los equipos seleccionados.');
     }
 
-
     public function exportarReportePlaneacion()
-{
-    $this->autorizarGestion();
+    {
+        $this->autorizarGestion();
 
-    return Excel::download(
-        new ReportePreparacionPlaneacionExport,
-        'reporte_planeacion_preparacion.xlsx'
-    );
-}
+        return Excel::download(
+            new ReportePreparacionPlaneacionExport,
+            'reporte_planeacion_preparacion.xlsx'
+        );
+    }
 
-
-        /**
+    /**
      * Cambiar área/tienda de los equipos seleccionados
      */
     public function actualizarAreaSeleccionada(?string $nuevaArea): void
@@ -528,33 +522,29 @@ public function cerrarModalCambiarEstatus(): void
      * Eliminar selección
      */
 
-
     /**
      * Exportar a CSV (Excel lo abre sin problema) con prácticamente todos los campos.
      * - Si hay equipos seleccionados → solo esos.
      * - Si no hay selección → exporta todo lo filtrado.
      */
-   public function exportarSeleccion()
-{
-    $this->autorizarGestion();
+    public function exportarSeleccion()
+    {
+        $this->autorizarGestion();
 
-    $query = $this->equiposQuery();
+        $query = $this->equiposQuery();
 
-    if (!empty($this->selected)) {
-        $query->whereIn('id', $this->selected);
+        if (! empty($this->selected)) {
+            $query->whereIn('id', $this->selected);
+        }
+
+        $equipos = $query
+            ->with(['loteModelo.lote.proveedor', 'registradoPor', 'clasificacionPuntos'])
+            ->get();
+
+        $fileName = 'inventario_'.now()->format('Ymd_His').'.xlsx';
+
+        return Excel::download(new EquiposExport($equipos), $fileName);
     }
-
-    $equipos = $query
-        ->with(['loteModelo.lote.proveedor', 'registradoPor', 'clasificacionPuntos'])
-        ->get();
-        
-
-    $fileName = 'inventario_' . now()->format('Ymd_His') . '.xlsx';
-
-    return Excel::download(new EquiposExport($equipos), $fileName);
-}
-
-
 
     public function render()
     {
@@ -567,31 +557,31 @@ public function cerrarModalCambiarEstatus(): void
 
         // Stats para las tarjetas (son counts, ligeros)
         $stats = [
-            'total'          => Equipo::count(),
-            'sin_asignar'    => Equipo::query()
+            'total' => Equipo::count(),
+            'sin_asignar' => Equipo::query()
                 ->whereDoesntHave('asignacionEquipos.asignacion', function ($q) {
                     $q->whereNotNull('tecnico_id');
                 })
                 ->count(),
-            'por_hacer'      => (clone $equiposConTecnico)
+            'por_hacer' => (clone $equiposConTecnico)
                 ->whereNotIn('estatus_area', [
                     Equipo::AREA_EN_CALIDAD,
                     Equipo::AREA_FINALIZADO,
                     Equipo::AREA_TRANSFERIDO,
                 ])
                 ->count(),
-            'en_calidad'     => Equipo::where('estatus_area', Equipo::AREA_EN_CALIDAD)->count(),
-            'finalizado'     => Equipo::where('estatus_area', Equipo::AREA_FINALIZADO)->count(),
+            'en_calidad' => Equipo::where('estatus_area', Equipo::AREA_EN_CALIDAD)->count(),
+            'finalizado' => Equipo::where('estatus_area', Equipo::AREA_FINALIZADO)->count(),
         ];
 
         return view('livewire.preparacion.inventario.gestion-inventario', [
-            'equipos'            => $equipos,
-            'stats'              => $stats,
+            'equipos' => $equipos,
+            'stats' => $stats,
             // estas ya vienen de mount(), no se vuelven a consultar:
-            'lotes'              => $this->lotes,
-            'proveedores'        => $this->proveedores,
-            'tiposEquipo'        => $this->tiposEquipo,
-            'areas'              => $this->areas,
+            'lotes' => $this->lotes,
+            'proveedores' => $this->proveedores,
+            'tiposEquipo' => $this->tiposEquipo,
+            'areas' => $this->areas,
             'sistemasOperativos' => $this->sistemasOperativos,
         ]);
     }

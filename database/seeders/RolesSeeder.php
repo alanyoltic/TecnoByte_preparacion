@@ -25,7 +25,7 @@ class RolesSeeder extends Seeder
             DB::table('roles')->updateOrInsert(
                 ['slug' => $r['slug']],
                 [
-                    'nombre'     => $r['nombre'],
+                    'nombre' => $r['nombre'],
                     'updated_at' => now(),
                     'created_at' => DB::raw('COALESCE(created_at, NOW())'),
                 ]
