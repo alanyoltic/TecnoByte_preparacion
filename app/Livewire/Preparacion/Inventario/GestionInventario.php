@@ -548,30 +548,22 @@ class GestionInventario extends Component
 
     public function render()
     {
-        $equipos = $this->equiposQuery()->paginate($this->perPage);
+        $baseQuery = $this->equiposQuery();
+        $equipos = (clone $baseQuery)->paginate($this->perPage);
 
-        $equiposConTecnico = Equipo::query()
-            ->whereHas('asignacionEquipos.asignacion', function ($q) {
-                $q->whereNotNull('tecnico_id');
-            });
-
-        // Stats para las tarjetas (son counts, ligeros)
+        // Stats para las tarjetas (reactivas a los filtros y estrictas al estatus)
         $stats = [
-            'total' => Equipo::count(),
-            'sin_asignar' => Equipo::query()
-                ->whereDoesntHave('asignacionEquipos.asignacion', function ($q) {
-                    $q->whereNotNull('tecnico_id');
-                })
-                ->count(),
-            'por_hacer' => (clone $equiposConTecnico)
-                ->whereNotIn('estatus_area', [
-                    Equipo::AREA_EN_CALIDAD,
-                    Equipo::AREA_FINALIZADO,
-                    Equipo::AREA_TRANSFERIDO,
-                ])
-                ->count(),
-            'en_calidad' => Equipo::where('estatus_area', Equipo::AREA_EN_CALIDAD)->count(),
-            'finalizado' => Equipo::where('estatus_area', Equipo::AREA_FINALIZADO)->count(),
+            'total' => (clone $baseQuery)->count(),
+            'disponibles' => (clone $baseQuery)->whereIn('estatus_area', [
+                Equipo::AREA_SIN_ASIGNAR, 
+                Equipo::AREA_EN_ESPERA
+            ])->count(),
+            'en_proceso' => (clone $baseQuery)->where('estatus_area', Equipo::AREA_EN_PROCESO)->count(),
+            'en_calidad' => (clone $baseQuery)->where('estatus_area', Equipo::AREA_EN_CALIDAD)->count(),
+            'finalizado' => (clone $baseQuery)->whereIn('estatus_area', [
+                Equipo::AREA_FINALIZADO, 
+                Equipo::AREA_TRANSFERIDO
+            ])->count(),
         ];
 
         return view('livewire.preparacion.inventario.gestion-inventario', [

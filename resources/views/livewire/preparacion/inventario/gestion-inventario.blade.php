@@ -181,10 +181,10 @@
                        hover:border-violet-400/70"
             >
                 <p class="text-xs sm:text-sm font-semibold text-violet-700 dark:text-violet-200 uppercase tracking-wide">
-                    Sin asignar
+                    Disponibles
                 </p>
                 <p class="mt-2 text-2xl font-bold text-violet-800 dark:text-violet-100">
-                    {{ $stats['sin_asignar'] ?? 0 }}
+                    {{ $stats['disponibles'] ?? 0 }}
                 </p>
             </div>
 
@@ -204,10 +204,10 @@
                        hover:border-orange-400/70"
             >
                 <p class="text-xs sm:text-sm font-semibold text-orange-700 dark:text-orange-200 uppercase tracking-wide">
-                    Por hacer
+                    En proceso
                 </p>
                 <p class="mt-2 text-2xl font-bold text-orange-800 dark:text-orange-100">
-                    {{ $stats['por_hacer'] ?? 0 }}
+                    {{ $stats['en_proceso'] ?? 0 }}
                 </p>
             </div>
 

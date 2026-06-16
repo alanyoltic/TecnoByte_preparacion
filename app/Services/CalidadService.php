@@ -59,6 +59,13 @@ class CalidadService
                 'estatus_ciclo' => Equipo::CICLO_CALIDAD, // Se mantiene en CALIDAD
             ]);
 
+            app(\App\Services\EquipoTraceService::class)->registrarAuditoria(
+                equipo: $equipo,
+                accion: 'CALIDAD_APROBADO',
+                motivo: 'Equipo validado y aprobado en calidad.',
+                cambios: ['estatus_area' => Equipo::AREA_FINALIZADO]
+            );
+
             // Verificar si la asignación está completa (todos los equipos terminados)
             $this->verificarAsignacionCompleta($ae->asignacion_id);
 
@@ -129,6 +136,16 @@ class CalidadService
                 'estatus_area' => Equipo::AREA_EN_PROCESO,
                 'estatus_ciclo' => Equipo::CICLO_PREPARACION,
             ]);
+
+            app(\App\Services\EquipoTraceService::class)->registrarAuditoria(
+                equipo: $equipo,
+                accion: 'CALIDAD_RECHAZADO',
+                motivo: 'Equipo rechazado: ' . trim($motivo),
+                cambios: ['estatus_area' => Equipo::AREA_EN_PROCESO]
+            );
+
+            // Restar/Eliminar los puntos del técnico para que no se queden guardados si el equipo no pasó calidad
+            \App\Models\PuntoTecnico::where('asignacion_equipo_id', $ae->id)->delete();
 
             return $validacion;
         });

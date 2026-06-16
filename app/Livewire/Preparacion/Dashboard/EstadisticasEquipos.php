@@ -224,8 +224,11 @@ class EstadisticasEquipos extends Component
         // Subconsulta: total de equipos recibidos por modelo según lotes (son reales, no promesas)
         // También calcula cupos ya asignados a técnicos pero aún no iniciados/escaneados
         $lotesSub = DB::table('lote_modelos_recibidos as lmr')
+            ->leftJoin('catalogo_equipos as cat', 'lmr.catalogo_equipo_id', '=', 'cat.id')
             ->select(
-                'lmr.catalogo_equipo_id',
+                'lmr.marca',
+                'lmr.modelo',
+                DB::raw('MAX(cat.tipo_equipo) as tipo_equipo'),
                 DB::raw('SUM(lmr.cantidad_recibida) as total_recibido'),
                 DB::raw("SUM(
                     COALESCE((
@@ -239,17 +242,18 @@ class EstadisticasEquipos extends Component
                     ), 0)
                 ) as cupos_asignados_sin_serie")
             )
-            ->groupBy('lmr.catalogo_equipo_id');
+            ->groupBy('lmr.marca', 'lmr.modelo');
 
         // Subconsulta: conteo de estatus por equipo físico.
         // IMPORTANTE: usamos lote_modelos_recibidos para resolver catalogo_equipo_id,
         // porque muchos equipos creados desde MiTrabajo solo tienen lote_modelo_id
         // y NO tienen catalogo_equipo_id directamente en la tabla equipos.
         $equiposSub = DB::table('equipos as eq')
-            ->join('lote_modelos_recibidos as lmr', 'eq.lote_modelo_id', '=', 'lmr.id')
             ->whereNull('eq.deleted_at')
             ->select(
-                'lmr.catalogo_equipo_id',
+                'eq.marca',
+                'eq.modelo',
+                DB::raw('MAX(eq.tipo_equipo) as tipo_equipo'),
                 DB::raw('COUNT(eq.id) as total_fisicos'),
                 // Sin asignar: SIN_ASIGNAR y EN_ESPERA (disponibles con serie, en bodega)
                 DB::raw('SUM(CASE WHEN eq.estatus_area IN ("'.Equipo::AREA_SIN_ASIGNAR.'", "'.Equipo::AREA_EN_ESPERA.'") THEN 1 ELSE 0 END) as c_sin_asignar'),
@@ -262,16 +266,27 @@ class EstadisticasEquipos extends Component
                 DB::raw('SUM(CASE WHEN eq.estatus_area = "'.Equipo::AREA_FINALIZADO.'" THEN 1 ELSE 0 END) as c_finalizado'),
                 DB::raw('SUM(CASE WHEN eq.estatus_area = "'.Equipo::AREA_TRANSFERIDO.'" THEN 1 ELSE 0 END) as c_transferido')
             )
-            ->groupBy('lmr.catalogo_equipo_id');
+            ->groupBy('eq.marca', 'eq.modelo');
 
         // Query principal partiendo del catálogo (para que salgan modelos con lote aunque aún no tengan serie)
-        $query = DB::table('catalogo_equipos as c')
-            ->leftJoinSub($lotesSub, 'l', 'c.id', '=', 'l.catalogo_equipo_id')
-            ->leftJoinSub($equiposSub, 'e', 'c.id', '=', 'e.catalogo_equipo_id')
+        $baseLotes = DB::table('lote_modelos_recibidos')->select('marca', 'modelo');
+        $baseEquipos = DB::table('equipos')->whereNull('deleted_at')->select('marca', 'modelo');
+        $baseModelos = $baseLotes->union($baseEquipos);
+
+        $query = DB::table(DB::raw("({$baseModelos->toSql()}) as c"))
+            ->mergeBindings($baseModelos)
+            ->leftJoinSub($lotesSub, 'l', function($join) {
+                $join->on('c.marca', '=', 'l.marca')
+                     ->on('c.modelo', '=', 'l.modelo');
+            })
+            ->leftJoinSub($equiposSub, 'e', function($join) {
+                $join->on('c.marca', '=', 'e.marca')
+                     ->on('c.modelo', '=', 'e.modelo');
+            })
             ->select(
                 'c.marca',
                 'c.modelo',
-                'c.tipo_equipo',
+                DB::raw('COALESCE(e.tipo_equipo, l.tipo_equipo, "") as tipo_equipo'),
                 // total_recibido = equipos reales llegados según el lote (con o sin serie aún)
                 DB::raw('COALESCE(l.total_recibido, 0) as total_recibido'),
                 DB::raw('COALESCE(l.cupos_asignados_sin_serie, 0) as cupos_asignados_sin_serie'),
@@ -298,7 +313,7 @@ class EstadisticasEquipos extends Component
         }
 
         if (! empty($this->filtroTipo)) {
-            $query->where('c.tipo_equipo', $this->filtroTipo);
+            $query->having('tipo_equipo', $this->filtroTipo);
         }
 
         if (! empty($this->filtroModelo)) {

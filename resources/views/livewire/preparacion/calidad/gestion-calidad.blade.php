@@ -353,6 +353,22 @@
                                                 Rechazar
                                             </button>
                                         </div>
+                                    @elseif($equipo->estatus_area === 'FINALIZADO')
+                                        <div class="flex flex-wrap justify-end gap-2">
+                                            <button 
+                                                onclick="window.open('{{ route('equipos.etiqueta.comando', ['equipo' => $equipo->id]) }}', '_blank')"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full whitespace-nowrap
+                                                       bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600
+                                                       text-xs font-semibold text-white
+                                                       shadow-md shadow-slate-900/30
+                                                       transition"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                </svg>
+                                                Imprimir Etiqueta
+                                            </button>
+                                        </div>
                                     @else
                                         <span class="text-slate-400 text-xs">—</span>
                                     @endif

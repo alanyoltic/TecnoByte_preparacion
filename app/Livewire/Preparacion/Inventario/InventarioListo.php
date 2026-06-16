@@ -37,11 +37,10 @@ class InventarioListo extends Component
 
     public $proveedores = [];
 
-    // Tarjetas de totales
     public $stats = [
         'total' => 0,
-        'sin_asignar' => 0,
-        'por_hacer' => 0,
+        'disponibles' => 0,
+        'en_proceso' => 0,
         'en_calidad' => 0,
         'finalizado' => 0,
     ];
@@ -62,7 +61,7 @@ class InventarioListo extends Component
         $this->lotes = Lote::orderBy('fecha_llegada', 'desc')->get();
         $this->proveedores = Proveedor::orderBy('nombre_empresa', 'asc')->get();
 
-        $this->calcularStats();
+        $this->proveedores = Proveedor::orderBy('nombre_empresa', 'asc')->get();
 
         $this->colaboradores = User::withoutGlobalScopes()
             ->select('id', 'nombre')
@@ -103,7 +102,6 @@ class InventarioListo extends Component
             $equipo->update(['estatus_area' => Equipo::AREA_FINALIZADO]);
         });
 
-        $this->calcularStats();
         $this->dispatch('toast', type: 'success', message: 'Equipo validado. Listo para ventas.');
     }
 
@@ -133,38 +131,7 @@ class InventarioListo extends Component
         $this->resetPage();
     }
 
-    protected function calcularStats(): void
-    {
-        $equiposConTecnico = Equipo::query()
-            ->whereHas('asignacionEquipos.asignacion', function ($q) {
-                $q->whereNotNull('tecnico_id');
-            });
 
-        // TODOS los equipos, sin importar estatus
-        $this->stats['total'] = Equipo::count();
-
-        // Equipos sin técnico asignado (con o sin número de serie)
-        $this->stats['sin_asignar'] = Equipo::query()
-            ->whereDoesntHave('asignacionEquipos.asignacion', function ($q) {
-                $q->whereNotNull('tecnico_id');
-            })
-            ->count();
-
-        // Equipos en calidad
-        $this->stats['en_calidad'] = Equipo::where('estatus_area', Equipo::AREA_EN_CALIDAD)->count();
-
-        // Equipos finalizados
-        $this->stats['finalizado'] = Equipo::where('estatus_area', Equipo::AREA_FINALIZADO)->count();
-
-        // Equipos asignados a técnico que aún no llegan a calidad/finalizado/transferido
-        $this->stats['por_hacer'] = (clone $equiposConTecnico)
-            ->whereNotIn('estatus_area', [
-                Equipo::AREA_EN_CALIDAD,
-                Equipo::AREA_FINALIZADO,
-                Equipo::AREA_TRANSFERIDO,
-            ])
-            ->count();
-    }
 
     public function render()
     {
@@ -218,9 +185,20 @@ class InventarioListo extends Component
         // Paginación final
         $equipos = $query->paginate(15);
 
-        // Si quieres que las tarjetas sean siempre globales, deja esto;
-        // si quieres que sigan filtros, aquí podríamos cambiar la lógica.
-        $this->calcularStats();
+        // Reactividad: Las tarjetas reaccionan exactamente a la query filtrada
+        $baseQuery = clone $query;
+
+        $this->stats['total'] = (clone $baseQuery)->count();
+        $this->stats['disponibles'] = (clone $baseQuery)->whereIn('estatus_area', [
+            Equipo::AREA_SIN_ASIGNAR, 
+            Equipo::AREA_EN_ESPERA
+        ])->count();
+        $this->stats['en_proceso'] = (clone $baseQuery)->where('estatus_area', Equipo::AREA_EN_PROCESO)->count();
+        $this->stats['en_calidad'] = (clone $baseQuery)->where('estatus_area', Equipo::AREA_EN_CALIDAD)->count();
+        $this->stats['finalizado'] = (clone $baseQuery)->whereIn('estatus_area', [
+            Equipo::AREA_FINALIZADO, 
+            Equipo::AREA_TRANSFERIDO
+        ])->count();
 
         return view('livewire.preparacion.inventario.inventario-listo', [
             'equipos' => $equipos,

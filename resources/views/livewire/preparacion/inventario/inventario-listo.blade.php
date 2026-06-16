@@ -63,10 +63,10 @@
                        hover:border-violet-400/70"
             >
                 <p class="text-xs sm:text-sm font-semibold text-violet-700 dark:text-violet-200 uppercase tracking-wide">
-                    Sin asignar
+                    Disponibles
                 </p>
                 <p class="mt-2 text-2xl font-bold text-violet-800 dark:text-violet-100">
-                    {{ $stats['sin_asignar'] ?? 0 }}
+                    {{ $stats['disponibles'] ?? 0 }}
                 </p>
             </div>
 
@@ -86,10 +86,10 @@
                        hover:border-orange-400/70"
             >
                 <p class="text-xs sm:text-sm font-semibold text-orange-700 dark:text-orange-200 uppercase tracking-wide">
-                    Por hacer
+                    En proceso
                 </p>
                 <p class="mt-2 text-2xl font-bold text-orange-800 dark:text-orange-100">
-                    {{ $stats['por_hacer'] ?? 0 }}
+                    {{ $stats['en_proceso'] ?? 0 }}
                 </p>
             </div>
 
@@ -727,39 +727,30 @@
             </div>
 
             {{-- Sección inferior --}}
-            <div class="flex justify-between items-end px-1 mt-1 shrink-0" style="height: 14mm;">
+            <div class="flex justify-between items-end px-1 mt-1 shrink-0" style="height: 17mm;">
 
-                {{-- Serial y código --}}
-                <div class="flex flex-col justify-end pb-1">
+                {{-- Serial y código (Restaurado) --}}
+                <div class="flex flex-col justify-end pb-1" style="width: 35mm;">
                     <p class="font-weight: 400 text-gray-900 leading-none"
-                        style="
-                                font-size: 12px;
-                                font-family: 'Century Gothic', 'Gothic', sans-serif;
-                                letter-spacing: 0.5px;
-                        ">
+                        style="font-size: 12px; font-family: 'Century Gothic', 'Gothic', sans-serif; letter-spacing: 0.5px;">
                             {{ $smartID }}
-                        </p>
-
+                    </p>
                     @if($lote?->nombre_lote)
                     <p class="text-gray-500 leading-none mt-0.5"
                        style="font-size: 7px; font-family: 'Century Gothic', 'Gothic', sans-serif; letter-spacing: 0.3px;">
                         {{ $lote->nombre_lote }}
                     </p>
                     @endif
-
-                    <p class="text-[8px] font-bold text-orange-500 leading-none mt-0.5"
-                       style="-webkit-print-color-adjust: exact; print-color-adjust: exact;">
-
-                    </p>
                 </div>
 
-                {{-- Código de barras dinámico --}}
-                <div class="flex flex-col items-center"
-                    style="width: 60mm; margin-left: 6mm;">
-
-                    <svg class="barcode-target w-full"
-                         data-serie="{{ $equipo->numero_serie ?? $equipo->id }}">
-                    </svg>
+                {{-- Código QR Principal (Tamaño Grande y Apilado) --}}
+                <div class="flex flex-col items-center justify-end pb-1" style="width: 35mm;">
+                    {{-- QR grande --}}
+                    <canvas class="qr-target" style="width: 13.5mm; height: 13.5mm; image-rendering: pixelated; margin-bottom: 0.5mm;"></canvas>
+                    {{-- Texto del serial abajo --}}
+                    <p class="text-gray-900 font-bold leading-none text-center" style="font-size: 8pt; font-family: 'Century Gothic', sans-serif; letter-spacing: 0.5px;">
+                        *{{ $equipo->numero_serie ?? $equipo->id }}*
+                    </p>
                 </div>
             </div>
 
@@ -840,8 +831,8 @@
     }
 </style>
 
-{{-- Librería de códigos de barras --}}
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+{{-- Librería de QR --}}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
 
 
@@ -923,61 +914,6 @@ function ajustarTituloParaEtiqueta(tituloEl) {
 }
 
 /**
- * Ajusta el texto del barcode (la serie visible) para que NO sea más ancho que el barcode.
- * Se ejecuta DESPUÉS de JsBarcode.
- */
-function ajustarTextoBarcodeAlAncho(svg, minFontSize = 7, step = 0.5) {
-    if (!svg) return;
-
-    // ✅ Evitar que el SVG recorte el texto
-    svg.style.overflow = 'visible';
-    svg.setAttribute('overflow', 'visible');
-    svg.style.display = 'block';
-    svg.style.margin = '0 auto';
-
-    const textEl = svg.querySelector('text');
-    if (!textEl) return;
-
-    // Forzar layout
-    void svg.getBoundingClientRect();
-
-    // Tomamos bbox del SVG (barcode completo)
-    let bbox;
-    try {
-        bbox = svg.getBBox();
-    } catch (e) {
-        // si fallara getBBox (raro), salimos sin romper
-        return;
-    }
-
-    const barcodeCenterX = bbox.x + (bbox.width / 2);
-
-    // ✅ Centrar el texto respecto al barcode
-    textEl.setAttribute('text-anchor', 'middle');
-    textEl.setAttribute('x', String(barcodeCenterX));
-
-    // Tomar font-size actual del <text> generado por JsBarcode
-    let currentSize = parseFloat(textEl.getAttribute('font-size')) || 9.5;
-    
-
-    // Reducir hasta que el texto quepa dentro del ancho del barcode
-    while (currentSize > minFontSize) {
-        textEl.setAttribute('font-size', String(currentSize));
-
-        let textWidth = 0;
-        try {
-            textWidth = textEl.getBBox().width;
-        } catch (e) {
-            break;
-        }
-
-        if (textWidth <= bbox.width) break;
-        currentSize -= step;
-    }
-}
-
-
-/**
  * Auto-ajuste de líneas de especificaciones
  */
 function autoResizeSpecLines(container) {
@@ -1036,36 +972,19 @@ function imprimirEtiquetaFinal(id) {
     autoResizeSpecLines(specBlock);
   }
 
-  // Barcode
-  const svg = area.querySelector('.barcode-target');
-  if (svg) {
+  // QR Principal
+  const qrCanvas = area.querySelector('.qr-target');
+  if (qrCanvas) {
     try {
-      // Lo que se ESCANEA (compacto)
       const codigoScan = encodeIdForBarcode(id);
-
-      // Lo que se VE debajo (humano)
-      const serieHumana = svg.dataset.serie || '';
-
-      JsBarcode(svg, codigoScan, {
-        format: "CODE128",
-        width: 0.8,
-        height: 13,
-
-        displayValue: true,
-        text: '*' + serieHumana + '*',  // 👈 visible (serie)
-        fontSize: 11,
-        fontOptions: "bold",
-        textAlign: "center",
-        textMargin: 2,
-        margin: 6
+      new QRious({
+        element: qrCanvas,
+        value: codigoScan,
+        size: 180, // Resolución interna mejorada
+        level: 'M', // 'M' da buena resistencia a borrones
+        padding: 0 // Sin margen blanco extra para que se vea más grande
       });
-
-      // 🔥 Ajuste dinámico del texto visible al ancho del barcode
-      ajustarTextoBarcodeAlAncho(svg, 7, 0.5);
-
-    } catch (e) {
-      console.error(e);
-    }
+    } catch(e) { console.error(e); }
   }
 
   window.onafterprint = function () {
