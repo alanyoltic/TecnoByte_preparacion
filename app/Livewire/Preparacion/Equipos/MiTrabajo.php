@@ -1051,12 +1051,16 @@ class MiTrabajo extends Component
                     default => PuntoTecnico::COMPLETO,
                 };
 
-                PuntoTecnico::registrar(
-                    tecnicoId: Auth::id(), asignacionEquipoId: $ae->id,
-                    rol: $rol, puntosBase: (float) $puntosBase, clasificacionId: $clasificacionId,
-                );
-
                 $asignacion = $ae->asignacion;
+                $notasUpper = strtoupper($asignacion->notas ?? '');
+                $esRetrabajoSinPuntos = str_contains($notasUpper, 'RETRABAJO') || str_contains($notasUpper, 'SIN PUNTOS');
+
+                if (! $esRetrabajoSinPuntos) {
+                    PuntoTecnico::registrar(
+                        tecnicoId: Auth::id(), asignacionEquipoId: $ae->id,
+                        rol: $rol, puntosBase: (float) $puntosBase, clasificacionId: $clasificacionId,
+                    );
+                }
                 $terminados = AsignacionEquipo::where('asignacion_id', $asignacion->id)
                     ->whereNotIn('camino', [
                         AsignacionEquipo::PENDIENTE,
