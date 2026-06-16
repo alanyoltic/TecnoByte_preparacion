@@ -727,6 +727,7 @@
                                             </button>
                                         @endif
                                     </div>
+                                    </div>
 
                                     @if(!$terminado && $ae->num_rechazos > 0)
                                         @php
