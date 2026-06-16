@@ -337,8 +337,22 @@
                     y todas sus líneas de modelos?
                 </p>
                 <p class="mt-2 text-xs text-slate-400">
-                    Si el lote tiene equipos registrados, la eliminación será bloqueada automáticamente.
+                    Si el lote tiene equipos activos registrados, la eliminación será bloqueada automáticamente.
                 </p>
+
+                @if($loteEliminarEquiposPapelera > 0)
+                    <div class="mt-4 p-3 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 text-sm">
+                        <div class="flex items-start gap-2">
+                            <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            <div>
+                                <strong class="block font-semibold">Atención</strong>
+                                Tienes {{ $loteEliminarEquiposPapelera }} equipo(s) en la papelera de este lote. Al eliminar el lote, estos también se eliminarán completamente de la base de datos.
+                            </div>
+                        </div>
+                    </div>
+                @endif
 
                 <div class="mt-6 flex justify-end gap-3">
                     <button

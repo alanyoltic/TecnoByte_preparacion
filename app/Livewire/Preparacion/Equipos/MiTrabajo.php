@@ -445,16 +445,7 @@ class MiTrabajo extends Component
             return;
         }
 
-        $traceService = app(EquipoTraceService::class);
         $equipo = $ae->equipo;
-        $snapshot = null;
-
-        if (! $ae->pre_asignado && $equipo && $traceService->requiereSnapshotForense($equipo)) {
-            $snapshot = $traceService->crearSnapshotEliminacion(
-                $equipo,
-                'Eliminacion desde Mi Trabajo por reinicio de registro'
-            );
-        }
 
         try {
             DB::transaction(function () use ($ae) {
@@ -499,24 +490,19 @@ class MiTrabajo extends Component
                         ]);
                     }
                 } else {
-                    // Equipo escaneado manualmente: borrado total
+                    // Equipo escaneado manualmente: borrado lógico
                     $ae->delete();
 
                     if ($equipo) {
-                        \App\Models\EquipoAuditoria::where('equipo_id', $equipo->id)->delete();
-                        $equipo->forceDelete();
+                        if (! $equipo->trashed()) {
+                            $traceService = app(\App\Services\EquipoTraceService::class);
+                            $traceService->registrarAuditoria($equipo, 'ENVIADO_A_PAPELERA', 'Eliminación manual desde Mi Trabajo');
+                        }
+                        $equipo->delete();
                     }
                 }
             });
-
-            if ($snapshot) {
-                $traceService->marcarEliminacionConfirmada($snapshot);
-            }
         } catch (\Throwable $e) {
-            if ($snapshot) {
-                $traceService->marcarEliminacionFallida($snapshot, $e);
-            }
-
             throw $e;
         }
 

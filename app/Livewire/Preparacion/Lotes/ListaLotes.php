@@ -32,6 +32,8 @@ class ListaLotes extends Component
 
     public string $loteEliminarNombre = '';
 
+    public int $loteEliminarEquiposPapelera = 0;
+
     // =======================
     //  Catálogos / Stats
     // =======================
@@ -81,7 +83,12 @@ class ListaLotes extends Component
     {
         abort_unless(auth()->user()?->tienePermiso('prep.lotes.ver'), 403);
 
-        $lote = Lote::findOrFail($id);
+        $lote = Lote::with('modelosRecibidos')->findOrFail($id);
+
+        $this->loteEliminarEquiposPapelera = 0;
+        foreach ($lote->modelosRecibidos as $m) {
+            $this->loteEliminarEquiposPapelera += $m->equipos()->onlyTrashed()->count();
+        }
 
         $this->loteEliminarId = $id;
         $this->loteEliminarNombre = $lote->nombre_lote ?? ('Lote #'.$id);
@@ -96,15 +103,17 @@ class ListaLotes extends Component
             return;
         }
 
-        $lote = Lote::with('modelosRecibidos.equipos')->findOrFail($this->loteEliminarId);
+        $lote = Lote::with('modelosRecibidos')->findOrFail($this->loteEliminarId);
 
         // Contar equipos registrados en este lote
-        $totalEquipos = $lote->modelosRecibidos
-            ->sum(fn ($m) => $m->equipos->count());
+        $totalEquipos = 0;
+        foreach ($lote->modelosRecibidos as $m) {
+            $totalEquipos += $m->equipos()->count();
+        }
 
         if ($totalEquipos > 0) {
             $this->dispatch('toast', type: 'error',
-                message: "No se puede eliminar: el lote tiene {$totalEquipos} equipo(s) registrado(s). Elimínalos primero."
+                message: "No se puede eliminar: el lote tiene {$totalEquipos} equipo(s) activo(s) registrado(s). Elimínalos primero."
             );
             $this->cerrarModalEliminarLote();
 
@@ -112,7 +121,24 @@ class ListaLotes extends Component
         }
 
         try {
-            DB::transaction(function () use ($lote) {
+            $traceService = app(\App\Services\EquipoTraceService::class);
+
+            DB::transaction(function () use ($lote, $traceService) {
+                // Eliminar equipos en papelera definitivamente
+                foreach ($lote->modelosRecibidos as $m) {
+                    $equiposBorrados = $m->equipos()->onlyTrashed()->get();
+                    foreach ($equiposBorrados as $equipo) {
+                        $traceService->crearSnapshotEliminacion($equipo, 'Eliminación forzada por borrado de lote');
+                        $equipo->gpus()->delete();
+                        $equipo->baterias()->delete();
+                        if ($equipo->monitor) {
+                            $equipo->monitor()->delete();
+                        }
+                        \App\Models\EquipoAuditoria::where('equipo_id', $equipo->id)->delete();
+                        $equipo->forceDelete();
+                    }
+                }
+
                 $lote->modelosRecibidos()->delete();
                 $lote->delete();
             });
@@ -132,6 +158,7 @@ class ListaLotes extends Component
         $this->modalEliminarLote = false;
         $this->loteEliminarId = null;
         $this->loteEliminarNombre = '';
+        $this->loteEliminarEquiposPapelera = 0;
     }
 
     public function render()

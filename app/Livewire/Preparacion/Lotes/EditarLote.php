@@ -261,9 +261,24 @@ class EditarLote extends Component
             ]);
 
             if (! empty($this->deleteModeloIds)) {
-                LoteModeloRecibido::where('lote_id', $lote->id)
-                    ->whereIn('id', $this->deleteModeloIds)
-                    ->delete();
+                $modelosABorrar = LoteModeloRecibido::where('lote_id', $lote->id)
+                    ->whereIn('id', $this->deleteModeloIds)->get();
+                
+                $traceService = app(\App\Services\EquipoTraceService::class);
+                foreach ($modelosABorrar as $modRecibido) {
+                    $equiposBorrados = $modRecibido->equipos()->onlyTrashed()->get();
+                    foreach ($equiposBorrados as $equipo) {
+                        $traceService->crearSnapshotEliminacion($equipo, 'Eliminación forzada por actualización de lote');
+                        $equipo->gpus()->delete();
+                        $equipo->baterias()->delete();
+                        if ($equipo->monitor) {
+                            $equipo->monitor()->delete();
+                        }
+                        \App\Models\EquipoAuditoria::where('equipo_id', $equipo->id)->delete();
+                        $equipo->forceDelete();
+                    }
+                    $modRecibido->delete();
+                }
             }
 
             foreach ($this->modelos as $m) {

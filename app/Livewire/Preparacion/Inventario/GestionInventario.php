@@ -243,41 +243,22 @@ class GestionInventario extends Component
             return;
         }
 
-        $traceService = app(EquipoTraceService::class);
+        $traceService = app(\App\Services\EquipoTraceService::class);
         $equipos = Equipo::withTrashed()->whereIn('id', $this->selected)->get();
         $errores = [];
         $eliminados = 0;
 
         foreach ($equipos as $equipo) {
-            $snapshot = null;
-
-            if ($traceService->requiereSnapshotForense($equipo)) {
-                $snapshot = $traceService->crearSnapshotEliminacion($equipo, $this->motivo_eliminacion);
-            }
-
             try {
-                DB::transaction(function () use ($equipo) {
-                    $equipo->gpus()->delete();
-                    $equipo->baterias()->delete();
-
-                    if ($equipo->monitor) {
-                        $equipo->monitor()->delete();
+                DB::transaction(function () use ($equipo, $traceService) {
+                    if (! $equipo->trashed()) {
+                        $traceService->registrarAuditoria($equipo, 'ENVIADO_A_PAPELERA', $this->motivo_eliminacion);
                     }
-
-                    \App\Models\EquipoAuditoria::where('equipo_id', $equipo->id)->delete();
-                    $equipo->forceDelete();
+                    $equipo->delete();
                 });
-
-                if ($snapshot) {
-                    $traceService->marcarEliminacionConfirmada($snapshot);
-                }
 
                 $eliminados++;
             } catch (\Throwable $e) {
-                if ($snapshot) {
-                    $traceService->marcarEliminacionFallida($snapshot, $e);
-                }
-
                 $errores[] = $equipo->numero_serie ?: ('ID '.$equipo->id);
             }
         }
