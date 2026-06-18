@@ -33,7 +33,13 @@ class GestionCalidad extends Component
 
     public bool $modalRechazar = false;
 
+    public bool $modalRetrabajo = false;
+
     public ?int $equipoSeleccionadoId = null;
+
+    // Formulario retrabajo
+    public ?int $retrabajoTecnicoId = null;
+    public string $retrabajoNotas = 'RETRABAJO';
 
     // Formulario validación
     public ?int $calificacion = null;
@@ -187,6 +193,104 @@ class GestionCalidad extends Component
     }
 
     // ──────────────────────────────────────────────────────────────────────
+    // RETRABAJO / MEJORA
+    // ──────────────────────────────────────────────────────────────────────
+
+    public function abrirRetrabajo(int $equipoId): void
+    {
+        $equipo = Equipo::findOrFail($equipoId);
+
+        // Validar estatus permitidos para retrabajo/reasignación
+        $estatusPermitidos = [Equipo::AREA_SIN_ASIGNAR, Equipo::AREA_EN_CALIDAD, Equipo::AREA_FINALIZADO];
+        
+        if (!in_array($equipo->estatus_area, $estatusPermitidos)) {
+            $this->dispatch('toast', type: 'error', message: 'El equipo no está en una etapa válida para reasignarse.');
+            return;
+        }
+
+        // Validar que no tenga otra asignación activa simultáneamente
+        $activa = \App\Models\AsignacionEquipo::where('equipo_id', $equipo->id)
+            ->whereIn('camino', [\App\Models\AsignacionEquipo::PENDIENTE, \App\Models\AsignacionEquipo::PRE_ASIGNADO, \App\Models\AsignacionEquipo::EN_PROCESO])
+            ->exists();
+            
+        if ($activa) {
+            $this->dispatch('toast', type: 'error', message: 'El equipo ya tiene una asignación en curso (Duplicidad bloqueada).');
+            return;
+        }
+
+        $this->equipoSeleccionadoId = $equipoId;
+        $this->retrabajoTecnicoId = null;
+        $this->retrabajoNotas = 'RETRABAJO';
+        $this->error = '';
+        $this->modalRetrabajo = true;
+    }
+
+    public function confirmarRetrabajo(): void
+    {
+        $this->error = '';
+
+        if (!$this->retrabajoTecnicoId) {
+            $this->error = 'Debes seleccionar un técnico.';
+            return;
+        }
+
+        try {
+            $equipo = Equipo::findOrFail($this->equipoSeleccionadoId);
+            
+            // Re-validación de seguridad estricta antes de guardar
+            $estatusPermitidos = [Equipo::AREA_SIN_ASIGNAR, Equipo::AREA_EN_CALIDAD, Equipo::AREA_FINALIZADO];
+            if (!in_array($equipo->estatus_area, $estatusPermitidos)) {
+                throw new \Exception('El equipo no está en una etapa válida para reasignarse.');
+            }
+
+            $activa = \App\Models\AsignacionEquipo::where('equipo_id', $equipo->id)
+                ->whereIn('camino', [\App\Models\AsignacionEquipo::PENDIENTE, \App\Models\AsignacionEquipo::PRE_ASIGNADO, \App\Models\AsignacionEquipo::EN_PROCESO])
+                ->exists();
+                
+            if ($activa) {
+                throw new \Exception('El equipo ya tiene una asignación activa.');
+            }
+            
+            \DB::transaction(function() use ($equipo) {
+                $asignacion = \App\Models\Asignacion::create([
+                    'tecnico_id' => $this->retrabajoTecnicoId,
+                    'asignado_por_id' => auth()->id(),
+                    'lote_modelo_id' => $equipo->lote_modelo_id,
+                    'cantidad' => 1,
+                    'fecha_asignacion' => \Carbon\Carbon::today(),
+                    'estatus' => \App\Models\Asignacion::PENDIENTE,
+                    'notas' => trim($this->retrabajoNotas) ?: 'RETRABAJO',
+                ]);
+                
+                // Creamos una NUEVA AsignacionEquipo, conservando el historial de la anterior
+                \App\Models\AsignacionEquipo::create([
+                    'asignacion_id' => $asignacion->id,
+                    'equipo_id' => $equipo->id,
+                    'camino' => \App\Models\AsignacionEquipo::PRE_ASIGNADO,
+                    'pre_asignado' => true,
+                ]);
+                
+                $equipo->update([
+                    'estatus_ciclo' => Equipo::CICLO_PREPARACION, 
+                    'estatus_area' => Equipo::AREA_ASIGNADO
+                ]);
+            });
+
+            $this->dispatch('toast',
+                type: 'success',
+                title: 'Reasignado',
+                message: 'El equipo ha sido reasignado para retrabajo/mejora.'
+            );
+
+            $this->cerrarModales();
+            $this->resetPage();
+        } catch (\Throwable $e) {
+            $this->error = "Error al reasignar: {$e->getMessage()}";
+            \Log::error('confirmarRetrabajo error: '.$e->getMessage());
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
     // HELPERS
     // ──────────────────────────────────────────────────────────────────────
 
@@ -194,6 +298,7 @@ class GestionCalidad extends Component
     {
         $this->modalValidar = false;
         $this->modalRechazar = false;
+        $this->modalRetrabajo = false;
         $this->equipoSeleccionadoId = null;
     }
 
@@ -299,6 +404,16 @@ class GestionCalidad extends Component
         return \App\Models\User::whereHas('validacionesCalidad')
             ->pluck('nombre', 'id')
             ->toArray();
+    }
+
+    #[\Livewire\Attributes\Computed]
+    public function tecnicos()
+    {
+        return \App\Models\User::whereHas('role', function ($q) {
+                $q->whereIn('slug', ['tecnico', 'lider']);
+            })
+            ->orderBy('nombre')
+            ->get();
     }
 
     public function render()

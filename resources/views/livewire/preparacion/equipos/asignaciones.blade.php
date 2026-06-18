@@ -945,8 +945,16 @@
                             </div>
 
                             {{-- Footer: cancelar o mensaje --}}
-                            @if($iniciados === 0)
-                                <div class="flex justify-end pt-1">
+                            <div class="flex items-center justify-end gap-2 pt-1">
+                                <button wire:click="abrirModalEditar({{ $asignacion->id }})"
+                                    class="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5
+                                           bg-blue-50 dark:bg-blue-900/20
+                                           border border-blue-300/60 dark:border-blue-600/40
+                                           text-xs font-medium text-blue-700 dark:text-blue-300
+                                           hover:bg-blue-100 dark:hover:bg-blue-900/40 transition">
+                                    Editar cantidad
+                                </button>
+                                @if($iniciados === 0)
                                     <button wire:click="abrirModalCancelar({{ $asignacion->id }})"
                                         class="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5
                                                bg-rose-50 dark:bg-rose-900/20
@@ -955,9 +963,10 @@
                                                hover:bg-rose-100 dark:hover:bg-rose-900/40 transition">
                                         Cancelar asignación
                                     </button>
-                                </div>
-                            @else
-                                <div class="flex justify-end pt-1">
+                                @endif
+                            </div>
+                            @if($iniciados > 0)
+                                <div class="flex justify-end">
                                     <span class="text-[0.65rem] text-slate-400 dark:text-slate-500 flex items-center gap-1">
                                         <span class="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></span>
                                         No se puede cancelar — tiene equipos en proceso
@@ -1092,4 +1101,160 @@
     @endif
 
 </x-tb-background>
+
+    {{-- ═══════════════════════════════════ --}}
+    {{-- MODAL EDITAR CANTIDAD ASIGNACIÓN    --}}
+    {{-- ═══════════════════════════════════ --}}
+    @if($modalEditar)
+        @php
+            $asigEditar = $editarAsignacionId
+                ? \App\Models\Asignacion::with(['tecnico','loteModelo.lote', 'equipos'])->find($editarAsignacionId)
+                : null;
+            $iniciadosEditar = 0;
+            $maxDisponibles = 0;
+
+            if ($asigEditar) {
+                $iniciadosEditar = $asigEditar->equipos->filter(
+                    fn ($ae) => ! in_array($ae->camino, [\App\Models\AsignacionEquipo::PENDIENTE, \App\Models\AsignacionEquipo::PRE_ASIGNADO], true)
+                )->count();
+
+                $loteModeloId = $asigEditar->lote_modelo_id;
+                $modelo = \App\Models\LoteModeloRecibido::find($loteModeloId);
+
+                // Calcular total disponible del modelo para aumentar asignación
+                // Físicos sin asignar
+                $sinSerie = \App\Models\Equipo::where('lote_modelo_id', $loteModeloId)
+                    ->where('estatus_area', \App\Models\Equipo::AREA_SIN_ASIGNAR)
+                    ->whereNull('deleted_at')
+                    ->where(function ($q) {
+                        $q->whereNull('numero_serie')->orWhereRaw("TRIM(numero_serie) = ''");
+                    })->count();
+                $conSerie = \App\Models\Equipo::where('lote_modelo_id', $loteModeloId)
+                    ->where('estatus_area', \App\Models\Equipo::AREA_SIN_ASIGNAR)
+                    ->whereNull('deleted_at')
+                    ->whereNotNull('numero_serie')->whereRaw("TRIM(numero_serie) <> ''")
+                    ->whereExists(function ($q) {
+                        $q->select(DB::raw('1'))->from('equipo_movimientos as em')
+                            ->whereColumn('em.equipo_id', 'equipos.id')->where('em.tipo', 'ALTA_LOTE');
+                    })->count();
+                
+                // Cupo pendiente
+                $registrados = \App\Models\Equipo::where('lote_modelo_id', $loteModeloId)->whereNull('deleted_at')->count();
+                $reservados = \App\Models\Asignacion::where('lote_modelo_id', $loteModeloId)
+                    ->whereIn('estatus', [\App\Models\Asignacion::PENDIENTE, \App\Models\Asignacion::EN_PROCESO])
+                    ->get()->sum(fn ($a) => max($a->cantidad - $a->equipos()->count(), 0));
+                
+                $cupo = max((int) ($modelo->cantidad_recibida ?? 0) - $registrados - $reservados, 0);
+                
+                // Max disponible = cantidad actual + los extras que puede agarrar
+                $maxDisponibles = $asigEditar->cantidad + ($sinSerie + $conSerie + $cupo);
+            }
+        @endphp
+
+        <div class="fixed inset-0 z-50 flex items-center justify-center"
+             x-data
+             @keydown.escape.window="$wire.cerrarModalEditar()">
+
+            {{-- Overlay --}}
+            <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+                 wire:click="cerrarModalEditar"></div>
+
+            {{-- Modal --}}
+            <div class="relative w-[92%] max-w-md rounded-2xl border border-white/10
+                        bg-white/90 dark:bg-slate-950/90 backdrop-blur-2xl
+                        shadow-2xl shadow-slate-950/60 px-6 py-6 space-y-5">
+
+                {{-- Header --}}
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h4 class="text-base font-semibold text-slate-900 dark:text-slate-50">
+                            Editar cantidad de asignación
+                        </h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            Puedes aumentar o reducir los equipos asignados a este técnico.
+                        </p>
+                    </div>
+                    <button wire:click="cerrarModalEditar"
+                        class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20
+                               border border-white/10 text-slate-500 dark:text-slate-300
+                               flex items-center justify-center transition">✕</button>
+                </div>
+
+                {{-- Detalle de la asignación --}}
+                @if($asigEditar)
+                    <div class="rounded-xl border border-slate-200/80 dark:border-slate-700/60
+                                bg-slate-50/80 dark:bg-slate-900/40 px-4 py-3 space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500 dark:text-slate-400">Técnico</span>
+                            <span class="text-sm font-semibold text-slate-900 dark:text-slate-50">
+                                {{ $asigEditar->tecnico?->nombre }} {{ $asigEditar->tecnico?->apellido_paterno }}
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500 dark:text-slate-400">Modelo</span>
+                            <span class="text-sm text-slate-700 dark:text-slate-200">
+                                {{ $asigEditar->loteModelo?->marca }} {{ $asigEditar->loteModelo?->modelo }}
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                            <span class="text-xs text-slate-500 dark:text-slate-400">Equipos ya en proceso</span>
+                            <span class="text-sm font-semibold {{ $iniciadosEditar > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500' }}">
+                                {{ $iniciadosEditar }} equipo(s)
+                            </span>
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Input cantidad --}}
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Nueva Cantidad <span class="text-blue-500">*</span>
+                    </label>
+                    <input
+                        type="number"
+                        wire:model="editarCantidad"
+                        min="{{ $iniciadosEditar }}"
+                        max="{{ $maxDisponibles }}"
+                        class="w-full rounded-xl px-4 py-2.5 text-sm
+                               bg-white/70 dark:bg-slate-900/40
+                               border border-slate-300/80 dark:border-slate-700
+                               text-slate-900 dark:text-slate-100
+                               placeholder:text-slate-400
+                               focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50
+                               outline-none">
+                    <p class="text-[0.65rem] text-slate-400 mt-1">
+                        El técnico ya tiene {{ $iniciadosEditar }} en proceso (mínimo). 
+                        Puedes subirlo hasta {{ $maxDisponibles }} según inventario.
+                    </p>
+                    @error('editarCantidad')
+                        <p class="text-xs text-rose-500">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- Botones --}}
+                <div class="flex items-center justify-between pt-1">
+                    <button wire:click="cerrarModalEditar"
+                        class="inline-flex items-center rounded-xl px-4 py-2.5 text-sm font-medium
+                               border border-slate-300/80 dark:border-slate-700
+                               bg-white/60 dark:bg-slate-900/40
+                               text-slate-600 dark:text-slate-300
+                               hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                        Cancelar
+                    </button>
+                    <button wire:click="guardarEdicion"
+                        wire:loading.attr="disabled"
+                        wire:target="guardarEdicion"
+                        class="inline-flex items-center justify-center gap-2
+                               rounded-xl px-5 py-2.5 text-sm font-semibold
+                               bg-blue-600 hover:bg-blue-500
+                               text-white shadow-md shadow-blue-800/40
+                               hover:shadow-blue-500/60 hover:-translate-y-0.5
+                               disabled:opacity-60 transition-all duration-200">
+                        <span wire:loading.remove wire:target="guardarEdicion">Guardar cambios</span>
+                        <span wire:loading wire:target="guardarEdicion">Guardando...</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

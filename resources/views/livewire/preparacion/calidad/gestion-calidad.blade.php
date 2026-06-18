@@ -352,6 +352,19 @@
                                                 </svg>
                                                 Rechazar
                                             </button>
+                                            <button 
+                                                wire:click="abrirRetrabajo({{ $equipo->id }})"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full whitespace-nowrap
+                                                       bg-blue-600 hover:bg-blue-500
+                                                       text-xs font-semibold text-white
+                                                       shadow-md shadow-blue-500/30
+                                                       transition"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                </svg>
+                                                Retrabajo / Mejora
+                                            </button>
                                         </div>
                                     @elseif($equipo->estatus_area === 'FINALIZADO')
                                         <div class="flex flex-wrap justify-end gap-2">
@@ -396,6 +409,125 @@
     </div>
 
     {{-- MODALES --}}
+
+    {{-- Modal Retrabajo / Mejora --}}
+    @if($modalRetrabajo && $equipoSeleccionadoId)
+        @php
+            $equipo = \App\Models\Equipo::find($equipoSeleccionadoId);
+        @endphp
+
+        <div class="fixed inset-0 z-[999] flex items-center justify-center p-4 sm:p-6">
+            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" wire:click="cerrarModales"></div>
+
+            <div class="relative w-full max-w-md rounded-2xl
+                        bg-white/95 dark:bg-slate-950/80
+                        border border-slate-200/70 dark:border-white/15
+                        shadow-2xl shadow-black/50 flex flex-col max-h-[92vh]">
+
+                {{-- Header --}}
+                <div class="flex items-center justify-between px-6 py-5 border-b border-slate-200/60 dark:border-white/10 shrink-0">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                            🔄
+                        </div>
+                        <div class="min-w-0">
+                            <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-50">
+                                Retrabajo / Mejora
+                            </h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                                {{ $equipo->marca ?? '' }} {{ $equipo->modelo ?? '' }} — {{ $equipo->numero_serie ?? '' }}
+                            </p>
+                        </div>
+                    </div>
+                    <button wire:click="cerrarModales"
+                            class="flex-shrink-0 w-8 h-8 rounded-full border border-slate-300/60 dark:border-slate-600/60 flex items-center justify-center text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition text-lg leading-none">
+                        ✕
+                    </button>
+                </div>
+
+                {{-- Body --}}
+                <div class="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+                    @if($error)
+                        <div class="rounded-xl bg-red-50 dark:bg-red-900/20 p-4 border border-red-200 dark:border-red-800/50 flex gap-3">
+                            <span class="text-red-500 mt-0.5">⚠️</span>
+                            <div class="text-sm text-red-800 dark:text-red-200">
+                                {{ $error }}
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/40 p-4">
+                        <p class="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                            Al reasignar este equipo, regresará a la etapa de <span class="font-semibold text-slate-800 dark:text-slate-200">Preparación</span>. 
+                            No se generarán puntos por esta asignación.
+                        </p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                Asignar a Técnico <span class="text-red-500">*</span>
+                            </label>
+                            <select
+                                wire:model="retrabajoTecnicoId"
+                                class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
+                                    border border-slate-300 dark:border-slate-600/70
+                                    text-sm text-slate-900 dark:text-slate-100
+                                    focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+                            >
+                                <option value="">Seleccione un técnico...</option>
+                                @foreach($this->tecnicos as $t)
+                                    <option value="{{ $t->id }}">{{ $t->nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                Notas (Opcional)
+                            </label>
+                            <textarea
+                                wire:model="retrabajoNotas"
+                                rows="2"
+                                placeholder="Escribe 'RETRABAJO' o alguna indicación..."
+                                class="w-full rounded-2xl bg-white/90 dark:bg-slate-900/70
+                                    border border-slate-300 dark:border-slate-600/70
+                                    text-sm text-slate-900 dark:text-slate-100
+                                    focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+                            ></textarea>
+                            <p class="text-xs text-slate-500">Dejar "RETRABAJO" asegura que no se asignen puntos.</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Footer --}}
+                <div class="flex items-center gap-3 px-6 py-4 border-t border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
+                    <button wire:click="cerrarModales"
+                            class="flex-1 px-4 py-2.5 rounded-2xl font-semibold text-sm
+                                   bg-white dark:bg-slate-800
+                                   text-slate-700 dark:text-slate-200
+                                   border border-slate-300/80 dark:border-slate-600
+                                   hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                        Cancelar
+                    </button>
+                    <button wire:click="confirmarRetrabajo"
+                            class="flex-1 px-4 py-2.5 rounded-2xl font-semibold text-sm text-white
+                                   bg-blue-600 hover:bg-blue-500
+                                   shadow-md shadow-blue-600/30
+                                   transition flex items-center justify-center gap-2">
+                        <span wire:loading.remove wire:target="confirmarRetrabajo">Confirmar Reasignación</span>
+                        <span wire:loading wire:target="confirmarRetrabajo" class="flex items-center gap-2">
+                            <svg class="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Procesando...
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 
     {{-- Modal Aprobar --}}
     @if($modalValidar && $equipoSeleccionadoId)

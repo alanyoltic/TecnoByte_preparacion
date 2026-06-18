@@ -37,6 +37,13 @@ class Asignaciones extends Component
 
     public bool $modalCancelar = false;
 
+    // ── Editar asignación ───────────────────────────────────────────────
+    public ?int $editarAsignacionId = null;
+
+    public int $editarCantidad = 0;
+
+    public bool $modalEditar = false;
+
     // ── Nueva asignación: selecciones ─────────────────────────────────────
     public ?int $tecnicoId = null;
 
@@ -618,6 +625,178 @@ class Asignaciones extends Component
 
         $this->cerrarModalCancelar();
         unset($this->asignacionesActivas);
+        unset($this->asignacionesTecnico);
+    }
+
+    // ── Editar asignación ────────────────────────────────────────────────
+    public function abrirModalEditar(int $asignacionId): void
+    {
+        $this->autorizarGestionAsignaciones();
+
+        $asignacion = Asignacion::with('equipos')->find($asignacionId);
+        if (! $asignacion) {
+            return;
+        }
+
+        $this->editarAsignacionId = $asignacionId;
+        $this->editarCantidad = $asignacion->cantidad;
+        $this->modalEditar = true;
+    }
+
+    public function cerrarModalEditar(): void
+    {
+        $this->modalEditar = false;
+        $this->editarAsignacionId = null;
+        $this->editarCantidad = 0;
+    }
+
+    public function guardarEdicion(): void
+    {
+        $this->autorizarGestionAsignaciones();
+
+        $asignacion = Asignacion::with('equipos.equipo')->find($this->editarAsignacionId);
+        if (! $asignacion) {
+            return;
+        }
+
+        $cantidadActual = $asignacion->cantidad;
+        $nuevaCantidad = (int) $this->editarCantidad;
+
+        if ($nuevaCantidad === $cantidadActual) {
+            $this->cerrarModalEditar();
+            return;
+        }
+
+        $iniciados = $asignacion->equipos->filter(
+            fn ($ae) => ! in_array($ae->camino, [AsignacionEquipo::PENDIENTE, AsignacionEquipo::PRE_ASIGNADO], true)
+        )->count();
+
+        if ($nuevaCantidad < $iniciados) {
+            $this->dispatch('toast', [
+                'type' => 'error',
+                'title' => 'No se puede reducir la cantidad',
+                'message' => "Ya hay {$iniciados} equipo(s) en proceso o terminados.",
+            ]);
+            return;
+        }
+
+        // Si es 0, lo tratamos como una cancelación completa
+        if ($nuevaCantidad === 0) {
+            DB::transaction(function () use ($asignacion) {
+                foreach ($asignacion->equipos->filter(
+                    fn ($ae) => in_array($ae->camino, [AsignacionEquipo::PENDIENTE, AsignacionEquipo::PRE_ASIGNADO], true)
+                ) as $ae) {
+                    $ae->equipo?->update(['estatus_area' => \App\Models\Equipo::AREA_SIN_ASIGNAR]);
+                    $ae->delete();
+                }
+
+                $asignacion->update([
+                    'cantidad' => 0,
+                    'estatus' => Asignacion::CANCELADO,
+                    'notas_entrega' => 'CANCELADA — Se redujo la cantidad a 0 en la edición.',
+                ]);
+            });
+
+            $this->dispatch('toast', [
+                'type' => 'success',
+                'title' => 'Asignación cancelada',
+                'message' => 'Al reducir la cantidad a 0, la asignación ha sido cancelada.',
+            ]);
+
+            $this->cerrarModalEditar();
+            unset($this->asignacionesActivas);
+            unset($this->asignacionesTecnico);
+            return;
+        }
+
+        // Si aumentamos
+        if ($nuevaCantidad > $cantidadActual) {
+            $diferencia = $nuevaCantidad - $cantidadActual;
+            $loteModeloId = $asignacion->lote_modelo_id;
+
+            // Validar disponibles
+            $sinSerieDisponibles = $this->queryEquiposSinAsignarPorModelo($loteModeloId)
+                ->where(function ($q) {
+                    $q->whereNull('numero_serie')
+                        ->orWhereRaw("TRIM(numero_serie) = ''");
+                })
+                ->count();
+            $conSerieLoteDisponibles = $this->queryEquiposConSerieDeLotePorModelo($loteModeloId)->count();
+            
+            $modelo = \App\Models\LoteModeloRecibido::find($loteModeloId);
+            $registrados = \App\Models\Equipo::where('lote_modelo_id', $loteModeloId)->whereNull('deleted_at')->count();
+            $reservados = Asignacion::where('lote_modelo_id', $loteModeloId)
+                ->whereIn('estatus', [Asignacion::PENDIENTE, Asignacion::EN_PROCESO])
+                ->get()
+                ->sum(fn ($a) => max($a->cantidad - $a->equipos()->count(), 0));
+            $cupoSinRegistrarLibre = max((int) ($modelo->cantidad_recibida ?? 0) - $registrados - $reservados, 0);
+            
+            $disponibles = $sinSerieDisponibles + $conSerieLoteDisponibles + $cupoSinRegistrarLibre;
+
+            if ($diferencia > $disponibles) {
+                $this->dispatch('toast', [
+                    'type' => 'error',
+                    'title' => 'Sin inventario suficiente',
+                    'message' => "Solo quedan {$disponibles} equipo(s) disponibles para este modelo.",
+                ]);
+                return;
+            }
+
+            DB::transaction(function () use ($asignacion, $diferencia, $loteModeloId) {
+                $asignacion->update(['cantidad' => $asignacion->cantidad + $diferencia]);
+                
+                // Auto-asignar si hay sin serie
+                $equiposAuto = $this->queryEquiposSinAsignarPorModelo($loteModeloId)
+                    ->where(function ($q) {
+                        $q->whereNull('numero_serie')
+                            ->orWhereRaw("TRIM(numero_serie) = ''");
+                    })
+                    ->inRandomOrder()
+                    ->limit($diferencia)
+                    ->get();
+
+                foreach ($equiposAuto as $equipo) {
+                    AsignacionEquipo::create([
+                        'asignacion_id' => $asignacion->id,
+                        'equipo_id' => $equipo->id,
+                        'camino' => AsignacionEquipo::PRE_ASIGNADO,
+                        'pre_asignado' => true,
+                    ]);
+                    $equipo->update(['estatus_area' => \App\Models\Equipo::AREA_ASIGNADO]);
+                }
+            });
+        }
+        // Si reducimos
+        else {
+            DB::transaction(function () use ($asignacion, $nuevaCantidad) {
+                $asignacion->update(['cantidad' => $nuevaCantidad]);
+                
+                // Contar físicos
+                $fisicosAsignados = $asignacion->equipos()->count();
+                if ($nuevaCantidad < $fisicosAsignados) {
+                    $aRemover = $fisicosAsignados - $nuevaCantidad;
+                    // Remover 'aRemover' equipos que estén PRE_ASIGNADO o PENDIENTE
+                    $equiposRemover = $asignacion->equipos->filter(
+                        fn ($ae) => in_array($ae->camino, [AsignacionEquipo::PENDIENTE, AsignacionEquipo::PRE_ASIGNADO], true)
+                    )->take($aRemover);
+                    
+                    foreach ($equiposRemover as $ae) {
+                        $ae->equipo?->update(['estatus_area' => \App\Models\Equipo::AREA_SIN_ASIGNAR]);
+                        $ae->delete();
+                    }
+                }
+            });
+        }
+
+        $this->dispatch('toast', [
+            'type' => 'success',
+            'title' => 'Asignación actualizada',
+            'message' => 'La cantidad ha sido modificada correctamente.',
+        ]);
+
+        $this->cerrarModalEditar();
+        unset($this->asignacionesActivas);
+        unset($this->asignacionesTecnico);
     }
 
     public function render()
