@@ -43,6 +43,8 @@ class AsignacionEquipo extends Model
     const GARANTIA_EXTERNA = 'GARANTIA_EXTERNA';
 
     const DESPIECE = 'DESPIECE';
+    
+    const REASIGNADO = 'REASIGNADO';
 
     // ── Relaciones ────────────────────────────────────────────────────────
     public function asignacion(): BelongsTo
@@ -136,6 +138,7 @@ class AsignacionEquipo extends Model
             self::GARANTIA_INTERNA => 'Garantía Interna',
             self::GARANTIA_EXTERNA => 'Garantía Externa',
             self::DESPIECE => 'Para Despiece',
+            self::REASIGNADO => 'Reasignado a otro técnico',
         ];
     }
 

@@ -120,24 +120,7 @@
                                                 <td class="px-6 py-3 text-right">
  {{-- BOTÓN DAR DE BAJA --}}
     @if(auth()->user()?->tienePermiso('sistema.usuarios.editar'))
-    <form action="{{ route('usuarios.baja', $usuario) }}" method="POST">
-        @csrf
-        @method('PATCH')
-
-        <button
-            type="submit"
-            onclick="return confirm('¿Seguro que deseas dar de baja este usuario? Esta acción conservará su historial pero bloqueará su acceso.')"
-            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium
-                text-red-400 bg-red-500/10 border border-red-400/40
-                hover:bg-red-500/80 hover:text-white transition-all duration-200"
-        >
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            Dar de baja
-        </button>
-    </form>
+        <livewire:usuarios.boton-baja :usuario="$usuario" :key="'baja-'.$usuario->id" />
     @endif
 
                                                 </td>

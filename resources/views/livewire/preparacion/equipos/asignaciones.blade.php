@@ -243,7 +243,7 @@
                                     @endphp
                                     @continue(!$tecnico)
                                     @php
-                                        $completados = $asignaciones->sum(fn($a) => $a->equipos->whereIn('camino',['COMPLETADO','EN_CALIDAD'])->count());
+                                        $completados = $asignaciones->sum(fn($a) => $a->equipos->whereNotIn('camino',['PENDIENTE','PRE_ASIGNADO','EN_PROCESO'])->count());
                                         $enProceso   = $asignaciones->sum(fn($a) => $a->equipos->where('camino','EN_PROCESO')->count());
                                         $problemas   = $asignaciones->sum(fn($a) => $a->equipos->whereIn('camino',['PIEZA_PENDIENTE','GARANTIA_INTERNA','GARANTIA_EXTERNA'])->count());
                                         $pct         = $totalEq > 0 ? round(($completados / $totalEq) * 100) : 0;
@@ -709,7 +709,7 @@
                 $tecnico      = $this->tecnicoDetalle;
                 $asignaciones = $this->asignacionesTecnico;
                 $totalEq      = $asignaciones->sum('cantidad');
-                $totalComp    = $asignaciones->sum(fn($a) => $a->equipos->whereIn('camino',['COMPLETADO','EN_CALIDAD'])->count());
+                $totalComp    = $asignaciones->sum(fn($a) => $a->equipos->whereNotIn('camino',['PENDIENTE','PRE_ASIGNADO','EN_PROCESO'])->count());
                 $totalProc    = $asignaciones->sum(fn($a) => $a->equipos->where('camino','EN_PROCESO')->count());
                 $totalPend    = $asignaciones->sum(fn($a) => $a->equipos->whereIn('camino',['PENDIENTE','PRE_ASIGNADO'])->count());
                 $totalPiezas  = $asignaciones->sum(fn($a) => $a->equipos->where('camino','PIEZA_PENDIENTE')->count());
@@ -795,7 +795,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     @foreach($asignaciones as $asignacion)
                         @php
-                            $completados = $asignacion->equipos->whereIn('camino',['COMPLETADO','EN_CALIDAD'])->count();
+                            $completados = $asignacion->equipos->whereNotIn('camino',['PENDIENTE','PRE_ASIGNADO','EN_PROCESO'])->count();
                             $enProceso   = $asignacion->equipos->where('camino','EN_PROCESO')->count();
                             $piezas      = $asignacion->equipos->where('camino','PIEZA_PENDIENTE')->count();
                             $garantia    = $asignacion->equipos->whereIn('camino',['GARANTIA_INTERNA','GARANTIA_EXTERNA'])->count();

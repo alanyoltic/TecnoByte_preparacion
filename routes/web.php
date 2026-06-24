@@ -188,6 +188,10 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
         ->middleware('permiso:prep.calidad.validar')
         ->name('preparacion.calidad');
 
+    Route::get('/preparacion/calidad/escaner', \App\Livewire\Preparacion\Calidad\EscanerCalidad::class)
+        ->middleware('permiso:prep.calidad.validar')
+        ->name('preparacion.calidad.escaner');
+
     Route::get('/preparacion/catalogo-piezas', CatalogoPiezas::class)
         ->middleware('permiso:prep.inventario.gestion')
         ->name('preparacion.catalogo-piezas');

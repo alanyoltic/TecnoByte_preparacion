@@ -189,25 +189,139 @@
     </div>
     @endif
 
-    {{-- Registro lateral solo para calidad (link directo) --}}
+    {{-- ===================== CALIDAD ===================== --}}
     @if(optional($u?->role)->slug === 'calidad' || ($u && $u->tienePermiso('prep.calidad.validar')))
-    @php $isRegistro = request()->routeIs('preparacion.calidad'); @endphp
-    <div class="px-3 mt-2">
-        <a href="{{ route('preparacion.calidad') }}"
-           title="Registro"
-           class="{{ $linkBase }} {{ $isRegistro
+    @php
+        $calidadItems = [
+            [
+                'label' => 'Lista de Equipos',
+                'href'  => route('preparacion.calidad'),
+                'perm'  => 'prep.calidad.validar',
+            ],
+            [
+                'label' => 'Escáner Automático',
+                'href'  => route('preparacion.calidad.escaner'),
+                'perm'  => 'prep.calidad.validar',
+            ],
+        ];
+
+        // Ya validamos el permiso en el @if padre, pero filtramos por si acaso
+        $calidadItems = array_values(array_filter(
+            $calidadItems,
+            fn ($it) => optional($u?->role)->slug === 'calidad' || ($u && $u->tienePermiso($it['perm']))
+        ));
+    @endphp
+
+    <div class="w-full mt-3 px-3"
+        x-data="{
+            id: 'calidad',
+            popoverOpen: false,
+            popoverStyle: '',
+            triggerEl: null,
+
+            isOpen(){ return sidebarOpen && activeMenu === this.id; },
+
+            toggle(e){
+                if (sidebarOpen) {
+                    setMenu(this.id);
+                    return;
+                }
+                if (this.popoverOpen) {
+                    this.popoverOpen = false;
+                } else {
+                    this.triggerEl = e.currentTarget;
+                    this.updatePopoverPosition();
+                    this.popoverOpen = true;
+                }
+            },
+
+            updatePopoverPosition(){
+                if (!this.triggerEl) return;
+                const rect = this.triggerEl.getBoundingClientRect();
+                this.popoverStyle = `top: ${rect.top}px; left: ${rect.right + 8}px;`;
+            }
+        }"
+        @scroll.window="if(!sidebarOpen && popoverOpen) updatePopoverPosition()"
+        @resize.window="if(!sidebarOpen && popoverOpen) updatePopoverPosition()"
+        @click.outside="popoverOpen = false"
+        @sidebar-toggle.window="if(sidebarOpen) popoverOpen = false"
+    >
+        <button
+            type="button"
+            @click="toggle($event)"
+            title="Calidad"
+            class="{{ $linkBase }} {{ request()->routeIs('preparacion.calidad*')
                 ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB] text-white font-semibold drop-shadow-[0_0_6px_rgba(99,102,241,0.65)] border-blue-400/70 shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
                 : 'bg-white/10 dark:bg-slate-900/20 text-slate-700 dark:text-slate-400 hover:bg-white/20 dark:hover:bg-slate-900/30 hover:text-slate-900 dark:hover:text-white' }}"
-           :class="sidebarOpen ? 'justify-start' : 'justify-center'">
-            <div class="flex items-center">
+            :class="sidebarOpen ? 'justify-between' : 'justify-center'"
+        >
+            <div class="flex items-center gap-2">
                 <div class="flex items-center justify-center w-7 h-7">
                     <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
-                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Registro</span>
+                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>
+                    Calidad
+                </span>
             </div>
-        </a>
+            <svg class="w-4 h-4 text-slate-400 transition-transform duration-300"
+                 x-show="sidebarOpen"
+                 :class="isOpen() ? 'rotate-180 text-blue-400' : ''"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </button>
+
+        <!-- Submenú en Sidebar (Abierto) -->
+        <div x-show="isOpen()"
+             x-collapse
+             x-cloak
+             class="mt-1 space-y-1">
+            @foreach($calidadItems as $item)
+                @php $isActive = request()->url() === $item['href']; @endphp
+                <a href="{{ $item['href'] }}"
+                   class="block pl-11 pr-3 py-2 text-sm rounded-xl transition-all duration-200 relative
+                          {{ $isActive
+                             ? 'text-blue-600 dark:text-blue-400 font-semibold bg-blue-50/50 dark:bg-blue-900/20'
+                             : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50' }}">
+                    @if($isActive)
+                        <div class="absolute left-4 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>
+                    @else
+                        <div class="absolute left-4 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></div>
+                    @endif
+                    {{ $item['label'] }}
+                </a>
+            @endforeach
+        </div>
+
+        <!-- Popover (Sidebar Colapsado) -->
+        <div x-show="popoverOpen"
+             x-cloak
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0 translate-x-2"
+             x-transition:enter-end="opacity-100 translate-x-0"
+             x-transition:leave="transition ease-in duration-100"
+             x-transition:leave-start="opacity-100 translate-x-0"
+             x-transition:leave-end="opacity-0 translate-x-2"
+             class="fixed z-[100] w-48 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden py-1"
+             :style="popoverStyle">
+            <div class="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
+                <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Calidad</span>
+            </div>
+            <div class="p-1 space-y-0.5">
+                @foreach($calidadItems as $item)
+                    @php $isActive = request()->url() === $item['href']; @endphp
+                    <a href="{{ $item['href'] }}"
+                       class="block px-3 py-2 text-sm rounded-xl transition-all duration-200
+                              {{ $isActive
+                                 ? 'text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-900/20'
+                                 : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white' }}">
+                        {{ $item['label'] }}
+                    </a>
+                @endforeach
+            </div>
+        </div>
     </div>
     @endif
 
