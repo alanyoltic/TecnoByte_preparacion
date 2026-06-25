@@ -718,9 +718,23 @@ class MiTrabajo extends Component
                 continue;
             }
 
-            $equipo = Equipo::where('numero_serie', $serie)->first();
+            $equipo = Equipo::withTrashed()->where('numero_serie', $serie)->first();
 
             if ($equipo) {
+                if ($equipo->trashed()) {
+                    $equipo->restore();
+                    // Limpiar datos técnicos viejos al restaurarlo para que inicie limpio
+                    $equipo->update($this->camposCaracteristicasVacios() + [
+                        'notas_generales' => null,
+                        'detalles_esteticos' => null,
+                        'detalles_funcionamiento' => null,
+                        'estatus_area' => Equipo::AREA_EN_ESPERA,
+                    ]);
+                    \App\Models\EquipoBateria::where('equipo_id', $equipo->id)->delete();
+                    \App\Models\EquipoMonitor::where('equipo_id', $equipo->id)->delete();
+                    \App\Models\EquipoGpu::where('equipo_id', $equipo->id)->delete();
+                }
+
                 if ($equipo->lote_modelo_id !== $asignacion->lote_modelo_id) {
                     $errores[] = "{$serie}: pertenece a un modelo diferente.";
 
