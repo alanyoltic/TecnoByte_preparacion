@@ -254,6 +254,15 @@ class GestionInventario extends Component
                     if (! $equipo->trashed()) {
                         $traceService->registrarAuditoria($equipo, 'ENVIADO_A_PAPELERA', $this->motivo_eliminacion);
                     }
+                    
+                    // Borrar asignaciones relacionadas para que no queden "fantasmas" en la vista del técnico
+                    $asignacionesEquipo = \App\Models\AsignacionEquipo::where('equipo_id', $equipo->id)->get();
+                    foreach ($asignacionesEquipo as $ae) {
+                        \App\Models\PuntoTecnico::where('asignacion_equipo_id', $ae->id)->delete();
+                        \App\Models\SolicitudPieza::where('asignacion_equipo_id', $ae->id)->delete();
+                        $ae->delete();
+                    }
+
                     $equipo->delete();
                 });
 
