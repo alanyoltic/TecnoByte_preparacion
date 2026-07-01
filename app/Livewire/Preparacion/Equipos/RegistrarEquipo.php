@@ -44,12 +44,21 @@ class RegistrarEquipo extends Component
         'USB 2.0', 'USB 3.0', 'USB 3.1', 'USB 3.2', 'USB-C',
     ];
 
+    public ?string $equipoPlantillaId = '';
+    public array $opcionesPlantilla = [];
+    public bool $tieneEquiposPrevios = false;
+
     // =======================
     // Lifecycle
     // =======================
     public function mount(): void
     {
-        $this->autorizarCreacion();
+        abort_unless(auth()->user()?->tienePermiso('prep.equipos.crear'), 403);
+        
+        $allowedEmails = ['soporte@tecnobytemx.com', 'prueba@prueba.com', 'tamara.trejo@tecnobytemx.com'];
+        if (auth()->user() && in_array(auth()->user()->email, $allowedEmails)) {
+            $this->tieneEquiposPrevios = \App\Models\Equipo::where('registrado_por_user_id', \Illuminate\Support\Facades\Auth::id())->exists();
+        }
         // ✅ Instancia estable del Form
 
         $this->cargarCatalogos();
@@ -59,6 +68,213 @@ class RegistrarEquipo extends Component
     private function autorizarCreacion(): void
     {
         abort_unless(auth()->user()?->tienePermiso('prep.equipos.crear'), 403);
+    }
+
+    public function cargarOpcionesPlantilla(): void
+    {
+        $this->opcionesPlantilla = [];
+        $this->equipoPlantillaId = '';
+
+        // Validar que el usuario pertenezca al departamento de PREPARACION (ID 1), sin importar su rol
+        if (auth()->user()?->departamento_id !== 1) {
+            return;
+        }
+
+        if ($this->form->lote_modelo_id) {
+            $this->opcionesPlantilla = \App\Models\Equipo::where('registrado_por_user_id', \Illuminate\Support\Facades\Auth::id())
+                ->where('lote_modelo_id', $this->form->lote_modelo_id)
+                ->orderBy('id', 'desc')
+                ->get(['id', 'numero_serie', 'marca', 'modelo'])
+                ->toArray();
+        }
+    }
+
+    public function aplicarPlantilla(): void
+    {
+        if (empty($this->equipoPlantillaId)) {
+            return;
+        }
+
+        $ultimoEquipo = null;
+
+        if ($this->equipoPlantillaId === 'ultimo') {
+            $ultimoEquipo = \App\Models\Equipo::where('registrado_por_user_id', \Illuminate\Support\Facades\Auth::id())
+                ->latest('id')
+                ->first();
+        } else {
+            $ultimoEquipo = \App\Models\Equipo::where('registrado_por_user_id', \Illuminate\Support\Facades\Auth::id())
+                ->find($this->equipoPlantillaId);
+        }
+
+        if (! $ultimoEquipo) {
+            $this->dispatch('toast', type: 'error', message: 'No se encontró el equipo seleccionado.');
+            $this->equipoPlantillaId = '';
+            return;
+        }
+
+        $this->form->fillFromModel($ultimoEquipo);
+        $this->form->numero_serie = ''; // Limpiamos número de serie
+        $this->form->estatus_area = 'EN_PROCESO'; // Reiniciamos estatus de área para nuevo registro
+
+        $this->hidratarDinamicosDesdeEquipo();
+        $this->hidratarRelacionadas($ultimoEquipo);
+
+        $loteId = $this->form->lote_id;
+        $loteModeloId = $this->form->lote_modelo_id;
+
+        $this->actualizarLote($loteId);
+        // actualizarLote resetea el lote_modelo_id, asi que lo restauramos:
+        $this->form->lote_modelo_id = $loteModeloId;
+        $this->actualizarModelo($loteModeloId);
+
+        $this->dispatch('toast', type: 'success', message: 'Plantilla cargada. Por favor, ingresa el nuevo Número de Serie.');
+        
+        $this->equipoPlantillaId = ''; // Reset the dropdown
+    }
+
+    private function hidratarDinamicosDesdeEquipo(): void
+    {
+        $this->form->puertos_usb = $this->buildRowsFromMap(\App\Livewire\Concerns\EquipoPortMaps::MAP_USB);
+        $this->form->puertos_video = $this->buildRowsFromMap(\App\Livewire\Concerns\EquipoPortMaps::MAP_VIDEO);
+        $this->form->lectores = $this->buildRowsFromMap(\App\Livewire\Concerns\EquipoPortMaps::MAP_LECTORES);
+
+        $this->form->slots_almacenamiento = $this->buildRowsFromSlots([
+            'SSD' => 'slots_alm_ssd',
+            'M.2' => 'slots_alm_m2',
+            'M.2 MICRO' => 'slots_alm_m2_micro',
+            'HDD' => 'slots_alm_hdd',
+            'MSATA' => 'slots_alm_msata',
+        ]);
+
+        [$checksE, $otroE] = $this->parseChecksAndOtro($this->form->detalles_esteticos ?? '');
+        $this->form->detalles_esteticos_checks = $checksE;
+        $this->form->detalles_esteticos_otro = $otroE;
+
+        [$checksF, $otroF] = $this->parseChecksAndOtro($this->form->detalles_funcionamiento ?? '');
+        $this->form->detalles_funcionamiento_checks = $checksF;
+        $this->form->detalles_funcionamiento_otro = $otroF;
+    }
+
+    private function buildRowsFromMap(array $mapLabelToColumn): array
+    {
+        $rows = [];
+        foreach ($mapLabelToColumn as $label => $col) {
+            $val = $this->form->{$col} ?? null;
+            if ($val === null || $val === '' || $val === '0' || $val === 0) continue;
+            $qty = is_numeric($val) ? (int) $val : 1;
+            if ($qty > 0) $rows[] = ['tipo' => $label, 'cantidad' => $qty];
+        }
+        return $rows;
+    }
+
+    private function buildRowsFromSlots(array $labelToColumn): array
+    {
+        $rows = [];
+        foreach ($labelToColumn as $label => $col) {
+            $val = $this->form->{$col} ?? null;
+            if ($val === null || $val === '' || $val === '0' || $val === 0) continue;
+            $qty = is_numeric($val) ? (int) $val : 1;
+            if ($qty > 0) $rows[] = ['tipo' => $label, 'cantidad' => $qty];
+        }
+        return $rows;
+    }
+
+    private function parseChecksAndOtro(string $text): array
+    {
+        $text = trim($text);
+        if ($text === '') return [[], null];
+
+        $otro = null;
+        $parts = array_map('trim', explode('|', $text));
+        
+        $checksPart = $parts[0] ?? '';
+        $checks = array_values(array_filter(array_map('trim', explode(',', $checksPart))));
+
+        foreach ($parts as $p) {
+            if (stripos($p, 'otro:') === 0) {
+                $otro = trim(substr($p, 5));
+            }
+        }
+
+        if (in_array('N/A', $checks, true)) return [['N/A'], null];
+        return [$checks, ($otro !== '' ? $otro : null)];
+    }
+
+    private function hidratarRelacionadas(Equipo $equipo): void
+    {
+        $f = $this->form;
+
+        // Monitor
+        $m = EquipoMonitor::where('equipo_id', $equipo->id)->first();
+        if ($m) {
+            if ($m->origen_pantalla === 'INTEGRADA') {
+                $f->monitor_incluido = 'NO';
+                $f->pantalla_pulgadas = $m->pulgadas;
+                $f->pantalla_resolucion = $m->resolucion;
+                $f->pantalla_es_touch = (bool) $m->es_touch;
+                $f->pantalla_tipo = $m->tipo_panel; // Fix extra info si la hay
+
+                $this->resetMonitorAllFields();
+            } else {
+                $f->monitor_incluido = ((int) ($m->incluido ?? 1) === 1) ? 'SI' : 'NO';
+                $f->monitor_pulgadas = $m->pulgadas;
+                $f->monitor_resolucion = $m->resolucion;
+                $f->monitor_es_touch = (bool) $m->es_touch;
+                $f->monitor_tipo_panel = $m->tipo_panel;
+
+                $f->pantalla_pulgadas = null;
+                $f->pantalla_resolucion = null;
+                $f->pantalla_es_touch = false;
+
+                $f->monitor_detalles_esteticos_checks = (string) ($m->detalles_esteticos_checks ?? '');
+                $f->monitor_detalles_esteticos_otro = (string) ($m->detalles_esteticos_otro ?? '');
+                $f->monitor_detalles_funcionamiento_checks = (string) ($m->detalles_funcionamiento_checks ?? '');
+                $f->monitor_detalles_funcionamiento_otro = (string) ($m->detalles_funcionamiento_otro ?? '');
+
+                $rows = [];
+                foreach (\App\Livewire\Concerns\EquipoPortMaps::MAP_MONITOR_IN as $label => $col) {
+                    $qty = (int) ($m->{$col} ?? 0);
+                    if ($qty > 0) $rows[] = ['tipo' => $label, 'cantidad' => $qty];
+                }
+                $f->monitor_entradas_rows = $rows;
+            }
+        }
+
+        // Baterías
+        $bats = EquipoBateria::query()
+            ->where('equipo_id', $equipo->id)
+            ->orderBy('id')
+            ->get()
+            ->values();
+
+        $f->bateria_tiene = $bats->isNotEmpty();
+        $f->bateria1_tipo = $bats[0]->tipo ?? null;
+        $f->bateria1_salud = isset($bats[0]) && $bats[0]->salud_percent ? (string) ((int) $bats[0]->salud_percent) : null;
+        
+        $f->bateria2_tiene = isset($bats[1]);
+        $f->bateria2_tipo = $bats[1]->tipo ?? null;
+        $f->bateria2_salud = isset($bats[1]) && $bats[1]->salud_percent ? (string) ((int) $bats[1]->salud_percent) : null;
+
+        // GPUs
+        $gpus = EquipoGpu::query()
+            ->where('equipo_id', $equipo->id)
+            ->get()
+            ->keyBy(fn ($g) => strtoupper((string) $g->tipo));
+
+        $ig = $gpus->get('INTEGRADA');
+        $dg = $gpus->get('DEDICADA');
+
+        $f->gpu_integrada_tiene = (bool) ($ig?->activo ?? false);
+        $f->gpu_integrada_marca = $ig?->marca;
+        $f->gpu_integrada_modelo = $ig?->modelo;
+        $f->gpu_integrada_vram = $ig?->vram !== null ? (string) ((int) $ig->vram) : null;
+        $f->gpu_integrada_vram_unidad = $ig?->vram_unidad ?: ($f->gpu_integrada_vram_unidad ?: 'GB');
+
+        $f->gpu_dedicada_tiene = (bool) ($dg?->activo ?? false);
+        $f->gpu_dedicada_marca = $dg?->marca;
+        $f->gpu_dedicada_modelo = $dg?->modelo;
+        $f->gpu_dedicada_vram = $dg?->vram !== null ? (string) ((int) $dg->vram) : null;
+        $f->gpu_dedicada_vram_unidad = $dg?->vram_unidad ?: ($f->gpu_dedicada_vram_unidad ?: 'GB');
     }
 
     private function setDefaultsEnForm(): void
@@ -154,6 +370,7 @@ class RegistrarEquipo extends Component
         $f->marca = null;
         $f->modelo = null;
         $this->modelosLote = [];
+        $this->cargarOpcionesPlantilla();
 
         if (! $loteId) {
             $f->proveedor_id = null;
@@ -192,6 +409,8 @@ class RegistrarEquipo extends Component
         $f->catalogo_equipo_id = null;
         $f->marca = null;
         $f->modelo = null;
+
+        $this->cargarOpcionesPlantilla();
 
         if (! $modeloId) {
             return;

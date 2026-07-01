@@ -60,6 +60,10 @@ class EditarEquipo extends Component
 
     public bool $hasChanges = false;
 
+    public ?string $equipoPlantillaId = '';
+    public array $opcionesPlantilla = [];
+    public bool $tieneEquiposPrevios = false;
+
     // =======================
     // Lifecycle
     // =======================
@@ -113,6 +117,21 @@ class EditarEquipo extends Component
         // 1) Catálogos (como objetos)
         $this->cargarCatalogos();
 
+        if (auth()->user() && in_array(auth()->user()->email, ['soporte@tecnobytemx.com', 'prueba@prueba.com', 'tamara.trejo@tecnobytemx.com'])) {
+            $this->tieneEquiposPrevios = \App\Models\Equipo::where('registrado_por_user_id', \Illuminate\Support\Facades\Auth::id())
+                ->where('id', '!=', $equipo->id)
+                ->exists();
+            
+            if ($equipo->lote_modelo_id) {
+                $this->opcionesPlantilla = \App\Models\Equipo::where('registrado_por_user_id', \Illuminate\Support\Facades\Auth::id())
+                    ->where('lote_modelo_id', $equipo->lote_modelo_id)
+                    ->where('id', '!=', $equipo->id)
+                    ->orderBy('id', 'desc')
+                    ->get(['id', 'numero_serie', 'marca', 'modelo'])
+                    ->toArray();
+            }
+        }
+
         // 2) Hidratar Form desde Equipo (tu Form ya tiene esto en Editar)
         //    (si tu método se llama distinto, cámbialo aquí)
         $this->form->setEquipo($equipo);
@@ -147,6 +166,55 @@ class EditarEquipo extends Component
     private function autorizarEdicion(): void
     {
         abort_unless(auth()->user()?->tienePermiso('prep.equipos.editar'), 403);
+    }
+
+    public function aplicarPlantilla(): void
+    {
+        if (empty($this->equipoPlantillaId)) {
+            return;
+        }
+
+        $ultimoEquipo = null;
+
+        if ($this->equipoPlantillaId === 'ultimo') {
+            $ultimoEquipo = \App\Models\Equipo::where('registrado_por_user_id', \Illuminate\Support\Facades\Auth::id())
+                ->where('id', '!=', $this->equipo->id)
+                ->latest('id')
+                ->first();
+        } else {
+            $ultimoEquipo = \App\Models\Equipo::where('registrado_por_user_id', \Illuminate\Support\Facades\Auth::id())
+                ->find($this->equipoPlantillaId);
+        }
+
+        if (! $ultimoEquipo) {
+            $this->dispatch('toast', type: 'error', message: 'No se encontró el equipo seleccionado.');
+            $this->equipoPlantillaId = '';
+            return;
+        }
+
+        // Respaldar campos únicos del equipo actual que NO deben sobrescribirse
+        $snapshotActual = $this->form->all();
+
+        // Llenamos el form con la plantilla
+        $this->form->setEquipo($ultimoEquipo);
+        
+        // Restauramos los valores específicos del equipo editado
+        $this->form->numero_serie = $snapshotActual['numero_serie'] ?? '';
+        $this->form->lote_id = $snapshotActual['lote_id'] ?? null;
+        $this->form->lote_modelo_id = $snapshotActual['lote_modelo_id'] ?? null;
+        $this->form->catalogo_equipo_id = $snapshotActual['catalogo_equipo_id'] ?? null;
+        $this->form->marca = $snapshotActual['marca'] ?? '';
+        $this->form->modelo = $snapshotActual['modelo'] ?? '';
+        $this->form->proveedor_id = $snapshotActual['proveedor_id'] ?? null;
+        $this->form->estatus_area = $snapshotActual['estatus_area'] ?? '';
+
+        $this->hidratarDinamicosDesdeEquipo($ultimoEquipo);
+        $this->hidratarRelacionadas($ultimoEquipo);
+
+        $this->dispatch('toast', type: 'success', message: 'Características rellenadas desde la plantilla.');
+        
+        $this->equipoPlantillaId = ''; // Reset the dropdown
+        $this->hasChanges = true;
     }
 
     private function ensureDefaultsEnForm(): void
@@ -201,14 +269,15 @@ class EditarEquipo extends Component
         $this->cargarModelosDelLote((int) $lm->lote_id, true);
     }
 
-    private function hidratarRelacionadas(): void
+    private function hidratarRelacionadas(?Equipo $equipoFuente = null): void
     {
         $f = $this->form;
+        $idAUsar = $equipoFuente ? $equipoFuente->id : $this->equipo->id;
 
         // =======================
         // Monitor / Pantalla
         // =======================
-        $m = EquipoMonitor::where('equipo_id', $this->equipo->id)->first();
+        $m = EquipoMonitor::where('equipo_id', $idAUsar)->first();
 
         if ($m) {
             if ($m->origen_pantalla === 'INTEGRADA') {
@@ -280,7 +349,7 @@ class EditarEquipo extends Component
         // Baterías
         // =======================
         $bats = EquipoBateria::query()
-            ->where('equipo_id', $this->equipo->id)
+            ->where('equipo_id', $idAUsar)
             ->orderBy('id')
             ->get()
             ->values();
@@ -298,7 +367,7 @@ class EditarEquipo extends Component
         // GPUs (equipo_gpus)
         // =======================
         $gpus = EquipoGpu::query()
-            ->where('equipo_id', $this->equipo->id)
+            ->where('equipo_id', $idAUsar)
             ->get()
             ->keyBy(fn ($g) => strtoupper((string) $g->tipo));
 
@@ -318,12 +387,14 @@ class EditarEquipo extends Component
         $f->gpu_dedicada_vram_unidad = $dg?->vram_unidad ?: ($f->gpu_dedicada_vram_unidad ?: 'GB');
     }
 
-    private function hidratarDinamicosDesdeEquipo(): void
+    private function hidratarDinamicosDesdeEquipo(?Equipo $equipoFuente = null): void
     {
+        $equipoObj = $equipoFuente ?: $this->equipo;
+
         // 1) Reconstruir filas dinámicas de puertos/lectores/slots desde columnas del equipo
-        $this->form->puertos_usb = $this->buildRowsFromMap(EquipoPortMaps::MAP_USB);
-        $this->form->puertos_video = $this->buildRowsFromMap(EquipoPortMaps::MAP_VIDEO);
-        $this->form->lectores = $this->buildRowsFromMap(EquipoPortMaps::MAP_LECTORES);
+        $this->form->puertos_usb = $this->buildRowsFromMap(EquipoPortMaps::MAP_USB, $equipoObj);
+        $this->form->puertos_video = $this->buildRowsFromMap(EquipoPortMaps::MAP_VIDEO, $equipoObj);
+        $this->form->lectores = $this->buildRowsFromMap(EquipoPortMaps::MAP_LECTORES, $equipoObj);
 
         $this->form->slots_almacenamiento = $this->buildRowsFromSlots([
             'SSD' => 'slots_alm_ssd',
@@ -331,14 +402,14 @@ class EditarEquipo extends Component
             'M.2 MICRO' => 'slots_alm_m2_micro',
             'HDD' => 'slots_alm_hdd',
             'MSATA' => 'slots_alm_msata',
-        ]);
+        ], $equipoObj);
 
         // 2) Parsear detalles_esteticos / detalles_funcionamiento a checks + otro
-        [$checksE, $otroE] = $this->parseChecksAndOtro($this->form->detalles_esteticos ?? '');
+        [$checksE, $otroE] = $this->parseChecksAndOtro($equipoObj->detalles_esteticos ?? '');
         $this->form->detalles_esteticos_checks = $checksE;
         $this->form->detalles_esteticos_otro = $otroE;
 
-        [$checksF, $otroF] = $this->parseChecksAndOtro($this->form->detalles_funcionamiento ?? '');
+        [$checksF, $otroF] = $this->parseChecksAndOtro($equipoObj->detalles_funcionamiento ?? '');
         $this->form->detalles_funcionamiento_checks = $checksF;
         $this->form->detalles_funcionamiento_otro = $otroF;
     }
@@ -347,12 +418,13 @@ class EditarEquipo extends Component
      * Construye rows tipo: [ ['tipo' => 'USB 3.0', 'cantidad' => 2], ... ]
      * a partir de un MAP label => columna (ej. 'USB 3.0' => 'puertos_usb_30').
      */
-    private function buildRowsFromMap(array $mapLabelToColumn): array
+    private function buildRowsFromMap(array $mapLabelToColumn, ?Equipo $equipoObj = null): array
     {
+        $equipoObj = $equipoObj ?: $this->equipo;
         $rows = [];
-
+        
         foreach ($mapLabelToColumn as $label => $col) {
-            $val = $this->form->{$col} ?? null;
+            $val = $equipoObj->{$col} ?? null;
 
             if ($val === null || $val === '' || $val === '0' || $val === 0) {
                 continue;
@@ -372,12 +444,13 @@ class EditarEquipo extends Component
         return $rows;
     }
 
-    private function buildRowsFromSlots(array $labelToColumn): array
+    private function buildRowsFromSlots(array $labelToColumn, ?Equipo $equipoObj = null): array
     {
+        $equipoObj = $equipoObj ?: $this->equipo;
         $rows = [];
 
         foreach ($labelToColumn as $label => $col) {
-            $val = $this->form->{$col} ?? null;
+            $val = $equipoObj->{$col} ?? null;
 
             if ($val === null || $val === '' || $val === '0' || $val === 0) {
                 continue;

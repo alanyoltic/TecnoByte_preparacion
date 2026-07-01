@@ -59,6 +59,11 @@ class MiTrabajo extends Component
 
     public int $cantidadPieza = 1;     // cantidad que necesita
 
+    // ── Plantillas ────────────────────────────────────────────────────────
+    public ?string $equipoPlantillaId = '';
+    public array $opcionesPlantilla = [];
+    public bool $tieneEquiposPrevios = false;
+
     public string $busquedaPieza = '';    // búsqueda en tiempo real
 
     public string $filtroCategoriaPieza = '';    // filtro por categoría
@@ -287,6 +292,23 @@ class MiTrabajo extends Component
         $this->asignacionEquipoId = $asignacionEquipoId;
         $this->equipoTerminado = $ae->camino !== AsignacionEquipo::EN_PROCESO;
 
+        // ── Plantillas ────────────────────────────────────────────────────────
+        $allowedEmails = ['soporte@tecnobytemx.com', 'prueba@prueba.com', 'tamara.trejo@tecnobytemx.com'];
+        if (auth()->user() && in_array(auth()->user()->email, $allowedEmails)) {
+            $this->tieneEquiposPrevios = \App\Models\Equipo::where('registrado_por_user_id', Auth::id())
+                ->where('id', '!=', $equipo->id)
+                ->exists();
+            
+            if ($equipo->lote_modelo_id) {
+                $this->opcionesPlantilla = \App\Models\Equipo::where('registrado_por_user_id', Auth::id())
+                    ->where('lote_modelo_id', $equipo->lote_modelo_id)
+                    ->where('id', '!=', $equipo->id)
+                    ->orderBy('id', 'desc')
+                    ->get(['id', 'numero_serie', 'marca', 'modelo'])
+                    ->toArray();
+            }
+        }
+
         // ── Reset COMPLETO antes de cargar el nuevo equipo ────────────────
         // Evita que datos del equipo anterior persistan en pantalla
         $this->resetFormParaEquipo();
@@ -362,6 +384,121 @@ class MiTrabajo extends Component
         $this->error = '';
         $this->vista = 'caracteristicas';
         unset($this->equipoActual);
+    }
+
+    public function aplicarPlantilla(): void
+    {
+        if (empty($this->equipoPlantillaId) || ! $this->asignacionEquipoId) {
+            return;
+        }
+
+        $ae = AsignacionEquipo::with('equipo')->find($this->asignacionEquipoId);
+        $equipoOriginal = $ae?->equipo;
+
+        if (! $equipoOriginal) {
+            return;
+        }
+
+        $ultimoEquipo = null;
+
+        if ($this->equipoPlantillaId === 'ultimo') {
+            $ultimoEquipo = Equipo::where('registrado_por_user_id', Auth::id())
+                ->where('id', '!=', $equipoOriginal->id)
+                ->latest('id')
+                ->first();
+        } else {
+            $ultimoEquipo = Equipo::where('registrado_por_user_id', Auth::id())
+                ->find($this->equipoPlantillaId);
+        }
+
+        if (! $ultimoEquipo) {
+            $this->dispatch('toast', type: 'error', message: 'No se encontró el equipo seleccionado.');
+            $this->equipoPlantillaId = '';
+            return;
+        }
+
+        // Respaldar campos únicos del equipo actual que NO deben sobrescribirse
+        $snapshotActual = $this->form->all();
+
+        // Llenamos el form con la plantilla
+        $this->form->fillFromModel($ultimoEquipo);
+        
+        // Restauramos los valores específicos del equipo editado
+        $this->form->numero_serie = $snapshotActual['numero_serie'] ?? '';
+        $this->form->lote_id = $snapshotActual['lote_id'] ?? null;
+        $this->form->lote_modelo_id = $snapshotActual['lote_modelo_id'] ?? null;
+        $this->form->catalogo_equipo_id = $snapshotActual['catalogo_equipo_id'] ?? null;
+        $this->form->marca = $snapshotActual['marca'] ?? '';
+        $this->form->modelo = $snapshotActual['modelo'] ?? '';
+        $this->form->proveedor_id = $snapshotActual['proveedor_id'] ?? null;
+        $this->form->estatus_area = $snapshotActual['estatus_area'] ?? '';
+
+        // Reconstruir filas UI (puertos, lectores, slots) desde la plantilla
+        $this->reconstructUiArraysFromModel($ultimoEquipo);
+
+        // Reconstruir checks de detalles
+        $est = $this->parseChecksText((string) ($ultimoEquipo->detalles_esteticos ?? ''));
+        $this->form->detalles_esteticos_checks = $est['checks'];
+        $this->form->detalles_esteticos_otro = $est['otro'];
+
+        $fun = $this->parseChecksText((string) ($ultimoEquipo->detalles_funcionamiento ?? ''));
+        $this->form->detalles_funcionamiento_checks = $fun['checks'];
+        $this->form->detalles_funcionamiento_otro = $fun['otro'];
+
+        // Cargar GPU
+        $gpuInt = EquipoGpu::where('equipo_id', $ultimoEquipo->id)->where('tipo', 'INTEGRADA')->first();
+        $gpuDed = EquipoGpu::where('equipo_id', $ultimoEquipo->id)->where('tipo', 'DEDICADA')->first();
+
+        $this->form->gpu_integrada_tiene = (bool) $gpuInt;
+        $this->form->gpu_integrada_marca = $gpuInt?->marca;
+        $this->form->gpu_integrada_modelo = $gpuInt?->modelo;
+        $this->form->gpu_integrada_vram = $gpuInt?->vram;
+        $this->form->gpu_integrada_vram_unidad = $gpuInt?->vram_unidad ?: 'GB';
+
+        $this->form->gpu_dedicada_tiene = (bool) $gpuDed;
+        $this->form->gpu_dedicada_marca = $gpuDed?->marca;
+        $this->form->gpu_dedicada_modelo = $gpuDed?->modelo;
+        $this->form->gpu_dedicada_vram = $gpuDed?->vram;
+        $this->form->gpu_dedicada_vram_unidad = $gpuDed?->vram_unidad ?: 'GB';
+
+        // Cargar batería
+        $baterias = EquipoBateria::where('equipo_id', $ultimoEquipo->id)->get();
+        $bat1 = $baterias->first();
+        $bat2 = $baterias->skip(1)->first();
+        $this->form->bateria_tiene = $bat1 ? true : (bool) $ultimoEquipo->bateria_tiene;
+        $this->form->bateria1_tipo = $bat1?->tipo;
+        $this->form->bateria1_salud = $bat1?->salud_percent;
+        $this->form->bateria2_tiene = (bool) $bat2;
+        $this->form->bateria2_tipo = $bat2?->tipo;
+        $this->form->bateria2_salud = $bat2?->salud_percent;
+
+        // Cargar monitor
+        $monitor = EquipoMonitor::where('equipo_id', $ultimoEquipo->id)->first();
+        if ($monitor) {
+            $this->form->monitor_incluido = $monitor->incluido ? 'SI' : 'NO';
+            $this->form->monitor_pulgadas = $monitor->pulgadas;
+            $this->form->monitor_resolucion = $monitor->resolucion;
+            $this->form->pantalla_pulgadas = $monitor->pulgadas;
+            $this->form->pantalla_resolucion = $monitor->resolucion;
+            $this->form->pantalla_es_touch = (bool) $monitor->es_touch;
+            $this->form->monitor_entradas_rows = $this->reconstructMonitorEntradas($monitor);
+        } else {
+            $this->form->monitor_incluido = 'NO';
+            $this->form->monitor_pulgadas = null;
+            $this->form->monitor_resolucion = null;
+            $this->form->pantalla_pulgadas = null;
+            $this->form->pantalla_resolucion = null;
+            $this->form->pantalla_es_touch = false;
+            $this->form->monitor_entradas_rows = [];
+        }
+
+        $this->setDefaultsEnForm();
+
+        $this->form->ram_sin_slots = (bool) $this->form->ram_es_soldada
+            && ($this->form->ram_slots_totales === '0' || $this->form->ram_slots_totales === 0);
+
+        $this->dispatch('toast', type: 'success', message: 'Características rellenadas desde la plantilla.');
+        $this->equipoPlantillaId = ''; // Reset the dropdown
     }
 
     public function verTerminar(int $asignacionEquipoId): void

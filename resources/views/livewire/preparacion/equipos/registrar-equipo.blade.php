@@ -25,13 +25,46 @@
 
 
         {{-- Título principal --}}
-        <div class="mb-5">
-            <h3 class="text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-50">
-                Registro de equipo
-            </h3>
-            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Captura los datos principales del equipo. Los campos marcados con * son obligatorios.
-            </p>
+        <div class="mb-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <div>
+                <h3 class="text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-50">
+                    Registro de equipo
+                </h3>
+                <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    Captura los datos principales del equipo. Los campos marcados con * son obligatorios.
+                </p>
+            </div>
+            
+            @php $allowedEmails = ['soporte@tecnobytemx.com', 'prueba@prueba.com', 'tamara.trejo@tecnobytemx.com']; @endphp
+            @if($tieneEquiposPrevios && auth()->user() && in_array(auth()->user()->email, $allowedEmails))
+            <div class="flex flex-col sm:flex-row items-center gap-2">
+                <span class="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    Rellenar con plantilla:
+                </span>
+                <select 
+                    wire:model.live="equipoPlantillaId" 
+                    wire:change="aplicarPlantilla"
+                    class="block w-full sm:w-64 rounded-md border-0 py-1.5 pl-3 pr-10 text-slate-900 dark:text-slate-100 ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 bg-white dark:bg-slate-900"
+                    wire:loading.attr="disabled"
+                >
+                    <option value="">-- Seleccionar equipo --</option>
+                    <option value="ultimo">Último equipo subido</option>
+                    @if(count($opcionesPlantilla) > 0)
+                        <optgroup label="De la misma asignación">
+                        @foreach($opcionesPlantilla as $eq)
+                            <option value="{{ $eq['id'] }}">Serie: {{ $eq['numero_serie'] }} - {{ $eq['marca'] }}</option>
+                        @endforeach
+                        </optgroup>
+                    @endif
+                </select>
+                <div wire:loading wire:target="aplicarPlantilla" class="ml-2">
+                    <svg class="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+            </div>
+            @endif
         </div>
     {{-- DEBUG --}}
 
