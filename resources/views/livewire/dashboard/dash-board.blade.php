@@ -76,6 +76,26 @@
                             Vista del mes
                         </button>
 
+                        @if(!$viejoSistema && ($esLiderGerente || $isTecnico))
+                        <button
+                            type="button"
+                            wire:click="descargarReportePuntos"
+                            class="hidden sm:inline-flex items-center gap-2
+                                px-3.5 py-1.5 rounded-full text-xs font-medium
+                                bg-emerald-600/90 text-white
+                                shadow-lg shadow-emerald-900/40
+                                backdrop-blur-xl
+                                transition-all duration-200
+                                hover:bg-emerald-500 hover:shadow-emerald-700/60 hover:-translate-y-0.5"
+                            title="Descargar historial de puntos de este periodo"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            Exportar Puntos
+                        </button>
+                        @endif
+
                     </div>
                 </x-slot:right>
             </x-topbar>

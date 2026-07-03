@@ -108,6 +108,33 @@ class Dashboard extends Component
             ->toArray();
     }
 
+    public function descargarReportePuntos()
+    {
+        abort_unless($this->esLiderGerente || $this->isTecnico, 403);
+        
+        $periodo = $this->selectedMonthValue; // Y-m
+        
+        $query = \App\Models\PuntoTecnico::with([
+            'tecnico', 
+            'asignacionEquipo.equipo', 
+            'clasificacionPuntos'
+        ])->where('periodo', $periodo)
+          ->orderBy('created_at', 'desc');
+          
+        if ($this->isTecnico) {
+            $query->where('tecnico_id', auth()->id());
+        } elseif (!empty($this->selectedColaboradorId)) {
+            $query->where('tecnico_id', $this->selectedColaboradorId);
+        }
+
+        $puntos = $query->get();
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\PuntosTecnicosExport($puntos), 
+            "puntos_tecnicos_{$periodo}.xlsx"
+        );
+    }
+
     public function mount(): void
     {
         $user = auth()->user();
