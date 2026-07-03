@@ -30,6 +30,7 @@ class PuntosTecnicosExport implements FromCollection, ShouldAutoSize, WithHeadin
             'Técnico',
             'No. Serie',
             'Modelo',
+            'Estatus Actual del Equipo',
             'Clasificación',
             'Puntos Base',
             'Porcentaje Aplicado',
@@ -45,14 +46,27 @@ class PuntosTecnicosExport implements FromCollection, ShouldAutoSize, WithHeadin
     {
         $equipo = $punto->asignacionEquipo->equipo ?? null;
         
-        $roles = PuntoTecnico::labelsRol();
-        $rolLabel = $roles[$punto->rol_en_equipo] ?? $punto->rol_en_equipo;
+        // Etiquetas explícitas solicitadas por el usuario
+        $rolLabel = match($punto->rol_en_equipo) {
+            'COMPLETO' => 'Equipo Completado',
+            'PIEZA_PENDIENTE' => 'Enviado a Pieza Pendiente',
+            'PIEZA_COMPLETADA', 'PIEZA_INSTALADA' => 'Instalación de Pieza',
+            'GARANTIA' => 'Canalizado a Garantía',
+            'DESPIECE' => 'Enviado a Despiece',
+            default => $punto->rol_en_equipo
+        };
+        
+        $estatusLabel = 'N/D';
+        if ($equipo && $equipo->estatus_area) {
+            $estatusLabel = \App\Models\Equipo::labelsArea()[$equipo->estatus_area] ?? $equipo->estatus_area;
+        }
 
         return [
             optional($punto->created_at)->format('Y-m-d H:i:s'),
             $punto->tecnico->nombre ?? 'N/D',
             $equipo->numero_serie ?? 'N/D',
             trim(($equipo->marca ?? '') . ' ' . ($equipo->modelo ?? 'N/D')),
+            $estatusLabel,
             $punto->clasificacionPuntos->nombre ?? 'N/D',
             $punto->puntos_base,
             $punto->porcentaje_aplicado . '%',

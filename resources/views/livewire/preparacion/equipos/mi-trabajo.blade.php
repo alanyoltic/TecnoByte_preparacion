@@ -614,7 +614,10 @@
                             @foreach($a->equipos->filter(fn($ae) =>
                                 !in_array($ae->camino, [\App\Models\AsignacionEquipo::PENDIENTE, \App\Models\AsignacionEquipo::PRE_ASIGNADO]) &&
                                 (!$busquedaSerie || str_contains(strtolower($ae->equipo?->numero_serie ?? ''), strtolower($busquedaSerie)))
-                            ) as $ae)
+                            )->sortBy(function($ae) {
+                                $terminado = !in_array($ae->camino, [\App\Models\AsignacionEquipo::EN_PROCESO, \App\Models\AsignacionEquipo::PENDIENTE, \App\Models\AsignacionEquipo::PRE_ASIGNADO]);
+                                return [$terminado ? 1 : 0, -$ae->id];
+                            }) as $ae)
                                 @php
                                     $terminado = !in_array($ae->camino, [\App\Models\AsignacionEquipo::EN_PROCESO, \App\Models\AsignacionEquipo::PENDIENTE, \App\Models\AsignacionEquipo::PRE_ASIGNADO]);
                                     $eq        = $ae->equipo;
