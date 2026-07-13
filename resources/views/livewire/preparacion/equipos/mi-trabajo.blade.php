@@ -976,29 +976,21 @@
                         @foreach([
                             ['value' => 'COMPLETADO',       'label' => 'Listo',          'desc' => 'Pasa a calidad.',              'emoji' => '✅', 'active_color' => 'border-emerald-400 bg-emerald-50/80 dark:bg-emerald-900/20', 'active_text' => 'text-emerald-700 dark:text-emerald-300'],
                             ['value' => 'PIEZA_PENDIENTE',  'label' => 'Falta una pieza','desc' => 'Necesita una pieza.',          'emoji' => '🔧', 'active_color' => 'border-amber-400 bg-amber-50/80 dark:bg-amber-900/20',   'active_text' => 'text-amber-700 dark:text-amber-300'],
-                            ['value' => 'GARANTIA_INTERNA', 'label' => 'Garantía',       'desc' => 'Requiere garantía.',           'emoji' => '⚠️', 'active_color' => 'border-rose-400 bg-rose-50/80 dark:bg-rose-900/20',     'active_text' => 'text-rose-700 dark:text-rose-300'],
+                            ['value' => 'GARANTIA_EXTERNA', 'label' => 'Garantía',       'desc' => 'Se envía al proveedor.',       'emoji' => '⚠️', 'active_color' => 'border-rose-400 bg-rose-50/80 dark:bg-rose-900/20',     'active_text' => 'text-rose-700 dark:text-rose-300'],
                             ['value' => 'DESPIECE',         'label' => 'Para despiece',  'desc' => 'Va a scrap / desarmado.',      'emoji' => '🗑️', 'active_color' => 'border-slate-500 bg-slate-100/80 dark:bg-slate-700/40', 'active_text' => 'text-slate-700 dark:text-slate-200'],
                         ] as $opcion)
                             <button type="button"
                                 wire:click="$set('camino', '{{ $opcion['value'] }}')"
                                 @class([
                                     'rounded-xl border px-3 py-3 text-left transition-all duration-200',
-                                    $opcion['active_color'] . ' shadow-sm'  => ($opcion['value'] === 'GARANTIA_INTERNA')
-                                        ? in_array($camino, ['GARANTIA_INTERNA', 'GARANTIA_EXTERNA'])
-                                        : $camino === $opcion['value'],
-                                    'border-slate-300/80 dark:border-slate-700 bg-white/60 dark:bg-slate-900/40 hover:border-slate-400 dark:hover:border-slate-600' => ($opcion['value'] === 'GARANTIA_INTERNA')
-                                        ? !in_array($camino, ['GARANTIA_INTERNA', 'GARANTIA_EXTERNA'])
-                                        : $camino !== $opcion['value'],
+                                    $opcion['active_color'] . ' shadow-sm'  => $camino === $opcion['value'],
+                                    'border-slate-300/80 dark:border-slate-700 bg-white/60 dark:bg-slate-900/40 hover:border-slate-400 dark:hover:border-slate-600' => $camino !== $opcion['value'],
                                 ])>
                                 <span class="block text-xl mb-1.5 leading-none">{{ $opcion['emoji'] }}</span>
                                 <p @class([
                                     'text-sm font-semibold leading-tight',
-                                    $opcion['active_text'] => ($opcion['value'] === 'GARANTIA_INTERNA')
-                                        ? in_array($camino, ['GARANTIA_INTERNA', 'GARANTIA_EXTERNA'])
-                                        : $camino === $opcion['value'],
-                                    'text-slate-800 dark:text-slate-100' => ($opcion['value'] === 'GARANTIA_INTERNA')
-                                        ? !in_array($camino, ['GARANTIA_INTERNA', 'GARANTIA_EXTERNA'])
-                                        : $camino !== $opcion['value'],
+                                    $opcion['active_text'] => $camino === $opcion['value'],
+                                    'text-slate-800 dark:text-slate-100' => $camino !== $opcion['value'],
                                 ])>
                                     {{ $opcion['label'] }}
                                 </p>
@@ -1008,26 +1000,51 @@
                     </div>
                 </div>
 
-                {{-- Si garantía: interna o externa --}}
-                @if(in_array($camino, ['GARANTIA_INTERNA', 'GARANTIA_EXTERNA']))
-                    <div class="space-y-2">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tipo de garantía</p>
-                        <div class="flex gap-3">
-                            <button type="button" wire:click="$set('camino', 'GARANTIA_INTERNA')"
-                                class="flex-1 rounded-xl border px-4 py-3 text-sm font-semibold text-center transition
-                                       {{ $camino === 'GARANTIA_INTERNA'
-                                           ? 'border-[#FF9521] bg-[#FF9521]/10 text-[#FF9521]'
-                                           : 'border-slate-300/80 dark:border-slate-700 bg-white/60 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300' }}">
-                                Interna (nosotros)
-                            </button>
-                            <button type="button" wire:click="$set('camino', 'GARANTIA_EXTERNA')"
-                                class="flex-1 rounded-xl border px-4 py-3 text-sm font-semibold text-center transition
-                                       {{ $camino === 'GARANTIA_EXTERNA'
-                                           ? 'border-[#FF9521] bg-[#FF9521]/10 text-[#FF9521]'
-                                           : 'border-slate-300/80 dark:border-slate-700 bg-white/60 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300' }}">
-                                Externa (proveedor)
-                            </button>
+                {{-- Si garantía externa: capturar proveedor y defecto --}}
+                @if($camino === 'GARANTIA_EXTERNA')
+                    <div class="rounded-xl border border-rose-300/60 bg-rose-50/40 dark:bg-rose-900/10 px-4 py-4 space-y-4">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg leading-none">⚠️</span>
+                            <span class="text-xs font-semibold uppercase tracking-wide text-rose-600 dark:text-rose-400">
+                                Garantía externa — datos de envío al proveedor
+                            </span>
+                            <div class="h-px flex-1 bg-rose-200/60 dark:bg-rose-700/30"></div>
                         </div>
+
+                        {{-- Selector de proveedor --}}
+                        <div class="space-y-1">
+                            <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                Proveedor <span class="text-red-500">*</span>
+                            </label>
+                            <select wire:model="garantiaProveedorId"
+                                class="w-full rounded-xl px-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
+                                       border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
+                                       focus:ring-2 focus:ring-rose-400 outline-none">
+                                <option value="">— Selecciona proveedor —</option>
+                                @foreach(\App\Models\Proveedor::orderBy('nombre_empresa')->get() as $prov)
+                                    <option value="{{ $prov->id }}">{{ $prov->display_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Descripción del defecto --}}
+                        <div class="space-y-1">
+                            <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                Defecto detectado <span class="text-red-500">*</span>
+                            </label>
+                            <textarea wire:model="garantiaDefecto" rows="3"
+                                placeholder="Ej. No enciende, daño en puerto USB, pantalla con líneas..."
+                                class="w-full rounded-xl px-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
+                                       border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
+                                       focus:ring-2 focus:ring-rose-400 outline-none resize-none"></textarea>
+                            <p class="text-[0.65rem] text-slate-400 dark:text-slate-500">
+                                Mínimo 10 caracteres. Este defecto quedará registrado en el historial del equipo.
+                            </p>
+                        </div>
+
+                        @if($error && $camino === 'GARANTIA_EXTERNA')
+                            <p class="text-xs text-rose-500">{{ $error }}</p>
+                        @endif
                     </div>
                 @endif
 
@@ -1696,4 +1713,14 @@
     </div>
 @endif
 
+    <script>
+        document.addEventListener('livewire:initialized', () => {
+            @this.on('preguntar-gemelo', (event) => {
+                const serie = event.serie;
+                if (confirm('El número de serie ' + serie + ' ya existe en este lote y está terminado o en uso. ¿Deseas registrarlo como un equipo gemelo (se añadirán tus iniciales)?')) {
+                    @this.registrarGemelo(serie);
+                }
+            });
+        });
+    </script>
 </div>

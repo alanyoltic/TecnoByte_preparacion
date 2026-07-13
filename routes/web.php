@@ -9,6 +9,7 @@ use App\Livewire\Inventario\GestionSolicitudesPiezas;
 use App\Livewire\Inventario\SolicitudesPiezas;
 use App\Livewire\Preparacion\Calidad\GestionCalidad;
 use App\Livewire\Preparacion\Equipos\Asignaciones;
+use App\Livewire\Preparacion\Garantias\GestionGarantias;
 use App\Livewire\Preparacion\Equipos\EditarEquipo;
 use App\Livewire\Preparacion\Equipos\MiTrabajo;
 use App\Livewire\Preparacion\Equipos\RegistrarEquipo;
@@ -282,6 +283,11 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
     Route::get('/preparacion/estadisticas-equipos', \App\Livewire\Preparacion\Dashboard\EstadisticasEquipos::class)
         ->middleware('permiso:prep.inventario.gestion')
         ->name('preparacion.estadisticas-equipos');
+
+    // Garantías Externas
+    Route::get('/preparacion/garantias', GestionGarantias::class)
+        ->middleware('permiso:prep.garantias.ver')
+        ->name('preparacion.garantias');
 });
 
 require __DIR__.'/auth.php';

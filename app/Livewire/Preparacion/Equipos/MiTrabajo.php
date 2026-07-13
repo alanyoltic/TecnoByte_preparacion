@@ -15,6 +15,7 @@ use App\Models\EquipoGpu;
 use App\Models\EquipoMonitor;
 use App\Models\PuntoTecnico;
 use App\Models\SolicitudPieza;
+use App\Models\GarantiaProveedor;
 use App\Services\EquipoMovimientoService;
 use App\Services\EquipoTraceService;
 use Illuminate\Support\Facades\Auth;
@@ -81,6 +82,13 @@ class MiTrabajo extends Component
 
     // ── Error general ─────────────────────────────────────────────────────
     public string $error = '';
+
+    // ── Garantía externa (captura al terminar) ───────────────────────────
+    /** ID del proveedor seleccionado para la garantía */
+    public ?int $garantiaProveedorId = null;
+
+    /** Descripción del defecto detectado (requerido, mín 10 chars) */
+    public string $garantiaDefecto = '';
 
     // ── Modal eliminar registro ────────────────────────────────────────────
     public bool $modalEliminar = false;
@@ -882,9 +890,13 @@ class MiTrabajo extends Component
                     ->whereHas('asignacion', fn ($q) => $q->where('id', '!=', $asignacion->id)
                         ->whereIn('estatus', [Asignacion::PENDIENTE, Asignacion::EN_PROCESO])
                     )->exists();
-                if ($enOtra) {
-                    $errores[] = "{$serie}: en uso por otro técnico.";
+                    
+                $estatusPermitidos = [Equipo::AREA_SIN_ASIGNAR, Equipo::AREA_EN_ESPERA, Equipo::AREA_ASIGNADO];
+                $esInvalido = !in_array($equipo->estatus_area, $estatusPermitidos);
 
+                if ($enOtra || $esInvalido) {
+                    $this->dispatch('preguntar-gemelo', serie: $serie);
+                    $errores[] = "{$serie}: Posible equipo gemelo (ya finalizado o en uso).";
                     continue;
                 }
 
@@ -1084,6 +1096,17 @@ class MiTrabajo extends Component
             }
         }
 
+        if ($this->camino === 'GARANTIA_EXTERNA') {
+            if (! $this->garantiaProveedorId) {
+                $this->error = 'Selecciona el proveedor al que se envía la garantía.';
+                return;
+            }
+            if (mb_strlen(trim($this->garantiaDefecto)) < 10) {
+                $this->error = 'Describe el defecto detectado (mínimo 10 caracteres).';
+                return;
+            }
+        }
+
         if ($this->camino === 'DESPIECE' && empty(trim($this->notasTerminar))) {
             $this->error = 'Escribe el motivo por el que va a despiece.';
 
@@ -1097,12 +1120,11 @@ class MiTrabajo extends Component
         }
 
         [$estatusCiclo, $estatusArea, $almacenId] = match ($this->camino) {
-            'COMPLETADO' => ['CALIDAD',     'EN_CALIDAD',         Almacen::CALIDAD],
-            'PIEZA_PENDIENTE' => ['PREPARACION', 'PENDIENTE_PIEZA',    Almacen::PIEZAS_PENDIENTES],
-            'GARANTIA_INTERNA' => ['PREPARACION', 'PENDIENTE_GARANTIA', Almacen::GARANTIAS_INTERNAS],
-            'GARANTIA_EXTERNA' => ['PREPARACION', 'PENDIENTE_GARANTIA', Almacen::GARANTIAS_EXTERNAS],
-            'DESPIECE' => ['SCRAP',        'PENDIENTE_DESARME', Almacen::SCRAP],
-            default => ['PREPARACION', 'EN_PROCESO',         Almacen::PREPARACION],
+            'COMPLETADO'     => ['CALIDAD',     'EN_CALIDAD',        Almacen::CALIDAD],
+            'PIEZA_PENDIENTE'=> ['PREPARACION', 'PENDIENTE_PIEZA',   Almacen::PIEZAS_PENDIENTES],
+            'GARANTIA_EXTERNA'=> ['PREPARACION','PENDIENTE_GARANTIA',Almacen::GARANTIAS_EXTERNAS],
+            'DESPIECE'       => ['SCRAP',       'PENDIENTE_DESARME', Almacen::SCRAP],
+            default          => ['PREPARACION', 'EN_PROCESO',        Almacen::PREPARACION],
         };
 
         try {
@@ -1118,6 +1140,24 @@ class MiTrabajo extends Component
                     'estatus_area' => $estatusArea,
                     'almacen_id' => $almacenId,
                 ]);
+
+                // Crear registro de garantía externa con todos los datos de auditoría
+                if ($this->camino === 'GARANTIA_EXTERNA') {
+                    // Obtener el proveedor del lote si no se seleccionó uno explícitamente
+                    $proveedorId = $this->garantiaProveedorId
+                        ?? $equipo->loteModelo?->lote?->proveedor_id
+                        ?? $equipo->proveedor_id;
+
+                    GarantiaProveedor::create([
+                        'equipo_id'            => $equipo->id,
+                        'proveedor_id'         => $proveedorId,
+                        'asignacion_equipo_id' => $ae->id,
+                        'reportado_por_id'     => Auth::id(),
+                        'descripcion_defecto'  => trim($this->garantiaDefecto),
+                        'fecha_envio'          => now()->toDateString(),
+                        'estatus'              => GarantiaProveedor::PENDIENTE,
+                    ]);
+                }
 
                 if ($this->camino === 'PIEZA_PENDIENTE') {
                     if ($this->fuentePieza === 'stock') {
@@ -1196,10 +1236,10 @@ class MiTrabajo extends Component
                 $puntosBase = (float) $clasificacion->puntos_base;
 
                 $rol = match ($this->camino) {
-                    'PIEZA_PENDIENTE' => PuntoTecnico::PIEZA_PENDIENTE,
-                    'GARANTIA_INTERNA', 'GARANTIA_EXTERNA' => PuntoTecnico::GARANTIA,
-                    'DESPIECE' => PuntoTecnico::DESPIECE,
-                    default => PuntoTecnico::COMPLETO,
+                    'PIEZA_PENDIENTE'  => PuntoTecnico::PIEZA_PENDIENTE,
+                    'GARANTIA_EXTERNA' => PuntoTecnico::GARANTIA,
+                    'DESPIECE'         => PuntoTecnico::DESPIECE,
+                    default            => PuntoTecnico::COMPLETO,
                 };
 
                 $asignacion = $ae->asignacion;
@@ -1896,6 +1936,65 @@ class MiTrabajo extends Component
         $value = (string) $value;
 
         return mb_strlen($value) > $max ? mb_substr($value, 0, $max) : $value;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // GEMELOS
+    // ══════════════════════════════════════════════════════════════════════
+
+    public function registrarGemelo(string $serie): void
+    {
+        $this->autorizarTrabajo();
+        
+        $asignacion = $this->asignacionActual;
+        if (!$asignacion) return;
+
+        $user = auth()->user();
+        $iniciales = strtoupper(substr($user->nombre ?? '', 0, 1) . substr($user->apellido_paterno ?? '', 0, 1));
+        
+        $nuevoSerie = $iniciales . $serie;
+
+        $yaExiste = Equipo::withTrashed()->where('numero_serie', $nuevoSerie)->exists();
+        if ($yaExiste) {
+            $this->dispatch('toast', type: 'error', message: "El gemelo {$nuevoSerie} ya fue registrado previamente.");
+            return;
+        }
+
+        $loteModelo = $asignacion->loteModelo()->with('lote')->first();
+        $clasificacionLoteId = $loteModelo?->clasificacion_puntos_id;
+
+        DB::transaction(function () use ($nuevoSerie, $asignacion, $loteModelo, $clasificacionLoteId) {
+            $gemelo = Equipo::create([
+                'numero_serie' => $nuevoSerie,
+                'lote_modelo_id' => $asignacion->lote_modelo_id,
+                'clasificacion_puntos_id' => $clasificacionLoteId,
+                'marca' => $loteModelo->marca ?? null,
+                'modelo' => $loteModelo->modelo ?? '',
+                'estatus_ciclo' => 'PREPARACION',
+                'estatus_area' => Equipo::AREA_EN_PROCESO,
+                'registrado_por_user_id' => Auth::id(),
+                'proveedor_id' => $loteModelo->lote->proveedor_id ?? null,
+                'almacen_id' => Almacen::PREPARACION,
+                'sucursal_id' => Auth::user()->sucursal_id ?? 1,
+            ]);
+
+            AsignacionEquipo::create([
+                'asignacion_id' => $asignacion->id,
+                'equipo_id' => $gemelo->id,
+                'inicio_en' => now(),
+                'camino' => AsignacionEquipo::EN_PROCESO,
+            ]);
+            
+            if ($asignacion->estatus === Asignacion::PENDIENTE) {
+                $asignacion->update(['estatus' => Asignacion::EN_PROCESO]);
+            }
+        });
+
+        $this->series = [''];
+        $this->dispatch('toast', type: 'success', message: "Equipo gemelo {$nuevoSerie} registrado e iniciado correctamente.");
+        
+        // Refresh component state
+        unset($this->asignaciones);
     }
 
     // ══════════════════════════════════════════════════════════════════════

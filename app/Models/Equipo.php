@@ -63,6 +63,13 @@ class Equipo extends Model
 
     const AREA_GARANTIA_EXT = 'GARANTIA_EXT';
 
+    /**
+     * Estado del equipo ORIGINAL que fue reemplazado físicamente por el
+     * proveedor en una garantía externa. El proveedor se queda con él.
+     * Es diferente a SCRAP (baja propia) y a GARANTIA_EXT (en trámite).
+     */
+    const AREA_GARANTIA_CAMBIO = 'GARANTIA_CAMBIO';
+
     // =========================================================
     // REGLAS DE TRANSICIÓN
     // Por ahora son informativas/suaves — no bloquean el guardado.
@@ -105,7 +112,8 @@ class Equipo extends Model
         self::AREA_PENDIENTE_GARANTIA => [self::AREA_EN_PROCESO],
         self::AREA_PENDIENTE_DESARME => [self::AREA_EN_PROCESO],
         self::AREA_GARANTIA_INT => [self::AREA_EN_PROCESO],
-        self::AREA_GARANTIA_EXT => [self::AREA_EN_PROCESO],
+        self::AREA_GARANTIA_EXT => [self::AREA_EN_PROCESO, self::AREA_GARANTIA_CAMBIO],
+        self::AREA_GARANTIA_CAMBIO => [], // Estado final — el proveedor se quedó con el equipo
     ];
 
     /**
@@ -223,6 +231,7 @@ class Equipo extends Model
             self::AREA_PENDIENTE_DESARME,
             self::AREA_GARANTIA_INT,
             self::AREA_GARANTIA_EXT,
+            self::AREA_GARANTIA_CAMBIO,
         ], true);
     }
 
@@ -258,6 +267,7 @@ class Equipo extends Model
             self::AREA_PENDIENTE_DESARME => 'Pendiente desarme',
             self::AREA_GARANTIA_INT => 'Garantía interna',
             self::AREA_GARANTIA_EXT => 'Garantía externa',
+            self::AREA_GARANTIA_CAMBIO => 'Garantía — equipo cambiado',
         ];
     }
 
