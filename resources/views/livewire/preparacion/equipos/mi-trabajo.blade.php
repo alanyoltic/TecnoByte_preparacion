@@ -1011,22 +1011,6 @@
                             <div class="h-px flex-1 bg-rose-200/60 dark:bg-rose-700/30"></div>
                         </div>
 
-                        {{-- Selector de proveedor --}}
-                        <div class="space-y-1">
-                            <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                Proveedor <span class="text-red-500">*</span>
-                            </label>
-                            <select wire:model="garantiaProveedorId"
-                                class="w-full rounded-xl px-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
-                                       border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
-                                       focus:ring-2 focus:ring-rose-400 outline-none">
-                                <option value="">— Selecciona proveedor —</option>
-                                @foreach(\App\Models\Proveedor::orderBy('nombre_empresa')->get() as $prov)
-                                    <option value="{{ $prov->id }}">{{ $prov->display_name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
                         {{-- Descripción del defecto --}}
                         <div class="space-y-1">
                             <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">

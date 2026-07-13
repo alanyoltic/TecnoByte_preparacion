@@ -94,7 +94,7 @@
 
             @forelse($this->garantias as $garantia)
                 @php
-                    $dias = $garantia->created_at->diffInDays(now());
+                    $dias = (int) $garantia->created_at->diffInDays(now());
                     $diasColor = match(true) {
                         $dias <= 7  => 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-700',
                         $dias <= 15 => 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700',

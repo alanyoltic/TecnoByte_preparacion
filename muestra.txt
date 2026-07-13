@@ -84,6 +84,9 @@ class MiTrabajo extends Component
     public string $error = '';
 
     // ── Garantía externa (captura al terminar) ───────────────────────────
+    /** ID del proveedor seleccionado para la garantía */
+    public ?int $garantiaProveedorId = null;
+
     /** Descripción del defecto detectado (requerido, mín 10 chars) */
     public string $garantiaDefecto = '';
 
@@ -882,6 +885,9 @@ class MiTrabajo extends Component
 
                     continue;
                 }
+
+                $estatusPermitidos = [Equipo::AREA_SIN_ASIGNAR, Equipo::AREA_EN_ESPERA, Equipo::AREA_ASIGNADO];
+                
                 $enOtra = AsignacionEquipo::where('equipo_id', $equipo->id)
                     ->whereIn('camino', [AsignacionEquipo::PENDIENTE, AsignacionEquipo::PRE_ASIGNADO, AsignacionEquipo::EN_PROCESO])
                     ->whereHas('asignacion', fn ($q) => $q->where('id', '!=', $asignacion->id)
@@ -963,6 +969,67 @@ class MiTrabajo extends Component
             $this->dispatch('toast', type: 'success', message: count($seriesLimpias).' equipo(s) iniciado(s).');
         }
 
+        unset($this->asignacionActual);
+    }
+
+    public function registrarGemelo(string $serie): void
+    {
+        $this->autorizarTrabajo();
+        
+        $asignacion = $this->asignacionActual;
+        if (!$asignacion) {
+            return;
+        }
+
+        $yaEscaneados = $asignacion->equipos->count();
+        if ($asignacion->cantidad <= $yaEscaneados) {
+            $this->dispatch('toast', type: 'error', message: "Solo puedes iniciar {$asignacion->cantidad} equipo(s) en esta asignación.");
+            return;
+        }
+
+        $user = Auth::user();
+        $initials = strtoupper(substr($user->nombre, 0, 1) . substr($user->apellido_paterno, 0, 1));
+        $gemeloSerie = $initials . $serie;
+
+        if (Equipo::withTrashed()->where('numero_serie', $gemeloSerie)->exists()) {
+            $this->dispatch('toast', type: 'error', message: "El gemelo ({$gemeloSerie}) ya fue registrado previamente.");
+            return;
+        }
+
+        $original = Equipo::withTrashed()->where('numero_serie', $serie)->first();
+        if (!$original) {
+            return;
+        }
+
+        DB::transaction(function () use ($original, $gemeloSerie, $asignacion) {
+            $nuevoEquipo = $original->replicate();
+            $nuevoEquipo->numero_serie = $gemeloSerie;
+            $nuevoEquipo->estatus_ciclo = 'PREPARACION';
+            $nuevoEquipo->estatus_area = 'EN_PROCESO';
+            $nuevoEquipo->registrado_por_user_id = Auth::id();
+            $nuevoEquipo->almacen_id = Almacen::PREPARACION;
+            $nuevoEquipo->deleted_at = null;
+            $nuevoEquipo->save();
+
+            AsignacionEquipo::create([
+                'asignacion_id' => $asignacion->id,
+                'equipo_id' => $nuevoEquipo->id,
+                'inicio_en' => now(),
+                'camino' => AsignacionEquipo::EN_PROCESO,
+            ]);
+
+            $asignacion->update(['estatus' => Asignacion::EN_PROCESO]);
+        });
+
+        // Limpiar de la lista de series si estaba ahí
+        $this->series = array_values(array_filter(
+            $this->series, fn($s) => trim($s) !== $serie
+        ));
+        if (empty($this->series)) {
+            $this->series = [''];
+        }
+
+        $this->dispatch('toast', type: 'success', message: "Gemelo registrado como {$gemeloSerie}.");
         unset($this->asignacionActual);
     }
 
@@ -1094,6 +1161,10 @@ class MiTrabajo extends Component
         }
 
         if ($this->camino === 'GARANTIA_EXTERNA') {
+            if (! $this->garantiaProveedorId) {
+                $this->error = 'Selecciona el proveedor al que se envía la garantía.';
+                return;
+            }
             if (mb_strlen(trim($this->garantiaDefecto)) < 10) {
                 $this->error = 'Describe el defecto detectado (mínimo 10 caracteres).';
                 return;
@@ -1136,8 +1207,10 @@ class MiTrabajo extends Component
 
                 // Crear registro de garantía externa con todos los datos de auditoría
                 if ($this->camino === 'GARANTIA_EXTERNA') {
-                    // Obtener el proveedor del lote (el mismo del equipo original)
-                    $proveedorId = $equipo->loteModelo?->lote?->proveedor_id ?? $equipo->proveedor_id;
+                    // Obtener el proveedor del lote si no se seleccionó uno explícitamente
+                    $proveedorId = $this->garantiaProveedorId
+                        ?? $equipo->loteModelo?->lote?->proveedor_id
+                        ?? $equipo->proveedor_id;
 
                     GarantiaProveedor::create([
                         'equipo_id'            => $equipo->id,
