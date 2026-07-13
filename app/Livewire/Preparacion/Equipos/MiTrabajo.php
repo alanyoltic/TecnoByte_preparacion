@@ -1145,7 +1145,7 @@ class MiTrabajo extends Component
                         'asignacion_equipo_id' => $ae->id,
                         'reportado_por_id'     => Auth::id(),
                         'descripcion_defecto'  => trim($this->garantiaDefecto),
-                        'fecha_envio'          => now()->toDateString(),
+                        'fecha_envio'          => null,
                         'estatus'              => GarantiaProveedor::PENDIENTE,
                     ]);
                 }

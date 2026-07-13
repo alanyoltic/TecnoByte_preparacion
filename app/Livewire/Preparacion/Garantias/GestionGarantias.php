@@ -21,7 +21,7 @@ class GestionGarantias extends Component
 
     // ── Filtros ───────────────────────────────────────────────────────────
     public string $busqueda        = '';
-    public string $filtroEstatus   = 'PENDIENTE';
+    public string $tabActivo       = 'por_enviar'; // por_enviar, en_tramite, resueltas
     public ?int   $filtroProveedor = null;
 
     // ── Modal de resolución ───────────────────────────────────────────────
@@ -59,6 +59,12 @@ class GestionGarantias extends Component
         $this->fechaResolucion = now()->toDateString();
     }
 
+    public function setTab(string $tab): void
+    {
+        $this->tabActivo = $tab;
+        $this->resetPage();
+    }
+
     // ── Datos computados ─────────────────────────────────────────────────
 
     #[Computed]
@@ -72,7 +78,9 @@ class GestionGarantias extends Component
                 'equipoNuevo',
                 'tecnicoReingreso',
             ])
-            ->when($this->filtroEstatus, fn ($q) => $q->where('estatus', $this->filtroEstatus))
+            ->when($this->tabActivo === 'por_enviar', fn ($q) => $q->where('estatus', GarantiaProveedor::PENDIENTE)->whereNull('fecha_envio'))
+            ->when($this->tabActivo === 'en_tramite', fn ($q) => $q->where('estatus', GarantiaProveedor::PENDIENTE)->whereNotNull('fecha_envio'))
+            ->when($this->tabActivo === 'resueltas', fn ($q) => $q->whereIn('estatus', [GarantiaProveedor::RESUELTA, GarantiaProveedor::CANCELADA]))
             ->when($this->filtroProveedor, fn ($q) => $q->where('proveedor_id', $this->filtroProveedor))
             ->when($this->busqueda, function ($q) {
                 $q->whereHas('equipo', fn ($eq) =>
@@ -135,9 +143,9 @@ class GestionGarantias extends Component
     public function contadores(): array
     {
         return [
-            'pendientes'  => GarantiaProveedor::where('estatus', GarantiaProveedor::PENDIENTE)->count(),
-            'resueltas'   => GarantiaProveedor::where('estatus', GarantiaProveedor::RESUELTA)->count(),
-            'canceladas'  => GarantiaProveedor::where('estatus', GarantiaProveedor::CANCELADA)->count(),
+            'por_enviar' => GarantiaProveedor::where('estatus', GarantiaProveedor::PENDIENTE)->whereNull('fecha_envio')->count(),
+            'en_tramite' => GarantiaProveedor::where('estatus', GarantiaProveedor::PENDIENTE)->whereNotNull('fecha_envio')->count(),
+            'resueltas'  => GarantiaProveedor::whereIn('estatus', [GarantiaProveedor::RESUELTA, GarantiaProveedor::CANCELADA])->count(),
         ];
     }
 
@@ -148,14 +156,22 @@ class GestionGarantias extends Component
         $this->resetPage();
     }
 
-    public function updatedFiltroEstatus(): void
+    public function updatedFiltroProveedor(): void
     {
         $this->resetPage();
     }
 
-    public function updatedFiltroProveedor(): void
+    // ── Acciones principales ──────────────────────────────────────────────
+
+    public function marcarComoEnviado(int $garantiaId): void
     {
-        $this->resetPage();
+        abort_unless(auth()->user()?->tienePermiso('prep.garantias.gestionar'), 403);
+
+        $garantia = GarantiaProveedor::find($garantiaId);
+        if ($garantia && $garantia->esPendiente() && is_null($garantia->fecha_envio)) {
+            $garantia->update(['fecha_envio' => now()->toDateString()]);
+            $this->dispatch('toast', type: 'success', title: 'Garantía enviada', message: 'El equipo ha sido marcado como enviado al proveedor.');
+        }
     }
 
     // ── Modal de resolución ───────────────────────────────────────────────

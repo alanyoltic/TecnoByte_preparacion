@@ -14,39 +14,37 @@
         ══════════════════════════════════════════════════════ --}}
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
-            {{-- Pendientes --}}
-            <button wire:click="$set('filtroEstatus', 'PENDIENTE')"
+            {{-- Por Enviar --}}
+            <button wire:click="setTab('por_enviar')"
                 class="rounded-2xl px-5 py-4 text-left transition-all duration-200
                        hover:-translate-y-1 border
-                       {{ $filtroEstatus === 'PENDIENTE'
+                       {{ $tabActivo === 'por_enviar'
+                           ? 'bg-rose-50/90 dark:bg-rose-950/40 border-rose-400 shadow-lg shadow-rose-500/20'
+                           : 'bg-white/60 dark:bg-slate-900/40 border-slate-200/80 dark:border-slate-700 hover:border-rose-300' }}">
+                <p class="text-xs font-semibold uppercase tracking-wide text-rose-600 dark:text-rose-300">Por Enviar</p>
+                <p class="mt-2 text-3xl font-bold text-rose-700 dark:text-rose-200">{{ $this->contadores['por_enviar'] }}</p>
+            </button>
+
+            {{-- En Trámite --}}
+            <button wire:click="setTab('en_tramite')"
+                class="rounded-2xl px-5 py-4 text-left transition-all duration-200
+                       hover:-translate-y-1 border
+                       {{ $tabActivo === 'en_tramite'
                            ? 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-400 shadow-lg shadow-amber-500/20'
                            : 'bg-white/60 dark:bg-slate-900/40 border-slate-200/80 dark:border-slate-700 hover:border-amber-300' }}">
-                <p class="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-300">En espera del proveedor</p>
-                <p class="mt-2 text-3xl font-bold text-amber-700 dark:text-amber-200">{{ $this->contadores['pendientes'] }}</p>
+                <p class="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-300">En Trámite (Enviado)</p>
+                <p class="mt-2 text-3xl font-bold text-amber-700 dark:text-amber-200">{{ $this->contadores['en_tramite'] }}</p>
             </button>
 
             {{-- Resueltas --}}
-            <button wire:click="$set('filtroEstatus', 'RESUELTA')"
+            <button wire:click="setTab('resueltas')"
                 class="rounded-2xl px-5 py-4 text-left transition-all duration-200
                        hover:-translate-y-1 border
-                       {{ $filtroEstatus === 'RESUELTA'
+                       {{ $tabActivo === 'resueltas'
                            ? 'bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-400 shadow-lg shadow-emerald-500/20'
                            : 'bg-white/60 dark:bg-slate-900/40 border-slate-200/80 dark:border-slate-700 hover:border-emerald-300' }}">
                 <p class="text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-300">Resueltas</p>
                 <p class="mt-2 text-3xl font-bold text-emerald-700 dark:text-emerald-200">{{ $this->contadores['resueltas'] }}</p>
-            </button>
-
-            {{-- Ver todas --}}
-            <button wire:click="$set('filtroEstatus', '')"
-                class="rounded-2xl px-5 py-4 text-left transition-all duration-200
-                       hover:-translate-y-1 border
-                       {{ $filtroEstatus === ''
-                           ? 'bg-slate-100/90 dark:bg-slate-800/60 border-slate-400 shadow-lg'
-                           : 'bg-white/60 dark:bg-slate-900/40 border-slate-200/80 dark:border-slate-700 hover:border-slate-400' }}">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Total histórico</p>
-                <p class="mt-2 text-3xl font-bold text-slate-700 dark:text-slate-200">
-                    {{ $this->contadores['pendientes'] + $this->contadores['resueltas'] + $this->contadores['canceladas'] }}
-                </p>
             </button>
         </div>
 
@@ -94,7 +92,11 @@
 
             @forelse($this->garantias as $garantia)
                 @php
-                    $dias = (int) $garantia->created_at->diffInDays(now());
+                    $fechaReferencia = $tabActivo === 'en_tramite' && $garantia->fecha_envio 
+                                       ? $garantia->fecha_envio 
+                                       : $garantia->created_at;
+                    $dias = (int) $fechaReferencia->diffInDays(now());
+                    
                     $diasColor = match(true) {
                         $dias <= 7  => 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-700',
                         $dias <= 15 => 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700',
@@ -179,7 +181,14 @@
 
                     {{-- Acción --}}
                     <div class="col-span-1 flex justify-end">
-                        @if($garantia->esPendiente() && auth()->user()?->tienePermiso('prep.garantias.gestionar'))
+                        @if($tabActivo === 'por_enviar' && auth()->user()?->tienePermiso('prep.garantias.gestionar'))
+                            <button wire:click="marcarComoEnviado({{ $garantia->id }})"
+                                class="rounded-xl bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700
+                                       text-white text-xs font-semibold px-3 py-1.5
+                                       transition-colors duration-150 shadow-sm">
+                                Marcar Enviado
+                            </button>
+                        @elseif($tabActivo === 'en_tramite' && auth()->user()?->tienePermiso('prep.garantias.gestionar'))
                             <button wire:click="abrirModal({{ $garantia->id }})"
                                 class="rounded-xl bg-rose-500 hover:bg-rose-600 active:bg-rose-700
                                        text-white text-xs font-semibold px-3 py-1.5
@@ -193,7 +202,7 @@
                 <div class="px-5 py-12 text-center">
                     <p class="text-2xl mb-2">📦</p>
                     <p class="text-sm font-semibold text-slate-600 dark:text-slate-400">No hay garantías
-                        {{ $filtroEstatus === 'PENDIENTE' ? 'pendientes' : ($filtroEstatus === 'RESUELTA' ? 'resueltas' : '') }}
+                        {{ $tabActivo === 'por_enviar' ? 'por enviar' : ($tabActivo === 'en_tramite' ? 'en trámite' : 'resueltas') }}
                         {{ $busqueda ? "para \"$busqueda\"" : '' }}
                     </p>
                 </div>
