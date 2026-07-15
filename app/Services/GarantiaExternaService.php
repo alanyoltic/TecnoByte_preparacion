@@ -174,7 +174,7 @@ class GarantiaExternaService
                 AsignacionEquipo::create([
                     'asignacion_id' => $asignacionPadre->id,
                     'equipo_id'     => $equipoNuevo->id,
-                    'camino'        => AsignacionEquipo::ASIGNADO,
+                    'camino'        => AsignacionEquipo::PENDIENTE,
                     'inicio_en'     => null,
                     'fin_en'        => null,
                     'notas'         => 'Equipo de reemplazo por garantía externa #'.$garantia->id,
@@ -182,12 +182,14 @@ class GarantiaExternaService
 
                 // Si el técnico de reingreso es diferente al de la asignación padre,
                 // crear una nueva asignación individual
-                if ((int) $datos['tecnico_reingreso_id'] !== (int) $asignacionPadre->user_id) {
+                if ((int) $datos['tecnico_reingreso_id'] !== (int) $asignacionPadre->tecnico_id) {
                     $nuevaAsignacion = Asignacion::create([
-                        'user_id'       => $datos['tecnico_reingreso_id'],
+                        'tecnico_id'    => $datos['tecnico_reingreso_id'],
+                        'asignado_por_id' => Auth::id(),
                         'lote_modelo_id' => $loteModeloNuevo->id,
                         'cantidad'      => 1,
                         'estatus'       => Asignacion::EN_PROCESO,
+                        'fecha_asignacion' => now(),
                         'notas'         => 'Asignación por reemplazo de garantía externa #'.$garantia->id,
                     ]);
 
