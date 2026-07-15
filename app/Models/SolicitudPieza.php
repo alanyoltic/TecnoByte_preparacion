@@ -548,9 +548,14 @@ class SolicitudPieza extends Model
 
                 // Marcar el registro de trabajo como EN_CALIDAD
                 if ($this->asignacion_equipo_id) {
-                    AsignacionEquipo::where('id', $this->asignacion_equipo_id)
+                    $ae = AsignacionEquipo::where('id', $this->asignacion_equipo_id)
                         ->where('camino', AsignacionEquipo::PIEZA_PENDIENTE)
-                        ->update(['camino' => AsignacionEquipo::EN_CALIDAD]);
+                        ->first();
+                    
+                    if ($ae) {
+                        $ae->update(['camino' => AsignacionEquipo::EN_CALIDAD]);
+                        $ae->asignacion?->revisarYCompletar();
+                    }
                 }
             } else {
                 // Fallo: devolver pieza al inventario como baja y resetear solicitud a PENDIENTE

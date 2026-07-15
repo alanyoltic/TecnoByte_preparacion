@@ -1243,16 +1243,7 @@ class MiTrabajo extends Component
                         rol: $rol, puntosBase: (float) $puntosBase, clasificacionId: $clasificacionId,
                     );
                 }
-                $terminados = AsignacionEquipo::where('asignacion_id', $asignacion->id)
-                    ->whereNotIn('camino', [
-                        AsignacionEquipo::PENDIENTE,
-                        AsignacionEquipo::PRE_ASIGNADO,
-                        AsignacionEquipo::EN_PROCESO,
-                    ])->count();
-
-                if ($terminados >= $asignacion->cantidad) {
-                    $asignacion->update(['estatus' => Asignacion::ENTREGADO, 'fecha_entrega' => now()->toDateString()]);
-                }
+                $asignacion->revisarYCompletar();
             });
         } catch (\Throwable $e) {
             if ($e instanceof \RuntimeException && $e->getMessage() === 'PUNTOS_LOTE_FALTANTES') {

@@ -102,6 +102,27 @@ class Asignacion extends Model
         return in_array($this->estatus, [self::PENDIENTE, self::EN_PROCESO]);
     }
 
+    public function revisarYCompletar(): void
+    {
+        if (! $this->estaActiva()) {
+            return;
+        }
+
+        $terminados = $this->equipos()
+            ->whereNotIn('camino', [
+                AsignacionEquipo::PENDIENTE,
+                AsignacionEquipo::PRE_ASIGNADO,
+                AsignacionEquipo::EN_PROCESO,
+            ])->count();
+
+        if ($terminados >= max(1, $this->cantidad)) {
+            $this->update([
+                'estatus' => self::ENTREGADO,
+                'fecha_entrega' => now()->toDateString(),
+            ]);
+        }
+    }
+
     public static function labelsEstatus(): array
     {
         return [
