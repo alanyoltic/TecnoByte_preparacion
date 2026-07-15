@@ -42,7 +42,7 @@ class GarantiaExternaService
             $equipo = $garantia->equipo;
 
             // Auditoría antes de cambiar
-            $this->trace->registrar($equipo, 'GARANTIA_REPARADA', Auth::id(), [
+            $this->trace->registrarAuditoria($equipo, 'GARANTIA_REPARADA', Auth::id(), [
                 'garantia_id'   => $garantia->id,
                 'proveedor_id'  => $garantia->proveedor_id,
                 'observaciones' => $datos['observaciones'] ?? null,
@@ -127,7 +127,7 @@ class GarantiaExternaService
             // --------------------------------------------------
             // 2. Marcar el equipo original como GARANTIA_CAMBIO
             // --------------------------------------------------
-            $this->trace->registrar($equipoOriginal, 'GARANTIA_EQUIPO_CAMBIADO', Auth::id(), [
+            $this->trace->registrarAuditoria($equipoOriginal, 'GARANTIA_EQUIPO_CAMBIADO', Auth::id(), [
                 'garantia_id'         => $garantia->id,
                 'proveedor_id'        => $garantia->proveedor_id,
                 'numero_serie_nuevo'  => $datos['numero_serie_nuevo'],
@@ -158,7 +158,7 @@ class GarantiaExternaService
             ]);
 
             // Auditoría del equipo nuevo
-            $this->trace->registrar($equipoNuevo, 'ALTA_GARANTIA_REEMPLAZO', Auth::id(), [
+            $this->trace->registrarAuditoria($equipoNuevo, 'ALTA_GARANTIA_REEMPLAZO', Auth::id(), [
                 'garantia_id'        => $garantia->id,
                 'equipo_original_id' => $equipoOriginal->id,
             ]);
@@ -232,7 +232,7 @@ class GarantiaExternaService
         DB::transaction(function () use ($garantia, $datos) {
             $equipo = $garantia->equipo;
 
-            $this->trace->registrar($equipo, 'GARANTIA_RECHAZADA_PROVEEDOR', Auth::id(), [
+            $this->trace->registrarAuditoria($equipo, 'GARANTIA_RECHAZADA_PROVEEDOR', Auth::id(), [
                 'garantia_id'   => $garantia->id,
                 'proveedor_id'  => $garantia->proveedor_id,
                 'observaciones' => $datos['observaciones'] ?? null,
