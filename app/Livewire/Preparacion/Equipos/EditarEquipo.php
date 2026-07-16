@@ -1334,15 +1334,16 @@ class EditarEquipo extends Component
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $registrados = (int) Equipo::query()
-                ->where('lote_modelo_id', $f->lote_modelo_id)
-                ->where('id', '!=', $this->equipo->id)
-                ->count();
+            if ((int) $f->lote_modelo_id !== (int) $this->equipo->lote_modelo_id) {
+                $registrados = (int) Equipo::query()
+                    ->where('lote_modelo_id', $f->lote_modelo_id)
+                    ->count();
 
-            if ($registrados >= (int) $lm->cantidad_recibida) {
-                throw ValidationException::withMessages([
-                    'form.lote_modelo_id' => 'Ya se registraron todos los equipos disponibles de este modelo en este lote.',
-                ]);
+                if ($registrados >= (int) $lm->cantidad_recibida) {
+                    throw ValidationException::withMessages([
+                        'form.lote_modelo_id' => 'Ya se registraron todos los equipos disponibles de este modelo en este lote.',
+                    ]);
+                }
             }
 
             $diff = $this->buildAuditDiff($this->baseline, $this->currentSnapshotForAudit());
