@@ -195,7 +195,7 @@ class GestionGarantias extends Component
 
         // Pre-asignar al técnico que reportó
         $garantia = $this->garantiaActual;
-        $this->tecnicoReingresoId = $garantia?->reportado_por_id ?? 0;
+        $this->tecnicoReingresoId = 0;
 
         $this->modalResolucion = true;
 

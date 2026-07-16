@@ -153,8 +153,9 @@ class GarantiaExternaService
                 'estatus_area'          => Equipo::AREA_ASIGNADO,
                 'almacen_id'            => \App\Models\Almacen::PREPARACION,
                 'clasificacion_puntos_id' => $loteModeloNuevo->clasificacion_puntos_id,
-                'registrado_por_user_id'  => Auth::id(),
+                'registrado_por_user_id'  => $datos['tecnico_reingreso_id'],
                 'catalogo_equipo_id'    => $loteModeloNuevo->catalogo_equipo_id,
+                'notas_generales'       => 'Equipo de reemplazo por garantía externa #'.$garantia->id,
             ]);
 
             // Auditoría del equipo nuevo
@@ -181,8 +182,9 @@ class GarantiaExternaService
                 ]);
 
                 // Si el técnico de reingreso es diferente al de la asignación padre,
+                // O si la asignación padre ya está terminada/cancelada,
                 // crear una nueva asignación individual
-                if ((int) $datos['tecnico_reingreso_id'] !== (int) $asignacionPadre->tecnico_id) {
+                if (in_array($asignacionPadre->estatus, [\App\Models\Asignacion::ENTREGADO, \App\Models\Asignacion::CANCELADO]) || (int) $datos['tecnico_reingreso_id'] !== (int) $asignacionPadre->tecnico_id) {
                     $nuevaAsignacion = Asignacion::create([
                         'tecnico_id'    => $datos['tecnico_reingreso_id'],
                         'asignado_por_id' => Auth::id(),
