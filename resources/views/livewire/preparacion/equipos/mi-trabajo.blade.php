@@ -794,7 +794,7 @@
             </div>
 
             @php $allowedEmails = ['soporte@tecnobytemx.com', 'prueba@prueba.com', 'tamara.trejo@tecnobytemx.com']; @endphp
-            @if(! $equipoTerminado && $tieneEquiposPrevios && auth()->user() && in_array(auth()->user()->email, $allowedEmails))
+            @if(! $equipoTerminado && $tieneEquiposPrevios)
             <div class="rounded-xl border border-blue-200/60 dark:border-blue-400/20
                         bg-blue-50/70 dark:bg-blue-900/20 px-4 py-3 mb-4
                         flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -808,8 +808,17 @@
                 </div>
                 <div class="flex items-center gap-2 w-full sm:w-auto">
                     <select 
-                        wire:model.live="equipoPlantillaId" 
-                        wire:change="aplicarPlantilla"
+                        x-data="{ isAllowed: @js(auth()->user() && in_array(auth()->user()->email, $allowedEmails)) }"
+                        x-on:change="
+                            if (!isAllowed && $el.value !== '') {
+                                if (!confirm('⚠️ ADVERTENCIA: Estás usando una plantilla.\n\nDebes verificar 2 VECES que todos los datos coincidan exactamente con el equipo físico antes de guardar.\n\n¿Entendido?')) {
+                                    $el.value = '';
+                                    return;
+                                }
+                            }
+                            $wire.set('equipoPlantillaId', $el.value);
+                            $wire.aplicarPlantilla();
+                        "
                         class="block w-full sm:w-64 rounded-md border-0 py-1.5 pl-3 pr-10 text-slate-900 dark:text-slate-100 ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 bg-white dark:bg-slate-900"
                         wire:loading.attr="disabled"
                     >
