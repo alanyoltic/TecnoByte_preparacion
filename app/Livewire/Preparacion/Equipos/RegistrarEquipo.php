@@ -55,10 +55,7 @@ class RegistrarEquipo extends Component
     {
         abort_unless(auth()->user()?->tienePermiso('prep.equipos.crear'), 403);
         
-        $allowedEmails = ['soporte@tecnobytemx.com', 'prueba@prueba.com', 'tamara.trejo@tecnobytemx.com'];
-        if (auth()->user() && in_array(auth()->user()->email, $allowedEmails)) {
-            $this->tieneEquiposPrevios = \App\Models\Equipo::where('registrado_por_user_id', \Illuminate\Support\Facades\Auth::id())->exists();
-        }
+        $this->tieneEquiposPrevios = \App\Models\Equipo::where('registrado_por_user_id', \Illuminate\Support\Facades\Auth::id())->exists();
         // ✅ Instancia estable del Form
 
         $this->cargarCatalogos();

@@ -117,19 +117,17 @@ class EditarEquipo extends Component
         // 1) Catálogos (como objetos)
         $this->cargarCatalogos();
 
-        if (auth()->user() && in_array(auth()->user()->email, ['soporte@tecnobytemx.com', 'prueba@prueba.com', 'tamara.trejo@tecnobytemx.com'])) {
-            $this->tieneEquiposPrevios = \App\Models\Equipo::where('registrado_por_user_id', \Illuminate\Support\Facades\Auth::id())
+        $this->tieneEquiposPrevios = \App\Models\Equipo::where('registrado_por_user_id', \Illuminate\Support\Facades\Auth::id())
+            ->where('id', '!=', $equipo->id)
+            ->exists();
+        
+        if ($equipo->lote_modelo_id) {
+            $this->opcionesPlantilla = \App\Models\Equipo::where('registrado_por_user_id', \Illuminate\Support\Facades\Auth::id())
+                ->where('lote_modelo_id', $equipo->lote_modelo_id)
                 ->where('id', '!=', $equipo->id)
-                ->exists();
-            
-            if ($equipo->lote_modelo_id) {
-                $this->opcionesPlantilla = \App\Models\Equipo::where('registrado_por_user_id', \Illuminate\Support\Facades\Auth::id())
-                    ->where('lote_modelo_id', $equipo->lote_modelo_id)
-                    ->where('id', '!=', $equipo->id)
-                    ->orderBy('id', 'desc')
-                    ->get(['id', 'numero_serie', 'marca', 'modelo'])
-                    ->toArray();
-            }
+                ->orderBy('id', 'desc')
+                ->get(['id', 'numero_serie', 'marca', 'modelo'])
+                ->toArray();
         }
 
         // 2) Hidratar Form desde Equipo (tu Form ya tiene esto en Editar)
