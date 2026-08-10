@@ -862,18 +862,6 @@
 
 <script>
 /**
- * Convierte el ID a un código óptimo para barcode.
- * - IDs pequeños: numérico
- * - IDs grandes: Base36 (más corto)
- */
-function encodeIdForBarcode(id) {
-  const num = Number(id);
-  if (!Number.isInteger(num) || num <= 0) return String(id);
-  if (num < 100000) return String(num);
-  return num.toString(36).toUpperCase();
-}
-
-/**
  * Ajusta el título para que quepa en una sola línea
  */
 function ajustarTituloParaEtiqueta(tituloEl) {
@@ -976,10 +964,11 @@ function imprimirEtiquetaFinal(id) {
   const qrCanvas = area.querySelector('.qr-target');
   if (qrCanvas) {
     try {
-      const codigoScan = encodeIdForBarcode(id);
+      // Tomamos la serie directamente desde el atributo data-serie
+      const serieScan = qrCanvas.dataset.serie || String(id);
       new QRious({
         element: qrCanvas,
-        value: codigoScan,
+        value: serieScan,
         size: 180, // Resolución interna mejorada
         level: 'M', // 'M' da buena resistencia a borrones
         padding: 0 // Sin margen blanco extra para que se vea más grande
