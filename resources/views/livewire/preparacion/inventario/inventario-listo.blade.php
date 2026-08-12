@@ -746,7 +746,7 @@
                 {{-- Código QR Principal (Tamaño Grande y Apilado) --}}
                 <div class="flex flex-col items-center justify-end pb-1" style="width: 35mm;">
                     {{-- QR grande --}}
-                    <canvas class="qr-target" style="width: 13.5mm; height: 13.5mm; image-rendering: pixelated; margin-bottom: 0.5mm;"></canvas>
+                    <canvas class="qr-target" data-serie="{{ $equipo->numero_serie ?? $equipo->id }}" style="width: 13.5mm; height: 13.5mm; image-rendering: pixelated; margin-bottom: 0.5mm;"></canvas>
                     {{-- Texto del serial abajo --}}
                     <p class="text-gray-900 font-bold leading-none text-center" style="font-size: 8pt; font-family: 'Century Gothic', sans-serif; letter-spacing: 0.5px;">
                         *{{ $equipo->numero_serie ?? $equipo->id }}*
