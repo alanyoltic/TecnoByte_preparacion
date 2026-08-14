@@ -48,23 +48,57 @@ class GarantiaExternaService
                 'observaciones' => $datos['observaciones'] ?? null,
             ]);
 
-            // El equipo regresa a EN_PROCESO para que el técnico continúe
+            // El equipo regresa a ASIGNADO para que el técnico lo inicie nuevamente
             $equipo->update([
                 'estatus_ciclo' => Equipo::CICLO_PREPARACION,
-                'estatus_area'  => Equipo::AREA_EN_PROCESO,
+                'estatus_area'  => Equipo::AREA_ASIGNADO,
                 'almacen_id'    => \App\Models\Almacen::PREPARACION,
+                'registrado_por_user_id' => $datos['tecnico_reingreso_id'],
             ]);
 
-            // Reactivar la asignación del equipo si quedó en GARANTIA_EXTERNA
-            AsignacionEquipo::where('asignacion_equipo_id', $garantia->asignacion_equipo_id)
-                ->orWhere('id', $garantia->asignacion_equipo_id)
-                ->where('camino', 'GARANTIA_EXTERNA')
-                ->update(['camino' => AsignacionEquipo::EN_PROCESO, 'fin_en' => null]);
+            // --------------------------------------------------
+            // Reasignar al técnico elegido
+            // --------------------------------------------------
+            $asignacionPadre = AsignacionEquipo::find($garantia->asignacion_equipo_id)?->asignacion;
+
+            if ($asignacionPadre) {
+                // Crear un nuevo asignacion_equipo en la misma asignación padre
+                AsignacionEquipo::create([
+                    'asignacion_id' => $asignacionPadre->id,
+                    'equipo_id'     => $equipo->id,
+                    'camino'        => AsignacionEquipo::PENDIENTE,
+                    'inicio_en'     => null,
+                    'fin_en'        => null,
+                    'notas'         => 'Equipo reparado por garantía externa #'.$garantia->id,
+                ]);
+
+                // Si el técnico de reingreso es diferente al de la asignación padre,
+                // O si la asignación padre ya está terminada/cancelada,
+                // crear una nueva asignación individual
+                if (in_array($asignacionPadre->estatus, [\App\Models\Asignacion::ENTREGADO, \App\Models\Asignacion::CANCELADO]) || (int) $datos['tecnico_reingreso_id'] !== (int) $asignacionPadre->tecnico_id) {
+                    $nuevaAsignacion = Asignacion::create([
+                        'tecnico_id'    => $datos['tecnico_reingreso_id'],
+                        'asignado_por_id' => Auth::id(),
+                        'lote_modelo_id' => $equipo->lote_modelo_id,
+                        'cantidad'      => 1,
+                        'estatus'       => Asignacion::EN_PROCESO,
+                        'fecha_asignacion' => now(),
+                        'notas'         => 'Asignación por reparación de garantía externa #'.$garantia->id,
+                    ]);
+
+                    // Mover el asignacion_equipo recién creado a esta nueva asignación
+                    AsignacionEquipo::where('equipo_id', $equipo->id)
+                        ->latest('id')
+                        ->first()
+                        ?->update(['asignacion_id' => $nuevaAsignacion->id]);
+                }
+            }
 
             // Cerrar la garantía
             $garantia->update([
                 'estatus'              => GarantiaProveedor::RESUELTA,
                 'tipo_resolucion'      => GarantiaProveedor::REPARADO,
+                'tecnico_reingreso_id' => $datos['tecnico_reingreso_id'],
                 'resuelto_por_id'      => Auth::id(),
                 'fecha_resolucion'     => $datos['fecha_resolucion'],
                 'observaciones_resolucion' => $datos['observaciones'] ?? null,

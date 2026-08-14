@@ -195,7 +195,7 @@ class GestionGarantias extends Component
 
         // Pre-asignar al técnico que reportó
         $garantia = $this->garantiaActual;
-        $this->tecnicoReingresoId = 0;
+        $this->tecnicoReingresoId = $garantia?->reportado_por_id ?? 0;
 
         $this->modalResolucion = true;
 
@@ -239,7 +239,7 @@ class GestionGarantias extends Component
 
             match ($this->tipoResolucion) {
 
-                GarantiaProveedor::REPARADO => $service->resolverReparado($garantia, $datos),
+                GarantiaProveedor::REPARADO => $this->resolverReparadoConValidacion($service, $garantia, $datos),
 
                 GarantiaProveedor::REEMPLAZADO => $this->resolverReemplazadoConValidacion($service, $garantia, $datos),
 
@@ -263,6 +263,22 @@ class GestionGarantias extends Component
     }
 
     // ── Helpers privados ──────────────────────────────────────────────────
+
+    private function resolverReparadoConValidacion(
+        GarantiaExternaService $service,
+        GarantiaProveedor      $garantia,
+        array                  $datos
+    ): void {
+        if (! $this->tecnicoReingresoId) {
+            throw new \RuntimeException('Selecciona el técnico al que se asignará el equipo.');
+        }
+
+        $datos = array_merge($datos, [
+            'tecnico_reingreso_id' => $this->tecnicoReingresoId,
+        ]);
+
+        $service->resolverReparado($garantia, $datos);
+    }
 
     private function resolverReemplazadoConValidacion(
         GarantiaExternaService $service,

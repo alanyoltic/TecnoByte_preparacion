@@ -364,24 +364,27 @@
                             </div>
                         @endif
 
-                        {{-- Técnico de reingreso --}}
-                        <div class="space-y-1">
-                            <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                Asignar equipo nuevo a <span class="text-red-500">*</span>
-                            </label>
-                            <p class="text-[0.65rem] text-slate-400 dark:text-slate-500">
-                                Por defecto: el técnico que reportó la garantía.
-                            </p>
-                            <select wire:model="tecnicoReingresoId"
-                                class="w-full rounded-xl px-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
-                                       border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
-                                       focus:ring-2 focus:ring-blue-400 outline-none">
-                                <option value="0">— Seleccionar técnico —</option>
-                                @foreach($this->tecnicosDisponibles as $tec)
-                                    <option value="{{ $tec->id }}">{{ $tec->nombre }} {{ $tec->apellido_paterno }}</option>
-                                @endforeach
-                            </select>
-                        </div>
+                    </div>
+                @endif
+
+                {{-- Técnico de reingreso (Para REPARADO y REEMPLAZADO) --}}
+                @if(in_array($tipoResolucion, ['REPARADO', 'REEMPLAZADO']))
+                    <div class="space-y-1 rounded-xl border border-blue-200/60 bg-blue-50/30 dark:bg-blue-900/10 px-4 py-4">
+                        <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            Asignar equipo a técnico <span class="text-red-500">*</span>
+                        </label>
+                        <p class="text-[0.65rem] text-slate-400 dark:text-slate-500">
+                            Por defecto: el técnico que reportó la garantía.
+                        </p>
+                        <select wire:model="tecnicoReingresoId"
+                            class="w-full rounded-xl px-3 py-2 text-sm bg-white/70 dark:bg-slate-900/40
+                                   border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100
+                                   focus:ring-2 focus:ring-blue-400 outline-none">
+                            <option value="0">— Seleccionar técnico —</option>
+                            @foreach($this->tecnicosDisponibles as $tec)
+                                <option value="{{ $tec->id }}">{{ $tec->nombre }} {{ $tec->apellido_paterno }}</option>
+                            @endforeach
+                        </select>
                     </div>
                 @endif
 
