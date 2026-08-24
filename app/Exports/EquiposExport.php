@@ -2,26 +2,26 @@
 
 namespace App\Exports;
 
-use Illuminate\Support\Collection;
-use Maatwebsite\Excel\Concerns\FromCollection;
+use Illuminate\Database\Eloquent\Builder;
+use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Events\AfterSheet;
 
-class EquiposExport implements FromCollection, ShouldAutoSize, WithEvents, WithHeadings, WithMapping
+class EquiposExport implements FromQuery, ShouldAutoSize, WithEvents, WithHeadings, WithMapping
 {
-    protected Collection $equipos;
+    protected Builder $query;
 
-    public function __construct(Collection $equipos)
+    public function __construct(Builder $query)
     {
-        $this->equipos = $equipos;
+        $this->query = $query;
     }
 
-    public function collection()
+    public function query()
     {
-        return $this->equipos;
+        return $this->query;
     }
 
     public function headings(): array

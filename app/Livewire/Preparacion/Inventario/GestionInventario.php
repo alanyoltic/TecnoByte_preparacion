@@ -76,16 +76,16 @@ class GestionInventario extends Component
     {
         $this->autorizarGestion();
 
-        $equipos = Equipo::with([
+        $equiposQuery = Equipo::with([
             'loteModelo.lote.proveedor',
             'registradoPor',
             'gpus',
             'monitor',
             'baterias',
             'clasificacionPuntos',
-        ])->get();
+        ]);
 
-        return Excel::download(new EquiposExport($equipos), 'equipos.xlsx');
+        return Excel::download(new EquiposExport($equiposQuery), 'equipos.xlsx');
     }
 
     public function mount(): void
@@ -527,13 +527,11 @@ class GestionInventario extends Component
             $query->whereIn('id', $this->selected);
         }
 
-        $equipos = $query
-            ->with(['loteModelo.lote.proveedor', 'registradoPor', 'clasificacionPuntos'])
-            ->get();
+        $query->with(['loteModelo.lote.proveedor', 'registradoPor', 'clasificacionPuntos']);
 
         $fileName = 'inventario_'.now()->format('Ymd_His').'.xlsx';
 
-        return Excel::download(new EquiposExport($equipos), $fileName);
+        return Excel::download(new EquiposExport($query), $fileName);
     }
 
     public function render()
