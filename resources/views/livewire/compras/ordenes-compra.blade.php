@@ -336,7 +336,7 @@
                                             <input type="text" wire:model="carrito.{{ $index }}.notas" placeholder="Opcional..." class="w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm px-2 py-1.5 focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
                                         </td>
                                         <td class="px-5 py-4 align-top text-right font-bold text-slate-800 dark:text-slate-200">
-                                            ${{ number_format(($item['cantidad'] ?? 0) * ($item['precio'] ?? 0), 2) }}
+                                            ${{ number_format((float)($item['cantidad'] ?? 0) * (float)($item['precio'] ?? 0), 2) }}
                                         </td>
                                         <td class="px-5 py-4 align-top text-center">
                                             <button wire:click="removerDelCarrito({{ $index }})" class="text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 p-1.5 rounded-lg transition-all" title="Eliminar partida">
