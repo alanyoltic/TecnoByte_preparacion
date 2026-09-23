@@ -13,7 +13,7 @@
             description="Consulta el historial de compras de piezas con trazabilidad de proveedor."
         >
             <x-slot name="right">
-                <a href="{{ route('preparacion.catalogo-piezas') }}"
+                <a href="{{ route('compras.catalogo') }}"
                     class="inline-flex items-center gap-2 rounded-xl px-4 py-2
                            bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
                            text-white text-xs font-semibold shadow-md shadow-blue-800/40
@@ -224,3 +224,4 @@
     </div>
 </x-tb-background>
 </div>
+

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arquitectura de Alto Nivel - TecnoByte</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-5xl mx-auto bg-white p-8 shadow-lg rounded-lg">
+        <h1 class="text-3xl font-bold mb-6 text-gray-800">Diagrama de Arquitectura de Alto Nivel - TecnoByte</h1>
+        <p class="text-gray-600 mb-8">Este documento presenta la arquitectura de la aplicación web de TecnoByte, incluyendo los componentes principales, los flujos de usuarios clave y los límites de confianza del sistema.</p>
+
+        <h2 class="text-2xl font-semibold mb-4 text-blue-700">1. Componentes Principales</h2>
+        <div class="mermaid mb-8">
+            flowchart TD
+                subgraph Client [Cliente / Navegador]
+                    UI[Alpine.js / Tailwind CSS]
+                    LW_JS[Livewire JS]
+                end
+
+                subgraph Server [Servidor - Laravel 12]
+                    HTTP[Router / Middleware]
+                    LW_PHP[Livewire Components]
+                    Auth[Autenticación y Autorización]
+                    Models[Modelos Eloquent]
+                    Services[Servicios de Negocio]
+                    
+                    HTTP --> Auth
+                    Auth --> LW_PHP
+                    LW_PHP --> Services
+                    Services --> Models
+                end
+
+                subgraph Database [Base de Datos]
+                    MySQL[(MySQL)]
+                end
+
+                UI <-->|Interacciones UI| LW_JS
+                LW_JS <-->|Peticiones AJAX / XHR| HTTP
+                Models <-->|Consultas SQL / ORM| MySQL
+        </div>
+
+        <h2 class="text-2xl font-semibold mb-4 text-blue-700">2. Flujo Principal de Usuarios</h2>
+        <div class="mermaid mb-8">
+            sequenceDiagram
+                actor Gerente as Gerente / Líder
+                actor Tecnico as Técnico
+                participant App as TecnoByte (Livewire)
+                participant DB as MySQL
+                
+                Gerente->>App: Asigna Equipos a Técnico (Asignaciones)
+                App->>DB: Guarda AsignacionEquipo
+                Tecnico->>App: Consulta "Mi Trabajo"
+                App->>DB: Recupera Equipos Asignados
+                DB-->>App: Lista de Equipos
+                App-->>Tecnico: Muestra Vista MiTrabajo
+                
+                alt Técnico requiere pieza
+                    Tecnico->>App: Crea SolicitudPieza
+                    App->>DB: Guarda Solicitud (PENDIENTE)
+                    Gerente->>App: Revisa y Sortea Pieza (Gestión Solicitudes)
+                    App->>DB: Actualiza Solicitud (SURTIDA)
+                    Tecnico->>App: Inicia Instalación de Pieza
+                    Tecnico->>App: Confirma Instalación
+                    App->>DB: Registra Puntos y Actualiza Estatus
+                else Técnico termina equipo exitosamente
+                    Tecnico->>App: Termina Equipo (100%)
+                    App->>DB: Cambia estatus a COMPLETADO, registra Puntos
+                end
+        </div>
+
+        <h2 class="text-2xl font-semibold mb-4 text-blue-700">3. Límites de Confianza y Seguridad</h2>
+        <div class="mermaid mb-8">
+            flowchart LR
+                subgraph Public [Zona Pública - No Confiable]
+                    Internet[Internet / Navegador]
+                end
+
+                subgraph Boundary [Límite de Confianza - Middleware]
+                    AuthGuard[Autenticación]
+                    PermGuard[Autorización - Gates]
+                end
+
+                subgraph Internal [Zona Segura - Servidor]
+                    Controllers[Lógica de Negocio]
+                    DBAccess[Acceso a Datos]
+                end
+
+                Internet -- Petición HTTP --> AuthGuard
+                AuthGuard -- Verifica Sesión --> PermGuard
+                PermGuard -- middleware('permiso:...') / @can --> Controllers
+                Controllers -- Eloquent --> DBAccess
+                
+                style Public fill:#fecaca,stroke:#dc2626
+                style Boundary fill:#fef08a,stroke:#ca8a04
+                style Internal fill:#bbf7d0,stroke:#16a34a
+        </div>
+        
+        <div class="bg-blue-50 p-6 rounded border border-blue-200">
+            <h3 class="text-xl font-semibold text-blue-800 mb-2">Detalles del Sistema de Permisos</h3>
+            <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                <li><strong>Roles:</strong> CEO, Gerente, Líder, Técnico, Admin Sistema, etc.</li>
+                <li><strong>Autorización Híbrida:</strong> El modelo <code>User::tienePermiso()</code> se integra globalmente en <code>AppServiceProvider</code> usando <code>Gate::before()</code>, asegurando que directivas nativas de Laravel como <code>@can</code> funcionen de manera fluida (cumpliendo con la regla de proyecto).</li>
+                <li><strong>Middleware:</strong> Las rutas están protegidas mediante <code>->middleware('permiso:{slug}')</code>.</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

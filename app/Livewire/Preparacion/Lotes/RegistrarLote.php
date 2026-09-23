@@ -138,6 +138,67 @@ class RegistrarLote extends Component
         }
     }
 
+    // ── Cargadores ────────────────────────────────────────────────────────
+    
+    public array $modelosCargadores = [];
+    public bool $modalSeriesCargador = false;
+    public int $serialesCargadorIndex = -1;
+
+    public function addModeloCargador(): void
+    {
+        $this->modelosCargadores[] = [
+            'marca' => '',
+            'voltaje' => '',
+            'amperaje' => '',
+            'punta' => '',
+            'cantidad' => 1,
+            'costo' => '',
+            'numeros_serie' => [],
+        ];
+    }
+
+    public function removeModeloCargador(int $index): void
+    {
+        unset($this->modelosCargadores[$index]);
+        $this->modelosCargadores = array_values($this->modelosCargadores);
+    }
+
+    public function abrirModalSeriesCargador(int $index): void
+    {
+        $this->serialesCargadorIndex = $index;
+        if (empty($this->modelosCargadores[$index]['numeros_serie'])) {
+            $this->modelosCargadores[$index]['numeros_serie'] = [''];
+        }
+        $this->modalSeriesCargador = true;
+    }
+
+    public function cerrarModalSeriesCargador(): void
+    {
+        $this->modalSeriesCargador = false;
+        $this->serialesCargadorIndex = -1;
+    }
+
+    public function agregarSerieModalCargador(): void
+    {
+        if ($this->serialesCargadorIndex < 0) {
+            return;
+        }
+        $this->modelosCargadores[$this->serialesCargadorIndex]['numeros_serie'][] = '';
+    }
+
+    public function quitarSerieModalCargador(int $si): void
+    {
+        $idx = $this->serialesCargadorIndex;
+        if ($idx < 0 || ! isset($this->modelosCargadores[$idx]['numeros_serie'][$si])) {
+            return;
+        }
+        array_splice($this->modelosCargadores[$idx]['numeros_serie'], $si, 1);
+        $this->modelosCargadores[$idx]['numeros_serie'] = array_values($this->modelosCargadores[$idx]['numeros_serie']);
+        if (empty($this->modelosCargadores[$idx]['numeros_serie'])) {
+            $this->modelosCargadores[$idx]['numeros_serie'] = [''];
+        }
+    }
+
     // ── Guardar ───────────────────────────────────────────────────────────
 
     public function guardar()
@@ -152,6 +213,9 @@ class RegistrarLote extends Component
             'modelos.*.cantidad_recibida' => 'required|integer|min:1',
             'modelos.*.valor_unitario' => 'nullable|numeric|min:0',
             'modelos.*.clasificacion_puntos_id' => 'nullable|exists:clasificaciones_puntos,id',
+
+            'modelosCargadores.*.cantidad' => 'required|integer|min:1',
+            'modelosCargadores.*.costo' => 'nullable|numeric|min:0',
         ], [
             'modelos.required' => 'Debes agregar al menos un modelo al lote.',
             'modelos.*.catalogo_equipo_id.required' => 'Debes seleccionar un equipo del catálogo oficial.',
@@ -221,11 +285,56 @@ class RegistrarLote extends Component
                     }
                 }
             }
+
+            // Guardar cargadores nuevos
+            if (!empty($this->modelosCargadores)) {
+                $proveedor = Proveedor::find($this->proveedor_id);
+                $abrev = strtoupper(trim($proveedor->abreviacion ?? 'LOT'));
+                $fechaAbrev = date('dmY', strtotime($this->fecha_llegada ?? now()));
+                $prefijo = "{$abrev}{$fechaAbrev}";
+
+                $secuencialGlobal = 1;
+
+                foreach ($this->modelosCargadores as $mc) {
+                    $cantidad = (int) $mc['cantidad'];
+                    if ($cantidad < 1) continue;
+
+                    $seriesM = array_values(array_filter(
+                        array_map('trim', $mc['numeros_serie'] ?? []), fn ($s) => $s !== ''
+                    ));
+
+                    for ($i = 0; $i < $cantidad; $i++) {
+                        if (isset($seriesM[$i])) {
+                            $serieFinal = $seriesM[$i];
+                        } else {
+                            $serieFinal = "{$prefijo}-{$secuencialGlobal}";
+                            // Verificar que no exista, si existe, incrementar
+                            while (\App\Models\Cargador::where('serie', $serieFinal)->exists()) {
+                                $secuencialGlobal++;
+                                $serieFinal = "{$prefijo}-{$secuencialGlobal}";
+                            }
+                            $secuencialGlobal++;
+                        }
+
+                        $nuevoCargador = \App\Models\Cargador::create([
+                            'serie' => $serieFinal,
+                            'marca' => $mc['marca'] ?: null,
+                            'voltaje' => $mc['voltaje'] ?: null,
+                            'amperaje' => $mc['amperaje'] ?: null,
+                            'punta' => $mc['punta'] ?: null,
+                            'lote_id' => $loteId,
+                            'estatus' => 'DISPONIBLE',
+                        ]);
+                        
+                        \App\Services\CargadorTraceService::log($nuevoCargador, 'CREADO', 'Alta inicial al registrar lote');
+                    }
+                }
+            }
         });
 
-        $this->dispatch('toast', type: 'success', message: 'Lote y modelos registrados correctamente.');
+        $this->dispatch('toast', type: 'success', message: 'Lote, modelos y cargadores registrados correctamente.');
 
-        $this->reset(['nombre_lote', 'proveedor_id', 'modelos']);
+        $this->reset(['nombre_lote', 'proveedor_id', 'modelos', 'modelosCargadores']);
         $this->fecha_llegada = now()->toDateString();
         $this->modelos = [
             [

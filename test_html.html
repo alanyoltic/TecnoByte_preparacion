@@ -1,0 +1,146 @@
+<div wire:id="RJlOqt99rDxDgDJXuJq7"
+    class="relative min-h-screen overflow-hidden
+           bg-gradient-to-br
+           from-slate-100 via-slate-100 to-slate-200
+           dark:from-slate-950 dark:via-[#020617] dark:to-slate-950"
+    >
+    
+    <div class="pointer-events-none absolute -inset-2">
+        <div
+            class="absolute w-[1100px] h-[1100px]
+                   bg-[#1E3A8A] rounded-full blur-[240px]
+                   opacity-70 md:opacity-90 mix-blend-screen"
+            style="top: -296px; left: -125px;"
+        ></div>
+
+        <div
+            class="absolute w-[1000px] h-[1000px]
+                   bg-[#0F1A35] rounded-full blur-[240px]
+                   opacity-70 md:opacity-95 mix-blend-screen"
+            style="bottom: -387px; right: -234px;"
+        ></div>
+
+        <div
+            class="absolute w-[850px] h-[850px]
+                   bg-[#FF9521]/40 md:bg-[#FF9521]/50
+                   rounded-full blur-[260px]
+                   opacity-80 md:opacity-90 mix-blend-screen"
+            style="bottom: -236px; left: 37%;"
+        ></div>
+    </div>
+
+    <div class="pointer-events-none absolute -inset-2 bg-white/40 dark:bg-slate-950/30 backdrop-blur-2xl transform-gpu will-change-transform"></div>
+
+    <div class="relative z-10 w-full">
+        <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10 space-y-6">
+    <!--[if BLOCK]><![endif]-->        <!--[if BLOCK]><![endif]-->
+
+<div
+    class="relative overflow-hidden mb-6
+           rounded-3xl
+           bg-white/80 dark:bg-slate-950/70
+           border border-slate-200/80 dark:border-white/10
+           shadow-lg shadow-slate-900/10 dark:shadow-2xl dark:shadow-slate-950/70
+           backdrop-blur-xl dark:backdrop-blur-2xl
+           px-6 sm:px-8 lg:px-10 py-4 sm:py-5"
+>
+    <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+
+        
+        <div class="space-y-1.5">
+            <div class="flex items-center gap-3">
+                <h2 class="font-semibold text-xl text-slate-900 dark:text-slate-50 leading-tight">
+                    Órdenes de Compra
+                </h2>
+
+                <!--[if BLOCK]><![endif]-->                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full
+                               text-[0.7rem] font-semibold tracking-wide
+                               bg-[#FF9521]/10 text-[#FF9521]
+                               border border-[#FF9521]/40"
+                    >
+                        Ventas
+                    </span>
+                <!--[if ENDBLOCK]><![endif]-->            </div>
+
+            
+            <!--[if BLOCK]><![endif]-->                <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                    Administra el abastecimiento de piezas, productos y consumibles.
+                </p>
+            <!--[if ENDBLOCK]><![endif]-->        </div>
+
+        
+        <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <button wire:click="verNuevaOrden"
+                    class="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-sm font-semibold shadow-md shadow-emerald-800/40 hover:shadow-emerald-500/60 hover:-translate-y-0.5 transition-all duration-200">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Nueva Orden
+                </button>
+        </div>
+
+    </div>
+</div>
+
+        
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div class="rounded-2xl bg-white/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-white/10 backdrop-blur-xl px-4 py-3 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-sky-500/20">
+                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Órdenes</p>
+                <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-50">0</p>
+            </div>
+            <div class="rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-500/70 backdrop-blur-xl px-4 py-3 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-500/40">
+                <p class="text-xs font-semibold text-emerald-700 dark:text-emerald-200 uppercase tracking-wide">Ítems Globales</p>
+                <p class="mt-2 text-2xl font-bold text-emerald-800 dark:text-emerald-100">0</p>
+            </div>
+            <div class="rounded-2xl bg-orange-50/90 dark:bg-orange-950/40 border border-orange-200/80 dark:border-orange-500/70 backdrop-blur-xl px-4 py-3 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-orange-500/40">
+                <p class="text-xs font-semibold text-orange-700 dark:text-orange-200 uppercase tracking-wide">Cargadores</p>
+                <p class="mt-2 text-2xl font-bold text-orange-800 dark:text-orange-100">0</p>
+            </div>
+            <div class="rounded-2xl bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-500/70 backdrop-blur-xl px-4 py-3 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/40">
+                <p class="text-xs font-semibold text-indigo-700 dark:text-indigo-200 uppercase tracking-wide">Inversión Est.</p>
+                <p class="mt-2 text-2xl font-bold text-indigo-800 dark:text-indigo-100">$0</p>
+            </div>
+        </div>
+
+        <div class="rounded-2xl bg-white/80 dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/10 backdrop-blur-xl shadow-md px-5 py-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="relative md:col-span-2">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">🔍</span>
+                    <input type="text" wire:model.live.debounce.400ms="busqueda" placeholder="Buscar por proveedor o folio..."
+                        class="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla -->
+        <div class="bg-white/80 dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/10 rounded-2xl overflow-hidden shadow-lg backdrop-blur-xl">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300">
+                    <thead class="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-white/10 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        <tr>
+                            <th class="px-5 py-3 font-semibold">Fecha / Folio</th>
+                            <th class="px-5 py-3 font-semibold">Proveedor</th>
+                            <th class="px-5 py-3 font-semibold text-center">Ítems</th>
+                            <th class="px-5 py-3 font-semibold text-right">Total</th>
+                            <th class="px-5 py-3 font-semibold text-center">Estatus</th>
+                            <th class="px-5 py-3 font-semibold text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200/80 dark:divide-white/5">
+                        <!--[if BLOCK]><![endif]-->                            <tr>
+                                <td colspan="6" class="px-5 py-10 text-center text-slate-500">No se encontraron órdenes de compra.</td>
+                            </tr>
+                        <!--[if ENDBLOCK]><![endif]-->                    </tbody>
+                </table>
+            </div>
+            <div class="px-5 py-3 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/50">
+                <div>
+    <!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]--></div>
+
+            </div>
+        </div>
+
+    <!--[if ENDBLOCK]><![endif]-->    </div>
+    </div>
+
+</div>
+

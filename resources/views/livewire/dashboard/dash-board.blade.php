@@ -174,6 +174,16 @@
         },
 
         init(){
+            this.$cleanup(() => {
+                if (window.__TB_DASH_CAROUSEL_TIMER__) {
+                    clearTimeout(window.__TB_DASH_CAROUSEL_TIMER__);
+                    window.__TB_DASH_CAROUSEL_TIMER__ = null;
+                }
+                if (this.visHandler) {
+                    document.removeEventListener('visibilitychange', this.visHandler);
+                }
+            });
+
             // Siempre iniciar en Dashboard (no persistir ultima vista)
             this.slide = 0;
 
@@ -197,12 +207,10 @@
             this.scheduleAuto();
 
             // Reanudar el timer al volver a la pestaña
-            if (!window.__TB_DASH_VIS_LISTENER__) {
-                window.__TB_DASH_VIS_LISTENER__ = true;
-                document.addEventListener('visibilitychange', () => {
-                    if (!document.hidden) window.__TB_DASH_CAROUSEL_INSTANCE__?.scheduleAuto?.();
-                });
-            }
+            this.visHandler = () => {
+                if (!document.hidden) window.__TB_DASH_CAROUSEL_INSTANCE__?.scheduleAuto?.();
+            };
+            document.addEventListener('visibilitychange', this.visHandler);
         },
 
         go(i){
@@ -290,7 +298,7 @@
                             </p>
                             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
 
-                                <a href="{{ route('preparacion.catalogo-piezas') }}"
+                                <a href="{{ route('compras.catalogo') }}"
                                    class="flex flex-col items-center justify-center gap-1.5 rounded-xl px-3 py-4
                                           bg-blue-50 dark:bg-blue-900/20 border border-blue-200/70 dark:border-blue-700/40
                                           text-blue-700 dark:text-blue-300
@@ -585,6 +593,7 @@
                                         reducedMotion: false,
 
                                         init(){
+                                            this.$cleanup(() => this.stop());
                                             this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
                                             this.autoplay = this.items.length > 1 && !this.reducedMotion;
                                             if (this.autoplay) this.start();
@@ -1605,22 +1614,33 @@
             document.addEventListener("livewire:init", boot);
             document.addEventListener("livewire:navigated", boot);
 
-            window.addEventListener("focus", () => {
+            const focusHandler = () => {
                 try { window.TB_DASH_RESIZE?.(); } catch (e) {}
-            });
-
-            document.addEventListener("visibilitychange", () => {
+            };
+            const visHandler = () => {
                 if (document.visibilityState === "visible") {
                     try { window.TB_DASH_RESIZE?.(); } catch (e) {}
                 }
-            });
-
-            window.addEventListener("dashboard-data-updated", (event) => {
-                lastPayload = event.detail;
+            };
+            const dashUpdateHandler = (event) => {
+                lastPayload = event.detail[0] || event.detail;
                 if (bootAnimating) return;
                 updateCharts(lastPayload);
-            });
+            };
+
+            window.addEventListener("focus", focusHandler);
+            document.addEventListener("visibilitychange", visHandler);
+            window.addEventListener("dashboard-data-updated", dashUpdateHandler);
+
+            // Evitar duplicación de listeners en SPA:
+            document.addEventListener("livewire:navigating", () => {
+                window.removeEventListener("focus", focusHandler);
+                document.removeEventListener("visibilitychange", visHandler);
+                window.removeEventListener("dashboard-data-updated", dashUpdateHandler);
+            }, { once: true });
+
 
         })();
     </script>
 @endpush
+

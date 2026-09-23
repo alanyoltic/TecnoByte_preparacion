@@ -33,4 +33,9 @@ class Lote extends Model
     {
         return $this->hasMany(LoteModeloRecibido::class, 'lote_id');
     }
+
+    public function cargadores()
+    {
+        return $this->hasMany(Cargador::class);
+    }
 }

@@ -90,23 +90,46 @@
 
             $u = auth()->user();
             $roleSlug = optional($u?->role)->slug;
+            $deptoClave = optional($u?->departamento)->clave;
+            $isAdmin = in_array($roleSlug, ['ceo', 'admin_sistema', 'sistemas']);
 
-            // Flags por permiso (globales)
-            $puedePrep   = $u && $u->tienePermiso('modulo.preparacion');
-            $puedeSis    = $u && $u->tienePermiso('modulo.sistema');
+            $isDeptoPrep   = ($deptoClave === 'PREPARACION' || $isAdmin);
+            $isDeptoVentas = ($deptoClave === 'VENTAS' || $isAdmin);
 
             // Preparacion
-            $puedeEquipos      = $u && $u->tienePermiso('prep.equipos.ver');
-            $puedeInv          = $u && $u->tienePermiso('prep.inventario.ver');
-            $puedeInvGestion   = $u && $u->tienePermiso('prep.inventario.gestion');
-            $puedeLotes        = $u && $u->tienePermiso('prep.lotes.ver');
-            $puedeVerMisAsignaciones = $u && $u->tienePermiso('prep.equipos.ver') && in_array($roleSlug, ['lider', 'tecnico'], true);
+            $puedePrep   = $isDeptoPrep && $u && $u->tienePermiso('modulo.preparacion');
+            $puedeEquipos      = $isDeptoPrep && $u && $u->tienePermiso('prep.equipos.ver');
+            $puedeInv          = $isDeptoPrep && $u && $u->tienePermiso('prep.inventario.ver');
+            $puedeInvGestion   = $isDeptoPrep && $u && $u->tienePermiso('prep.inventario.gestion');
+            $puedeLotes        = $isDeptoPrep && $u && $u->tienePermiso('prep.lotes.ver');
+            $puedeVerMisAsignaciones = $isDeptoPrep && $u && $u->tienePermiso('prep.equipos.ver') && in_array($roleSlug, ['lider', 'tecnico'], true);
 
             // Sistema
+            $puedeSis           = $u && $u->tienePermiso('modulo.sistema');
             $puedeUsuarios      = $u && $u->tienePermiso('sistema.usuarios.ver');
             $puedeUsuariosCrear = $u && $u->tienePermiso('sistema.usuarios.crear');
             $puedeAdminConfig   = $u && $u->tienePermiso('sistema.admin.configuracion');
             $puedeAvisos        = $u && $u->tienePermiso('sistema.avisos.ver');
+
+            // Gestión de Personal — gerentes de cualquier departamento
+            // El UserController filtra por departamento_id automáticamente,
+            // así el gerente de Ventas solo verá a su propio equipo.
+            $esGerente               = in_array($roleSlug, ['gerente', 'gerente_area'], true);
+            $puedeGestionarPersonal  = ($isAdmin || $esGerente) && $u && $u->tienePermiso('sistema.usuarios.ver');
+            $puedeGestionarPersonalCrear = ($isAdmin || $esGerente) && $u && $u->tienePermiso('sistema.usuarios.crear');
+
+            // Ventas
+            $puedeVentas          = $isDeptoVentas && $u && $u->tienePermiso('modulo.ventas');
+            $puedeVentasDespachos = $isDeptoVentas && $u && $u->tienePermiso('ventas.despachos.ver');
+            $puedeVentasAprobar   = $isDeptoVentas && $u && $u->tienePermiso('ventas.despachos.aprobar');
+            $puedeClientes        = $isDeptoVentas && $u && $u->tienePermiso('ventas.clientes.ver');
+            $puedeProductos       = $isDeptoVentas && $u && $u->tienePermiso('ventas.productos.ver');
+            $puedePOS             = $isDeptoVentas && $u && $u->tienePermiso('ventas.pos.ver');
+            $puedeDespachoCrear   = $isDeptoPrep && $u && $u->tienePermiso('prep.despachos.crear');
+            $puedeDespachoVer     = $isDeptoPrep && $u && $u->tienePermiso('prep.despachos.ver');
+
+            $isVentas         = request()->routeIs('ventas.*');
+            $isDespachoPrep   = request()->routeIs('preparacion.despachos-ventas*');
         @endphp
 
        {{-- NAV --}}
@@ -190,7 +213,7 @@
     @endif
 
     {{-- ===================== CALIDAD ===================== --}}
-    @if(optional($u?->role)->slug === 'calidad' || ($u && $u->tienePermiso('prep.calidad.validar')))
+    @if($isDeptoPrep && (optional($u?->role)->slug === 'calidad' || ($u && $u->tienePermiso('prep.calidad.validar'))))
     @php
         $calidadItems = [
             [
@@ -222,40 +245,62 @@
             isOpen(){ return sidebarOpen && activeMenu === this.id; },
 
             toggle(e){
-                if (sidebarOpen) {
-                    setMenu(this.id);
-                    return;
+                if (sidebarOpen) { 
+                    setMenu(this.id); 
+                    return; 
                 }
+
                 if (this.popoverOpen) {
                     this.popoverOpen = false;
-                } else {
-                    this.triggerEl = e.currentTarget;
-                    this.updatePopoverPosition();
-                    this.popoverOpen = true;
+                    return;
                 }
+
+                window.dispatchEvent(new CustomEvent('tb-close-popovers'));
+                this.triggerEl = e.currentTarget;
+                this.popoverOpen = true;
+                this.positionPopover();
             },
 
-            updatePopoverPosition(){
-                if (!this.triggerEl) return;
-                const rect = this.triggerEl.getBoundingClientRect();
-                this.popoverStyle = `top: ${rect.top}px; left: ${rect.right + 8}px;`;
-            }
+            positionPopover(){
+                this.$nextTick(() => {
+                    if (!this.triggerEl) return;
+                    const r = this.triggerEl.getBoundingClientRect();
+                    const width = 260, gap = 12;
+                    let top  = r.top;
+                    let left = r.right + gap;
+                    const estimatedHeight = 120;
+                    const maxTop = window.innerHeight - 12;
+                    if (top + estimatedHeight > maxTop) top = Math.max(12, maxTop - estimatedHeight);
+                    this.popoverStyle = `top:${top}px; left:${left}px; width:${width}px;`;
+                });
+            },
+
+            closePopover(){ this.popoverOpen = false; },
+            closeAll(){ this.popoverOpen = false; }
         }"
-        @scroll.window="if(!sidebarOpen && popoverOpen) updatePopoverPosition()"
-        @resize.window="if(!sidebarOpen && popoverOpen) updatePopoverPosition()"
-        @click.outside="popoverOpen = false"
-        @sidebar-toggle.window="if(sidebarOpen) popoverOpen = false"
+        @tb-close-popovers.window="closePopover()"
+        @keydown.escape.window="closeAll()"
+        @resize.window="positionPopover()"
+        @scroll.window="positionPopover()"
+        x-effect="if(sidebarOpen) popoverOpen=false"
     >
         <button
             type="button"
-            @click="toggle($event)"
+            @click.stop="toggle($event)"
             title="Calidad"
             class="{{ $linkBase }} {{ request()->routeIs('preparacion.calidad*')
-                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB] text-white font-semibold drop-shadow-[0_0_6px_rgba(99,102,241,0.65)] border-blue-400/70 shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
-                : 'bg-white/10 dark:bg-slate-900/20 text-slate-700 dark:text-slate-400 hover:bg-white/20 dark:hover:bg-slate-900/30 hover:text-slate-900 dark:hover:text-white' }}"
+                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                   text-white font-semibold
+                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                   border-blue-400/70
+                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                : 'bg-white/10 dark:bg-slate-900/20
+                    text-slate-700 dark:text-slate-400
+                    hover:bg-white/20 dark:hover:bg-slate-900/30
+                    hover:text-slate-900 dark:hover:text-white' }}"
             :class="sidebarOpen ? 'justify-between' : 'justify-center'"
         >
-            <div class="flex items-center gap-2">
+            <div class="flex items-center">
                 <div class="flex items-center justify-center w-7 h-7">
                     <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -265,79 +310,92 @@
                     Calidad
                 </span>
             </div>
-            <svg class="w-4 h-4 text-slate-400 transition-transform duration-300"
-                 x-show="sidebarOpen"
-                 :class="isOpen() ? 'rotate-180 text-blue-400' : ''"
-                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+
+            <svg class="w-4 h-4 text-slate-400 group-[.bg-gradient-to-r]:text-white group-hover:text-indigo-500 transition-colors duration-200"
+                fill="currentColor" viewBox="0 0 20 20"
+                x-show="sidebarOpen" x-transition
+                :class="isOpen() ? 'rotate-180' : ''"
+                style="transition: transform .2s ease;">
+                <path fill-rule="evenodd"
+                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                    clip-rule="evenodd" />
             </svg>
         </button>
 
-        <!-- Submenú en Sidebar (Abierto) -->
-        <div x-show="isOpen()"
-             x-collapse
-             x-cloak
-             class="mt-1 space-y-1">
-            @foreach($calidadItems as $item)
-                @php $isActive = request()->url() === $item['href']; @endphp
-                <a href="{{ $item['href'] }}"
-                   class="block pl-11 pr-3 py-2 text-sm rounded-xl transition-all duration-200 relative
-                          {{ $isActive
-                             ? 'text-blue-600 dark:text-blue-400 font-semibold bg-blue-50/50 dark:bg-blue-900/20'
-                             : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50' }}">
-                    @if($isActive)
-                        <div class="absolute left-4 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>
-                    @else
-                        <div class="absolute left-4 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></div>
-                    @endif
-                    {{ $item['label'] }}
-                </a>
-            @endforeach
-        </div>
-
-        <!-- Popover (Sidebar Colapsado) -->
-        <div x-show="popoverOpen"
-             x-cloak
-             x-transition:enter="transition ease-out duration-150"
-             x-transition:enter-start="opacity-0 translate-x-2"
-             x-transition:enter-end="opacity-100 translate-x-0"
-             x-transition:leave="transition ease-in duration-100"
-             x-transition:leave-start="opacity-100 translate-x-0"
-             x-transition:leave-end="opacity-0 translate-x-2"
-             class="fixed z-[100] w-48 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden py-1"
-             :style="popoverStyle">
-            <div class="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
-                <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Calidad</span>
-            </div>
-            <div class="p-1 space-y-0.5">
+        <div x-show="isOpen()" x-transition class="mt-2 space-y-1 pl-2">
+            <div class="rounded-2xl border
+                        bg-white/60 dark:bg-slate-950/40
+                        border-slate-200/70 dark:border-white/10
+                        backdrop-blur-xl overflow-x-hidden">
                 @foreach($calidadItems as $item)
-                    @php $isActive = request()->url() === $item['href']; @endphp
                     <a href="{{ $item['href'] }}"
-                       class="block px-3 py-2 text-sm rounded-xl transition-all duration-200
-                              {{ $isActive
-                                 ? 'text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-900/20'
-                                 : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white' }}">
+                    class="block px-4 py-2.5 text-[0.80rem]
+                            text-slate-700 dark:text-slate-200
+                            hover:bg-slate-100/90 dark:hover:bg-slate-800/70
+                            hover:text-slate-900 dark:hover:text-white
+                            transition-colors duration-150">
                         {{ $item['label'] }}
                     </a>
                 @endforeach
             </div>
         </div>
+
+        <template x-teleport="body">
+            <div
+                x-cloak
+                x-show="popoverOpen"
+                @click.outside="popoverOpen = false"
+                class="fixed z-[100] w-48 rounded-2xl
+                       bg-white/60 dark:bg-slate-950/40
+                       backdrop-blur-xl border border-slate-200/70 dark:border-white/10
+                       shadow-xl overflow-hidden pb-1"
+                :style="popoverStyle"
+                x-transition:enter="transition ease-out duration-150"
+                x-transition:enter-start="opacity-0 translate-x-2"
+                x-transition:enter-end="opacity-100 translate-x-0"
+                x-transition:leave="transition ease-in duration-100"
+                x-transition:leave-start="opacity-100 translate-x-0"
+                x-transition:leave-end="opacity-0 translate-x-2">
+
+                <div class="px-3 pt-1 pb-2 border-b border-slate-100 dark:border-slate-800">
+                    <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                        Calidad
+                    </span>
+                </div>
+                <div class="pb-1 space-y-0.5">
+                    @foreach($calidadItems as $item)
+                        <a href="{{ $item['href'] }}"
+                           @click="popoverOpen = false"
+                           class="block px-3 py-2 text-sm rounded-xl transition-all duration-200
+                                  text-slate-600 dark:text-slate-300
+                                  hover:bg-slate-50 dark:hover:bg-slate-800/50
+                                  hover:text-slate-900 dark:hover:text-white">
+                            {{ $item['label'] }}
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        </template>
     </div>
     @endif
 
     {{-- ===================== GARANTÍAS EXTERNAS ===================== --}}
-    @if($u && $u->tienePermiso('prep.garantias.ver'))
+    @if($isDeptoPrep && $u && $u->tienePermiso('prep.garantias.ver'))
     @php $garantiasActive = request()->routeIs('preparacion.garantias*'); @endphp
     <div class="w-full mt-3 px-3">
         <a href="{{ route('preparacion.garantias') }}"
             title="Garantías Externas"
             class="{{ $linkBase }} {{ $garantiasActive
-                ? 'bg-gradient-to-r from-[#9F1239] via-[#E11D48] to-[#BE123C] text-white font-semibold drop-shadow-[0_0_6px_rgba(225,29,72,0.65)] border-rose-400/70 shadow-[0_14px_35px_rgba(190,18,60,0.7)]'
+                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                   text-white font-semibold
+                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                   border-blue-400/70
+                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
                 : 'bg-white/10 dark:bg-slate-900/20 text-slate-700 dark:text-slate-400 hover:bg-white/20 dark:hover:bg-slate-900/30 hover:text-slate-900 dark:hover:text-white' }}"
             :class="sidebarOpen ? 'justify-between' : 'justify-center'">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center">
                 <div class="flex items-center justify-center w-7 h-7">
-                    <svg class="{{ $iconBase }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
@@ -351,18 +409,18 @@
     @endif
 
     {{-- ===================== RECEPCIÓN - LOTES ===================== --}}
-    @if($puedeLotes)
+    @if(false && $puedeLotes)
     @php
         $user = auth()->user();
         $lotesItems = [
             [
                 'label' => 'Lista de Lotes',
-                'href'  => route('lotes.editar'),
+                'href'  => '#',
                 'perm'  => 'prep.lotes.ver',
             ],
             [
                 'label' => 'Registrar Lote',
-                'href'  => route('lotes.registrar'),
+                'href'  => '#',
                 'perm'  => 'prep.lotes.gestion',
             ],
         ];
@@ -427,10 +485,10 @@
             @click.stop="toggle($event)"
             class="{{ $linkBase }} {{ $isLotes
                 ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                text-white font-semibold
-                drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
-                border-blue-400/70
-                shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                   text-white font-semibold
+                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                   border-blue-400/70
+                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
                 : 'bg-white/10 dark:bg-slate-900/20
                     text-slate-700 dark:text-slate-400
                     hover:bg-white/20 dark:hover:bg-slate-900/30
@@ -488,10 +546,15 @@
                 :style="popoverStyle"
             >
                 <div class="rounded-2xl border
-                            bg-white/90 dark:bg-slate-900/95
-                            border-slate-200/70 dark:border-slate-700/70
+                            bg-white/60 dark:bg-slate-950/40
+                            border-slate-200/70 dark:border-white/10
                             shadow-[0_18px_45px_rgba(15,23,42,0.65)]
                             backdrop-blur-xl overflow-hidden">
+                    <div class="px-3 pt-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                            Lotes
+                        </span>
+                    </div>
                     @foreach($lotesItems as $it)
                         <a href="{{ $it['href'] }}"
                         class="block px-4 py-3 text-[0.80rem]
@@ -600,10 +663,10 @@
             @click.stop="toggle($event)"
             class="{{ $linkBase }} {{ $isOperaciones
                 ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                text-white font-semibold
-                drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
-                border-blue-400/70
-                shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                   text-white font-semibold
+                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                   border-blue-400/70
+                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
                 : 'bg-white/10 dark:bg-slate-900/20
                     text-slate-700 dark:text-slate-400
                     hover:bg-white/20 dark:hover:bg-slate-900/30
@@ -661,10 +724,15 @@
                 :style="popoverStyle"
             >
                 <div class="rounded-2xl border
-                            bg-white/90 dark:bg-slate-900/95
-                            border-slate-200/70 dark:border-slate-700/70
+                            bg-white/60 dark:bg-slate-950/40
+                            border-slate-200/70 dark:border-white/10
                             shadow-[0_18px_45px_rgba(15,23,42,0.65)]
                             backdrop-blur-xl overflow-hidden">
+                    <div class="px-3 pt-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                            Operaciones
+                        </span>
+                    </div>
                     @foreach($operacionesItems as $it)
                         <a href="{{ $it['href'] }}"
                         class="block px-4 py-3 text-[0.80rem]
@@ -698,15 +766,15 @@
             ],
             [
                 'label' => 'Catálogo Piezas',
-                'href'  => route('preparacion.catalogo-piezas'),
+                'href'  => route('compras.catalogo'),
                 'perm'  => 'prep.inventario.gestion',
             ],
             [
                 'label' => 'Catálogo Equipos',
-                'href'  => route('preparacion.catalogo-equipos'),
+                'href'  => route('compras.catalogo'),
                 'perm'  => 'prep.inventario.gestion',
             ],
-            // 'Compras de Piezas' se accede desde Catálogo Piezas (historial)
+
             [
                 'label' => 'Transferencias',
                 'href'  => route('inventario.transferencias'),
@@ -779,10 +847,10 @@
             @click.stop="toggle($event)"
             class="{{ $linkBase }} {{ $isInventario
                 ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                text-white font-semibold
-                drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
-                border-blue-400/70
-                shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                   text-white font-semibold
+                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                   border-blue-400/70
+                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
                 : 'bg-white/10 dark:bg-slate-900/20
                     text-slate-700 dark:text-slate-400
                     hover:bg-white/20 dark:hover:bg-slate-900/30
@@ -840,10 +908,15 @@
                 :style="popoverStyle"
             >
                 <div class="rounded-2xl border
-                            bg-white/90 dark:bg-slate-900/95
-                            border-slate-200/70 dark:border-slate-700/70
+                            bg-white/60 dark:bg-slate-950/40
+                            border-slate-200/70 dark:border-white/10
                             shadow-[0_18px_45px_rgba(15,23,42,0.65)]
                             backdrop-blur-xl overflow-hidden">
+                    <div class="px-3 pt-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                            Inventario
+                        </span>
+                    </div>
                     @foreach($inventarioItems as $it)
                         <a href="{{ $it['href'] }}"
                         class="block px-4 py-3 text-[0.80rem]
@@ -859,6 +932,818 @@
         </template>
     </div>
     @endif
+
+    {{-- ===================== COMPRAS (GLOBAL) ===================== --}}
+    @php
+        $puedeVerComprasVentas = $u && $u->tienePermiso('ventas.compras.ver');
+        $puedeVerComprasPrep   = $u && $u->tienePermiso('prep.compras.ver');
+        
+        $comprasItems = [];
+        
+        // Enlace global/dinámico de Órdenes de Compra
+        $hrefOrdenes = '#';
+        $mostrarOrdenes = false;
+        $permisoBase = '';
+
+        if ($puedeVerComprasVentas && !$puedeVerComprasPrep) {
+            $hrefOrdenes = route('ventas.compras');
+            $mostrarOrdenes = true;
+            $permisoBase = 'ventas.compras.ver';
+        } elseif ($puedeVerComprasPrep && !$puedeVerComprasVentas) {
+            $hrefOrdenes = route('preparacion.compras');
+            $mostrarOrdenes = true;
+            $permisoBase = 'prep.compras.ver';
+        } elseif ($puedeVerComprasVentas && $puedeVerComprasPrep) {
+            // Si tiene ambos permisos, resolvemos por departamento
+            $hrefOrdenes = ($isDeptoVentas) ? route('ventas.compras') : route('preparacion.compras');
+            $mostrarOrdenes = true;
+            $permisoBase = 'ventas.compras.ver'; // o prep, da igual visualmente
+        }
+
+        if ($mostrarOrdenes) {
+            $comprasItems[] = [
+                'label' => 'Órdenes de Compra',
+                'href'  => $hrefOrdenes,
+                'perm'  => $permisoBase,
+            ];
+        }
+        if ($puedeVerComprasVentas || $puedeVerComprasPrep) {
+            $comprasItems[] = [
+                'label' => 'Catálogo de Artículos',
+                'href'  => route('compras.catalogo'),
+                'perm'  => 'ventas.compras.ver',
+            ];
+        }
+        
+        $comprasItems = array_values($comprasItems);
+    @endphp
+
+    @if(count($comprasItems) > 0)
+    <div class="px-4 py-2 mt-2 border-t border-slate-200/50 dark:border-slate-800/50 pt-4">
+        <span class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            Compras
+        </span>
+    </div>
+    
+    <div class="w-full px-3"
+        x-data="{
+            id: 'compras_global',
+            popoverOpen: false,
+            popoverStyle: '',
+            triggerEl: null,
+
+            isOpen(){ return sidebarOpen && activeMenu === this.id; },
+
+            toggle(e){
+                if (sidebarOpen) { 
+                    setMenu(this.id); 
+                    return; 
+                }
+
+                if (this.popoverOpen) {
+                    this.popoverOpen = false;
+                    return;
+                }
+
+                window.dispatchEvent(new CustomEvent('tb-close-popovers'));
+                this.triggerEl = e.currentTarget;
+                this.popoverOpen = true;
+                this.positionPopover();
+            },
+
+            positionPopover(){
+                this.$nextTick(() => {
+                    if (!this.triggerEl) return;
+                    const r = this.triggerEl.getBoundingClientRect();
+                    const width = 260, gap = 12;
+                    let top  = r.top;
+                    let left = r.right + gap;
+                    const estimatedHeight = 160;
+                    const maxTop = window.innerHeight - 12;
+                    if (top + estimatedHeight > maxTop) top = Math.max(12, maxTop - estimatedHeight);
+                    this.popoverStyle = `top:${top}px; left:${left}px; width:${width}px;`;
+                });
+            },
+
+            closePopover(){ this.popoverOpen = false; },
+            closeAll(){ this.popoverOpen = false; }
+        }"
+        @tb-close-popovers.window="closePopover()"
+        @keydown.escape.window="closeAll()"
+        @resize.window="positionPopover()"
+        @scroll.window="positionPopover()"
+        x-effect="if(sidebarOpen) popoverOpen=false"
+    >
+        <button
+            type="button"
+            @click.stop="toggle($event)"
+            class="{{ $linkBase }} {{ request()->routeIs('ventas.compras*') || request()->routeIs('preparacion.compras*') || request()->routeIs('compras.lotes*') || request()->routeIs('compras.productos*') || request()->routeIs('compras.consumibles*')
+                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                   text-white font-semibold
+                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                   border-blue-400/70
+                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                : 'bg-white/10 dark:bg-slate-900/20
+                    text-slate-700 dark:text-slate-400
+                    hover:bg-white/20 dark:hover:bg-slate-900/30
+                    hover:text-slate-900 dark:hover:text-white' }}"
+            :class="sidebarOpen ? 'justify-between' : 'justify-center'"
+            title="Compras"
+        >
+            <div class="flex items-center">
+                <div class="flex items-center justify-center w-7 h-7">
+                    <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                </div>
+                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Compras</span>
+            </div>
+
+            <svg class="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors duration-200"
+                fill="currentColor" viewBox="0 0 20 20"
+                x-show="sidebarOpen" x-transition
+                :class="isOpen() ? 'rotate-180' : ''"
+                style="transition: transform .2s ease;">
+                <path fill-rule="evenodd"
+                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                    clip-rule="evenodd" />
+            </svg>
+        </button>
+
+        <div x-show="isOpen()" x-transition class="mt-2 space-y-1 pl-2">
+            <div class="rounded-2xl border
+                        bg-white/60 dark:bg-slate-950/40
+                        border-slate-200/70 dark:border-white/10
+                        backdrop-blur-xl overflow-x-hidden">
+                @foreach($comprasItems as $it)
+                    <a href="{{ $it['href'] }}"
+                    class="block px-4 py-2.5 text-[0.80rem]
+                            text-slate-700 dark:text-slate-200
+                            hover:bg-slate-100/90 dark:hover:bg-slate-800/70
+                            hover:text-slate-900 dark:hover:text-white
+                            transition-colors duration-150">
+                        {{ $it['label'] }}
+                    </a>
+                @endforeach
+            </div>
+        </div>
+
+        <template x-teleport="body">
+            <div
+                x-cloak
+                x-show="popoverOpen && !sidebarOpen"
+                x-transition.opacity.duration.150ms
+                @click.outside="popoverOpen=false"
+                class="fixed z-[999999] pointer-events-auto"
+                :style="popoverStyle"
+            >
+                <div class="rounded-2xl border
+                            bg-white/60 dark:bg-slate-950/40
+                            border-slate-200/70 dark:border-white/10
+                            shadow-[0_18px_45px_rgba(15,23,42,0.65)]
+                            backdrop-blur-xl overflow-hidden">
+                    <div class="px-3 pt-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                            Compras
+                        </span>
+                    </div>
+                    @foreach($comprasItems as $it)
+                        <a href="{{ $it['href'] }}"
+                        class="block px-4 py-3 text-[0.80rem]
+                                text-slate-700 dark:text-slate-200
+                                hover:bg-slate-100/90 dark:hover:bg-slate-800/80
+                                hover:text-slate-900 dark:hover:text-white
+                                transition-colors duration-150">
+                            {{ $it['label'] }}
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        </template>
+    </div>
+    @endif
+    {{-- ===================== VENTAS (DIRECT LINKS) ===================== --}}
+    @if($puedeVentas || $isDeptoVentas)
+    <div class="px-4 py-2 mt-2 border-t border-slate-200/50 dark:border-slate-800/50 pt-4">
+        <span class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            Ventas
+        </span>
+    </div>
+    @endif
+    
+    {{-- Ventas: Clientes --}}
+    @if($puedeClientes)
+    <div class="px-3 mt-2">
+        <a
+            href="{{ route('ventas.clientes') }}"
+            title="Clientes"
+            class="{{ $linkBase }} {{ request()->routeIs('ventas.clientes')
+                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                   text-white font-semibold
+                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                   border-blue-400/70
+                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                : 'bg-white/10 dark:bg-slate-900/20
+                   text-slate-700 dark:text-slate-400
+                   hover:bg-white/20 dark:hover:bg-slate-900/30
+                   hover:text-slate-900 dark:hover:text-white' }}"
+            :class="sidebarOpen ? 'justify-start' : 'justify-center'"
+        >
+            <div class="flex items-center justify-center w-7 h-7">
+                <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+            </div>
+            <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Clientes</span>
+        </a>
+    </div>
+    @endif
+
+    {{-- Ventas: Productos --}}
+    @if($puedeProductos)
+    <div class="px-3 mt-2">
+        <a
+            href="{{ route('compras.catalogo') }}"
+            title="Productos"
+            class="{{ $linkBase }} {{ request()->routeIs('compras.productos')
+                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                   text-white font-semibold
+                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                   border-blue-400/70
+                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                : 'bg-white/10 dark:bg-slate-900/20
+                   text-slate-700 dark:text-slate-400
+                   hover:bg-white/20 dark:hover:bg-slate-900/30
+                   hover:text-slate-900 dark:hover:text-white' }}"
+            :class="sidebarOpen ? 'justify-start' : 'justify-center'"
+        >
+            <div class="flex items-center justify-center w-7 h-7">
+                <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
+                </svg>
+            </div>
+            <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Productos</span>
+        </a>
+    </div>
+    @endif
+
+    {{-- Ventas: Punto de Venta (POS) --}}
+    @if($puedePOS)
+    <div class="px-3 mt-2">
+        <a
+            href="{{ route('ventas.pos') }}"
+            title="Punto de Venta"
+            class="{{ $linkBase }} {{ request()->routeIs('ventas.pos')
+                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                   text-white font-semibold
+                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                   border-blue-400/70
+                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                : 'bg-white/10 dark:bg-slate-900/20
+                   text-slate-700 dark:text-slate-400
+                   hover:bg-white/20 dark:hover:bg-slate-900/30
+                   hover:text-slate-900 dark:hover:text-white' }}"
+            :class="sidebarOpen ? 'justify-start' : 'justify-center'"
+        >
+            <div class="flex items-center justify-center w-7 h-7">
+                <svg class="{{ $iconBase }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+            </div>
+            <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Punto de Venta</span>
+        </a>
+    </div>
+    @endif
+
+    {{-- Ventas: Mi Equipo (Gestión de personal — solo gerentes de Ventas) --}}
+    @if($puedeGestionarPersonal && $isDeptoVentas && !$isAdmin)
+    @php
+        $miEquipoItems = [
+            [
+                'label' => 'Mi Equipo',
+                'href'  => route('users.index'),
+                'visible' => true,
+            ],
+            [
+                'label' => 'Nuevo Colaborador',
+                'href'  => route('register'),
+                'visible' => $puedeGestionarPersonalCrear ?? false,
+            ],
+        ];
+
+        $miEquipoItems = array_values(array_filter(
+            $miEquipoItems,
+            fn ($it) => $it['visible'] ?? false
+        ));
+    @endphp
+
+    <div class="w-full mt-3 px-3"
+        x-data="{
+            id: 'mi_equipo',
+            popoverOpen: false,
+            popoverStyle: '',
+            triggerEl: null,
+
+            isOpen(){ return sidebarOpen && activeMenu === this.id; },
+
+            toggle(e){
+                if (sidebarOpen) { 
+                    setMenu(this.id); 
+                    return; 
+                }
+
+                if (this.popoverOpen) {
+                    this.popoverOpen = false;
+                    return;
+                }
+
+                window.dispatchEvent(new CustomEvent('tb-close-popovers'));
+                this.triggerEl = e.currentTarget;
+                this.popoverOpen = true;
+                this.positionPopover();
+            },
+
+            positionPopover(){
+                this.$nextTick(() => {
+                    if (!this.triggerEl) return;
+                    const r = this.triggerEl.getBoundingClientRect();
+                    const width = 260, gap = 12;
+                    let top  = r.top;
+                    let left = r.right + gap;
+                    const estimatedHeight = 120;
+                    const maxTop = window.innerHeight - 12;
+                    if (top + estimatedHeight > maxTop) top = Math.max(12, maxTop - estimatedHeight);
+                    this.popoverStyle = `top:${top}px; left:${left}px; width:${width}px;`;
+                });
+            },
+
+            closePopover(){ this.popoverOpen = false; },
+            closeAll(){ this.popoverOpen = false; }
+        }"
+        @tb-close-popovers.window="closePopover()"
+        @keydown.escape.window="closeAll()"
+        @resize.window="positionPopover()"
+        @scroll.window="positionPopover()"
+        x-effect="if(sidebarOpen) popoverOpen=false"
+    >
+        <button
+            type="button"
+            @click.stop="toggle($event)"
+            class="{{ $linkBase }} {{ request()->routeIs('users.index', 'users.edit', 'register')
+                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                   text-white font-semibold
+                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                   border-blue-400/70
+                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                : 'bg-white/10 dark:bg-slate-900/20
+                    text-slate-700 dark:text-slate-400
+                    hover:bg-white/20 dark:hover:bg-slate-900/30
+                    hover:text-slate-900 dark:hover:text-white' }}"
+            :class="sidebarOpen ? 'justify-between' : 'justify-center'"
+            title="Mi Equipo"
+        >
+            <div class="flex items-center">
+                <div class="flex items-center justify-center w-7 h-7">
+                    <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                </div>
+                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Mi Equipo</span>
+            </div>
+
+            <svg class="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors duration-200"
+                fill="currentColor" viewBox="0 0 20 20"
+                x-show="sidebarOpen" x-transition
+                :class="isOpen() ? 'rotate-180' : ''"
+                style="transition: transform .2s ease;">
+                <path fill-rule="evenodd"
+                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                    clip-rule="evenodd" />
+            </svg>
+        </button>
+
+        <div x-show="isOpen()" x-transition class="mt-2 space-y-1 pl-2">
+            <div class="rounded-2xl border
+                        bg-white/60 dark:bg-slate-950/40
+                        border-slate-200/70 dark:border-white/10
+                        backdrop-blur-xl overflow-x-hidden">
+                @foreach($miEquipoItems as $it)
+                    <a href="{{ $it['href'] }}"
+                    class="block px-4 py-2.5 text-[0.80rem]
+                            text-slate-700 dark:text-slate-200
+                            hover:bg-slate-100/90 dark:hover:bg-slate-800/70
+                            hover:text-slate-900 dark:hover:text-white
+                            transition-colors duration-150">
+                        {{ $it['label'] }}
+                    </a>
+                @endforeach
+            </div>
+        </div>
+
+        <template x-teleport="body">
+            <div
+                x-cloak
+                x-show="popoverOpen && !sidebarOpen"
+                x-transition.opacity.duration.150ms
+                @click.outside="popoverOpen=false"
+                class="fixed z-[999999] pointer-events-auto"
+                :style="popoverStyle"
+            >
+                <div class="rounded-2xl border
+                            bg-white/60 dark:bg-slate-950/40
+                            border-slate-200/70 dark:border-white/10
+                            shadow-[0_18px_45px_rgba(15,23,42,0.65)]
+                            backdrop-blur-xl overflow-hidden">
+                    <div class="px-3 pt-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                            Mi Equipo
+                        </span>
+                    </div>
+                    @foreach($miEquipoItems as $it)
+                        <a href="{{ $it['href'] }}"
+                        class="block px-4 py-3 text-[0.80rem]
+                                text-slate-700 dark:text-slate-200
+                                hover:bg-slate-100/90 dark:hover:bg-slate-800/80
+                                hover:text-slate-900 dark:hover:text-white
+                                transition-colors duration-150">
+                            {{ $it['label'] }}
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        </template>
+    </div>
+    @endif{{-- Ventas: Mis Despachos (Para Preparacion/Administradores viendo la ruta) --}}
+    @if($puedeDespachoVer)
+    <div class="px-3 mt-2">
+        <a
+            href="{{ route('preparacion.despachos-ventas') }}"
+            title="Mis Despachos (Prep)"
+            class="{{ $linkBase }} {{ request()->routeIs('preparacion.despachos-ventas')
+                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                   text-white font-semibold
+                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                   border-blue-400/70
+                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                : 'bg-white/10 dark:bg-slate-900/20
+                   text-slate-700 dark:text-slate-400
+                   hover:bg-white/20 dark:hover:bg-slate-900/30
+                   hover:text-slate-900 dark:hover:text-white' }}"
+            :class="sidebarOpen ? 'justify-start' : 'justify-center'"
+        >
+            <div class="flex items-center justify-center w-7 h-7">
+                <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+            </div>
+            <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Mis Despachos</span>
+        </a>
+    </div>
+    @endif
+
+    {{-- ===================== ALMACENES (VENTAS) ===================== --}}
+    @if($puedeVentas)
+    @php
+        $user = auth()->user();
+        $ventasAlmacenesItems = [
+            [
+                'label' => 'Administración de Almacenes',
+                'href'  => route('ventas.inventario.almacenes'),
+                'visible' => $user && ($isAdmin || $user->tienePermiso('ventas.almacenes.gestion') || true),
+            ]
+        ];
+        $ventasAlmacenesItems = array_values(array_filter($ventasAlmacenesItems, fn ($it) => $it['visible'] ?? false));
+    @endphp
+
+    @if(count($ventasAlmacenesItems) > 0)
+    <div class="w-full mt-3 px-3"
+        x-data="{
+            id: 'ventas_almacenes',
+            popoverOpen: false,
+            popoverStyle: '',
+            triggerEl: null,
+            isOpen(){ return sidebarOpen && activeMenu === this.id; },
+            toggle(e){
+                if (sidebarOpen) { setMenu(this.id); return; }
+                if (this.popoverOpen) { this.popoverOpen = false; return; }
+                window.dispatchEvent(new CustomEvent('tb-close-popovers'));
+                this.triggerEl = e.currentTarget;
+                this.popoverOpen = true;
+                this.positionPopover();
+            },
+            positionPopover(){
+                this.$nextTick(() => {
+                    if (!this.triggerEl) return;
+                    const r = this.triggerEl.getBoundingClientRect();
+                    const width = 260, gap = 12;
+                    let top  = r.top;
+                    let left = r.right + gap;
+                    const estimatedHeight = 160;
+                    const maxTop = window.innerHeight - 12;
+                    if (top + estimatedHeight > maxTop) top = Math.max(12, maxTop - estimatedHeight);
+                    this.popoverStyle = `top:${top}px; left:${left}px; width:${width}px;`;
+                });
+            },
+            closePopover(){ this.popoverOpen = false; },
+            closeAll(){ this.popoverOpen = false; }
+        }"
+        @tb-close-popovers.window="closePopover()"
+        @keydown.escape.window="closeAll()"
+        @resize.window="positionPopover()"
+        @scroll.window="positionPopover()"
+        x-effect="if(sidebarOpen) popoverOpen=false"
+    >
+        <button
+            type="button"
+            @click.stop="toggle($event)"
+            class="{{ $linkBase }} {{ request()->routeIs('ventas.inventario.almacenes')
+                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                   text-white font-semibold
+                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                   border-blue-400/70
+                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                : 'bg-white/10 dark:bg-slate-900/20
+                    text-slate-700 dark:text-slate-400
+                    hover:bg-white/20 dark:hover:bg-slate-900/30
+                    hover:text-slate-900 dark:hover:text-white' }}"
+            :class="sidebarOpen ? 'justify-between' : 'justify-center'"
+            title="Almacenes"
+        >
+            <div class="flex items-center">
+                <div class="flex items-center justify-center w-7 h-7">
+                    <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                    </svg>
+                </div>
+                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Almacenes</span>
+            </div>
+            <svg class="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors duration-200" fill="currentColor" viewBox="0 0 20 20" x-show="sidebarOpen" x-transition :class="isOpen() ? 'rotate-180' : ''" style="transition: transform .2s ease;">
+                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+        </button>
+
+        <div x-show="isOpen()" x-transition class="mt-2 space-y-1 pl-2">
+            <div class="rounded-2xl border bg-white/60 dark:bg-slate-950/40 border-slate-200/70 dark:border-white/10 backdrop-blur-xl overflow-x-hidden">
+                @foreach($ventasAlmacenesItems as $it)
+                    <a href="{{ $it['href'] }}" class="block px-4 py-2.5 text-[0.80rem] text-slate-700 dark:text-slate-200 hover:bg-slate-100/90 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-white transition-colors duration-150">
+                        {{ $it['label'] }}
+                    </a>
+                @endforeach
+            </div>
+        </div>
+
+        <template x-teleport="body">
+            <div x-cloak x-show="popoverOpen && !sidebarOpen" x-transition.opacity.duration.150ms @click.outside="popoverOpen=false" class="fixed z-[999999] pointer-events-auto" :style="popoverStyle">
+                <div class="rounded-2xl border bg-white/60 dark:bg-slate-950/40 border-slate-200/70 dark:border-white/10 shadow-[0_18px_45px_rgba(15,23,42,0.65)] backdrop-blur-xl overflow-hidden">
+                    <div class="px-3 pt-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Almacenes</span>
+                    </div>
+                    @foreach($ventasAlmacenesItems as $it)
+                        <a href="{{ $it['href'] }}" class="block px-4 py-3 text-[0.80rem] text-slate-700 dark:text-slate-200 hover:bg-slate-100/90 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white transition-colors duration-150">
+                            {{ $it['label'] }}
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        </template>
+    </div>
+    @endif
+    @endif
+
+    {{-- ===================== INVENTARIOS (VENTAS) ===================== --}}
+    @if($puedeVentas)
+    @php
+        $ventasInventarioItems = [
+            [
+                'label' => 'Inventario Global',
+                'href'  => route('ventas.inventario.index'),
+                'visible' => true,
+            ],
+            [
+                'label' => 'Catálogo de Accesorios',
+                'href'  => route('compras.catalogo'),
+                'visible' => true,
+            ],
+            [
+                'label' => 'Entradas / Restock',
+                'href'  => route('ventas.entradas.historial'),
+                'visible' => true,
+            ],
+        ];
+        $ventasInventarioItems = array_values(array_filter($ventasInventarioItems, fn ($it) => $it['visible'] ?? false));
+    @endphp
+
+    @if(count($ventasInventarioItems) > 0)
+    <div class="w-full mt-3 px-3"
+        x-data="{
+            id: 'ventas_inventarios',
+            popoverOpen: false,
+            popoverStyle: '',
+            triggerEl: null,
+            isOpen(){ return sidebarOpen && activeMenu === this.id; },
+            toggle(e){
+                if (sidebarOpen) { setMenu(this.id); return; }
+                if (this.popoverOpen) { this.popoverOpen = false; return; }
+                window.dispatchEvent(new CustomEvent('tb-close-popovers'));
+                this.triggerEl = e.currentTarget;
+                this.popoverOpen = true;
+                this.positionPopover();
+            },
+            positionPopover(){
+                this.$nextTick(() => {
+                    if (!this.triggerEl) return;
+                    const r = this.triggerEl.getBoundingClientRect();
+                    const width = 260, gap = 12;
+                    let top  = r.top;
+                    let left = r.right + gap;
+                    const estimatedHeight = 160;
+                    const maxTop = window.innerHeight - 12;
+                    if (top + estimatedHeight > maxTop) top = Math.max(12, maxTop - estimatedHeight);
+                    this.popoverStyle = `top:${top}px; left:${left}px; width:${width}px;`;
+                });
+            },
+            closePopover(){ this.popoverOpen = false; },
+            closeAll(){ this.popoverOpen = false; }
+        }"
+        @tb-close-popovers.window="closePopover()"
+        @keydown.escape.window="closeAll()"
+        @resize.window="positionPopover()"
+        @scroll.window="positionPopover()"
+        x-effect="if(sidebarOpen) popoverOpen=false"
+    >
+        <button
+            type="button"
+            @click.stop="toggle($event)"
+            class="{{ $linkBase }} {{ request()->routeIs('ventas.inventario.index') || request()->routeIs('ventas.inventario.transferencias')
+                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                   text-white font-semibold
+                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                   border-blue-400/70
+                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                : 'bg-white/10 dark:bg-slate-900/20
+                    text-slate-700 dark:text-slate-400
+                    hover:bg-white/20 dark:hover:bg-slate-900/30
+                    hover:text-slate-900 dark:hover:text-white' }}"
+            :class="sidebarOpen ? 'justify-between' : 'justify-center'"
+            title="Inventarios"
+        >
+            <div class="flex items-center">
+                <div class="flex items-center justify-center w-7 h-7">
+                    <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                    </svg>
+                </div>
+                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Inventarios</span>
+            </div>
+            <svg class="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors duration-200" fill="currentColor" viewBox="0 0 20 20" x-show="sidebarOpen" x-transition :class="isOpen() ? 'rotate-180' : ''" style="transition: transform .2s ease;">
+                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+        </button>
+
+        <div x-show="isOpen()" x-transition class="mt-2 space-y-1 pl-2">
+            <div class="rounded-2xl border bg-white/60 dark:bg-slate-950/40 border-slate-200/70 dark:border-white/10 backdrop-blur-xl overflow-x-hidden">
+                @foreach($ventasInventarioItems as $it)
+                    <a href="{{ $it['href'] }}" class="block px-4 py-2.5 text-[0.80rem] text-slate-700 dark:text-slate-200 hover:bg-slate-100/90 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-white transition-colors duration-150">
+                        {{ $it['label'] }}
+                    </a>
+                @endforeach
+            </div>
+        </div>
+
+        <template x-teleport="body">
+            <div x-cloak x-show="popoverOpen && !sidebarOpen" x-transition.opacity.duration.150ms @click.outside="popoverOpen=false" class="fixed z-[999999] pointer-events-auto" :style="popoverStyle">
+                <div class="rounded-2xl border bg-white/60 dark:bg-slate-950/40 border-slate-200/70 dark:border-white/10 shadow-[0_18px_45px_rgba(15,23,42,0.65)] backdrop-blur-xl overflow-hidden">
+                    <div class="px-3 pt-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Inventarios</span>
+                    </div>
+                    @foreach($ventasInventarioItems as $it)
+                        <a href="{{ $it['href'] }}" class="block px-4 py-3 text-[0.80rem] text-slate-700 dark:text-slate-200 hover:bg-slate-100/90 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white transition-colors duration-150">
+                            {{ $it['label'] }}
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        </template>
+    </div>
+    @endif
+    @endif
+    {{-- ===================== MOVIMIENTOS INTERNOS (VENTAS) ===================== --}}
+    @if($puedeVentas)
+    @php
+        $ventasMovimientosItems = [
+            [
+                'label' => 'Despachos Entrantes',
+                'href'  => route('ventas.despachos'),
+                'visible' => $puedeVentasDespachos || $puedeVentasAprobar,
+            ],
+            [
+                'label' => 'Transferencias',
+                'href'  => route('ventas.inventario.transferencias'),
+                'visible' => true,
+            ],
+        ];
+        $ventasMovimientosItems = array_values(array_filter($ventasMovimientosItems, fn ($it) => !empty($it['visible'])));
+    @endphp
+
+    @if(count($ventasMovimientosItems) > 0)
+    <div class="w-full mt-3 px-3"
+        x-data="{
+            id: 'ventas_movimientos',
+            popoverOpen: false,
+            popoverStyle: '',
+            triggerEl: null,
+            isOpen(){ return sidebarOpen && activeMenu === this.id; },
+            toggle(e){
+                if (sidebarOpen) { setMenu(this.id); return; }
+                if (this.popoverOpen) { this.popoverOpen = false; return; }
+                window.dispatchEvent(new CustomEvent('tb-close-popovers'));
+                this.triggerEl = e.currentTarget;
+                this.popoverOpen = true;
+                this.positionPopover();
+            },
+            positionPopover(){
+                this.$nextTick(() => {
+                    if (!this.triggerEl) return;
+                    const r = this.triggerEl.getBoundingClientRect();
+                    const width = 260, gap = 12;
+                    let top  = r.top;
+                    let left = r.right + gap;
+                    const estimatedHeight = 160;
+                    const maxTop = window.innerHeight - 12;
+                    if (top + estimatedHeight > maxTop) top = Math.max(12, maxTop - estimatedHeight);
+                    this.popoverStyle = `top:${top}px; left:${left}px; width:${width}px;`;
+                });
+            },
+            closePopover(){ this.popoverOpen = false; },
+            closeAll(){ this.popoverOpen = false; }
+        }"
+        @tb-close-popovers.window="closePopover()"
+        @keydown.escape.window="closeAll()"
+        @resize.window="positionPopover()"
+        @scroll.window="positionPopover()"
+        x-effect="if(sidebarOpen) popoverOpen=false"
+    >
+        <button
+            type="button"
+            @click.stop="toggle($event)"
+            class="{{ $linkBase }} {{ request()->routeIs('ventas.despachos') || request()->routeIs('ventas.inventario.transferencias')
+                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                   text-white font-semibold
+                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                   border-blue-400/70
+                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                : 'bg-white/10 dark:bg-slate-900/20
+                    text-slate-700 dark:text-slate-400
+                    hover:bg-white/20 dark:hover:bg-slate-900/30
+                    hover:text-slate-900 dark:hover:text-white' }}"
+            :class="sidebarOpen ? 'justify-between' : 'justify-center'"
+            title="Movimientos Internos"
+        >
+            <div class="flex items-center">
+                <div class="flex items-center justify-center w-7 h-7">
+                    <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                </div>
+                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Mov. Internos</span>
+            </div>
+            <svg class="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors duration-200" fill="currentColor" viewBox="0 0 20 20" x-show="sidebarOpen" x-transition :class="isOpen() ? 'rotate-180' : ''" style="transition: transform .2s ease;">
+                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+        </button>
+
+        <div x-show="isOpen()" x-transition class="mt-2 space-y-1 pl-2">
+            <div class="rounded-2xl border bg-white/60 dark:bg-slate-950/40 border-slate-200/70 dark:border-white/10 backdrop-blur-xl overflow-x-hidden">
+                @foreach($ventasMovimientosItems as $it)
+                    <a href="{{ $it['href'] }}" class="block px-4 py-2.5 text-[0.80rem] text-slate-700 dark:text-slate-200 hover:bg-slate-100/90 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-white transition-colors duration-150">
+                        {{ $it['label'] }}
+                    </a>
+                @endforeach
+            </div>
+        </div>
+
+        <template x-teleport="body">
+            <div x-cloak x-show="popoverOpen && !sidebarOpen" x-transition.opacity.duration.150ms @click.outside="popoverOpen=false" class="fixed z-[999999] pointer-events-auto" :style="popoverStyle">
+                <div class="rounded-2xl border bg-white/60 dark:bg-slate-950/40 border-slate-200/70 dark:border-white/10 shadow-[0_18px_45px_rgba(15,23,42,0.65)] backdrop-blur-xl overflow-hidden">
+                    <div class="px-3 pt-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Movimientos Internos</span>
+                    </div>
+                    @foreach($ventasMovimientosItems as $it)
+                        <a href="{{ $it['href'] }}" class="block px-4 py-3 text-[0.80rem] text-slate-700 dark:text-slate-200 hover:bg-slate-100/90 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white transition-colors duration-150">
+                            {{ $it['label'] }}
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        </template>
+    </div>
+    @endif
+    @endif
+
 
     {{-- ===================== USUARIOS (ADMINISTRACIÓN) ===================== --}}
     @if($puedeUsuarios)
@@ -916,10 +1801,10 @@
             @click.stop="toggle($event)"
             class="{{ $linkBase }} {{ $isUsuarios
                 ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                text-white font-semibold
-                drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
-                border-blue-400/70
-                shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
+                   text-white font-semibold
+                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
+                   border-blue-400/70
+                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
                 : 'bg-white/10 dark:bg-slate-900/20
                     text-slate-700 dark:text-slate-400
                     hover:bg-white/20 dark:hover:bg-slate-900/30
@@ -992,10 +1877,15 @@
                 :style="popoverStyle"
             >
                 <div class="rounded-2xl border
-                            bg-white/90 dark:bg-slate-900/95
-                            border-slate-200/70 dark:border-slate-700/70
+                            bg-white/60 dark:bg-slate-950/40
+                            border-slate-200/70 dark:border-white/10
                             shadow-[0_18px_45px_rgba(15,23,42,0.65)]
                             backdrop-blur-xl overflow-hidden">
+                    <div class="px-3 pt-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                            Usuarios
+                        </span>
+                    </div>
                     @foreach($usuariosItems as $it)
                         <a href="{{ $it['href'] }}"
                         class="block px-4 py-3 text-[0.80rem]
@@ -1148,3 +2038,8 @@
 
     </div>
 </div>
+
+
+
+
+

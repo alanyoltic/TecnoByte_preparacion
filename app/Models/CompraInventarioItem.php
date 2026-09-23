@@ -11,7 +11,7 @@ class CompraInventarioItem extends Model
     protected $table = 'compras_inventario_items';
 
     protected $fillable = [
-        'compra_inventario_id', 'catalogo_pieza_id',
+        'compra_inventario_id', 'catalogo_pieza_id', 'producto_id', 'consumible_id', 'catalogo_equipo_id',
         'cantidad', 'precio_unitario', 'almacen_id', 'notas',
     ];
 
@@ -27,6 +27,16 @@ class CompraInventarioItem extends Model
     public function catalogoPieza(): BelongsTo
     {
         return $this->belongsTo(CatalogoPieza::class, 'catalogo_pieza_id')->withTrashed();
+    }
+
+    public function producto(): BelongsTo
+    {
+        return $this->belongsTo(Producto::class, 'producto_id')->withTrashed();
+    }
+
+    public function consumible(): BelongsTo
+    {
+        return $this->belongsTo(Consumible::class, 'consumible_id')->withTrashed();
     }
 
     public function almacen(): BelongsTo

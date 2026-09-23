@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'onlyAdminCeo' => \App\Http\Middleware\OnlyAdminCeo::class,
             'role_depto' => \App\Http\Middleware\EnsureUserHasRoleAndDepartamento::class,
             'permiso' => \App\Http\Middleware\PermisoMiddleware::class,
+            'departamento' => \App\Http\Middleware\CheckDepartamento::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {})->create();

@@ -82,7 +82,11 @@ class User extends Authenticatable implements MustVerifyEmail
         static::addGlobalScope('is_active', function ($query) {
             $query->where('is_active', true);
         });
+
+        static::addGlobalScope(new \App\Models\Scopes\UserDepartamentoScope);
     }
+
+    protected $permisosCachados = null;
 
     public function tienePermiso(string $slug): bool
     {
@@ -90,21 +94,21 @@ class User extends Authenticatable implements MustVerifyEmail
             return true;
         }
 
-        $porRol = \DB::table('rol_permiso')
-            ->join('permisos', 'permisos.id', '=', 'rol_permiso.permiso_id')
-            ->where('rol_permiso.rol_id', $this->role_id)
-            ->where('permisos.slug', $slug)
-            ->exists();
+        if ($this->permisosCachados === null) {
+            $permisosRol = \DB::table('rol_permiso')
+                ->join('permisos', 'permisos.id', '=', 'rol_permiso.permiso_id')
+                ->where('rol_permiso.rol_id', $this->role_id)
+                ->pluck('permisos.slug')->toArray();
 
-        if ($porRol) {
-            return true;
+            $permisosUser = \DB::table('usuario_permiso')
+                ->join('permisos', 'permisos.id', '=', 'usuario_permiso.permiso_id')
+                ->where('usuario_permiso.user_id', $this->id)
+                ->pluck('permisos.slug')->toArray();
+
+            $this->permisosCachados = array_flip(array_merge($permisosRol, $permisosUser));
         }
 
-        return \DB::table('usuario_permiso')
-            ->join('permisos', 'permisos.id', '=', 'usuario_permiso.permiso_id')
-            ->where('usuario_permiso.user_id', $this->id)
-            ->where('permisos.slug', $slug)
-            ->exists();
+        return isset($this->permisosCachados[$slug]);
     }
 
     public function isAdminCeo()

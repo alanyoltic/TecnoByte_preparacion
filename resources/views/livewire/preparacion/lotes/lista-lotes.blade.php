@@ -235,12 +235,16 @@
 
                 <tbody>
                 @forelse ($lotes as $lote)
-                    <tr class="border-b border-slate-200 dark:border-slate-800/80
-                               hover:bg-white/60 dark:hover:bg-slate-800/60 transition-colors">
+                    <tr class="border-b border-slate-200 dark:border-slate-800/80 transition-colors {{ $lote->estatus === 'PENDIENTE_ENTREGA' ? 'bg-slate-50 dark:bg-slate-900/50 opacity-80' : 'hover:bg-white/60 dark:hover:bg-slate-800/60' }}">
 
                         <td class="px-4 py-3 align-top">
-                            <span class="font-semibold text-sm sm:text-base text-slate-900 dark:text-slate-50">
+                            <span class="font-semibold text-sm sm:text-base {{ $lote->estatus === 'PENDIENTE_ENTREGA' ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-slate-50' }}">
                                 {{ $lote->nombre_lote ?? ('Lote #' . $lote->id) }}
+                                @if($lote->estatus === 'PENDIENTE_ENTREGA')
+                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200">
+                                        Pendiente de Entrega
+                                    </span>
+                                @endif
                             </span>
                             <div class="text-xs sm:text-sm text-slate-400">
                                 ID: {{ $lote->id }}
@@ -248,7 +252,7 @@
                         </td>
 
                         <td class="px-4 py-3 align-top">
-                            <span class="text-sm sm:text-base text-slate-900 dark:text-slate-100">
+                            <span class="text-sm sm:text-base {{ $lote->estatus === 'PENDIENTE_ENTREGA' ? 'text-slate-500' : 'text-slate-900 dark:text-slate-100' }}">
                                 {{ $lote->proveedor->nombre_empresa ?? '—' }}
                             </span>
                             @if($lote->proveedor?->abreviacion)
@@ -260,7 +264,7 @@
 
                         <td class="px-4 py-3 align-top whitespace-nowrap">
                             @if($lote->fecha_llegada)
-                                <span class="text-sm sm:text-base text-slate-900 dark:text-slate-50">
+                                <span class="text-sm sm:text-base {{ $lote->estatus === 'PENDIENTE_ENTREGA' ? 'text-slate-500' : 'text-slate-900 dark:text-slate-50' }}">
                                     {{ \Carbon\Carbon::parse($lote->fecha_llegada)->format('d/m/Y') }}
                                 </span>
                             @else
@@ -270,17 +274,27 @@
 
                         <td class="px-4 py-3 align-top text-right">
                             <div class="inline-flex items-center gap-2">
-                                <a
-                                    href="{{ route('lotes.edit', $lote->id) }}"
-                                    title="Editar lote"
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl
-                                           bg-blue-600 hover:bg-blue-500 text-white shadow transition-all"
-                                >
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                    </svg>
-                                    <span>Editar</span>
-                                </a>
+                                @if($lote->estatus === 'PENDIENTE_ENTREGA')
+                                    <span class="inline-flex items-center gap-1 px-3 py-1 text-[11px] font-medium rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        Se recibe desde Órdenes de Compra
+                                    </span>
+                                @else
+                                    <a
+                                        href="{{ route('lotes.edit', $lote->id) }}"
+                                        title="Editar lote"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl
+                                               bg-blue-600 hover:bg-blue-500 text-white shadow transition-all"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                        </svg>
+                                        <span>Editar</span>
+                                    </a>
+                                @endif
+                                
                                 <button
                                     type="button"
                                     title="Eliminar lote"

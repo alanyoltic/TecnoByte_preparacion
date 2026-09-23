@@ -30,9 +30,15 @@ class TransferenciaDetalle extends Model
         return $this->movible_type === Equipo::class;
     }
 
-    // Helper: saber si es consumible genérico
+    // Helper: saber si es consumible interno
     public function esConsumible(): bool
     {
         return $this->movible_type === Consumible::class;
+    }
+
+    // Helper: saber si es producto genérico para venta
+    public function esProducto(): bool
+    {
+        return $this->movible_type === Producto::class;
     }
 }

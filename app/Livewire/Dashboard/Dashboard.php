@@ -518,22 +518,24 @@ class Dashboard extends Component
                 $lineDataCounts[$i] = $completadosTecnico($s, $e);
             }
         } else {
-            $equiposDelMes = $aplicarFiltro(
+            $equiposAgrupados = $aplicarFiltro(
                 Equipo::whereBetween('created_at', [$startOfMonth, $endOfMonth])
-            )->get(['created_at']);
+            )
+            ->selectRaw('DAY(created_at) as dia, count(*) as total')
+            ->groupBy('dia')
+            ->pluck('total', 'dia');
 
-            foreach ($equiposDelMes as $equipo) {
-                $diaDelMes = $equipo->created_at->day;
+            foreach ($equiposAgrupados as $diaDelMes => $total) {
                 if ($diaDelMes <= 7) {
-                    $lineDataCounts[0]++;
+                    $lineDataCounts[0] += $total;
                 } elseif ($diaDelMes <= 14) {
-                    $lineDataCounts[1]++;
+                    $lineDataCounts[1] += $total;
                 } elseif ($diaDelMes <= 21) {
-                    $lineDataCounts[2]++;
+                    $lineDataCounts[2] += $total;
                 } elseif ($diaDelMes <= 28) {
-                    $lineDataCounts[3]++;
+                    $lineDataCounts[3] += $total;
                 } else {
-                    $lineDataCounts[4]++;
+                    $lineDataCounts[4] += $total;
                 }
             }
         }

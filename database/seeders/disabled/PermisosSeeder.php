@@ -60,6 +60,14 @@ class PermisosSeeder extends Seeder
             ['slug' => 'prep.transferencias.ver',        'descripcion' => 'Ver transferencias (Preparación)'],
             ['slug' => 'prep.transferencias.crear',      'descripcion' => 'Crear transferencias (Preparación)'],
 
+            // PREPARACIÓN — COMPRAS
+            ['slug' => 'prep.compras.ver',               'descripcion' => 'Ver historial de compras (Preparación)'],
+            ['slug' => 'prep.compras.gestionar',         'descripcion' => 'Registrar compras (Preparación)'],
+
+            // VENTAS — COMPRAS (futuro)
+            ['slug' => 'ventas.compras.ver',             'descripcion' => 'Ver historial de compras (Ventas)'],
+            ['slug' => 'ventas.compras.gestionar',       'descripcion' => 'Registrar compras (Ventas)'],
+
             // PREPARACIÓN — CALIDAD
             ['slug' => 'modulo.calidad',                 'descripcion' => 'Acceso al módulo Calidad'],
             ['slug' => 'prep.calidad.ver',               'descripcion' => 'Ver equipos en calidad (Preparación)'],

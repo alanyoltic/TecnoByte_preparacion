@@ -225,22 +225,23 @@ class EstadisticasEquipos extends Component
         // También calcula cupos ya asignados a técnicos pero aún no iniciados/escaneados
         $lotesSub = DB::table('lote_modelos_recibidos as lmr')
             ->leftJoin('catalogo_equipos as cat', 'lmr.catalogo_equipo_id', '=', 'cat.id')
+            ->leftJoin(
+                DB::raw("(
+                    SELECT a.lote_modelo_id, 
+                           SUM(GREATEST(a.cantidad - (SELECT COUNT(*) FROM asignacion_equipos ae WHERE ae.asignacion_id = a.id), 0)) as asignados_pendientes 
+                    FROM asignaciones a 
+                    WHERE a.estatus IN ('".\App\Models\Asignacion::PENDIENTE."', '".\App\Models\Asignacion::EN_PROCESO."') 
+                    AND a.deleted_at IS NULL 
+                    GROUP BY a.lote_modelo_id
+                ) as asignaciones_calc"),
+                'asignaciones_calc.lote_modelo_id', '=', 'lmr.id'
+            )
             ->select(
                 'lmr.marca',
                 'lmr.modelo',
                 DB::raw('MAX(cat.tipo_equipo) as tipo_equipo'),
                 DB::raw('SUM(lmr.cantidad_recibida) as total_recibido'),
-                DB::raw("SUM(
-                    COALESCE((
-                        SELECT SUM(GREATEST(a.cantidad - (
-                            SELECT COUNT(*) FROM asignacion_equipos ae WHERE ae.asignacion_id = a.id
-                        ), 0))
-                        FROM asignaciones a
-                        WHERE a.lote_modelo_id = lmr.id
-                        AND a.estatus IN ('".\App\Models\Asignacion::PENDIENTE."', '".\App\Models\Asignacion::EN_PROCESO."')
-                        AND a.deleted_at IS NULL
-                    ), 0)
-                ) as cupos_asignados_sin_serie")
+                DB::raw('SUM(COALESCE(asignaciones_calc.asignados_pendientes, 0)) as cupos_asignados_sin_serie')
             )
             ->groupBy('lmr.marca', 'lmr.modelo');
 

@@ -270,6 +270,109 @@
 
     </div>
 
+    {{-- ── CARGADORES DEL LOTE ───────────────────────────────────────────── --}}
+    <div class="rounded-2xl bg-white/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-white/10
+                backdrop-blur-xl shadow-md p-6">
+        <div class="flex items-center gap-2 mb-4">
+            <h2 class="text-base font-semibold text-slate-800 dark:text-slate-100 flex-1">
+                Lotes de Cargadores asociados (opcional)
+            </h2>
+        </div>
+
+        @if(!empty($modelosCargadores))
+            <div class="space-y-4">
+                @foreach($modelosCargadores as $index => $mc)
+                    <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_80px_80px_80px_80px_100px_36px_32px] gap-3 items-end"
+                         wire:key="modelo-cargador-{{ $index }}">
+                        
+                        <div class="space-y-1.5">
+                            @if($index === 0)
+                                <label class="text-[0.7rem] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Marca</label>
+                            @endif
+                            <input type="text" wire:model="modelosCargadores.{{ $index }}.marca" 
+                                   class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none">
+                        </div>
+                        
+                        <div class="space-y-1.5">
+                            @if($index === 0)
+                                <label class="text-[0.7rem] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Voltaje</label>
+                            @endif
+                            <input type="text" wire:model="modelosCargadores.{{ $index }}.voltaje" placeholder="19V"
+                                   class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none">
+                        </div>
+                        
+                        <div class="space-y-1.5">
+                            @if($index === 0)
+                                <label class="text-[0.7rem] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Amps</label>
+                            @endif
+                            <input type="text" wire:model="modelosCargadores.{{ $index }}.amperaje" placeholder="3.42A"
+                                   class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none">
+                        </div>
+                        
+                        <div class="space-y-1.5">
+                            @if($index === 0)
+                                <label class="text-[0.7rem] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Punta</label>
+                            @endif
+                            <input type="text" wire:model="modelosCargadores.{{ $index }}.punta" 
+                                   class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none">
+                        </div>
+                        
+                        {{-- Cantidad --}}
+                        <div class="space-y-1.5">
+                            @if($index === 0)
+                                <label class="text-[0.7rem] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Cant.</label>
+                            @endif
+                            <input type="number" min="1" wire:model="modelosCargadores.{{ $index }}.cantidad" 
+                                   class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none">
+                            @error("modelosCargadores.{$index}.cantidad") <span class="text-[0.6rem] text-red-400">{{ $message }}</span> @enderror
+                        </div>
+
+                        {{-- Costo --}}
+                        <div class="space-y-1.5">
+                            @if($index === 0)
+                                <label class="text-[0.7rem] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Costo</label>
+                            @endif
+                            <input type="number" min="0" step="0.01" wire:model="modelosCargadores.{{ $index }}.costo" placeholder="0.00"
+                                   class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-300/80 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none">
+                            @error("modelosCargadores.{$index}.costo") <span class="text-[0.6rem] text-red-400">{{ $message }}</span> @enderror
+                        </div>
+
+                        {{-- Botón Series Específicas --}}
+                        <div class="space-y-1.5">
+                            @if($index === 0)
+                                <label class="text-[0.7rem] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 text-transparent select-none">S</label>
+                            @endif
+                            @php $serieCount = count(array_filter(array_map('trim', $mc['numeros_serie'] ?? []), fn($s) => $s !== '')); @endphp
+                            <button type="button" wire:click="abrirModalSeriesCargador({{ $index }})"
+                                class="w-9 h-[38px] rounded-xl flex items-center justify-center
+                                       bg-slate-50 dark:bg-slate-800/60
+                                       border border-slate-300/80 dark:border-slate-700
+                                       text-slate-500 dark:text-slate-400
+                                       hover:border-[#FF9521] hover:text-[#FF9521] transition
+                                       {{ $serieCount > 0 ? 'border-[#FF9521] text-[#FF9521]' : '' }}"
+                                title="Ingresar series específicas opcionales">
+                                <span class="text-xs font-bold">{{ $serieCount > 0 ? $serieCount : '#' }}</span>
+                            </button>
+                        </div>
+
+                        {{-- Botón borrar --}}
+                        <div class="flex items-center justify-end pt-1">
+                            <button type="button" wire:click="removeModeloCargador({{ $index }})" class="text-[0.7rem] text-slate-500 hover:text-red-400 transition h-[38px] flex items-center justify-center">
+                                ✕
+                            </button>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
+        <div class="flex mt-3">
+            <button type="button" wire:click="addModeloCargador" class="text-xs text-[#FF9521] hover:underline font-semibold flex items-center gap-1">
+                <span>+</span> Añadir lote de cargadores
+            </button>
+        </div>
+    </div>
+
     {{-- BOTÓN GUARDAR --}}
 
 
@@ -371,6 +474,76 @@
                     @endif
 
                     <button wire:click="cerrarModalSeries"
+                        class="px-4 py-2 rounded-xl text-sm font-semibold
+                               bg-gradient-to-r from-[#FF9521] to-[#e07d10]
+                               text-white shadow hover:shadow-md transition">
+                        Listo
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- ── Modal: números de serie CARGADORES ────────────────────────────── --}}
+    @if($modalSeriesCargador && $serialesCargadorIndex >= 0)
+        <div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div class="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900
+                        border border-slate-200 dark:border-slate-700
+                        shadow-2xl p-6 space-y-4">
+
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        Series manuales (Opcional) —
+                        {{ $modelosCargadores[$serialesCargadorIndex]['marca'] ?? 'Cargador' }}
+                        {{ $modelosCargadores[$serialesCargadorIndex]['voltaje'] ?? '' }}
+                    </h3>
+                    <button wire:click="cerrarModalSeriesCargador"
+                        class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">✕</button>
+                </div>
+
+                <p class="text-xs text-slate-400 leading-relaxed">
+                    Si dejas campos vacíos, se generarán series automáticamente usando el proveedor y la fecha de compra.<br>
+                    Máximo {{ $modelosCargadores[$serialesCargadorIndex]['cantidad'] ?? 0 }} series.
+                </p>
+
+                <div class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                    @foreach($modelosCargadores[$serialesCargadorIndex]['numeros_serie'] ?? [] as $si => $s)
+                        <div class="flex gap-2 items-center" wire:key="mserc-{{ $serialesCargadorIndex }}-{{ $si }}">
+                            <span class="text-xs text-slate-400 w-5 text-right shrink-0">{{ $si + 1 }}</span>
+                            <input type="text"
+                                   wire:model="modelosCargadores.{{ $serialesCargadorIndex }}.numeros_serie.{{ $si }}"
+                                   placeholder="Serie específica..."
+                                   class="flex-1 rounded-xl px-3 py-2 text-sm
+                                          bg-white/70 dark:bg-slate-900/40
+                                          border border-slate-300/80 dark:border-slate-700
+                                          text-slate-900 dark:text-slate-100
+                                          focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none">
+                            @if(count($modelosCargadores[$serialesCargadorIndex]['numeros_serie'] ?? []) > 1)
+                                <button wire:click="quitarSerieModalCargador({{ $si }})"
+                                    class="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-900/20
+                                           border border-rose-300/50 text-rose-500
+                                           flex items-center justify-center
+                                           hover:bg-rose-100 transition shrink-0">✕</button>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+
+                <div class="flex justify-between items-center pt-2">
+                    @php
+                        $maxSeriesCargador = (int)($modelosCargadores[$serialesCargadorIndex]['cantidad'] ?? 0);
+                        $currentCountCargador = count($modelosCargadores[$serialesCargadorIndex]['numeros_serie'] ?? []);
+                    @endphp
+                    @if($currentCountCargador < $maxSeriesCargador)
+                        <button wire:click="agregarSerieModalCargador"
+                            class="text-xs text-[#FF9521] hover:underline transition">
+                            + Agregar serie
+                        </button>
+                    @else
+                        <span class="text-xs text-slate-400">Límite alcanzado ({{ $maxSeriesCargador }})</span>
+                    @endif
+
+                    <button wire:click="cerrarModalSeriesCargador"
                         class="px-4 py-2 rounded-xl text-sm font-semibold
                                bg-gradient-to-r from-[#FF9521] to-[#e07d10]
                                text-white shadow hover:shadow-md transition">

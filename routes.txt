@@ -1,0 +1,80 @@
+
+  GET|HEAD  / ...................................................................................... routes/web.php:43
+  GET|HEAD  administracion/dashboard ........................................................ administracion.dashboard
+  GET|HEAD  compras/catalogo .................................. compras.catalogo › App\Livewire\Compras\CatalogoGlobal
+  GET|HEAD  confirm-password .............................. password.confirm › Auth\ConfirmablePasswordController@show
+  POST      confirm-password ................................................ Auth\ConfirmablePasswordController@store
+  GET|HEAD  dashboard ....................................................... dashboard › AfterLoginRedirectController
+  POST      email/verification-notification ... verification.send › Auth\EmailVerificationNotificationController@store
+  GET|HEAD  equipos/caracteristicas .. equipos.caracteristicas › App\Livewire\Preparacion\Inventario\ResumenInventario
+  GET|HEAD  equipos/registrar ...................... equipos.create › App\Livewire\Preparacion\Equipos\RegistrarEquipo
+  GET|HEAD  equipos/{equipo}/editar ................... equipos.editar › App\Livewire\Preparacion\Equipos\EditarEquipo
+  GET|HEAD  equipos/{equipo}/etiqueta-comando ........................... equipos.etiqueta.comando › routes/web.php:75
+  GET|HEAD  forgot-password ............................... password.request › Auth\PasswordResetLinkController@create
+  POST      forgot-password .................................. password.email › Auth\PasswordResetLinkController@store
+  GET|HEAD  inventario/cargadores ...... inventario.cargadores › App\Livewire\Preparacion\Inventario\GestionCargadores
+  ANY       inventario/compras .......................... inventario.compras › Illuminate\Routing › RedirectController
+  GET|HEAD  inventario/gestion ............ inventario.gestion › App\Livewire\Preparacion\Inventario\GestionInventario
+  GET|HEAD  inventario/listo .................. inventario.listo › App\Livewire\Preparacion\Inventario\InventarioListo
+  GET|HEAD  inventario/piezas/gestionar inventario.solicitudes.gestionar › App\Livewire\Inventario\GestionSolicitudes…
+  GET|HEAD  inventario/piezas/solicitudes .. inventario.piezas.solicitudes › App\Livewire\Inventario\SolicitudesPiezas
+  GET|HEAD  inventario/transferencias . inventario.transferencias › App\Livewire\Preparacion\Inventario\Transferencias
+  GET|HEAD  inventario/transferencias/crear inventario.prep.transferencias.crear › App\Livewire\Preparacion\Inventari…
+  GET|HEAD  livewire/livewire.js ......................... Livewire\Mechanisms › FrontendAssets@returnJavaScriptAsFile
+  GET|HEAD  livewire/livewire.min.js.map ................................... Livewire\Mechanisms › FrontendAssets@maps
+  GET|HEAD  livewire/preview-file/{filename} livewire.preview-file › Livewire\Features › FilePreviewController@handle
+  POST      livewire/update .............. default.livewire.update › Livewire\Mechanisms › HandleRequests@handleUpdate
+  POST      livewire/upload-file .............. livewire.upload-file › Livewire\Features › FileUploadController@handle
+  GET|HEAD  login ................................................. login › Auth\AuthenticatedSessionController@create
+  POST      login .......................................................... Auth\AuthenticatedSessionController@store
+  POST      logout .............................................. logout › Auth\AuthenticatedSessionController@destroy
+  PUT       password ................................................ password.update › Auth\PasswordController@update
+  GET|HEAD  perfil ............................................................. profile.show › ProfileController@show
+  PATCH     perfil ......................................................... profile.update › ProfileController@update
+  DELETE    perfil ....................................................... profile.destroy › ProfileController@destroy
+  GET|HEAD  perfil/editar ...................................................... profile.edit › ProfileController@edit
+  GET|HEAD  preparacion/asignaciones ........ preparacion.asignaciones › App\Livewire\Preparacion\Equipos\Asignaciones
+  GET|HEAD  preparacion/calidad ................ preparacion.calidad › App\Livewire\Preparacion\Calidad\GestionCalidad
+  GET|HEAD  preparacion/calidad/escaner preparacion.calidad.escaner › App\Livewire\Preparacion\Calidad\EscanerCalidad
+  GET|HEAD  preparacion/catalogo-equipos ..... preparacion.catalogo-equipos › App\Livewire\Preparacion\CatalogoEquipos
+  GET|HEAD  preparacion/compras ............................. preparacion.compras › App\Livewire\Compras\OrdenesCompra
+  GET|HEAD  preparacion/dashboard ........................... preparacion.dashboard › App\Livewire\Dashboard\Dashboard
+  GET|HEAD  preparacion/despachos-ventas preparacion.despachos-ventas › App\Livewire\Preparacion\Inventario\Despachos…
+  GET|HEAD  preparacion/despachos-ventas/crear preparacion.despachos-ventas.crear › App\Livewire\Preparacion\Inventar…
+  GET|HEAD  preparacion/estadisticas-equipos preparacion.estadisticas-equipos › App\Livewire\Preparacion\Dashboard\Es…
+  GET|HEAD  preparacion/garantias ........ preparacion.garantias › App\Livewire\Preparacion\Garantias\GestionGarantias
+  GET|HEAD  preparacion/mi-trabajo ............... preparacion.mi-trabajo › App\Livewire\Preparacion\Equipos\MiTrabajo
+  POST      reset-password ......................................... password.store › Auth\NewPasswordController@store
+  GET|HEAD  reset-password/{token} ................................ password.reset › Auth\NewPasswordController@create
+  GET|HEAD  route-visualizer route-visualizer.dashboard › onamfc\LaravelRouteVisualizer › RouteVisualizerController@i…
+  POST      route-visualizer/clear-cache route-visualizer.clear-cache › onamfc\LaravelRouteVisualizer › RouteVisualiz…
+  GET|HEAD  route-visualizer/graph route-visualizer.graph › onamfc\LaravelRouteVisualizer › RouteVisualizerController…
+  GET|HEAD  route-visualizer/routes route-visualizer.routes › onamfc\LaravelRouteVisualizer › RouteVisualizerControll…
+  GET|HEAD  route-visualizer/tree-data route-visualizer.tree-data › onamfc\LaravelRouteVisualizer › RouteVisualizerCo…
+  GET|HEAD  rrhh/dashboard ............................................................................ rrhh.dashboard
+  GET|HEAD  sistema/avisos .................................................. avisos.index › App\Livewire\Avisos\Index
+  GET|HEAD  sistema/usuarios ...................................................... users.index › UserController@index
+  GET|HEAD  sistema/usuarios/crear ................................... register › Auth\RegisteredUserController@create
+  POST      sistema/usuarios/crear ............................................... Auth\RegisteredUserController@store
+  PATCH     sistema/usuarios/{user} ............................................. users.update › UserController@update
+  PATCH     sistema/usuarios/{user}/baja ......................................... usuarios.baja › UserController@baja
+  GET|HEAD  sistema/usuarios/{user}/edit ............................................ users.edit › UserController@edit
+  GET|HEAD  soporte/dashboard ...................................................................... soporte.dashboard
+  GET|HEAD  storage/{path} storage.local › vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvid…
+  PUT       storage/{path} storage.local.upload › vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServic…
+  GET|HEAD  up ........... vendor/laravel/framework/src/Illuminate/Foundation/Configuration/ApplicationBuilder.php:219
+  GET|HEAD  ventas/clientes ........................................... ventas.clientes › App\Livewire\Ventas\Clientes
+  GET|HEAD  ventas/compras ....................................... ventas.compras › App\Livewire\Compras\OrdenesCompra
+  GET|HEAD  ventas/dashboard ........................................ ventas.dashboard › App\Livewire\Ventas\Dashboard
+  GET|HEAD  ventas/despachos ................................. ventas.despachos › App\Livewire\Ventas\DespachosEntrada
+  GET|HEAD  ventas/entradas ............... ventas.entradas.historial › App\Livewire\Ventas\Entradas\HistorialEntradas
+  GET|HEAD  ventas/entradas/registrar .............. ventas.entradas.crear › App\Livewire\Ventas\Entradas\CrearEntrada
+  GET|HEAD  ventas/inventario ............. ventas.inventario.index › App\Livewire\Ventas\Inventario\GestionInventario
+  GET|HEAD  ventas/inventario/almacenes ventas.inventario.almacenes › App\Livewire\Ventas\Inventario\AdministracionAl…
+  GET|HEAD  ventas/inventario/transferencias ventas.inventario.transferencias › App\Livewire\Ventas\Inventario\Gestio…
+  GET|HEAD  ventas/pos ................................................. ventas.pos › App\Livewire\Ventas\PuntoDeVenta
+  GET|HEAD  verify-email ................................ verification.notice › Auth\EmailVerificationPromptController
+  GET|HEAD  verify-email/{id}/{hash} ................................ verification.verify › Auth\VerifyEmailController
+
+                                                                                                   Showing [76] routes
+
