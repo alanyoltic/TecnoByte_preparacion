@@ -43,7 +43,8 @@ class Sucursal extends Model
     public function almacenesDeVentas(): HasMany
     {
         return $this->hasMany(Almacen::class, 'sucursal_id')
-            ->whereHas('area', fn ($q) => $q->where('clave', 'VENTAS'));
+            ->where('departamento_id', 2)
+            ->where('activo', 1);
     }
 
     public function usuarios(): HasMany

@@ -15,19 +15,29 @@ class Venta extends Model
         'almacen_id',
         'metodo_pago',
         'subtotal',
+        'tipo_descuento',
+        'valor_descuento',
+        'descuento',
+        'tasa_iva',
+        'aplica_iva',
         'iva',
         'total',
         'estatus',
         'notas',
         'cancelada_por_id',
         'cancelada_en',
+        'corte_caja_id',
     ];
 
     protected $casts = [
-        'subtotal'     => 'decimal:2',
-        'iva'          => 'decimal:2',
-        'total'        => 'decimal:2',
-        'cancelada_en' => 'datetime',
+        'subtotal'        => 'decimal:2',
+        'valor_descuento' => 'decimal:2',
+        'descuento'       => 'decimal:2',
+        'tasa_iva'        => 'decimal:2',
+        'aplica_iva'      => 'boolean',
+        'iva'             => 'decimal:2',
+        'total'           => 'decimal:2',
+        'cancelada_en'    => 'datetime',
     ];
 
     // ─── Constantes ─────────────────────────────────────────────────────────
@@ -93,17 +103,31 @@ class Venta extends Model
     }
 
     /**
-     * Recalcula y persiste subtotal, iva y total desde los detalles.
+     * Recalcula y persiste subtotal, descuento, iva y total desde los detalles.
      */
     public function recalcularTotales(): void
     {
-        $subtotal = $this->detalles()->sum('subtotal');
-        $iva      = round($subtotal * 0.16, 2); // IVA 16 % — ajustable
+        $subtotal = (float) $this->detalles()->sum('subtotal');
+
+        $descuentoMonto = 0.00;
+        if ($this->tipo_descuento === 'PORCENTAJE') {
+            $descuentoMonto = round(($subtotal * (float) $this->valor_descuento) / 100, 2);
+        } else {
+            $descuentoMonto = min($subtotal, (float) ($this->valor_descuento ?? $this->descuento ?? 0));
+        }
+
+        $baseGravable = max(0, $subtotal - $descuentoMonto);
+        $tasaIva = $this->aplica_iva ? (float) ($this->tasa_iva ?: 16.00) : 0.00;
+        $iva = $tasaIva > 0 ? round($baseGravable * ($tasaIva / 100), 2) : 0.00;
 
         $this->update([
-            'subtotal' => $subtotal,
-            'iva'      => $iva,
-            'total'    => $subtotal + $iva,
+            'subtotal'        => $subtotal,
+            'descuento'       => $descuentoMonto,
+            'valor_descuento' => (float) ($this->valor_descuento ?? 0),
+            'tasa_iva'        => $tasaIva,
+            'aplica_iva'      => $tasaIva > 0,
+            'iva'             => $iva,
+            'total'           => $baseGravable + $iva,
         ]);
     }
 
@@ -118,4 +142,10 @@ class Venta extends Model
     {
         return $query->where('estatus', self::ESTATUS_PENDIENTE);
     }
+
+    public function corteCaja(): BelongsTo
+    {
+        return $this->belongsTo(CorteCaja::class, 'corte_caja_id');
+    }
 }
+

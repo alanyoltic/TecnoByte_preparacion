@@ -62,6 +62,8 @@ class Dashboard extends Component
 
     public int $radialPercent = 0;
 
+    public int $radialPercentRevision = 0;
+
     public array $breakdown = [];
 
     // ===== Data =====
@@ -568,16 +570,18 @@ class Dashboard extends Component
                     $serieActualAno[] = $completadosTecnico($currentYearStart, $currentYearEnd);
                     $serieAnoAnterior[] = $completadosTecnico($prevYearStart, $prevYearEnd);
                 } else {
-                    // Meses nuevos (abril+): puntos acumulados
+                    // Meses nuevos (abril+): puntos acumulados aprobados
                     $serieActualAno[] = (float) DB::table('puntos_tecnicos')
                         ->where('tecnico_id', $tecnicoIdPersonal)
                         ->where('periodo', $periodoBar)
+                        ->where('estatus', \App\Models\PuntoTecnico::ESTATUS_APROBADO)
                         ->sum(DB::raw('puntos_final + ajuste_manual'));
                     // Año anterior en puntos (probablemente 0, no existía el sistema)
                     $prevPeriodoBar = $monthDate->copy()->subYear()->format('Y-m');
                     $serieAnoAnterior[] = (float) DB::table('puntos_tecnicos')
                         ->where('tecnico_id', $tecnicoIdPersonal)
                         ->where('periodo', $prevPeriodoBar)
+                        ->where('estatus', \App\Models\PuntoTecnico::ESTATUS_APROBADO)
                         ->sum(DB::raw('puntos_final + ajuste_manual'));
                 }
             } else {
@@ -700,12 +704,41 @@ class Dashboard extends Component
             } elseif (! $this->isTecnico && ! empty($selectedColaboradorId)) {
                 $puntosQuery->where('tecnico_id', $selectedColaboradorId);
             }
-            $realizadosMes = round((float) (clone $puntosQuery)->sum(\DB::raw('puntos_final + ajuste_manual')), 2);
-            $faltantesMes = max($metaTotal - $realizadosMes, 0);
-            $percentMeta = $metaTotal > 0 ? min(round(($realizadosMes / $metaTotal) * 100), 100) : 0;
+
+            // Puntos aprobados por calidad (oficiales para la meta)
+            $puntosAprobados = round((float) (clone $puntosQuery)
+                ->where('estatus', \App\Models\PuntoTecnico::ESTATUS_APROBADO)
+                ->sum(\DB::raw('puntos_final + ajuste_manual')), 2);
+
+            // Puntos en revisión (pendientes de inspección en Calidad)
+            $puntosEnRevision = round((float) (clone $puntosQuery)
+                ->where('estatus', \App\Models\PuntoTecnico::ESTATUS_EN_REVISION)
+                ->sum('puntos_final'), 2);
+
+            $faltantesMes = max($metaTotal - $puntosAprobados, 0);
+            $percentMeta = $metaTotal > 0 ? min(round(($puntosAprobados / $metaTotal) * 100), 100) : 0;
+            $percentRevision = $metaTotal > 0 ? min(round(($puntosEnRevision / $metaTotal) * 100), 100) : 0;
+
             $this->radialPercent = (int) $percentMeta;
+            $this->radialPercentRevision = (int) $percentRevision;
             $breakdown_meta_lbl = 'Meta mensual (puntos)';
-            $breakdown_real_lbl = 'Puntos realizados (mes)';
+        }
+
+        if ($this->viejoSistema) {
+            $this->breakdown = [
+                ['label' => $breakdown_meta_lbl, 'value' => $metaTotal],
+                ['label' => $breakdown_real_lbl, 'value' => $realizadosMes],
+                ['label' => 'Faltantes para la meta', 'value' => $faltantesMes],
+                ['label' => 'Tecnicos iniciales', 'value' => $isPersonalView ? 1 : ($metaRecord->tecnicos_iniciales ?? 0)],
+            ];
+        } else {
+            $this->breakdown = [
+                ['label' => $breakdown_meta_lbl, 'value' => $metaTotal],
+                ['label' => 'Puntos aprobados', 'value' => $puntosAprobados],
+                ['label' => 'Puntos en revisión', 'value' => $puntosEnRevision],
+                ['label' => 'Faltantes para la meta', 'value' => $faltantesMes],
+                ['label' => 'Tecnicos iniciales', 'value' => $isPersonalView ? 1 : ($metaRecord->tecnicos_iniciales ?? 0)],
+            ];
         }
 
         if ($metaRecord && $metaRecord->hubo_movimientos) {
@@ -715,18 +748,12 @@ class Dashboard extends Component
             ];
         }
 
-        $this->breakdown = [
-            ['label' => $breakdown_meta_lbl, 'value' => $metaTotal],
-            ['label' => $breakdown_real_lbl, 'value' => $realizadosMes],
-            ['label' => 'Faltantes para la meta', 'value' => $faltantesMes],
-            ['label' => 'Tecnicos iniciales', 'value' => $isPersonalView ? 1 : ($metaRecord->tecnicos_iniciales ?? 0)],
-        ];
-
         // Disparar evento para actualizar ApexCharts sin recargar
         $this->dispatch('dashboard-data-updated',
             lineChart: $this->lineChart,
             tecnicoChart: $this->tecnicoChart,
             radialPercent: $this->radialPercent,
+            radialPercentRevision: $this->radialPercentRevision,
             isTecnico: $this->isTecnico,
         );
 

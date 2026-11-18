@@ -40,6 +40,8 @@ class OrdenesCompra extends Component
     // Filtros
     public string $busqueda = '';
     public string $filtroProveedor = '';
+    public string $filtroArea = '';
+    public string $filtroEstatus = 'TODOS';
 
     // Cabecera Compra
     public ?int $proveedorId = null;
@@ -65,17 +67,28 @@ class OrdenesCompra extends Component
     public array $carrito = [];
 
     // Modales (Proveedor, Lote) - simplificado para este ejemplo
+    // Modales (Proveedor, Lote) - simplificado para este ejemplo
     public bool $modalProveedor = false;
     public string $proveedorNombre = '';
     public string $proveedorAbreviacion = '';
 
     public function mount()
     {
-        // Detectar área según URL o permisos
-        if (request()->routeIs('ventas.*') || !auth()->user()?->can('prep.compras.ver')) {
+        $isCEO = optional(auth()->user()->role)->slug === 'ceo';
+        if (request()->routeIs('ventas.*')) {
             $this->area = 'VENTAS';
+            $this->filtroArea = 'VENTAS';
+        } elseif (!auth()->user()?->can('prep.compras.ver')) {
+            $this->area = 'VENTAS';
+            $this->filtroArea = 'VENTAS';
         } else {
             $this->area = 'PREPARACION';
+            $this->filtroArea = $isCEO ? 'TODAS' : 'PREPARACION';
+        }
+
+        if ($isCEO) {
+            $pendientes = CompraInventario::where('estatus', 'PENDIENTE_CEO')->count();
+            $this->filtroEstatus = $pendientes > 0 ? 'PENDIENTE_CEO' : 'TODOS';
         }
 
         $this->fechaCompra = now()->toDateString();
@@ -111,11 +124,21 @@ class OrdenesCompra extends Component
     }
 
     #[Computed]
+    public function conteoPendientesCeo(): int
+    {
+        return CompraInventario::where('estatus', 'PENDIENTE_CEO')->count();
+    }
+
+    #[Computed]
     public function compras()
     {
+        $isCEO = optional(auth()->user()->role)->slug === 'ceo';
+        $qArea = $isCEO ? $this->filtroArea : $this->area;
+
         return CompraInventario::with(['proveedor', 'registradoPor'])
             ->withCount('items')
-            ->deArea($this->area)
+            ->when($qArea && $qArea !== 'TODAS', fn ($q) => $q->deArea($qArea))
+            ->when($isCEO && $this->filtroEstatus === 'PENDIENTE_CEO', fn ($q) => $q->where('estatus', 'PENDIENTE_CEO'))
             ->when($this->busqueda, fn ($q) =>
                 $q->where(fn ($sub) =>
                     $sub->whereHas('proveedor', fn ($p) =>
@@ -137,14 +160,26 @@ class OrdenesCompra extends Component
     #[Computed]
     public function almacenes()
     {
-        $user = auth()->user();
-        
         if ($this->area === 'VENTAS') {
-            return Almacen::where('clave', 'LIKE', '%VENTAS%')->orWhere('nombre', 'LIKE', '%Ventas%')->get();
+            return Almacen::where('activo', true)
+                ->where(function ($q) {
+                    $q->where('departamento_id', 2)
+                      ->orWhere('clave', 'LIKE', '%VENTAS%')
+                      ->orWhere('clave', 'LIKE', '%VEN%')
+                      ->orWhere('nombre', 'LIKE', '%Tienda%');
+                })
+                ->orderBy('nombre')
+                ->get();
         }
 
         // Preparación
-        return Almacen::whereIn('clave', ['PIEZAS_PEND', 'PREPARACION'])->get();
+        return Almacen::where('activo', true)
+            ->where(function ($q) {
+                $q->where('departamento_id', 1)
+                  ->orWhereIn('clave', ['PIEZAS_PEND', 'PREPARACION', 'CEDIS']);
+            })
+            ->orderBy('nombre')
+            ->get();
     }
 
     // ── OMNISEARCH ──────────────────────────────────────────────────
@@ -199,7 +234,7 @@ class OrdenesCompra extends Component
             }
         }
 
-        // Si es ventas, buscar productos
+        // Si es ventas, buscar productos y equipos (nuevos)
         if ($this->area === 'VENTAS') {
             $productosQuery = Producto::query();
             foreach ($words as $word) {
@@ -216,10 +251,27 @@ class OrdenesCompra extends Component
                     'badge' => '📦 PRODUCTO', 'extra' => $p->sku
                 ];
             }
+
+            $equiposQuery = CatalogoEquipo::query();
+            foreach ($words as $word) {
+                $equiposQuery->where(function ($q) use ($word) {
+                    $q->where('marca', 'like', "%{$word}%")
+                      ->orWhere('modelo', 'like', "%{$word}%")
+                      ->orWhere('tipo_equipo', 'like', "%{$word}%");
+                });
+            }
+            $equipos = $equiposQuery->take(8)->get();
+                
+            foreach ($equipos as $e) {
+                $results[] = [
+                    'tipo' => 'equipo', 'id' => $e->id, 'nombre' => $e->marca . ' ' . $e->modelo,
+                    'badge' => '💻 EQUIPO NUEVO', 'extra' => $e->tipo_equipo
+                ];
+            }
         }
 
-        // Ambos pueden buscar consumibles
-        $consumiblesQuery = Consumible::query();
+        // Ambos pueden buscar consumibles (aislados por área)
+        $consumiblesQuery = Consumible::query()->whereIn('area', [$this->area, 'AMBAS']);
         foreach ($words as $word) {
             $consumiblesQuery->where(function ($q) use ($word) {
                 $q->where('nombre', 'like', "%{$word}%")
@@ -344,7 +396,11 @@ class OrdenesCompra extends Component
 
         // Validar almacenes dinámicamente si hay piezas, productos o consumibles en el carrito
         $tiposEnCarrito = collect($this->carrito)->pluck('tipo')->unique()->toArray();
-        foreach (['pieza', 'producto', 'consumible', 'cargador'] as $tipo) {
+        $tiposValidar = ['pieza', 'producto', 'consumible', 'cargador'];
+        if ($this->area === 'VENTAS') {
+            $tiposValidar[] = 'equipo';
+        }
+        foreach ($tiposValidar as $tipo) {
             if (in_array($tipo, $tiposEnCarrito)) {
                 $rules["almacenesSeleccionados.{$tipo}"] = 'required';
             }
@@ -385,9 +441,13 @@ class OrdenesCompra extends Component
 
             foreach ($this->carrito as $item) {
                 // Determinar el almacén de la partida basado en su categoría
-                $almacenPartidaId = $item['tipo'] === 'equipo' 
-                    ? $cedisId 
-                    : ($this->almacenesSeleccionados[$item['tipo']] ?? null);
+                if ($this->area === 'VENTAS') {
+                    $almacenPartidaId = $this->almacenesSeleccionados[$item['tipo']] ?? null;
+                } else {
+                    $almacenPartidaId = $item['tipo'] === 'equipo' 
+                        ? $cedisId 
+                        : ($this->almacenesSeleccionados[$item['tipo']] ?? null);
+                }
 
                 if ($item['tipo'] === 'cargador') {
                     CompraInventarioItem::create([
@@ -436,6 +496,11 @@ class OrdenesCompra extends Component
         $compra = CompraInventario::findOrFail($compraId);
         abort_unless(Auth::user()->tienePermiso('prep.compras.aprobar_gerente') || Auth::user()->tienePermiso('prep.compras.aprobar_ceo'), 403);
         
+        if (in_array($compra->estatus, ['RECIBIDA', 'CANCELADA', 'RECHAZADA'], true)) {
+            $this->dispatch('toast', ['type' => 'error', 'message' => "No se puede rechazar una orden en estado {$compra->estatus}."]);
+            return;
+        }
+
         $compra->update([
             'estatus' => 'RECHAZADA',
             'cancelado_por_id' => Auth::id(),
@@ -448,6 +513,11 @@ class OrdenesCompra extends Component
     {
         $compra = CompraInventario::findOrFail($compraId);
         abort_unless(Auth::id() === $compra->registrado_por_id || Auth::user()->tienePermiso('prep.compras.aprobar_ceo'), 403);
+
+        if (in_array($compra->estatus, ['RECIBIDA', 'CANCELADA', 'RECHAZADA'], true)) {
+            $this->dispatch('toast', ['type' => 'error', 'message' => "No se puede cancelar una orden en estado {$compra->estatus}."]);
+            return;
+        }
 
         DB::transaction(function () use ($compra) {
             // Si la orden ya estaba aprobada y tenía lote en CEDIS, lo destruimos
@@ -475,115 +545,46 @@ class OrdenesCompra extends Component
             $compra->estatus = 'APROBADA';
             $compra->aprobado_por_id = Auth::id();
             $compra->save();
-
-            // Verificar si hay equipos
-            $tieneEquipos = $compra->items->whereNotNull('catalogo_equipo_id')->isNotEmpty();
-
-            if ($tieneEquipos) {
-                Lote::create([
-                    'nombre_lote' => $compra->nombre_lote_propuesto ?: 'Lote Autogenerado OC-'.$compra->id,
-                    'proveedor_id' => $compra->proveedor_id,
-                    'fecha_llegada' => now(), // Será ajustado cuando realmente llegue
-                    'estatus' => 'PENDIENTE_ENTREGA',
-                    'compra_inventario_id' => $compra->id,
-                ]);
-            }
         });
 
         $this->dispatch('toast', ['type' => 'success', 'message' => 'Orden APROBADA con éxito por Finanzas (CEO).']);
     }
 
     // ── AUTORIZAR (RECIBIR ORDEN) ──────────────────────────────────
-    public function recibirOrden($compraId)
+    
+    public $modalRecepcionExpress = false;
+    public $compraExpressId = null;
+
+    public function abrirModalRecepcionExpress($compraId)
     {
-        $compra = CompraInventario::with('items')->findOrFail($compraId);
-        
-        // Regla: Solo el creador puede recibir
-        abort_unless(Auth::id() === $compra->registrado_por_id, 403, 'Solo el solicitante puede recibir la mercancía de esta orden.');
-        
+        $compra = CompraInventario::findOrFail($compraId);
+        abort_unless(Auth::id() === $compra->registrado_por_id, 403, 'Solo el solicitante puede recibir esta mercancía.');
         if ($compra->estatus !== 'APROBADA') return;
 
+        $this->compraExpressId = $compraId;
+        $this->modalRecepcionExpress = true;
+    }
+
+    public function confirmarRecepcionExpress()
+    {
+        $compra = CompraInventario::findOrFail($this->compraExpressId);
+        
         DB::transaction(function () use ($compra) {
-            foreach ($compra->items as $item) {
-                
-                // Si es PIEZA
-                if ($item->catalogo_pieza_id) {
-                    InventarioPieza::create([
-                        'catalogo_pieza_id' => $item->catalogo_pieza_id,
-                        'origen' => InventarioPieza::COMPRA,
-                        'compra_item_id' => $item->id,
-                        'almacen_id' => $item->almacen_id,
-                        'costo' => $item->precio_unitario,
-                        'registrado_por_id' => Auth::id(),
-                        'estatus' => InventarioPieza::DISPONIBLE,
-                        'fecha_ingreso' => now(),
-                        'cantidad_inicial' => $item->cantidad,
-                        'cantidad_disponible' => $item->cantidad,
-                    ]);
-                }
-                
-                // Si es PRODUCTO
-                if ($item->producto_id) {
-                    $inv = InventarioProducto::firstOrNew([
-                        'producto_id' => $item->producto_id,
-                        'almacen_id' => $item->almacen_id,
-                    ]);
-                    $inv->cantidad = ($inv->cantidad ?? 0) + $item->cantidad;
-                    $inv->save();
-                }
+            // Generar el Lote Físico
+            \App\Models\Lote::create([
+                'nombre_lote' => $compra->nombre_lote_propuesto ?: 'Lote Autogenerado OC-'.$compra->id,
+                'proveedor_id' => $compra->proveedor_id,
+                'fecha_llegada' => now(),
+                'estatus' => 'PENDIENTE_PROCESAR', // Nuevo estatus logístico
+                'compra_inventario_id' => $compra->id,
+            ]);
 
-                // Si es CONSUMIBLE
-                if ($item->consumible_id) {
-                    $inv = InventarioConsumible::firstOrNew([
-                        'consumible_id' => $item->consumible_id,
-                        'almacen_id' => $item->almacen_id,
-                    ]);
-                    $inv->cantidad = ($inv->cantidad ?? 0) + $item->cantidad;
-                    $inv->save();
-                }
-
-                // Si es CARGADOR (detectado por JSON en notas)
-                if (!$item->catalogo_pieza_id && !$item->producto_id && !$item->consumible_id && str_contains($item->notas, 'cargador')) {
-                    $data = json_decode($item->notas, true);
-                    $prov = $compra->proveedor;
-                    $abr = $prov ? strtoupper(trim($prov->abreviacion)) : 'PROV';
-                    $prefijo = "{$abr}" . date('dmY') . "-";
-
-                    for ($i = 0; $i < $item->cantidad; $i++) {
-                        $correlativo = 1;
-                        do {
-                            $candidato = $prefijo . $correlativo;
-                            $existe = Cargador::where('serie', $candidato)->exists();
-                            if ($existe) $correlativo++;
-                        } while ($existe);
-
-                        Cargador::create([
-                            'serie' => $candidato,
-                            'marca' => $data['marca'] ?? null,
-                            'voltaje' => $data['voltaje'] ?? null,
-                            'amperaje' => $data['amperaje'] ?? null,
-                            'punta' => $data['punta'] ?? null,
-                            'costo' => $item->precio_unitario,
-                            'compra_inventario_id' => $compra->id,
-                            'estatus' => 'DISPONIBLE',
-                            'area' => $compra->area,
-                        ]);
-                    }
-                }
-            }
-
-            // Activar el Lote si existe
-            Lote::where('compra_inventario_id', $compra->id)
-                ->where('estatus', 'PENDIENTE_ENTREGA')
-                ->update([
-                    'estatus' => 'CEDIS',
-                    'fecha_llegada' => now(),
-                ]);
-
+            // Marcar la compra como Recibida (financiera/administrativamente)
             $compra->update(['estatus' => 'RECIBIDA']);
         });
 
-        $this->dispatch('toast', ['type' => 'success', 'message' => 'Mercancía recibida e ingresada al inventario.']);
+        $this->modalRecepcionExpress = false;
+        $this->dispatch('toast', ['type' => 'success', 'message' => 'Lote generado exitosamente. Listo para procesarse.']);
     }
 
     public function render()

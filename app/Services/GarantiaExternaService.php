@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Almacen;
 use App\Models\AsignacionEquipo;
 use App\Models\Asignacion;
 use App\Models\Equipo;
@@ -276,16 +277,36 @@ class GarantiaExternaService
                 'observaciones' => $datos['observaciones'] ?? null,
             ]);
 
+            // Sincronizar almacén y estancia de regreso a Preparación
+            $almacenPrep = Almacen::find(Almacen::PREPARACION);
+            if ($almacenPrep && $equipo->almacen_id != Almacen::PREPARACION) {
+                app(\App\Services\EquipoMovimientoService::class)->mover(
+                    $equipo,
+                    $almacenPrep,
+                    'MOVER_ALMACEN',
+                    'Garantía rechazada por proveedor: equipo retoma preparación'
+                );
+            }
+
             // Regresa a EN_PROCESO — el técnico decide el siguiente paso
             $equipo->update([
                 'estatus_ciclo' => Equipo::CICLO_PREPARACION,
                 'estatus_area'  => Equipo::AREA_EN_PROCESO,
-                'almacen_id'    => \App\Models\Almacen::PREPARACION,
+                'almacen_id'    => Almacen::PREPARACION,
             ]);
 
             AsignacionEquipo::where('id', $garantia->asignacion_equipo_id)
                 ->where('camino', 'GARANTIA_EXTERNA')
                 ->update(['camino' => AsignacionEquipo::EN_PROCESO, 'fin_en' => null]);
+
+            // Reactivar la asignación padre si ya había sido entregada para que el técnico la vea en Mi Trabajo
+            $asignacionPadre = AsignacionEquipo::find($garantia->asignacion_equipo_id)?->asignacion;
+            if ($asignacionPadre && in_array($asignacionPadre->estatus, [Asignacion::ENTREGADO, Asignacion::CANCELADO])) {
+                $asignacionPadre->update([
+                    'estatus' => Asignacion::EN_PROCESO,
+                    'fecha_entrega' => null,
+                ]);
+            }
 
             $garantia->update([
                 'estatus'                  => GarantiaProveedor::RESUELTA,

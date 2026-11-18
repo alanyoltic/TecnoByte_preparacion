@@ -1,0 +1,9 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app/
+
+    # Nivel inicial recomendado: Nivel 1 detecta métodos inexistentes y variables no definidas sin saturar con propiedades dinámicas de Eloquent.
+    level: 1

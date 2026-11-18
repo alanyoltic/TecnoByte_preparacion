@@ -20,7 +20,15 @@ class Lote extends Model
         'nombre_lote',
         'proveedor_id',
         'fecha_llegada',
+        'estatus',
+        'compra_inventario_id',
     ];
+
+    
+    public function compraInventario()
+    {
+        return $this->belongsTo(CompraInventario::class, 'compra_inventario_id');
+    }
 
     public function proveedor()
     {

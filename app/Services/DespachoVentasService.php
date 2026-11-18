@@ -5,9 +5,12 @@ namespace App\Services;
 use App\Models\Almacen;
 use App\Models\DespachoVentas;
 use App\Models\DespachoVentasEquipo;
+use App\Models\DespachoVentasProducto;
 use App\Models\Equipo;
 use App\Models\EquipoMovimiento;
+use App\Models\InventarioProducto;
 use App\Models\LoteModeloRecibido;
+use App\Models\Producto;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -150,6 +153,56 @@ class DespachoVentasService
             ->update(['precio_sugerido' => $nuevoPrecio]);
     }
 
+    /**
+     * Agrega un producto / accesorio comercial al despacho.
+     */
+    public function agregarProducto(
+        DespachoVentas $despacho,
+        Producto $producto,
+        int $cantidad = 1,
+        ?float $precioSugerido = null,
+        ?string $observacion = null
+    ): DespachoVentasProducto {
+        if (! $despacho->esBorrador()) {
+            throw new \Exception('Solo se pueden agregar productos a despachos en estado BORRADOR.');
+        }
+
+        if ($cantidad < 1) {
+            throw new \Exception('La cantidad debe ser al menos 1.');
+        }
+
+        $existente = DespachoVentasProducto::where('despacho_ventas_id', $despacho->id)
+            ->where('producto_id', $producto->id)
+            ->first();
+
+        if ($existente) {
+            $existente->increment('cantidad', $cantidad);
+            return $existente;
+        }
+
+        return DespachoVentasProducto::create([
+            'despacho_ventas_id' => $despacho->id,
+            'producto_id'        => $producto->id,
+            'cantidad'           => $cantidad,
+            'precio_sugerido'    => $precioSugerido ?: $producto->precio_venta,
+            'observacion'        => $observacion ? trim($observacion) : null,
+        ]);
+    }
+
+    /**
+     * Quita un producto / accesorio del despacho.
+     */
+    public function quitarProducto(DespachoVentas $despacho, int $productoId): void
+    {
+        if (! $despacho->esBorrador()) {
+            throw new \Exception('Solo se pueden quitar productos de despachos en BORRADOR.');
+        }
+
+        DespachoVentasProducto::where('despacho_ventas_id', $despacho->id)
+            ->where('producto_id', $productoId)
+            ->delete();
+    }
+
     // =========================================================
     // FLUJO DE APROBACIÓN
     // =========================================================
@@ -202,6 +255,25 @@ class DespachoVentasService
                 }
 
                 $this->transicionarEquipoAVentas($equipo, $almacenDestino, $despacho);
+            }
+
+            // Procesar productos / accesorios comerciales
+            foreach ($despacho->productos()->with('producto')->get() as $despachoProd) {
+                InventarioProducto::firstOrCreate(
+                    [
+                        'producto_id' => $despachoProd->producto_id,
+                        'almacen_id'  => $despacho->almacen_destino_id,
+                    ],
+                    ['cantidad' => 0]
+                )->increment('cantidad', $despachoProd->cantidad);
+
+                // Descontar del almacén de origen si tiene stock registrado
+                $stockOrigen = InventarioProducto::where('producto_id', $despachoProd->producto_id)
+                    ->where('almacen_id', Almacen::PREPARACION)
+                    ->first();
+                if ($stockOrigen && $stockOrigen->cantidad >= $despachoProd->cantidad) {
+                    $stockOrigen->decrement('cantidad', $despachoProd->cantidad);
+                }
             }
         });
     }

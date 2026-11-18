@@ -68,7 +68,7 @@ class DespachoVentas extends Model
     /** ¿Puede enviarse a Ventas? */
     public function puedeEnviarse(): bool
     {
-        return $this->estatus === self::BORRADOR && $this->equipos()->count() > 0;
+        return $this->estatus === self::BORRADOR && ($this->equipos()->count() > 0 || $this->productos()->count() > 0);
     }
 
     // =========================================================
@@ -161,5 +161,16 @@ class DespachoVentas extends Model
     {
         return $this->hasMany(DespachoVentasEquipo::class, 'despacho_ventas_id')
             ->with(['equipo.loteModelo.catalogoEquipo']);
+    }
+
+    public function productos(): HasMany
+    {
+        return $this->hasMany(DespachoVentasProducto::class, 'despacho_ventas_id');
+    }
+
+    public function productosConDetalle(): HasMany
+    {
+        return $this->hasMany(DespachoVentasProducto::class, 'despacho_ventas_id')
+            ->with(['producto']);
     }
 }

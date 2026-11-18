@@ -244,6 +244,75 @@ class Equipo extends Model
     }
 
     /**
+     * Valida si el equipo es apto para incluirse en una Transferencia entre almacenes.
+     * Retorna false y llena $motivo si el equipo está ocupado, en proceso, vendido o bloqueado.
+     */
+    public function puedeTransferirse(?string &$motivo = null, ?int $excluirTransferenciaId = null): bool
+    {
+        // 1. Estados finales
+        if ($this->estatus_ciclo === self::CICLO_VENDIDO) {
+            $motivo = "El equipo ya fue VENDIDO.";
+            return false;
+        }
+
+        // 2. Equipos en proceso activo o en prueba de calidad
+        if (in_array($this->estatus_area, [
+            self::AREA_ASIGNADO,
+            self::AREA_EN_PROCESO,
+            self::AREA_EN_CALIDAD,
+            self::AREA_PENDIENTE_PIEZA,
+            self::AREA_PENDIENTE_GARANTIA,
+            self::AREA_PENDIENTE_DESARME,
+        ], true)) {
+            $motivo = "El equipo está en proceso operativo o bloqueado ({$this->estatus_area}).";
+            return false;
+        }
+
+        // 3. Verificar si está en una asignación técnica activa
+        $tieneAsignacionActiva = \App\Models\AsignacionEquipo::where('equipo_id', $this->id)
+            ->whereIn('camino', [
+                \App\Models\AsignacionEquipo::PENDIENTE,
+                \App\Models\AsignacionEquipo::PRE_ASIGNADO,
+                \App\Models\AsignacionEquipo::EN_PROCESO,
+                \App\Models\AsignacionEquipo::EN_CALIDAD,
+            ])
+            ->whereNull('fin_en')
+            ->exists();
+
+        if ($tieneAsignacionActiva) {
+            $motivo = "El equipo tiene una asignación técnica en curso.";
+            return false;
+        }
+
+        // 4. Verificar si ya está en otra transferencia en curso (excluyendo la actual si se indica)
+        $enTransferencia = \App\Models\TransferenciaDetalle::where('movible_type', self::class)
+            ->where('movible_id', $this->id)
+            ->when($excluirTransferenciaId, fn ($q) => $q->where('transferencia_id', '!=', $excluirTransferenciaId))
+            ->whereHas('transferencia', fn ($q) => $q->whereIn('estatus', ['BORRADOR', 'ENVIADA']))
+            ->exists();
+
+        if ($enTransferencia) {
+            $motivo = "El equipo ya está incluido en otra transferencia activa.";
+            return false;
+        }
+
+        // 5. Verificar si está en un despacho activo
+        $enDespacho = \App\Models\DespachoVentasEquipo::where('equipo_id', $this->id)
+            ->whereHas('despacho', fn ($q) => $q->whereIn('estatus', [
+                \App\Models\DespachoVentas::BORRADOR,
+                \App\Models\DespachoVentas::ENVIADO,
+            ]))
+            ->exists();
+
+        if ($enDespacho) {
+            $motivo = "El equipo ya está en un despacho a ventas activo.";
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * ¿El equipo está en un estado final (no puede avanzar más)?
      */
     public function esEstadoFinal(): bool

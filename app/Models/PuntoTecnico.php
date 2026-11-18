@@ -13,7 +13,7 @@ class PuntoTecnico extends Model
         'tecnico_id', 'asignacion_equipo_id', 'clasificacion_puntos_id',
         'puntos_base', 'porcentaje_aplicado', 'puntos_final',
         'ajuste_manual', 'ajustado_por_id', 'motivo_ajuste',
-        'rol_en_equipo', 'periodo',
+        'rol_en_equipo', 'periodo', 'estatus', 'aprobado_en',
     ];
 
     protected $casts = [
@@ -21,7 +21,13 @@ class PuntoTecnico extends Model
         'porcentaje_aplicado' => 'decimal:2',
         'puntos_final' => 'decimal:2',
         'ajuste_manual' => 'decimal:2',
+        'aprobado_en' => 'datetime',
     ];
+
+    // ── Estatus de Puntos ─────────────────────────────────────────────────
+    const ESTATUS_EN_REVISION = 'EN_REVISION';
+    const ESTATUS_APROBADO = 'APROBADO';
+    const ESTATUS_RECHAZADO = 'RECHAZADO';
 
     // ── Roles ─────────────────────────────────────────────────────────────
     const COMPLETO = 'COMPLETO';
@@ -77,11 +83,27 @@ class PuntoTecnico extends Model
         return $query->where('tecnico_id', $tecnicoId);
     }
 
+    public function scopeAprobados($query)
+    {
+        return $query->where('estatus', self::ESTATUS_APROBADO);
+    }
+
+    public function scopeEnRevision($query)
+    {
+        return $query->where('estatus', self::ESTATUS_EN_REVISION);
+    }
+
+    public function scopeRechazados($query)
+    {
+        return $query->where('estatus', self::ESTATUS_RECHAZADO);
+    }
+
     // ── Helpers estáticos ─────────────────────────────────────────────────
 
     /**
      * Calcular y registrar puntos cuando un técnico termina un equipo.
-     * Llamar desde AsignacionEquipo cuando cambia el camino.
+     * Si el equipo ya tenía un punto registrado (ej. por rechazo previo),
+     * conserva el periodo original para respetar el mes de origen del trabajo.
      */
     public static function registrar(
         int $tecnicoId,
@@ -89,11 +111,34 @@ class PuntoTecnico extends Model
         string $rol,
         float $puntosBase,
         ?int $clasificacionId = null,
+        ?string $periodoOrigen = null,
+        bool $aprobarInmediato = false,
     ): self {
-        // CAMBIO: Siempre 100% en terminación de equipos
-        // El 40/60 de piezas se maneja aparte por el gerente
         $porcentaje = 100.00;
         $puntosCalc = round($puntosBase * ($porcentaje / 100), 2);
+
+        // Si ya existía un registro previo para este asignacion_equipo_id (ej. por rechazo previo)
+        $previo = static::where('asignacion_equipo_id', $asignacionEquipoId)->first();
+        $periodo = $periodoOrigen ?: ($previo?->periodo ?: now()->format('Y-m'));
+
+        $estatus = $aprobarInmediato ? self::ESTATUS_APROBADO : self::ESTATUS_EN_REVISION;
+        $aprobadoEn = $aprobarInmediato ? now() : null;
+
+        if ($previo) {
+            $previo->update([
+                'tecnico_id' => $tecnicoId,
+                'clasificacion_puntos_id' => $clasificacionId ?: $previo->clasificacion_puntos_id,
+                'puntos_base' => $puntosBase,
+                'porcentaje_aplicado' => $porcentaje,
+                'puntos_final' => $puntosCalc,
+                'rol_en_equipo' => $rol,
+                'periodo' => $periodo,
+                'estatus' => $estatus,
+                'aprobado_en' => $aprobadoEn,
+            ]);
+
+            return $previo;
+        }
 
         return static::create([
             'tecnico_id' => $tecnicoId,
@@ -104,18 +149,32 @@ class PuntoTecnico extends Model
             'puntos_final' => $puntosCalc,
             'ajuste_manual' => 0,
             'rol_en_equipo' => $rol,
-            'periodo' => now()->format('Y-m'),
+            'periodo' => $periodo,
+            'estatus' => $estatus,
+            'aprobado_en' => $aprobadoEn,
         ]);
     }
 
     /**
-     * Total de puntos de un técnico en un período.
+     * Total de puntos aprobados de un técnico en un período.
      */
-    public static function totalDelPeriodo(int $tecnicoId, string $periodo): float
+    public static function totalDelPeriodo(int $tecnicoId, string $periodo, string $estatus = self::ESTATUS_APROBADO): float
     {
         return (float) static::where('tecnico_id', $tecnicoId)
             ->where('periodo', $periodo)
+            ->where('estatus', $estatus)
             ->sum(\DB::raw('puntos_final + ajuste_manual'));
+    }
+
+    /**
+     * Total de puntos en revisión (pendientes de Calidad) en un período.
+     */
+    public static function totalEnRevisionDelPeriodo(int $tecnicoId, string $periodo): float
+    {
+        return (float) static::where('tecnico_id', $tecnicoId)
+            ->where('periodo', $periodo)
+            ->where('estatus', self::ESTATUS_EN_REVISION)
+            ->sum('puntos_final');
     }
 
     /**

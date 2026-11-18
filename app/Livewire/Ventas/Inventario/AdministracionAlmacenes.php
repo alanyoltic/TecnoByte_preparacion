@@ -8,12 +8,15 @@ use App\Models\User;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
-#[Layout('layouts.app', ['pageTitle' => 'Almacenes — Ventas'])]
+#[Layout('layouts.app', ['pageTitle' => 'Almacenes'])]
 class AdministracionAlmacenes extends Component
 {
     public function render()
     {
-        $almacenes = Almacen::whereNotIn('id', [
+        $user = auth()->user();
+        $isGlobal = in_array(strtolower(optional($user->role)->slug), ['ceo', 'admin', 'admin_sistema', 'sistemas']);
+
+        $query = Almacen::whereNotIn('id', [
             Almacen::PREPARACION,
             Almacen::GARANTIAS_INTERNAS,
             Almacen::GARANTIAS_EXTERNAS,
@@ -21,42 +24,68 @@ class AdministracionAlmacenes extends Component
             Almacen::SCRAP,
             Almacen::PIEZAS_PENDIENTES,
             Almacen::AREA_TRANSFERENCIA,
-        ])
-        ->withCount('equipos')
+        ]);
+
+        if (!$isGlobal && $user->departamento_id) {
+            $query->where('departamento_id', $user->departamento_id);
+        }
+
+        $almacenes = $query->withCount('equipos')
         ->with([
             'encargados' => fn ($q) => $q->where('activo', 1)->with('user'),
         ])
         ->orderBy('nombre')
         ->get();
 
+        // Agrupar los almacenes por departamento si es global
+        if ($isGlobal) {
+            $departamentos = \App\Models\Departamento::pluck('nombre', 'id')->toArray();
+            
+            $agrupados = [];
+            foreach ($almacenes as $almacen) {
+                $deptoNombre = $almacen->departamento_id && isset($departamentos[$almacen->departamento_id]) 
+                    ? 'Área de ' . ucfirst(strtolower($departamentos[$almacen->departamento_id])) 
+                    : 'Almacenes Globales / Sin Área';
+                
+                if (!isset($agrupados[$deptoNombre])) {
+                    $agrupados[$deptoNombre] = [];
+                }
+                $agrupados[$deptoNombre][] = $almacen;
+            }
+            ksort($agrupados);
+        } else {
+            // Si no es global, solo mandamos un grupo default
+            $agrupados = ['Almacenes' => $almacenes];
+        }
+
         $usuarios = User::where('is_active', true)->orderBy('nombre')->get();
 
         return view('livewire.ventas.inventario.administracion-almacenes', [
-            'almacenes' => $almacenes,
+            'almacenesAgrupados' => $agrupados,
             'usuarios'  => $usuarios,
         ]);
     }
 
-    public function asignarAdministrador($almacenId, $userId)
+    public function agregarAdministrador($almacenId, $userId)
     {
         if (empty($userId)) {
-            // Remove current admin
-            AlmacenEncargado::where('almacen_id', $almacenId)
-                ->where('activo', 1)
-                ->update(['activo' => 0, 'hasta' => now()]);
-            
-            $this->dispatch('tb-notify', [
-                'type' => 'success',
-                'title' => 'Administrador removido',
-                'message' => 'Se ha removido el administrador del almacén exitosamente.'
-            ]);
             return;
         }
 
-        // Disable previous admins
-        AlmacenEncargado::where('almacen_id', $almacenId)
+        // Verificar si ya está asignado
+        $existente = AlmacenEncargado::where('almacen_id', $almacenId)
+            ->where('user_id', $userId)
             ->where('activo', 1)
-            ->update(['activo' => 0, 'hasta' => now()]);
+            ->first();
+
+        if ($existente) {
+            $this->dispatch('tb-notify', [
+                'type' => 'info',
+                'title' => 'Aviso',
+                'message' => 'Este usuario ya es administrador de este almacén.'
+            ]);
+            return;
+        }
 
         // Assign new admin
         AlmacenEncargado::create([
@@ -66,13 +95,27 @@ class AdministracionAlmacenes extends Component
             'es_principal' => 1,
             'activo' => 1,
             'creado_por' => auth()->id(),
-            'motivo' => 'Asignado desde panel de Ventas',
+            'motivo' => 'Asignado desde panel de Almacenes',
         ]);
 
         $this->dispatch('tb-notify', [
             'type' => 'success',
-            'title' => 'Administrador asignado',
-            'message' => 'El administrador se ha asignado correctamente.'
+            'title' => 'Administrador agregado',
+            'message' => 'El administrador se ha agregado correctamente.'
+        ]);
+    }
+
+    public function removerAdministrador($almacenId, $userId)
+    {
+        AlmacenEncargado::where('almacen_id', $almacenId)
+            ->where('user_id', $userId)
+            ->where('activo', 1)
+            ->update(['activo' => 0, 'hasta' => now()]);
+
+        $this->dispatch('tb-notify', [
+            'type' => 'success',
+            'title' => 'Administrador removido',
+            'message' => 'El administrador ha sido removido exitosamente.'
         ]);
     }
 }

@@ -16,11 +16,12 @@ class Cargador extends Model
     protected $table = 'cargadores';
 
     protected $fillable = [
-        'serie',
+        'serie', 'serie_fabricante',
         'marca',
         'voltaje',
         'amperaje',
         'punta',
+        'especificaciones_tecnicas',
         'estatus',
         'area',
         'lote_id',
@@ -30,6 +31,7 @@ class Cargador extends Model
     ];
 
     protected $casts = [
+        'especificaciones_tecnicas' => 'array',
         'estatus' => CargadorEstatus::class,
         'costo' => 'decimal:2',
     ];

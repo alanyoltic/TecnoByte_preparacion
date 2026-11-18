@@ -114,9 +114,22 @@
                                     @endif
                                 </td>
                                 <td class="px-5 py-4 whitespace-nowrap">
-                                    <span class="px-2.5 py-1 inline-flex text-[10px] font-bold rounded-md bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">
-                                        {{ $tab === 'equipos' ? ($tiposEquipo[$item->tipo_equipo] ?? $item->tipo_equipo) : ($cats[$item->categoria] ?? $item->categoria) }}
-                                    </span>
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <span class="px-2.5 py-1 inline-flex text-[10px] font-bold rounded-md bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">
+                                            {{ $tab === 'equipos' ? ($tiposEquipo[$item->tipo_equipo] ?? $item->tipo_equipo) : ($cats[$item->categoria] ?? $item->categoria) }}
+                                        </span>
+                                        @if($tab === 'equipos')
+                                            @if($item->clasificacionPuntos)
+                                                <span class="px-2 py-0.5 inline-flex text-[9px] font-bold rounded bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                                                    {{ $item->clasificacionPuntos->clave }} · {{ number_format($item->clasificacionPuntos->puntos_base, 2) }} pts
+                                                </span>
+                                            @else
+                                                <span class="px-2 py-0.5 inline-flex text-[9px] font-medium rounded bg-slate-500/15 text-slate-400">
+                                                    Sin puntos
+                                                </span>
+                                            @endif
+                                        @endif
+                                    </div>
                                 </td>
                                 @if($tab === 'accesorios')
                                 <td class="px-5 py-4 whitespace-nowrap text-right text-sm text-slate-900 dark:text-slate-100 font-bold">
@@ -174,13 +187,24 @@
                             @error('modelo') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
                         </div>
                         <div class="sm:col-span-2">
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Tipo de Equipo <span class="text-red-500">*</span></label>
+                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Tipo de equipo <span class="text-red-500">*</span></label>
                             <select wire:model.defer="tipo_equipo" class="mt-1 block w-full bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-slate-900 dark:text-slate-100">
+                                <option value="">Selecciona</option>
                                 @foreach($tiposEquipo as $key => $val)
                                     <option value="{{ $key }}">{{ $val }}</option>
                                 @endforeach
                             </select>
                             @error('tipo_equipo') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Clasificación de puntos</label>
+                            <select wire:model.defer="clasificacion_puntos_id" class="mt-1 block w-full bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-slate-900 dark:text-slate-100">
+                                <option value="">— sin clasificar —</option>
+                                @foreach($clasificaciones as $c)
+                                    <option value="{{ $c->id }}">Tipo {{ $c->clave }} ({{ number_format($c->puntos_base, 2) }}pts)</option>
+                                @endforeach
+                            </select>
+                            @error('clasificacion_puntos_id') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
                         </div>
     
                     @else

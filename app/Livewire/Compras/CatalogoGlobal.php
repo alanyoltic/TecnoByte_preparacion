@@ -48,6 +48,7 @@ class CatalogoGlobal extends Component
     // Equipos
     public $modelo = '';
     public $tipo_equipo = 'LAPTOP';
+    public $clasificacion_puntos_id = null;
 
     public $categoriasPiezas = [
         'RAM' => 'RAM',
@@ -82,11 +83,13 @@ class CatalogoGlobal extends Component
     ];
 
     public $tiposEquipo = [
-        'LAPTOP' => 'Laptop',
-        'DESKTOP' => 'PC de Escritorio',
-        'ALL_IN_ONE' => 'All In One',
-        'MINI_PC' => 'Mini PC',
-        'OTRO' => 'Otro'
+        'LAPTOP' => 'LAPTOP',
+        'ESCRITORIO' => 'ESCRITORIO',
+        'ALL IN ONE' => 'ALL IN ONE',
+        'TABLET' => 'TABLET',
+        '2 EN 1' => '2 EN 1',
+        'MICRO PC' => 'MICRO PC',
+        'GAMER' => 'GAMER',
     ];
 
     public function mount()
@@ -124,6 +127,7 @@ class CatalogoGlobal extends Component
     {
         if ($this->tab !== 'equipos') return [];
         return CatalogoEquipo::query()
+            ->with('clasificacionPuntos')
             ->when($this->search, function($q) {
                 $q->where('marca', 'like', "%{$this->search}%")
                   ->orWhere('modelo', 'like', "%{$this->search}%");
@@ -193,7 +197,7 @@ class CatalogoGlobal extends Component
         $this->resetValidation();
         $this->reset([
             'itemId', 'sku', 'codigo_barras', 'nombre', 
-            'categoria', 'descripcion', 'marca', 'modelo', 'tipo_equipo',
+            'categoria', 'descripcion', 'marca', 'modelo', 'tipo_equipo', 'clasificacion_puntos_id',
             'precio_venta', 'precio_compra', 'requiere_serie'
         ]);
         
@@ -216,6 +220,7 @@ class CatalogoGlobal extends Component
         $this->marca = $equipo->marca;
         $this->modelo = $equipo->modelo;
         $this->tipo_equipo = $equipo->tipo_equipo;
+        $this->clasificacion_puntos_id = $equipo->clasificacion_puntos_id;
         $this->activo = $equipo->activo;
         $this->isEditing = true;
         $this->showModal = true;
@@ -271,11 +276,19 @@ class CatalogoGlobal extends Component
                 'marca' => 'required|string|max:100',
                 'modelo' => 'required|string|max:100',
                 'tipo_equipo' => 'required|string|max:50',
+                'clasificacion_puntos_id' => 'nullable|exists:clasificaciones_puntos,id',
             ]);
-            CatalogoEquipo::updateOrCreate(
+            $eq = CatalogoEquipo::updateOrCreate(
                 ['id' => $this->itemId],
-                ['marca' => $this->marca, 'modelo' => $this->modelo, 'tipo_equipo' => $this->tipo_equipo, 'activo' => $this->activo]
+                [
+                    'marca' => $this->marca,
+                    'modelo' => $this->modelo,
+                    'tipo_equipo' => $this->tipo_equipo,
+                    'clasificacion_puntos_id' => $this->clasificacion_puntos_id ?: null,
+                    'activo' => $this->activo
+                ]
             );
+            $eq->propagarClasificacion();
         } elseif ($this->tab === 'piezas') {
             $this->validate([
                 'nombre' => 'required|string|max:255',
@@ -339,6 +352,8 @@ class CatalogoGlobal extends Component
 
     public function render()
     {
-        return view('livewire.compras.catalogo-global');
+        return view('livewire.compras.catalogo-global', [
+            'clasificaciones' => \App\Models\ClasificacionPuntos::where('activo', true)->orderBy('clave')->get(),
+        ]);
     }
 }

@@ -1,166 +1,200 @@
-<div>
-    <!-- Encabezado y Acciones -->
-    <div class="sm:flex sm:items-center sm:justify-between mb-6">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Cargadores</h1>
-            <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
-                Gestión del inventario de cargadores independientes.
-            </p>
-        </div>
-        <div class="mt-4 sm:mt-0">
-            <button wire:click="abrirModalNuevo"
-                class="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto">
-                Registrar Cargador
-            </button>
-        </div>
-    </div>
+<x-tb-background>
+    <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-12 space-y-6">
+        <x-toast />
 
-    <!-- Filtros -->
-    <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-4 mb-6 flex flex-col sm:flex-row gap-4">
-        <div class="flex-1">
-            <label for="search" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Buscar</label>
-            <input type="text" wire:model.live.debounce.300ms="search" id="search"
-                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                placeholder="Serie, marca...">
-        </div>
-        <div class="w-full sm:w-64">
-            <label for="filtroEstatus" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Estatus</label>
-            <select wire:model.live="filtroEstatus" id="filtroEstatus"
-                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                <option value="">Todos</option>
-                <option value="DISPONIBLE">Disponible</option>
-                <option value="ASIGNADO">Asignado</option>
-                <option value="VENDIDO">Vendido</option>
-                <option value="EN_GARANTIA">En Garantía</option>
-                <option value="SCRAP">Scrap</option>
-            </select>
-        </div>
-    </div>
+        {{-- TOPBAR GLASS --}}
+        <x-topbar
+            title="Inventario de Cargadores"
+            chip="Preparación · Lotes y Accesorios"
+            description="Gestión y control de cargadores independientes, voltaje, amperaje, tipo de conector y estatus."
+        >
+            <div class="flex items-center gap-3">
+                <button wire:click="abrirModalNuevo"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold
+                               bg-[#FF9521] hover:bg-[#e0821b] text-slate-950
+                               shadow-lg shadow-[#FF9521]/20 active:scale-95 transition-all duration-150">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Registrar Cargador</span>
+                </button>
+            </div>
+        </x-topbar>
 
-    <!-- Tabla -->
-    <div class="mt-8 flex flex-col">
-        <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div class="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-                <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                    <table class="min-w-full divide-y divide-gray-300 dark:divide-gray-600">
-                        <thead class="bg-gray-50 dark:bg-gray-700">
-                            <tr>
-                                <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-6">Serie</th>
-                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Marca / Especificaciones</th>
-                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Estatus</th>
-                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Origen</th>
-                                <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                                    <span class="sr-only">Acciones</span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200 dark:divide-gray-600 bg-white dark:bg-gray-800">
-                            @forelse($cargadores as $cargador)
-                            <tr>
-                                <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 dark:text-white sm:pl-6">
-                                    {{ $cargador->serie ?? 'N/A' }}
+        <!-- Filtros Glass -->
+        <div class="rounded-3xl border border-slate-200/80 dark:border-white/10
+                    bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl shadow-2xl p-6">
+            <div class="flex flex-col sm:flex-row gap-4">
+                <div class="flex-1">
+                    <label for="search" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Buscar</label>
+                    <input type="text" wire:model.live.debounce.300ms="search" id="search"
+                           class="w-full px-4 py-2.5 rounded-2xl text-sm
+                                  bg-slate-50 dark:bg-slate-950/70 border border-slate-300 dark:border-slate-700
+                                  text-slate-800 dark:text-slate-200 placeholder-slate-400
+                                  focus:outline-none focus:ring-2 focus:ring-[#FF9521] focus:border-transparent transition-all"
+                           placeholder="Buscar por número de serie, marca...">
+                </div>
+                <div class="w-full sm:w-64">
+                    <label for="filtroEstatus" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Estatus</label>
+                    <select wire:model.live="filtroEstatus" id="filtroEstatus"
+                            class="w-full px-4 py-2.5 rounded-2xl text-sm
+                                   bg-slate-50 dark:bg-slate-950/70 border border-slate-300 dark:border-slate-700
+                                   text-slate-800 dark:text-slate-200
+                                   focus:outline-none focus:ring-2 focus:ring-[#FF9521] focus:border-transparent transition-all">
+                        <option value="">Todos los estatus</option>
+                        <option value="DISPONIBLE">Disponible</option>
+                        <option value="ASIGNADO">Asignado</option>
+                        <option value="VENDIDO">Vendido</option>
+                        <option value="EN_GARANTIA">En Garantía</option>
+                        <option value="SCRAP">Scrap (Baja)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla Glass -->
+        <div class="overflow-hidden rounded-3xl border border-slate-200/80 dark:border-white/10
+                    bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl shadow-2xl">
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-200/80 dark:border-white/10
+                                   bg-slate-100/60 dark:bg-slate-950/40 text-left">
+                            <th class="px-6 py-4 font-bold text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300">Serie</th>
+                            <th class="px-6 py-4 font-bold text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300">Marca / Especificaciones</th>
+                            <th class="px-6 py-4 font-bold text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300">Estatus</th>
+                            <th class="px-6 py-4 font-bold text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300">Origen / Lote</th>
+                            <th class="px-6 py-4 font-bold text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200/60 dark:divide-white/5">
+                        @forelse($cargadores as $cargador)
+                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors duration-150">
+                                <td class="px-6 py-4">
+                                    <span class="font-mono text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                                        {{ $cargador->serie ?? 'PENDIENTE' }}
+                                    </span>
                                 </td>
-                                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-300">
-                                    <div class="font-medium text-gray-900 dark:text-white">{{ $cargador->marca ?? 'Genérico' }}</div>
-                                    <div class="text-xs">{{ $cargador->voltaje }}V - {{ $cargador->amperaje }}A (Punta: {{ $cargador->punta }})</div>
+                                <td class="px-6 py-4">
+                                    <div class="font-bold text-slate-900 dark:text-slate-100">{{ $cargador->marca ?? 'Genérico' }}</div>
+                                    <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ $cargador->voltaje }}V - {{ $cargador->amperaje }}A (Punta: {{ $cargador->punta }})</div>
                                 </td>
-                                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                <td class="px-6 py-4">
                                     @php
                                         $color = match($cargador->estatus->value) {
-                                            'DISPONIBLE' => 'bg-green-100 text-green-800',
-                                            'ASIGNADO' => 'bg-blue-100 text-blue-800',
-                                            'VENDIDO' => 'bg-gray-100 text-gray-800',
-                                            'EN_GARANTIA' => 'bg-yellow-100 text-yellow-800',
-                                            'SCRAP' => 'bg-red-100 text-red-800',
-                                            default => 'bg-gray-100 text-gray-800',
+                                            'DISPONIBLE'  => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+                                            'ASIGNADO'    => 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+                                            'VENDIDO'     => 'bg-slate-500/10 text-slate-400 border-slate-500/30',
+                                            'EN_GARANTIA' => 'bg-amber-500/10 text-amber-400 border-amber-500/30',
+                                            'SCRAP'       => 'bg-rose-500/10 text-rose-400 border-rose-500/30',
+                                            default       => 'bg-slate-500/10 text-slate-400 border-slate-500/30',
                                         };
                                     @endphp
-                                    <span class="inline-flex rounded-full px-2 text-xs font-semibold leading-5 {{ $color }}">
+                                    <span class="inline-flex px-3 py-1 rounded-full text-xs font-bold border {{ $color }}">
                                         {{ $cargador->estatus->getLabel() }}
                                     </span>
                                 </td>
-                                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-300">
+                                <td class="px-6 py-4 text-xs font-medium text-slate-600 dark:text-slate-400">
                                     @if($cargador->lote)
-                                        <span class="text-xs">Lote: {{ $cargador->lote->nombre_lote }}</span>
+                                        <span>Lote: <strong class="text-slate-800 dark:text-slate-200">{{ $cargador->lote->nombre_lote }}</strong></span>
                                     @elseif($cargador->compraInventario)
-                                        <span class="text-xs">Compra: {{ $cargador->compraInventario->folio ?? $cargador->compraInventario->id }}</span>
+                                        <span>Compra: <strong class="text-slate-800 dark:text-slate-200">{{ $cargador->compraInventario->folio ?? $cargador->compraInventario->id }}</strong></span>
                                     @else
                                         -
                                     @endif
                                 </td>
-                                <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                    <button wire:click="abrirModalEditar({{ $cargador->id }})" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mr-3">Editar</button>
-                                    @if($cargador->estatus->value !== 'SCRAP' && $cargador->estatus->value !== 'VENDIDO')
-                                        <button wire:click="eliminar({{ $cargador->id }})" wire:confirm="¿Estás seguro de enviar este cargador a SCRAP?" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Baja</button>
-                                    @endif
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <button wire:click="abrirModalEditar({{ $cargador->id }})"
+                                                class="p-2 rounded-xl text-slate-400 hover:text-[#FF9521] hover:bg-[#FF9521]/10 transition-colors"
+                                                title="Editar">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                            </svg>
+                                        </button>
+                                        @if($cargador->estatus->value !== 'SCRAP' && $cargador->estatus->value !== 'VENDIDO')
+                                            <button wire:click="eliminar({{ $cargador->id }})"
+                                                    wire:confirm="¿Estás seguro de enviar este cargador a SCRAP?"
+                                                    class="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                                                    title="Enviar a Scrap">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                </svg>
+                                            </button>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
-                            @empty
+                        @empty
                             <tr>
-                                <td colspan="5" class="py-4 text-center text-sm text-gray-500">
-                                    No se encontraron cargadores.
+                                <td colspan="5" class="px-6 py-16 text-center text-slate-400 text-sm">
+                                    No se encontraron cargadores registrados en el inventario.
                                 </td>
                             </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
-    </div>
-    
-    <div class="mt-4">
-        {{ $cargadores->links() }}
-    </div>
 
-    <!-- Modal Formulario -->
-    <div x-data="{ open: @entangle('modalAbierto') }" x-show="open" class="relative z-10" aria-labelledby="modal-title" role="dialog" aria-modal="true" style="display: none;">
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
-        <div class="fixed inset-0 z-10 overflow-y-auto">
-            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                <div @click.outside="open = false" class="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
-                    <div>
-                        <div class="mt-3 text-center sm:mt-5">
-                            <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-white" id="modal-title">
-                                {{ $cargadorId ? 'Editar Cargador' : 'Registrar Cargador' }}
-                            </h3>
-                            <div class="mt-2 text-left">
-                                <form wire:submit.prevent="guardar">
-                                    <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+        <div class="pt-2">
+            {{ $cargadores->links() }}
+        </div>
+
+        <!-- Modal Formulario Glass -->
+        <div x-data="{ open: @entangle('modalAbierto') }" x-show="open" class="relative z-50" aria-labelledby="modal-title" role="dialog" aria-modal="true" style="display: none;">
+            <div class="fixed inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity"></div>
+            <div class="fixed inset-0 z-10 overflow-y-auto">
+                <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                    <div @click.outside="open = false"
+                         class="relative transform overflow-hidden rounded-3xl bg-white/95 dark:bg-slate-900/95 border border-slate-200/80 dark:border-white/10 px-6 pt-6 pb-6 text-left shadow-2xl backdrop-blur-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+                        <div>
+                            <div class="flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-4 mb-4">
+                                <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2" id="modal-title">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-[#FF9521]"></span>
+                                    {{ $cargadorId ? 'Editar Cargador' : 'Registrar Cargador' }}
+                                </h3>
+                                <button @click="open = false" class="p-1.5 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="text-left">
+                                <form wire:submit.prevent="guardar" class="space-y-4">
+                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                         <div class="sm:col-span-2">
-                                            <label for="serie" class="block text-sm font-medium text-gray-700 dark:text-gray-300">No. Serie</label>
-                                            <div class="mt-1">
-                                                <input type="text" wire:model="serie" id="serie" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600">
-                                                @error('serie') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-                                            </div>
+                                            <label for="serie" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">No. Serie</label>
+                                            <input type="text" wire:model="serie" id="serie"
+                                                   class="w-full px-4 py-2.5 rounded-2xl text-sm font-mono border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#FF9521]">
+                                            @error('serie') <span class="text-xs text-rose-500 mt-1 block font-medium">{{ $message }}</span> @enderror
                                         </div>
                                         <div>
-                                            <label for="marca" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Marca</label>
-                                            <div class="mt-1">
-                                                <input type="text" wire:model="marca" id="marca" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600">
-                                            </div>
+                                            <label for="marca" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Marca</label>
+                                            <input type="text" wire:model="marca" id="marca"
+                                                   class="w-full px-4 py-2.5 rounded-2xl text-sm border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#FF9521]">
                                         </div>
                                         <div>
-                                            <label for="punta" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Punta / Conector</label>
-                                            <div class="mt-1">
-                                                <input type="text" wire:model="punta" id="punta" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600" placeholder="Ej: Azul HP, Amarilla Lenovo">
-                                            </div>
+                                            <label for="punta" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Punta / Conector</label>
+                                            <input type="text" wire:model="punta" id="punta" placeholder="Ej: Azul HP, USB-C"
+                                                   class="w-full px-4 py-2.5 rounded-2xl text-sm border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#FF9521]">
                                         </div>
                                         <div>
-                                            <label for="voltaje" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Voltaje (V)</label>
-                                            <div class="mt-1">
-                                                <input type="text" wire:model="voltaje" id="voltaje" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600">
-                                            </div>
+                                            <label for="voltaje" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Voltaje (V)</label>
+                                            <input type="text" wire:model="voltaje" id="voltaje" placeholder="19.5"
+                                                   class="w-full px-4 py-2.5 rounded-2xl text-sm border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#FF9521]">
                                         </div>
                                         <div>
-                                            <label for="amperaje" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Amperaje (A)</label>
-                                            <div class="mt-1">
-                                                <input type="text" wire:model="amperaje" id="amperaje" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600">
-                                            </div>
+                                            <label for="amperaje" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Amperaje (A)</label>
+                                            <input type="text" wire:model="amperaje" id="amperaje" placeholder="3.34"
+                                                   class="w-full px-4 py-2.5 rounded-2xl text-sm border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#FF9521]">
                                         </div>
                                         <div class="sm:col-span-2">
-                                            <label for="estatus" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Estatus</label>
-                                            <select wire:model="estatus" id="estatus" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600">
+                                            <label for="estatus" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Estatus</label>
+                                            <select wire:model="estatus" id="estatus"
+                                                    class="w-full px-4 py-2.5 rounded-2xl text-sm border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/70 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#FF9521]">
                                                 <option value="DISPONIBLE">Disponible</option>
                                                 <option value="ASIGNADO">Asignado</option>
                                                 <option value="EN_GARANTIA">En Garantía</option>
@@ -168,12 +202,14 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
-                                        <button type="submit" class="inline-flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:col-start-2 sm:text-sm">
-                                            Guardar
-                                        </button>
-                                        <button type="button" @click="open = false" class="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-base font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:col-start-1 sm:mt-0 sm:text-sm">
+                                    <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/80 dark:border-white/10">
+                                        <button type="button" @click="open = false"
+                                                class="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
                                             Cancelar
+                                        </button>
+                                        <button type="submit"
+                                                class="px-6 py-2.5 rounded-xl text-sm font-bold text-slate-950 bg-[#FF9521] hover:bg-[#e0821b] shadow-lg shadow-[#FF9521]/20 transition-all duration-150 active:scale-95">
+                                            Guardar Cargador
                                         </button>
                                     </div>
                                 </form>
@@ -184,4 +220,4 @@
             </div>
         </div>
     </div>
-</div>
+</x-tb-background>

@@ -3,9 +3,7 @@
         @php
             $canEditDepartment = $canEditDepartment ?? false;
             $departamentos = $departamentos ?? collect();
-            $puestoPreviewByDepartamento = $puestoPreviewByDepartamento ?? [];
             $selectedDeptId = (string) old('departamento_id', $user->departamento_id);
-            $puestoPreview = $puestoPreviewByDepartamento[$selectedDeptId] ?? ($user->puesto?->nombre ?? 'Sin puesto');
         @endphp
 
         <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10">
@@ -217,7 +215,7 @@
 
                         <div class="space-y-4">
                             <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                                Departamento y puesto
+                                Departamento
                             </h4>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -238,7 +236,7 @@
                                             @endforeach
                                         </select>
                                         <p class="mt-2 text-[0.7rem] text-amber-600 dark:text-amber-300">
-                                            Cambiar el departamento afecta alcance operativo y asignacion de puesto.
+                                            Cambiar el departamento afecta alcance operativo .
                                         </p>
                                         <x-input-error :messages="$errors->get('departamento_id')" class="mt-2" />
                                     @else
@@ -253,17 +251,7 @@
                                     @endif
                                 </div>
 
-                                <div>
-                                    <x-input-label for="puesto_preview" value="Puesto (solo lectura)" />
-                                    <input
-                                        id="puesto_preview"
-                                        type="text"
-                                        value="{{ $puestoPreview }}"
-                                        class="block mt-1 w-full rounded-xl border border-slate-300/80 dark:border-slate-700/80 bg-slate-100/80 dark:bg-slate-900/40 text-sm text-slate-800 dark:text-slate-100"
-                                        readonly
-                                    >
                                 </div>
-                            </div>
                         </div>
 
                         <div class="flex items-center justify-between pt-2">
@@ -303,56 +291,10 @@
                 </div>
             </div>
 
-            <script>
-                document.addEventListener('DOMContentLoaded', function () {
-                    const form = document.getElementById('edit-user-form');
-                    const dept = document.getElementById('departamento_id');
-                    const puesto = document.getElementById('puesto_preview');
-                    const confirmInput = document.getElementById('confirmar_riesgo_departamento');
-                    const modal = document.getElementById('dept-risk-modal');
-                    const btnCancel = document.getElementById('dept-risk-cancel');
-                    const btnConfirm = document.getElementById('dept-risk-confirm');
-                    const map = @json($puestoPreviewByDepartamento);
-                    const initialDept = String(@json((string) $user->departamento_id));
-
-                    if (!form || !dept || !confirmInput || !modal) return;
-
-                    const updatePuesto = () => {
-                        const key = String(dept.value || '');
-                        puesto.value = map[key] || 'Sin puesto configurado';
-                    };
-
-                    dept.addEventListener('change', function () {
-                        confirmInput.value = '0';
-                        updatePuesto();
-                    });
-                    updatePuesto();
-
-                    form.addEventListener('submit', function (event) {
-                        const currentDept = String(dept.value || '');
-                        const changed = currentDept !== initialDept;
-                        const confirmed = confirmInput.value === '1';
-
-                        if (changed && !confirmed) {
-                            event.preventDefault();
-                            modal.classList.remove('hidden');
-                            modal.classList.add('flex');
-                        }
-                    });
-
-                    btnCancel?.addEventListener('click', function () {
-                        modal.classList.add('hidden');
-                        modal.classList.remove('flex');
-                    });
-
-                    btnConfirm?.addEventListener('click', function () {
-                        confirmInput.value = '1';
-                        modal.classList.add('hidden');
-                        modal.classList.remove('flex');
-                        form.submit();
-                    });
-                });
-            </script>
+            
         @endif
     </x-tb-background>
 </x-app-layout>
+
+
+

@@ -2,10 +2,7 @@
 
 namespace App\Enums;
 
-use Filament\Support\Contracts\HasColor;
-use Filament\Support\Contracts\HasLabel;
-
-enum CargadorEstatus: string implements HasColor, HasLabel
+enum CargadorEstatus: string
 {
     case DISPONIBLE = 'DISPONIBLE';
     case ASIGNADO = 'ASIGNADO';

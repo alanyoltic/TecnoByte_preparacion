@@ -27,11 +27,66 @@ class DespachoVentasCrear extends Component
     /** @var array<int, array{equipo_id: int, precio_sugerido: float|null, observacion: string}> */
     public array $equiposSeleccionados = [];
 
+    // ── Productos / Accesorios comerciales ────────────────────
+    public string $busquedaProducto = '';
+    public int $cantidadProducto = 1;
+    /** @var array<int, array{producto_id: int, nombre: string, sku: ?string, cantidad: int, precio_sugerido: ?float}> */
+    public array $productosSeleccionados = [];
+
     // ── Estado interno ────────────────────────────────────────
     public int $paso = 1; // 1=Configurar, 2=Seleccionar equipos, 3=Revisar y enviar
     public ?DespachoVentas $despachoActual = null;
     public string $mensajeError  = '';
     public bool $confirmandoEnvio = false;
+
+    public function mount(): void
+    {
+        $continuarId = request()->query('continuar');
+        if ($continuarId) {
+            $despacho = DespachoVentas::with([
+                'equipos.equipo',
+                'productos.producto',
+                'sucursalDestino',
+                'almacenDestino',
+            ])->find($continuarId);
+
+            if ($despacho && $despacho->esBorrador()) {
+                $this->despachoActual = $despacho;
+                $this->sucursalDestinoId = $despacho->sucursal_destino_id;
+                $this->almacenDestinoId = $despacho->almacen_destino_id;
+                $this->motivo = $despacho->motivo ?? '';
+
+                $this->equiposSeleccionados = [];
+                foreach ($despacho->equipos as $item) {
+                    if ($item->equipo) {
+                        $this->equiposSeleccionados[] = [
+                            'equipo_id'       => $item->equipo_id,
+                            'numero_serie'    => $item->equipo->numero_serie,
+                            'marca'           => $item->equipo->marca,
+                            'modelo'          => $item->equipo->modelo,
+                            'precio_sugerido' => (float) $item->precio_sugerido,
+                            'observacion'     => $item->observacion ?? '',
+                        ];
+                    }
+                }
+
+                $this->productosSeleccionados = [];
+                foreach ($despacho->productos as $item) {
+                    if ($item->producto) {
+                        $this->productosSeleccionados[] = [
+                            'producto_id'     => $item->producto_id,
+                            'nombre'          => $item->producto->nombre,
+                            'sku'             => $item->producto->sku,
+                            'cantidad'        => $item->cantidad,
+                            'precio_sugerido' => (float) $item->precio_unitario,
+                        ];
+                    }
+                }
+
+                $this->paso = 2;
+            }
+        }
+    }
 
     // =========================================================
     // COMPUTED PROPERTIES
@@ -51,7 +106,7 @@ class DespachoVentasCrear extends Component
         }
 
         return Almacen::where('sucursal_id', $this->sucursalDestinoId)
-            ->whereHas('area', fn ($q) => $q->where('clave', 'VENTAS'))
+            ->where('departamento_id', 2)
             ->where('activo', true)
             ->get();
     }
@@ -83,6 +138,23 @@ class DespachoVentasCrear extends Component
             ->get();
     }
 
+    #[Computed]
+    public function productosDisponibles(): Collection
+    {
+        if (strlen($this->busquedaProducto) < 2) {
+            return collect();
+        }
+
+        return \App\Models\Producto::where('activo', 1)
+            ->where(fn ($q) => $q
+                ->where('nombre', 'like', "%{$this->busquedaProducto}%")
+                ->orWhere('sku', 'like', "%{$this->busquedaProducto}%")
+                ->orWhere('categoria', 'like', "%{$this->busquedaProducto}%")
+            )
+            ->limit(15)
+            ->get();
+    }
+
     // =========================================================
     // ACCIONES — PASO 1
     // =========================================================
@@ -100,11 +172,19 @@ class DespachoVentasCrear extends Component
         ]);
 
         try {
-            $this->despachoActual = $service->crear(
-                $this->sucursalDestinoId,
-                $this->almacenDestinoId,
-                $this->motivo ?: null
-            );
+            if ($this->despachoActual && $this->despachoActual->esBorrador()) {
+                $this->despachoActual->update([
+                    'sucursal_destino_id' => $this->sucursalDestinoId,
+                    'almacen_destino_id'  => $this->almacenDestinoId,
+                    'motivo'              => $this->motivo ?: null,
+                ]);
+            } else {
+                $this->despachoActual = $service->crear(
+                    $this->sucursalDestinoId,
+                    $this->almacenDestinoId,
+                    $this->motivo ?: null
+                );
+            }
             $this->paso = 2;
         } catch (\Exception $e) {
             $this->mensajeError = $e->getMessage();
@@ -210,10 +290,83 @@ class DespachoVentasCrear extends Component
         }
     }
 
+    public function agregarProducto(int $productoId, DespachoVentasService $service): void
+    {
+        $this->mensajeError = '';
+
+        if (! $this->despachoActual) {
+            $this->mensajeError = 'Primero completa el paso 1.';
+            return;
+        }
+
+        $producto = \App\Models\Producto::find($productoId);
+        if (! $producto) {
+            $this->mensajeError = 'Producto no encontrado.';
+            return;
+        }
+
+        $cant = max(1, (int) $this->cantidadProducto);
+
+        try {
+            $service->agregarProducto(
+                $this->despachoActual,
+                $producto,
+                $cant,
+                $producto->precio_venta
+            );
+
+            $existenteIdx = null;
+            foreach ($this->productosSeleccionados as $k => $p) {
+                if ($p['producto_id'] === $producto->id) {
+                    $existenteIdx = $k;
+                    break;
+                }
+            }
+
+            if ($existenteIdx !== null) {
+                $this->productosSeleccionados[$existenteIdx]['cantidad'] += $cant;
+            } else {
+                $this->productosSeleccionados[] = [
+                    'producto_id'     => $producto->id,
+                    'nombre'          => $producto->nombre,
+                    'sku'             => $producto->sku,
+                    'cantidad'        => $cant,
+                    'precio_sugerido' => $producto->precio_venta,
+                ];
+            }
+
+            $this->busquedaProducto = '';
+            $this->cantidadProducto = 1;
+
+        } catch (\Exception $e) {
+            $this->mensajeError = $e->getMessage();
+        }
+    }
+
+    public function quitarProducto(int $productoId, DespachoVentasService $service): void
+    {
+        $this->mensajeError = '';
+
+        if (! $this->despachoActual) {
+            return;
+        }
+
+        try {
+            $service->quitarProducto($this->despachoActual, $productoId);
+        } catch (\Exception $e) {
+            $this->mensajeError = $e->getMessage();
+            return;
+        }
+
+        $this->productosSeleccionados = array_values(
+            array_filter($this->productosSeleccionados, fn ($p) => $p['producto_id'] !== $productoId)
+        );
+    }
+
     public function avanzarPaso2(): void
     {
-        if (empty($this->equiposSeleccionados)) {
-            $this->mensajeError = 'Agrega al menos un equipo al despacho.';
+        if (empty($this->equiposSeleccionados) && empty($this->productosSeleccionados)) {
+            $this->mensajeError = 'Agrega al menos un equipo o producto/accesorio al despacho.';
             return;
         }
 

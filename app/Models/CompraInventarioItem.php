@@ -24,19 +24,25 @@ class CompraInventarioItem extends Model
         return $this->belongsTo(CompraInventario::class, 'compra_inventario_id');
     }
 
+    
+    public function catalogoEquipo(): BelongsTo
+    {
+        return $this->belongsTo(CatalogoEquipo::class, 'catalogo_equipo_id');
+    }
+
     public function catalogoPieza(): BelongsTo
     {
-        return $this->belongsTo(CatalogoPieza::class, 'catalogo_pieza_id')->withTrashed();
+        return $this->belongsTo(CatalogoPieza::class, 'catalogo_pieza_id');
     }
 
     public function producto(): BelongsTo
     {
-        return $this->belongsTo(Producto::class, 'producto_id')->withTrashed();
+        return $this->belongsTo(Producto::class, 'producto_id');
     }
 
     public function consumible(): BelongsTo
     {
-        return $this->belongsTo(Consumible::class, 'consumible_id')->withTrashed();
+        return $this->belongsTo(Consumible::class, 'consumible_id');
     }
 
     public function almacen(): BelongsTo

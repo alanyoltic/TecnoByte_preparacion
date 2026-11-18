@@ -73,7 +73,19 @@ class EquipoMovimientoService
             $almacenActualId = $equipo->almacen_id;
 
             if ($almacenActualId == $destino->id) {
-                throw new \Exception('El equipo ya está en ese almacén.');
+                // Si ya está registrado en ese almacén, asegurar que tenga estancia abierta
+                $estancia = EquipoEstancia::where('equipo_id', $equipo->id)
+                    ->whereNull('fin_at')
+                    ->first();
+                if (! $estancia) {
+                    EquipoEstancia::create([
+                        'equipo_id' => $equipo->id,
+                        'almacen_id' => $destino->id,
+                        'inicio_at' => now(),
+                        'abierto_por' => $usuario->id,
+                    ]);
+                }
+                return;
             }
 
             // 🔎 Obtener estancia abierta
@@ -83,7 +95,12 @@ class EquipoMovimientoService
                 ->first();
 
             if (! $estanciaActual) {
-                throw new \Exception('No existe estancia abierta.');
+                $estanciaActual = EquipoEstancia::create([
+                    'equipo_id' => $equipo->id,
+                    'almacen_id' => $almacenActualId ?: Almacen::PREPARACION,
+                    'inicio_at' => $equipo->created_at ?? now(),
+                    'abierto_por' => $usuario->id,
+                ]);
             }
 
             $ahora = now();
@@ -177,6 +194,48 @@ class EquipoMovimientoService
 
             $equipo->update([
                 'almacen_id' => $almacen->id,
+            ]);
+        });
+    }
+
+    /**
+     * Registra un movimiento directo de equipo (p. ej. VENTA o ajuste) y cierra la estancia si es salida.
+     */
+    public function registrar(
+        Equipo $equipo,
+        string $tipo,
+        ?int $desde = null,
+        ?int $hacia = null,
+        ?string $motivo = null,
+        ?int $createdBy = null
+    ): EquipoMovimiento {
+        return DB::transaction(function () use ($equipo, $tipo, $desde, $hacia, $motivo, $createdBy) {
+            $tipo = $this->normalizarTipoMovimiento($tipo, $motivo);
+            $userId = $createdBy ?? Auth::id() ?? 1;
+
+            // Si es salida o venta, cerrar la estancia abierta actual
+            if ($tipo === 'VENTA' || $hacia === null) {
+                $estanciaActual = EquipoEstancia::where('equipo_id', $equipo->id)
+                    ->whereNull('fin_at')
+                    ->first();
+
+                if ($estanciaActual) {
+                    $estanciaActual->update([
+                        'fin_at' => now(),
+                        'cerrado_por' => $userId,
+                    ]);
+                }
+            }
+
+            return EquipoMovimiento::create([
+                'equipo_id' => $equipo->id,
+                'tipo' => $tipo,
+                'desde_almacen_id' => $desde,
+                'hacia_almacen_id' => $hacia,
+                'motivo' => $motivo,
+                'created_by' => $userId,
+                'ip' => request()->ip(),
+                'user_agent' => request()->userAgent(),
             ]);
         });
     }

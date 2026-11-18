@@ -25,7 +25,7 @@ class DespachosVentas extends Component
     {
         $despachos = DespachoVentas::query()
             ->with(['sucursalDestino', 'almacenDestino', 'creadoPor'])
-            ->withCount('equipos')
+            ->withCount(['equipos', 'productos'])
             ->when($this->filtroEstatus, fn ($q) => $q->where('estatus', $this->filtroEstatus))
             ->when($this->busqueda, fn ($q) => $q->where('folio', 'like', "%{$this->busqueda}%"))
             ->orderByDesc('created_at')
@@ -41,7 +41,15 @@ class DespachosVentas extends Component
     {
         $despacho = DespachoVentas::findOrFail($id);
 
-        $this->authorize('cancelar-despacho');
+        $user = auth()->user();
+        $puedeCancelar = $user->esCeoOAdmin()
+            || $user->tienePermiso('prep.despachos.crear')
+            || $user->tienePermiso('prep.inventario.gestion')
+            || $despacho->creado_por_user_id === $user->id;
+
+        if (! $puedeCancelar) {
+            abort(403, 'No tienes permiso para cancelar este despacho.');
+        }
 
         try {
             $service->cancelar($despacho);

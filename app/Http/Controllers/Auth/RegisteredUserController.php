@@ -25,44 +25,9 @@ class RegisteredUserController extends Controller
         return in_array(strtolower((string) $slug), ['gerente', 'gerente_area', 'lider', 'lider_area', 'lider_de_area'], true);
     }
 
-    private function allowedRoleSlugsForCreator(?string $creatorSlug): array
+    private function allowedRoleSlugsForCreator(?User $user = null): array
     {
-        $creatorSlug = strtolower((string) $creatorSlug);
-
-        if ($this->esGlobal($creatorSlug)) {
-            return [];
-        }
-
-        // Regla: mismo nivel o menor.
-        if (in_array($creatorSlug, ['gerente', 'gerente_area'], true)) {
-            return ['gerente', 'gerente_area', 'lider', 'lider_area', 'lider_de_area', 'tecnico'];
-        }
-
-        if (in_array($creatorSlug, ['lider', 'lider_area', 'lider_de_area'], true)) {
-            return ['lider', 'lider_area', 'lider_de_area', 'tecnico'];
-        }
-
-        return [];
-    }
-
-    private function buildPuestoPreviewByDepartamento(): array
-    {
-        $rows = DB::table('departamento as d')
-            ->leftJoin('departamento_puestos as dp', function ($join) {
-                $join->on('dp.departamento_id', '=', 'd.id')
-                    ->where('dp.activo', '=', 1);
-            })
-            ->leftJoin('puestos as p', 'p.id', '=', 'dp.puesto_id')
-            ->select('d.id as departamento_id', DB::raw('MIN(p.nombre) as puesto_nombre'))
-            ->groupBy('d.id')
-            ->get();
-
-        $map = [];
-        foreach ($rows as $row) {
-            $map[(string) $row->departamento_id] = $row->puesto_nombre ?: 'Sin puesto configurado';
-        }
-
-        return $map;
+        return $user ? $user->getManageableRoleSlugs() : [];
     }
 
     private function resolvePuestoIdForCreation(?int $departamentoId, int $roleId): ?int
@@ -106,14 +71,14 @@ class RegisteredUserController extends Controller
         }
 
         $isGlobalCreator = $this->esGlobal($slug);
-        $allowedSlugs = $this->allowedRoleSlugsForCreator($slug);
+        $allowedSlugs = $this->allowedRoleSlugsForCreator($auth);
 
         if (! $isGlobalCreator && empty($allowedSlugs)) {
             abort(403);
         }
 
         $roles = $isGlobalCreator
-            ? Roles::orderBy('nombre')->get()
+            ? Roles::all()->sortBy('hierarchy')->values()
             : Roles::whereIn('slug', $allowedSlugs)->orderBy('nombre')->get();
 
         $departamentos = collect();
@@ -131,18 +96,11 @@ class RegisteredUserController extends Controller
             }
         }
 
-        $puestoPreviewByDepartamento = $this->buildPuestoPreviewByDepartamento();
-        $initialPuestoLabel = $fixedDepartamento
-            ? ($puestoPreviewByDepartamento[(string) $fixedDepartamento->id] ?? 'Sin puesto configurado')
-            : 'Sin puesto configurado';
-
         return view('auth.register', compact(
             'roles',
             'isGlobalCreator',
             'departamentos',
-            'fixedDepartamento',
-            'puestoPreviewByDepartamento',
-            'initialPuestoLabel'
+            'fixedDepartamento'
         ));
     }
 
@@ -163,7 +121,7 @@ class RegisteredUserController extends Controller
             abort(403);
         }
 
-        $allowedSlugs = $this->allowedRoleSlugsForCreator($slug);
+        $allowedSlugs = $this->allowedRoleSlugsForCreator($auth);
         if (! $isGlobalCreator && empty($allowedSlugs)) {
             abort(403);
         }
@@ -233,3 +191,8 @@ class RegisteredUserController extends Controller
             ->with('status', 'Usuario creado correctamente.');
     }
 }
+
+
+
+
+

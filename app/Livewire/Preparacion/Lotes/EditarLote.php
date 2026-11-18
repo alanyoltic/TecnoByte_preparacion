@@ -500,7 +500,7 @@ class EditarLote extends Component
 
         session()->flash('success', 'Lote actualizado correctamente.');
 
-        return redirect()->'#';
+        return redirect()->route('preparacion.lotes');
     }
 
     public function render()

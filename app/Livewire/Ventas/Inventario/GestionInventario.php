@@ -25,8 +25,10 @@ class GestionInventario extends Component
 
     public function render()
     {
-        // Almacenes que pertenecen al flujo de Ventas (excluye los internos de Prep)
-        $almacenesVentas = Almacen::whereNotIn('id', [
+        $user = auth()->user();
+        $isGlobal = in_array(strtolower(optional($user->role)->slug), ['ceo', 'admin', 'admin_sistema', 'sistemas']);
+
+        $almacenesQuery = Almacen::whereNotIn('id', [
             Almacen::PREPARACION,
             Almacen::GARANTIAS_INTERNAS,
             Almacen::GARANTIAS_EXTERNAS,
@@ -34,7 +36,13 @@ class GestionInventario extends Component
             Almacen::SCRAP,
             Almacen::PIEZAS_PENDIENTES,
             Almacen::AREA_TRANSFERENCIA,
-        ])->orderBy('nombre')->get();
+        ]);
+
+        if (!$isGlobal && $user->departamento_id) {
+            $almacenesQuery->where('departamento_id', $user->departamento_id);
+        }
+
+        $almacenesVentas = $almacenesQuery->orderBy('nombre')->get();
 
         if ($this->tab === 'equipos') {
 

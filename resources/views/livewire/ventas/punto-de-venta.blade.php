@@ -255,23 +255,36 @@
                         
                         <div class="flex justify-between items-center">
                             <div class="flex items-center gap-2">
-                                <span class="text-sm font-medium text-slate-600 dark:text-slate-400">Descuento $:</span>
-                                <select class="text-xs bg-transparent text-slate-900 dark:text-white border-slate-200 dark:border-slate-700 rounded-md">
-                                    <option>$</option>
-                                    <option>%</option>
+                                <span class="text-sm font-medium text-slate-600 dark:text-slate-400">Descuento:</span>
+                                <select wire:model.live="tipoDescuento"
+                                        class="text-xs font-bold bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-[#FF9521]">
+                                    <option value="$">$ (Monto)</option>
+                                    <option value="%">% (Porcentaje)</option>
                                 </select>
                             </div>
-                            <input type="number" wire:model.live="descuento" class="w-24 text-right py-1 text-sm bg-white/60 dark:bg-slate-900/40 backdrop-blur-md text-slate-900 dark:text-white border-slate-200/70 dark:border-white/10 rounded-lg shadow-sm border-dashed">
+                            <div class="flex items-center gap-2">
+                                @if($tipoDescuento === '%' && (float)$valorDescuento > 0)
+                                    <span class="text-xs font-mono font-medium text-slate-400">(-${{ number_format($this->descuentoMonto, 2) }})</span>
+                                @endif
+                                <input type="number"
+                                       step="any"
+                                       min="0"
+                                       wire:model.live.debounce.300ms="valorDescuento"
+                                       placeholder="0.00"
+                                       class="w-28 text-right py-1.5 px-2 text-sm font-mono font-bold bg-white/80 dark:bg-slate-900/60 backdrop-blur-md text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded-xl shadow-sm focus:ring-2 focus:ring-[#FF9521] outline-none transition">
+                            </div>
                         </div>
 
                         <div class="flex justify-between items-center">
                             <div class="flex items-center gap-2">
                                 <span class="text-sm font-medium text-slate-600 dark:text-slate-400">I.V.A.:</span>
-                                <select class="text-xs bg-transparent text-slate-900 dark:text-white border-slate-200 dark:border-slate-700 rounded-md">
-                                    <option>16%</option>
+                                <select wire:model.live="tasaIva"
+                                        class="text-xs font-bold bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-[#FF9521]">
+                                    <option value="0">0% (Sin IVA)</option>
+                                    <option value="16">16% (IVA)</option>
                                 </select>
                             </div>
-                            <span class="font-mono text-slate-600 dark:text-slate-400">${{ number_format($this->iva, 2) }}</span>
+                            <span class="font-mono text-slate-700 dark:text-slate-300 font-semibold">${{ number_format($this->iva, 2) }}</span>
                         </div>
 
                         <div class="flex justify-between items-center pt-4 border-t border-slate-200 dark:border-slate-800">
@@ -516,6 +529,40 @@
 
         </div>
     </div>
+    @endif
+
+
+    {{-- MODAL ASIGNAR CARGADOR --}}
+    @if($modalAsignarCargador)
+        <div class="relative z-50">
+            <div class="fixed inset-0 transition-opacity bg-slate-900/75 backdrop-blur-sm"></div>
+            <div class="fixed inset-0 z-10 overflow-y-auto">
+                <div class="flex items-center justify-center min-h-full p-4 text-center">
+                    <div class="relative overflow-hidden text-left transition-all transform bg-white rounded-2xl shadow-xl dark:bg-slate-900 sm:w-full sm:max-w-md border border-slate-200 dark:border-slate-700">
+                        <div class="px-4 pt-5 pb-4 bg-white dark:bg-slate-900 sm:p-6 sm:pb-4">
+                            <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">Escanear Cargador Físico</h3>
+                            <p class="text-sm text-slate-500 mb-4">Por seguridad, debes vincular el cargador físico exacto que le entregarás al cliente junto con la Laptop.</p>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Código de Barras del Cargador</label>
+                                <div class="flex mt-1 shadow-sm rounded-md">
+                                    <input type="text" wire:model.defer="escaneoCargador" class="flex-1 block w-full border-slate-300 rounded-none rounded-l-md focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-slate-800 dark:border-slate-700 dark:text-white" placeholder="Ej. CARG-1234...">
+                                    <button type="button" wire:click="asignarCargador" class="inline-flex items-center px-4 py-2 text-sm font-medium text-white border border-transparent rounded-r-md bg-indigo-600 hover:bg-indigo-700">
+                                        Vincular
+                                    </button>
+                                </div>
+                                @error("escaneoCargador") <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+                            </div>
+                        </div>
+                        <div class="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 sm:flex sm:flex-row-reverse sm:px-6">
+                            <button type="button" wire:click="$set('modalAsignarCargador', false)" class="mt-3 inline-flex justify-center w-full px-4 py-2 text-base font-medium bg-white border rounded-lg shadow-sm text-slate-700 border-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-700 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     @endif
 
 </x-tb-background>

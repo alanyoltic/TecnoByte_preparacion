@@ -72,9 +72,9 @@ class ListaLotes extends Component
     {
         // Stats globales (no dependen de filtros)
         $this->stats = [
-            'total' => Lote::count(),
-            'con_fecha' => Lote::whereNotNull('fecha_llegada')->count(),
-            'sin_fecha' => Lote::whereNull('fecha_llegada')->count(),
+            'total' => Lote::where('estatus', '!=', 'VENTAS_DIRECTO')->count(),
+            'con_fecha' => Lote::where('estatus', '!=', 'VENTAS_DIRECTO')->whereNotNull('fecha_llegada')->count(),
+            'sin_fecha' => Lote::where('estatus', '!=', 'VENTAS_DIRECTO')->whereNull('fecha_llegada')->count(),
             'proveedores' => Proveedor::count(),
         ];
     }
@@ -166,7 +166,8 @@ class ListaLotes extends Component
         $this->cargarStats();
 
         $q = Lote::query()
-            ->with('proveedor');
+            ->with('proveedor')
+            ->where('estatus', '!=', 'VENTAS_DIRECTO');
 
         // Filtro proveedor
         if ($this->filtroProveedor !== 'todos' && $this->filtroProveedor !== '') {

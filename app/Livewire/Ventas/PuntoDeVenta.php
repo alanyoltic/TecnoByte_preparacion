@@ -7,6 +7,7 @@ use App\Models\Producto;
 use App\Models\Venta;
 use App\Models\VentaDetalle;
 use App\Services\VentaService;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -33,7 +34,11 @@ class PuntoDeVenta extends Component
     public string $direccionFiscal = '';
     public string $emailNotificacion = '';
     public bool $enviarNotificacion = false;
-    public float $descuento = 0;
+    public string $tipoDescuento = '$'; // '$' o '%'
+    public $valorDescuento = 0;
+    public $descuento = 0;
+    public $tasaIva = 0; // 0 o 16 (default 0 para no forzar IVA)
+    public bool $aplicaIva = false;
 
     // ── Resultados de búsqueda de producto ───────────────────────────────────
     public array $resultadosProducto = [];
@@ -44,6 +49,38 @@ class PuntoDeVenta extends Component
 
     // ── Modal Clientes ───────────────────────────────────────────────────────
     public bool $modalCliente = false;
+
+    public bool $modalAsignarCargador = false;
+    public string $escaneoCargador = '';
+    public int $equipoIndexActualCargador = -1;
+
+    public function abrirModalCargador($index)
+    {
+        $this->equipoIndexActualCargador = $index;
+        $this->escaneoCargador = '';
+        $this->modalAsignarCargador = true;
+    }
+
+    public function asignarCargador()
+    {
+        $this->validate(['escaneoCargador' => 'required|string']);
+        
+        $cargador = \App\Models\Cargador::where('serie', $this->escaneoCargador)
+            ->where('estatus', 'DISPONIBLE')
+            ->first();
+
+        if (!$cargador) {
+            $this->addError('escaneoCargador', 'Cargador no encontrado o no disponible.');
+            return;
+        }
+
+        $this->carrito[$this->equipoIndexActualCargador]['cargador_id'] = $cargador->id;
+        $this->carrito[$this->equipoIndexActualCargador]['cargador_serie'] = $cargador->serie;
+        
+        $this->modalAsignarCargador = false;
+        $this->dispatch('toast', type: 'success', message: 'Cargador vinculado exitosamente.');
+    }
+
     public string $busquedaClienteModal = '';
     public array $resultadosClienteModal = [];
     public bool $modoCrearCliente = false;
@@ -78,9 +115,12 @@ class PuntoDeVenta extends Component
 
     public function mount(): void
     {
-        abort_unless(auth()->user()?->tienePermiso('ventas.pos.ver'), 403);
-        $this->sucursalId = auth()->user()->sucursal_id;
-        $this->almacenId = auth()->user()->almacen_id; // Default al almacen del usuario (Ventas)
+        abort_unless(auth()->user()?->tienePermiso('ventas.venta.crear'), 403, 'No tienes permiso para el Punto de Venta.');
+        $user = auth()->user();
+        $this->sucursalId = $user?->sucursal_id;
+        $this->almacenId = $this->almacenId
+            ?? $user?->sucursal?->almacenesDeVentas()->value('id')
+            ?? \App\Models\Almacen::where('departamento_id', 2)->value('id');
     }
 
     // ── Búsqueda de Equipo por número de serie ────────────────────────────────
@@ -217,6 +257,11 @@ class PuntoDeVenta extends Component
         $this->busquedaSerial   = '';
         $this->busquedaProducto = '';
         $this->resultadosProducto = [];
+        $this->descuento        = 0;
+        $this->valorDescuento   = 0;
+        $this->tipoDescuento    = '$';
+        $this->tasaIva          = 0;
+        $this->aplicaIva        = false;
     }
 
     // ── Clientes ─────────────────────────────────────────────────────────────
@@ -317,27 +362,63 @@ class PuntoDeVenta extends Component
     // ── Totales (computed) ────────────────────────────────────────────────────
     public function getSubtotalProperty(): float
     {
-        return collect($this->carrito)
-            ->sum(fn ($i) => $i['precio'] * $i['cantidad']);
+        return (float) collect($this->carrito)
+            ->sum(fn ($i) => (float)$i['precio'] * (int)$i['cantidad']);
+    }
+
+    public function getDescuentoMontoProperty(): float
+    {
+        $subtotal = $this->subtotal;
+        $val = (float) ($this->valorDescuento ?: $this->descuento ?: 0);
+
+        if ($val <= 0 || $subtotal <= 0) {
+            return 0.00;
+        }
+
+        if ($this->tipoDescuento === '%') {
+            return round(($subtotal * min(100, $val)) / 100, 2);
+        }
+
+        return min($subtotal, $val);
     }
 
     public function getIvaProperty(): float
     {
-        // Asumiendo que los precios en el carrito no incluyen IVA, o si lo incluyen es otro cálculo.
-        // Simularemos un cálculo directo sobre el subtotal descontado para coincidir con la vista.
-        $sub = $this->subtotal - (float)$this->descuento;
-        return $sub > 0 ? $sub * 0.16 : 0;
+        $tasa = (float) ($this->tasaIva ?? 0);
+        if ($tasa <= 0) {
+            return 0.00;
+        }
+
+        $base = max(0, $this->subtotal - $this->descuentoMonto);
+        return round($base * ($tasa / 100), 2);
     }
 
     public function getTotalProperty(): float
     {
-        $sub = $this->subtotal - (float)$this->descuento;
-        return $sub > 0 ? $sub + $this->iva : 0;
+        $base = max(0, $this->subtotal - $this->descuentoMonto);
+        return $base + $this->iva;
     }
 
-    public function updatedDescuento(): void
+    public function updatedValorDescuento($value = null): void
     {
-        $this->descuento = max(0, (float)$this->descuento);
+        $this->valorDescuento = max(0, (float) ($value ?? $this->valorDescuento ?? 0));
+        $this->descuento = $this->descuentoMonto;
+    }
+
+    public function updatedDescuento($value = null): void
+    {
+        $this->valorDescuento = max(0, (float) ($value ?? $this->descuento ?? 0));
+        $this->descuento = $this->descuentoMonto;
+    }
+
+    public function updatedTipoDescuento(): void
+    {
+        $this->descuento = $this->descuentoMonto;
+    }
+
+    public function updatedTasaIva(): void
+    {
+        $this->aplicaIva = ((float) $this->tasaIva) > 0;
     }
 
     // ── Cobrar ────────────────────────────────────────────────────────────────
@@ -350,6 +431,15 @@ class PuntoDeVenta extends Component
             return;
         }
 
+        
+        // Check if all laptops have a charger assigned
+        foreach ($this->carrito as $index => $item) {
+            if ($item['tipo'] === 'equipo' && empty($item['cargador_id'])) {
+                $this->addError('general', 'Debes escanear y asignar un cargador para la Laptop ' . $item['nombre'] . ' antes de cobrar.');
+                return;
+            }
+        }
+
         $this->modalPago = true;
     }
 
@@ -359,50 +449,69 @@ class PuntoDeVenta extends Component
 
         $user = auth()->user();
 
-        // Determinar almacén del vendedor (usamos el almacén de la sucursal de ventas del usuario)
-        $almacenId = $user->almacen_id
-            ?? optional($user->sucursal)->almacenesDeVentas()->value('id');
+        $corteActual = \App\Models\CorteCaja::where('user_id', $user->id)->where('estatus', 'ABIERTA')->first();
+        if (!$corteActual) {
+            $this->dispatch('toast', type: 'error', message: 'No puedes realizar ventas sin abrir tu turno en Cortes de Caja.');
+            return;
+        }
+
+        // Determinar almacén del vendedor
+        $almacenId = $this->almacenId
+            ?? $user->sucursal?->almacenesDeVentas()->value('id')
+            ?? \App\Models\Almacen::where('departamento_id', 2)->value('id');
 
         abort_unless($almacenId, 422, 'No tienes un almacén de ventas asignado.');
 
-        // Crear cabecera de venta
-        $venta = Venta::create([
-            'folio'       => Venta::generarFolio(),
-            'cliente_id'  => $this->clienteId ?: null,
-            'vendedor_id' => $user->id,
-            'almacen_id'  => $almacenId,
-            'metodo_pago' => $this->metodoPago,
-            'estatus'     => Venta::ESTATUS_PENDIENTE,
-            'notas'       => $this->notas ?: null,
-        ]);
-
-        // Crear detalles y asignar cargadores si aplica
-        foreach ($this->carrito as $item) {
-            $venta->detalles()->create([
-                'vendible_type'   => $item['tipo'] === 'equipo' ? Equipo::class : Producto::class,
-                'vendible_id'     => $item['id'],
-                'cantidad'        => $item['cantidad'],
-                'precio_unitario' => $item['precio'],
-                'subtotal'        => $item['precio'] * $item['cantidad'],
+        \Illuminate\Support\Facades\DB::transaction(function () use ($user, $almacenId, $corteActual) {
+            // Crear cabecera de venta
+            $venta = Venta::create([
+                'folio'           => Venta::generarFolio(),
+                'cliente_id'      => $this->clienteId ?: null,
+                'vendedor_id'     => $user->id,
+                'almacen_id'      => $almacenId,
+                'corte_caja_id'   => $corteActual->id,
+                'metodo_pago'     => $this->metodoPago,
+                'subtotal'        => $this->subtotal,
+                'tipo_descuento'  => $this->tipoDescuento === '%' ? 'PORCENTAJE' : 'MONTO',
+                'valor_descuento' => (float) ($this->valorDescuento ?: $this->descuento ?: 0),
+                'descuento'       => $this->descuentoMonto,
+                'tasa_iva'        => (float) ($this->tasaIva ?? 0),
+                'aplica_iva'      => ((float) ($this->tasaIva ?? 0)) > 0,
+                'iva'             => $this->iva,
+                'total'           => $this->total,
+                'estatus'         => Venta::ESTATUS_PENDIENTE,
+                'notas'           => $this->notas ?: null,
             ]);
 
-            // Si es un equipo y se seleccionó un cargador, casarlo
-            if ($item['tipo'] === 'equipo' && !empty($item['cargador_id'])) {
-                $cargador = \App\Models\Cargador::find($item['cargador_id']);
-                if ($cargador && $cargador->estatus === \App\Enums\CargadorEstatus::DISPONIBLE) {
-                    $cargador->update([
-                        'equipo_id' => $item['id'],
-                        'estatus' => \App\Enums\CargadorEstatus::VENDIDO,
-                    ]);
-                    \App\Services\CargadorTraceService::log($cargador, 'ASIGNADO_VENTA', "Casado con equipo vendido en Venta #" . $venta->folio);
+            // Crear detalles y asignar cargadores si aplica
+            foreach ($this->carrito as $item) {
+                $venta->detalles()->create([
+                    'vendible_type'   => $item['tipo'] === 'equipo' ? Equipo::class : Producto::class,
+                    'vendible_id'     => $item['id'],
+                    'cantidad'        => $item['cantidad'],
+                    'precio_unitario' => $item['precio'],
+                    'subtotal'        => $item['precio'] * $item['cantidad'],
+                ]);
+
+                // Si es un equipo y se seleccionó un cargador, casarlo y marcarlo como vendido
+                if ($item['tipo'] === 'equipo' && !empty($item['cargador_id'])) {
+                    $cargador = \App\Models\Cargador::find($item['cargador_id']);
+                    if ($cargador) {
+                        $cargador->update([
+                            'equipo_id' => $item['id'],
+                            'estatus'   => \App\Enums\CargadorEstatus::VENDIDO,
+                        ]);
+                        \App\Services\CargadorTraceService::log($cargador, 'ASIGNADO_VENTA', "Casado con equipo vendido en Venta #" . $venta->folio);
+                    }
                 }
             }
-        }
 
-        // Completar venta (mueve stock, marca equipo como VENDIDO, etc.)
-        app(VentaService::class)->completar($venta);
+            // Completar venta (mueve stock, marca equipo como VENDIDO, etc.)
+            app(VentaService::class)->completar($venta);
 
-        $this->folioVenta  = $venta->folio;
+            $this->folioVenta  = $venta->folio;
+        });
+
         $this->modalPago   = false;
         $this->modalExito  = true;
         $this->limpiarCarrito();
@@ -410,11 +519,16 @@ class PuntoDeVenta extends Component
 
     public function nuevaVenta(): void
     {
-        $this->modalExito = false;
-        $this->folioVenta = '';
-        $this->clienteId  = null;
-        $this->notas      = '';
-        $this->metodoPago = 'EFECTIVO';
+        $this->modalExito     = false;
+        $this->folioVenta     = '';
+        $this->clienteId      = null;
+        $this->notas          = '';
+        $this->metodoPago     = 'EFECTIVO';
+        $this->descuento      = 0;
+        $this->valorDescuento = 0;
+        $this->tipoDescuento  = '$';
+        $this->tasaIva        = 0;
+        $this->aplicaIva      = false;
     }
 
     // ── Render ────────────────────────────────────────────────────────────────

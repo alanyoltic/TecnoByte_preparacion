@@ -40,7 +40,7 @@
             </button>
 
             {{-- Logo TecnoByte --}}
-            <a href="{{ route('dashboard') }}"
+            <a href="{{ (auth()->user()?->role?->slug === 'ceo') ? route('ceo.dashboard') : route('dashboard') }}"
                class="flex items-center ml-3"
                x-show="sidebarOpen"
                x-transition.opacity.duration.300ms
@@ -76,7 +76,9 @@
 
             $isEstadisticas = request()->routeIs('preparacion.estadisticas-equipos');
             $isDashboard  = request()->routeIs('dashboard')
-                || request()->routeIs('preparacion.dashboard');
+                || request()->routeIs('preparacion.dashboard')
+                || request()->routeIs('ceo.dashboard')
+                || request()->routeIs('ventas.dashboard');
             $isLotes      = request()->routeIs('lotes.*');
             $isOperaciones = request()->routeIs('preparacion.mi-trabajo')
                 || request()->routeIs('preparacion.asignaciones')
@@ -85,13 +87,16 @@
             $isInventario = (
                 request()->routeIs('inventario.*')
                 || request()->routeIs('preparacion.inventario.*')
+                || request()->routeIs('preparacion.despachos-ventas*')
+                || request()->routeIs('transferencias.*')
             ) && !request()->routeIs('inventario.piezas.solicitudes');
             $isUsuarios   = request()->routeIs('users.*') || request()->routeIs('register');
 
             $u = auth()->user();
             $roleSlug = optional($u?->role)->slug;
             $deptoClave = optional($u?->departamento)->clave;
-            $isAdmin = in_array($roleSlug, ['ceo', 'admin_sistema', 'sistemas']);
+            $isCEO = $roleSlug === 'ceo';
+            $isAdmin = in_array($roleSlug, ['admin_sistema', 'sistemas']);
 
             $isDeptoPrep   = ($deptoClave === 'PREPARACION' || $isAdmin);
             $isDeptoVentas = ($deptoClave === 'VENTAS' || $isAdmin);
@@ -124,9 +129,9 @@
             $puedeVentasAprobar   = $isDeptoVentas && $u && $u->tienePermiso('ventas.despachos.aprobar');
             $puedeClientes        = $isDeptoVentas && $u && $u->tienePermiso('ventas.clientes.ver');
             $puedeProductos       = $isDeptoVentas && $u && $u->tienePermiso('ventas.productos.ver');
-            $puedePOS             = $isDeptoVentas && $u && $u->tienePermiso('ventas.pos.ver');
-            $puedeDespachoCrear   = $isDeptoPrep && $u && $u->tienePermiso('prep.despachos.crear');
-            $puedeDespachoVer     = $isDeptoPrep && $u && $u->tienePermiso('prep.despachos.ver');
+            $puedePOS             = $isDeptoVentas && $u && $u->tienePermiso('ventas.venta.crear');
+            $puedeDespachoCrear   = $isDeptoPrep && $u && ($u->tienePermiso('prep.despachos.crear') || $u->tienePermiso('prep.inventario.gestion') || $esGerente || $isCEO);
+            $puedeDespachoVer     = $isDeptoPrep && $u && ($u->tienePermiso('prep.despachos.ver') || $u->tienePermiso('prep.inventario.gestion') || $esGerente || $isCEO);
 
             $isVentas         = request()->routeIs('ventas.*');
             $isDespachoPrep   = request()->routeIs('preparacion.despachos-ventas*');
@@ -154,7 +159,7 @@
     {{-- ===================== DASHBOARD ===================== --}}
     <div class="px-3">
         <a
-            href="{{ route('dashboard') }}"
+            href="{{ $isCEO ? route('ceo.dashboard') : route('dashboard') }}"
             title="Dashboard"
             class="{{ $linkBase }} {{ $isDashboard
                 ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
@@ -180,6 +185,7 @@
             </span>
         </a>
     </div>
+
 
     {{-- ===================== ESTADISTICAS (Gerente Preparación) ===================== --}}
     @if($puedeInvGestion)
@@ -765,19 +771,18 @@
                 'perm'  => 'prep.inventario.ver',
             ],
             [
-                'label' => 'Catálogo Piezas',
-                'href'  => route('compras.catalogo'),
+                'label' => 'Despachos a Ventas',
+                'href'  => route('preparacion.despachos-ventas'),
                 'perm'  => 'prep.inventario.gestion',
             ],
             [
-                'label' => 'Catálogo Equipos',
+                'label' => 'Catálogo Global',
                 'href'  => route('compras.catalogo'),
                 'perm'  => 'prep.inventario.gestion',
             ],
-
             [
                 'label' => 'Transferencias',
-                'href'  => route('inventario.transferencias'),
+                'href'  => route('transferencias.index'),
                 'perm'  => 'prep.transferencias.ver',
             ],
             [
@@ -789,7 +794,13 @@
 
         $inventarioItems = array_values(array_filter(
             $inventarioItems,
-            fn ($it) => $user && $user->tienePermiso($it['perm'])
+            function ($it) use ($user) {
+                if (! $user) return false;
+                if ($it['label'] === 'Transferencias') {
+                    return $user->esCeoOAdmin() || $user->esGerente() || $user->tienePermiso('prep.transferencias.ver') || $user->puedeCrearTransferencias();
+                }
+                return $user->tienePermiso($it['perm']);
+            }
         ));
     @endphp
 
@@ -1160,6 +1171,34 @@
     </div>
     @endif
 
+    {{-- Ventas: Historial --}}
+    @if($isDeptoVentas && $u && $u->tienePermiso('ventas.historial.ver'))
+    <div class="px-3 mt-2">
+        <a href="{{ route('ventas.historial') }}" title="Historial de Ventas" class="{{ $linkBase }} {{ request()->routeIs('ventas.historial') ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB] text-white font-semibold drop-shadow-[0_0_6px_rgba(99,102,241,0.65)] border-blue-400/70 shadow-[0_14px_35px_rgba(37,99,235,0.85)]' : 'bg-white/10 dark:bg-slate-900/20 text-slate-700 dark:text-slate-400 hover:bg-white/20 dark:hover:bg-slate-900/30 hover:text-slate-900 dark:hover:text-white' }}" :class="sidebarOpen ? 'justify-start' : 'justify-center'">
+            <div class="flex items-center justify-center w-7 h-7">
+                <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+            </div>
+            <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Historial de Ventas</span>
+        </a>
+    </div>
+    @endif
+
+    {{-- Ventas: Garantías --}}
+    @if($isDeptoVentas && $u && $u->tienePermiso('ventas.garantias.ver'))
+    <div class="px-3 mt-2">
+        <a href="{{ route('ventas.garantias') }}" title="Garantías" class="{{ $linkBase }} {{ request()->routeIs('ventas.garantias') ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB] text-white font-semibold drop-shadow-[0_0_6px_rgba(99,102,241,0.65)] border-blue-400/70 shadow-[0_14px_35px_rgba(37,99,235,0.85)]' : 'bg-white/10 dark:bg-slate-900/20 text-slate-700 dark:text-slate-400 hover:bg-white/20 dark:hover:bg-slate-900/30 hover:text-slate-900 dark:hover:text-white' }}" :class="sidebarOpen ? 'justify-start' : 'justify-center'">
+            <div class="flex items-center justify-center w-7 h-7">
+                <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.618 5.984A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016zM12 9v2m0 4h.01"/>
+                </svg>
+            </div>
+            <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Garantías</span>
+        </a>
+    </div>
+    @endif
+
     {{-- Ventas: Productos --}}
     @if($puedeProductos)
     <div class="px-3 mt-2">
@@ -1377,36 +1416,10 @@
             </div>
         </template>
     </div>
-    @endif{{-- Ventas: Mis Despachos (Para Preparacion/Administradores viendo la ruta) --}}
-    @if($puedeDespachoVer)
-    <div class="px-3 mt-2">
-        <a
-            href="{{ route('preparacion.despachos-ventas') }}"
-            title="Mis Despachos (Prep)"
-            class="{{ $linkBase }} {{ request()->routeIs('preparacion.despachos-ventas')
-                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                   text-white font-semibold
-                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
-                   border-blue-400/70
-                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
-                : 'bg-white/10 dark:bg-slate-900/20
-                   text-slate-700 dark:text-slate-400
-                   hover:bg-white/20 dark:hover:bg-slate-900/30
-                   hover:text-slate-900 dark:hover:text-white' }}"
-            :class="sidebarOpen ? 'justify-start' : 'justify-center'"
-        >
-            <div class="flex items-center justify-center w-7 h-7">
-                <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
-            </div>
-            <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Mis Despachos</span>
-        </a>
-    </div>
     @endif
 
     {{-- ===================== ALMACENES (VENTAS) ===================== --}}
-    @if($puedeVentas)
+    @if($puedeVentas || $isCEO)
     @php
         $user = auth()->user();
         $ventasAlmacenesItems = [
@@ -1516,120 +1529,16 @@
 
     {{-- ===================== INVENTARIOS (VENTAS) ===================== --}}
     @if($puedeVentas)
-    @php
-        $ventasInventarioItems = [
-            [
-                'label' => 'Inventario Global',
-                'href'  => route('ventas.inventario.index'),
-                'visible' => true,
-            ],
-            [
-                'label' => 'Catálogo de Accesorios',
-                'href'  => route('compras.catalogo'),
-                'visible' => true,
-            ],
-            [
-                'label' => 'Entradas / Restock',
-                'href'  => route('ventas.entradas.historial'),
-                'visible' => true,
-            ],
-        ];
-        $ventasInventarioItems = array_values(array_filter($ventasInventarioItems, fn ($it) => $it['visible'] ?? false));
-    @endphp
-
-    @if(count($ventasInventarioItems) > 0)
-    <div class="w-full mt-3 px-3"
-        x-data="{
-            id: 'ventas_inventarios',
-            popoverOpen: false,
-            popoverStyle: '',
-            triggerEl: null,
-            isOpen(){ return sidebarOpen && activeMenu === this.id; },
-            toggle(e){
-                if (sidebarOpen) { setMenu(this.id); return; }
-                if (this.popoverOpen) { this.popoverOpen = false; return; }
-                window.dispatchEvent(new CustomEvent('tb-close-popovers'));
-                this.triggerEl = e.currentTarget;
-                this.popoverOpen = true;
-                this.positionPopover();
-            },
-            positionPopover(){
-                this.$nextTick(() => {
-                    if (!this.triggerEl) return;
-                    const r = this.triggerEl.getBoundingClientRect();
-                    const width = 260, gap = 12;
-                    let top  = r.top;
-                    let left = r.right + gap;
-                    const estimatedHeight = 160;
-                    const maxTop = window.innerHeight - 12;
-                    if (top + estimatedHeight > maxTop) top = Math.max(12, maxTop - estimatedHeight);
-                    this.popoverStyle = `top:${top}px; left:${left}px; width:${width}px;`;
-                });
-            },
-            closePopover(){ this.popoverOpen = false; },
-            closeAll(){ this.popoverOpen = false; }
-        }"
-        @tb-close-popovers.window="closePopover()"
-        @keydown.escape.window="closeAll()"
-        @resize.window="positionPopover()"
-        @scroll.window="positionPopover()"
-        x-effect="if(sidebarOpen) popoverOpen=false"
-    >
-        <button
-            type="button"
-            @click.stop="toggle($event)"
-            class="{{ $linkBase }} {{ request()->routeIs('ventas.inventario.index') || request()->routeIs('ventas.inventario.transferencias')
-                ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                   text-white font-semibold
-                   drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
-                   border-blue-400/70
-                   shadow-[0_14px_35px_rgba(37,99,235,0.85)]'
-                : 'bg-white/10 dark:bg-slate-900/20
-                    text-slate-700 dark:text-slate-400
-                    hover:bg-white/20 dark:hover:bg-slate-900/30
-                    hover:text-slate-900 dark:hover:text-white' }}"
-            :class="sidebarOpen ? 'justify-between' : 'justify-center'"
-            title="Inventarios"
-        >
-            <div class="flex items-center">
-                <div class="flex items-center justify-center w-7 h-7">
-                    <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                    </svg>
-                </div>
-                <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Inventarios</span>
+    <div class="px-3 mt-2">
+        <a href="{{ route('ventas.inventario.index') }}" title="Inventario Global" class="{{ $linkBase }} {{ request()->routeIs('ventas.inventario.index') ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB] text-white font-semibold drop-shadow-[0_0_6px_rgba(99,102,241,0.65)] border-blue-400/70 shadow-[0_14px_35px_rgba(37,99,235,0.85)]' : 'bg-white/10 dark:bg-slate-900/20 text-slate-700 dark:text-slate-400 hover:bg-white/20 dark:hover:bg-slate-900/30 hover:text-slate-900 dark:hover:text-white' }}" :class="sidebarOpen ? 'justify-start' : 'justify-center'">
+            <div class="flex items-center justify-center w-7 h-7">
+                <svg class="{{ $iconBase }} group-[.bg-gradient-to-r]:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                </svg>
             </div>
-            <svg class="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors duration-200" fill="currentColor" viewBox="0 0 20 20" x-show="sidebarOpen" x-transition :class="isOpen() ? 'rotate-180' : ''" style="transition: transform .2s ease;">
-                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-            </svg>
-        </button>
-
-        <div x-show="isOpen()" x-transition class="mt-2 space-y-1 pl-2">
-            <div class="rounded-2xl border bg-white/60 dark:bg-slate-950/40 border-slate-200/70 dark:border-white/10 backdrop-blur-xl overflow-x-hidden">
-                @foreach($ventasInventarioItems as $it)
-                    <a href="{{ $it['href'] }}" class="block px-4 py-2.5 text-[0.80rem] text-slate-700 dark:text-slate-200 hover:bg-slate-100/90 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-white transition-colors duration-150">
-                        {{ $it['label'] }}
-                    </a>
-                @endforeach
-            </div>
-        </div>
-
-        <template x-teleport="body">
-            <div x-cloak x-show="popoverOpen && !sidebarOpen" x-transition.opacity.duration.150ms @click.outside="popoverOpen=false" class="fixed z-[999999] pointer-events-auto" :style="popoverStyle">
-                <div class="rounded-2xl border bg-white/60 dark:bg-slate-950/40 border-slate-200/70 dark:border-white/10 shadow-[0_18px_45px_rgba(15,23,42,0.65)] backdrop-blur-xl overflow-hidden">
-                    <div class="px-3 pt-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
-                        <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Inventarios</span>
-                    </div>
-                    @foreach($ventasInventarioItems as $it)
-                        <a href="{{ $it['href'] }}" class="block px-4 py-3 text-[0.80rem] text-slate-700 dark:text-slate-200 hover:bg-slate-100/90 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white transition-colors duration-150">
-                            {{ $it['label'] }}
-                        </a>
-                    @endforeach
-                </div>
-            </div>
-        </template>
+            <span class="{{ $labelBase }}" x-show="sidebarOpen" x-transition>Inventario Global</span>
+        </a>
     </div>
-    @endif
     @endif
     {{-- ===================== MOVIMIENTOS INTERNOS (VENTAS) ===================== --}}
     @if($puedeVentas)
@@ -1642,7 +1551,7 @@
             ],
             [
                 'label' => 'Transferencias',
-                'href'  => route('ventas.inventario.transferencias'),
+                'href'  => route('transferencias.index'),
                 'visible' => true,
             ],
         ];
@@ -1690,7 +1599,7 @@
         <button
             type="button"
             @click.stop="toggle($event)"
-            class="{{ $linkBase }} {{ request()->routeIs('ventas.despachos') || request()->routeIs('ventas.inventario.transferencias')
+            class="{{ $linkBase }} {{ request()->routeIs('ventas.despachos') || request()->routeIs('ventas.inventario.transferencias') || request()->routeIs('transferencias.*')
                 ? 'bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
                    text-white font-semibold
                    drop-shadow-[0_0_6px_rgba(99,102,241,0.65)]
@@ -1742,10 +1651,11 @@
         </template>
     </div>
     @endif
+
+
     @endif
 
-
-    {{-- ===================== USUARIOS (ADMINISTRACIÓN) ===================== --}}
+        {{-- ===================== USUARIOS (ADMINISTRACIÓN) ===================== --}}
     @if($puedeUsuarios)
     <div class="w-full mt-3 px-3"
         x-data="{

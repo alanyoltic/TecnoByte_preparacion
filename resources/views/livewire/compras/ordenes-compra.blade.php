@@ -42,12 +42,51 @@
             </div>
         </div>
 
-        <div class="rounded-2xl bg-white/80 dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/10 backdrop-blur-xl shadow-md px-5 py-4">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="rounded-2xl bg-white/80 dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/10 backdrop-blur-xl shadow-md px-5 py-4 space-y-4">
+            @if(optional(Auth::user()->role)->slug === 'ceo')
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <div class="inline-flex p-1 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm">
+                        <button wire:click="$set('filtroEstatus', 'PENDIENTE_CEO')" type="button" class="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-black rounded-lg transition {{ $filtroEstatus === 'PENDIENTE_CEO' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-600 dark:text-slate-400 hover:text-white' }}">
+                            <span>🔔 Pendientes de Mi Firma</span>
+                            @if($this->conteoPendientesCeo > 0)
+                                <span class="px-1.5 py-0.2 text-[10px] font-black rounded-full {{ $filtroEstatus === 'PENDIENTE_CEO' ? 'bg-white text-indigo-700' : 'bg-red-500 text-white' }}">
+                                    {{ $this->conteoPendientesCeo }}
+                                </span>
+                            @endif
+                        </button>
+                        <button wire:click="$set('filtroEstatus', 'TODOS')" type="button" class="px-4 py-1.5 text-xs font-black rounded-lg transition {{ $filtroEstatus !== 'PENDIENTE_CEO' ? 'bg-[#FF9521] text-white shadow-md shadow-amber-500/30' : 'text-slate-600 dark:text-slate-400 hover:text-white' }}">
+                            📜 Historial y Consulta
+                        </button>
+                    </div>
+
+                    @if($filtroEstatus !== 'PENDIENTE_CEO')
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-500 uppercase">Área:</span>
+                            <div class="inline-flex p-1 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-white/10">
+                                <button wire:click="$set('filtroArea', 'TODAS')" type="button" class="px-3 py-1 text-xs font-bold rounded-lg transition {{ $filtroArea === 'TODAS' ? 'bg-slate-800 text-white dark:bg-slate-700 shadow' : 'text-slate-600 dark:text-slate-400 hover:text-white' }}">
+                                    Todas
+                                </button>
+                                <button wire:click="$set('filtroArea', 'PREPARACION')" type="button" class="px-3 py-1 text-xs font-bold rounded-lg transition {{ $filtroArea === 'PREPARACION' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 dark:text-slate-400 hover:text-white' }}">
+                                    Preparación
+                                </button>
+                                <button wire:click="$set('filtroArea', 'VENTAS')" type="button" class="px-3 py-1 text-xs font-bold rounded-lg transition {{ $filtroArea === 'VENTAS' ? 'bg-amber-600 text-white shadow' : 'text-slate-600 dark:text-slate-400 hover:text-white' }}">
+                                    Ventas
+                                </button>
+                            </div>
+                        </div>
+                    @else
+                        <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                            Órdenes de compra esperando tu autorización financiera
+                        </div>
+                    @endif
+                </div>
+            @endif
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                 <div class="relative md:col-span-2">
                     <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">🔍</span>
                     <input type="text" wire:model.live.debounce.400ms="busqueda" placeholder="Buscar por proveedor o folio..."
-                        class="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">
+                        class="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-[#FF9521]">
                 </div>
             </div>
         </div>
@@ -71,7 +110,12 @@
                             <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition">
                                 <td class="px-5 py-3 whitespace-nowrap">
                                     <div class="font-medium text-slate-900 dark:text-slate-100">{{ $compra->fecha_compra->format('d/m/Y') }}</div>
-                                    <div class="text-xs text-slate-500">Folio: {{ $compra->folio ?? 'S/F' }}</div>
+                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                        <span class="text-xs text-slate-500">Folio: {{ $compra->folio ?? 'S/F' }}</span>
+                                        @if(optional(Auth::user()->role)->slug === 'ceo' && $filtroArea === 'TODAS')
+                                            <span class="text-[9px] font-bold px-1.5 py-0.2 rounded {{ $compra->area === 'VENTAS' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' }}">{{ $compra->area }}</span>
+                                        @endif
+                                    </div>
                                 </td>
                                 <td class="px-5 py-3">
                                     <div class="font-semibold text-slate-800 dark:text-slate-200">{{ $compra->proveedor->nombre_empresa ?? 'Sin proveedor' }}</div>
@@ -103,33 +147,38 @@
                                 </td>
                                 <td class="px-5 py-3 text-right">
                                     <div class="flex items-center justify-end gap-3">
-                                        {{-- Botón Cancelar (Dueño o CEO) --}}
-                                        @if(in_array($compra->estatus, ['PENDIENTE_GERENTE', 'PENDIENTE_CEO', 'APROBADA']) && (Auth::id() === $compra->registrado_por_id || Auth::user()->tienePermiso('prep.compras.aprobar_ceo')))
+                                        {{-- Botón Cancelar (Solo Solicitante en pendientes, nunca CEO ni aprobadas) --}}
+                                        @if(in_array($compra->estatus, ['PENDIENTE_GERENTE', 'PENDIENTE_CEO']) && optional(Auth::user()->role)->slug !== 'ceo' && Auth::id() === $compra->registrado_por_id)
                                             <button wire:click="cancelarOrden({{ $compra->id }})" wire:confirm="¿Seguro que deseas cancelar esta orden?" class="text-red-500 hover:text-red-700 font-medium text-xs">
                                                 Cancelar
                                             </button>
                                         @endif
 
-                                        {{-- Rechazar (Si eres aprobador) --}}
-                                        @if(($compra->estatus === 'PENDIENTE_GERENTE' && Auth::user()->tienePermiso('prep.compras.aprobar_gerente')) || ($compra->estatus === 'PENDIENTE_CEO' && Auth::user()->tienePermiso('prep.compras.aprobar_ceo')))
+                                        {{-- Rechazar (Si eres gerente y está pendiente de gerente) --}}
+                                        @if($compra->estatus === 'PENDIENTE_GERENTE' && optional(Auth::user()->role)->slug !== 'ceo' && Auth::user()->tienePermiso('prep.compras.aprobar_gerente'))
                                             <button wire:click="rechazarOrden({{ $compra->id }})" wire:confirm="¿Rechazar esta orden?" class="text-orange-500 hover:text-orange-700 font-medium text-xs">
                                                 Rechazar
                                             </button>
                                         @endif
 
                                         {{-- Acciones Principales --}}
-                                        @if($compra->estatus === 'PENDIENTE_GERENTE' && Auth::user()->tienePermiso('prep.compras.aprobar_gerente'))
+                                        @if($compra->estatus === 'PENDIENTE_GERENTE' && optional(Auth::user()->role)->slug !== 'ceo' && Auth::user()->tienePermiso('prep.compras.aprobar_gerente'))
                                             <button wire:click="autorizarGerente({{ $compra->id }})" wire:confirm="¿Autorizar como Gerente?" class="text-blue-600 hover:text-blue-800 font-bold text-sm">
                                                 Autorizar
                                             </button>
-                                        @elseif($compra->estatus === 'PENDIENTE_CEO' && Auth::user()->tienePermiso('prep.compras.aprobar_ceo'))
-                                            <button wire:click="aprobarOrden({{ $compra->id }})" wire:confirm="¿Aprobar financieramente esta orden (CEO)?" class="text-indigo-600 hover:text-indigo-800 font-bold text-sm">
-                                                Aprobar CEO
-                                            </button>
-                                        @elseif($compra->estatus === 'APROBADA' && Auth::id() === $compra->registrado_por_id)
-                                            <button wire:click="recibirOrden({{ $compra->id }})" wire:confirm="¿Seguro que deseas recibir esta mercancía?" class="text-emerald-600 hover:text-emerald-800 font-bold text-sm">
+                                        @elseif($compra->estatus === 'PENDIENTE_CEO' && optional(Auth::user()->role)->slug === 'ceo')
+                                            <a href="{{ route('ceo.aprobaciones.revision', $compra->id) }}" class="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 transition">
+                                                Revisar Orden →
+                                            </a>
+                                        @elseif($compra->estatus === 'APROBADA' && optional(Auth::user()->role)->slug !== 'ceo' && Auth::id() === $compra->registrado_por_id)
+                                            <a href="{{ route('compras.recepcion', $compra->id) }}" class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 shadow-sm transition">
+                                                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                                                 Recibir Mercancía
-                                            </button>
+                                            </a>
+                                        @elseif(optional(Auth::user()->role)->slug === 'ceo' && in_array($compra->estatus, ['APROBADA', 'RECIBIDA', 'RECHAZADA']))
+                                            <a href="{{ route('ceo.aprobaciones.revision', $compra->id) }}" class="text-xs font-semibold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300 transition">
+                                                Ver Detalle
+                                            </a>
                                         @endif
                                     </div>
                                 </td>
@@ -259,6 +308,12 @@
                                 @empty
                                     <div class="p-4 text-center text-sm text-slate-500 dark:text-slate-400">No se encontraron resultados para "{{ $searchTerm }}"</div>
                                 @endforelse
+
+                                @if(empty($searchResults) && !empty($searchTerm))
+                                    <div class="p-2.5 bg-slate-50 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500">
+                                        ¿No encuentras el artículo? Regístralo previamente en su catálogo correspondiente.
+                                    </div>
+                                @endif
                             </div>
                         @endif
                     </div>
@@ -377,8 +432,8 @@
                     
                     @php
                         $tiposEnCarrito = collect($carrito)->pluck('tipo')->unique()->toArray();
-                        $mostrarAlmacenes = count(array_intersect(['pieza', 'producto', 'consumible', 'cargador'], $tiposEnCarrito)) > 0;
-                        $mostrarLote = in_array('equipo', $tiposEnCarrito);
+                        $mostrarAlmacenes = count(array_intersect(['pieza', 'producto', 'consumible', 'cargador', 'equipo'], $tiposEnCarrito)) > 0;
+                        $mostrarLote = in_array('equipo', $tiposEnCarrito) && $this->area === 'PREPARACION';
                     @endphp
 
                     @if($mostrarAlmacenes || $mostrarLote)
@@ -390,8 +445,19 @@
                             
                             <div class="space-y-4">
                                 @if($mostrarAlmacenes)
+                                    @php
+                                        $catalogoLabels = [
+                                            'pieza' => 'Piezas',
+                                            'producto' => 'Productos',
+                                            'consumible' => 'Consumibles',
+                                            'cargador' => 'Cargadores',
+                                        ];
+                                        if ($this->area === 'VENTAS') {
+                                            $catalogoLabels['equipo'] = 'Equipos Nuevos (Tienda)';
+                                        }
+                                    @endphp
                                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        @foreach(['pieza' => 'Piezas', 'producto' => 'Productos', 'consumible' => 'Consumibles', 'cargador' => 'Cargadores'] as $tipoKey => $tipoLabel)
+                                        @foreach($catalogoLabels as $tipoKey => $tipoLabel)
                                             @if(in_array($tipoKey, $tiposEnCarrito))
                                                 <div>
                                                     <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">Destino para {{ $tipoLabel }} *</label>
@@ -462,6 +528,7 @@
         </div>
         </div>
     @endif
+
     </div>
 </x-tb-background>
 

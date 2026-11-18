@@ -32,7 +32,7 @@
         @elseif($vista === 'caracteristicas')
             <x-topbar
                 title="Características del equipo"
-                chip="{{ $this->equipoActual?->equipo?->numero_serie }}"
+                chip="{{ $this->equipoActual?->equipo?->numero_serie ?: 'S/N Pendiente' }}"
                 description="Llena los datos del equipo. Puedes guardar el avance en cualquier momento."
             >
                 <x-slot name="right">
@@ -48,7 +48,7 @@
         @elseif($vista === 'terminar')
             <x-topbar
                 title="Terminar equipo"
-                chip="{{ $this->equipoActual?->equipo?->numero_serie }}"
+                chip="{{ $this->equipoActual?->equipo?->numero_serie ?: 'S/N Pendiente' }}"
                 description="Indica el resultado final del equipo."
             >
                 <x-slot name="right">
@@ -132,7 +132,12 @@
                     </div>
                     <div class="text-center">
                         <p class="text-2xl font-bold text-[#FF9521]">{{ $stats['puntos'] }}</p>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Puntos</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Puntos aprobados</p>
+                        @if(($stats['puntos_en_revision'] ?? 0) > 0)
+                            <span class="inline-block mt-0.5 text-[10px] font-medium text-blue-500 dark:text-blue-400">
+                                +{{ $stats['puntos_en_revision'] }} en revisión
+                            </span>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -542,7 +547,7 @@
                                             border border-amber-200/50 dark:border-amber-700/30">
                                     <div class="min-w-0">
                                         <p class="text-sm font-mono font-medium text-slate-800 dark:text-slate-100 truncate">
-                                            {{ $ae->equipo?->numero_serie ?? '—' }}
+                                            {{ $ae->equipo?->numero_serie ?: 'S/N Pendiente' }}
                                         </p>
                                         <p class="text-[0.65rem] text-slate-400">
                                             {{ $ae->equipo?->marca }} {{ $ae->equipo?->modelo }}
@@ -664,7 +669,7 @@
 
                                             <div>
                                                 <p class="text-sm font-semibold font-mono text-slate-900 dark:text-slate-50">
-                                                    {{ $eq?->numero_serie ?? '—' }}
+                                                    {{ $eq?->numero_serie ?: 'S/N Pendiente' }}
                                                 </p>
                                                 <div class="flex items-center gap-2 mt-0.5">
                                                     @if($terminado && $destino)
@@ -965,7 +970,7 @@
                         {{ $this->equipoActual?->equipo?->modelo }}
                     </p>
                     <p class="text-xs font-mono text-slate-400">
-                        {{ $this->equipoActual?->equipo?->numero_serie }}
+                        {{ $this->equipoActual?->equipo?->numero_serie ?: 'S/N Pendiente' }}
                     </p>
                 </div>
 

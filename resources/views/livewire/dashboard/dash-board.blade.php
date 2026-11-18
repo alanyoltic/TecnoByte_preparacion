@@ -6,7 +6,7 @@
             <x-topbar
                 title="Dashboard General"
                 chip="Mes de {{ $currentMonthName }}"
-                description="Meta mensual cumplida: {{ $radialPercent }}% · {{ $viejoSistema ? 'Equipos: '.(($kpis['equiposMes'] ?? 0)) : 'Puntos: '.($breakdown[1]['value'] ?? 0) }}"
+                description="Meta mensual cumplida: {{ $radialPercent }}%{{ $radialPercentRevision > 0 ? ' (+'.$radialPercentRevision.'% en revisión)' : '' }} · {{ $viejoSistema ? 'Equipos: '.(($kpis['equiposMes'] ?? 0)) : 'Puntos aprobados: '.($breakdown[1]['value'] ?? 0) }}"
             >
                 <x-slot:right>
                     <div class="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3">
@@ -1439,22 +1439,36 @@
                 };
             };
 
-            const getRadialOptions = (t, value) => {
+            const getRadialOptions = (t, value, revisionValue = 0) => {
                 const mainColor = "#2563EB";
                 const gradTo    = t.isDark ? "#60A5FA" : "#93C5FD";
+                const revVal    = Number(revisionValue || 0);
+                const hasRev    = revVal > 0;
+                const series    = hasRev ? [Number(value || 0), revVal] : [Number(value || 0)];
+                const labels    = hasRev ? ["Aprobados", "En revisión"] : ["Meta cumplida"];
+                const ghostColor = t.isDark ? "rgba(96, 165, 250, 0.35)" : "rgba(37, 99, 235, 0.28)";
+                const ghostGrad  = t.isDark ? "rgba(147, 197, 253, 0.35)" : "rgba(147, 197, 253, 0.28)";
+                const colors    = hasRev ? [mainColor, ghostColor] : [mainColor];
 
                 return {
-                    series: [Number(value || 0)],
+                    series: series,
                     chart: { ...chartBase, type: "radialBar", height: 290 },
                     theme: { mode: t.mode },
-                    labels: ["Meta cumplida"],
+                    labels: labels,
                     plotOptions: {
                         radialBar: {
-                            hollow: { size: "68%", background: "transparent" },
+                            hollow: { size: hasRev ? "52%" : "68%", background: "transparent" },
                             track: { background: t.track, strokeWidth: "100%", margin: 4, opacity: 0.55 },
                             dataLabels: {
                                 name: { show: true, fontSize: "0.9rem", letterSpacing: "0.06em", offsetY: -10, color: t.text },
-                                value:{ fontSize: "2.1rem", fontWeight: 700, offsetY: 8, formatter: v => `${v}%`, color: t.text }
+                                value:{ fontSize: "1.9rem", fontWeight: 700, offsetY: 6, formatter: v => `${v}%`, color: t.text },
+                                total: {
+                                    show: hasRev,
+                                    label: "Aprobados",
+                                    color: t.text,
+                                    fontSize: "0.85rem",
+                                    formatter: () => `${Number(value || 0)}%`
+                                }
                             }
                         }
                     },
@@ -1463,11 +1477,11 @@
                         gradient: {
                             shade: t.isDark ? "dark" : "light",
                             type: "vertical",
-                            gradientToColors: [gradTo],
+                            gradientToColors: hasRev ? [gradTo, ghostGrad] : [gradTo],
                             stops: [0, 40, 100]
                         }
                     },
-                    colors: [mainColor]
+                    colors: colors
                 };
             };
 
@@ -1520,9 +1534,13 @@
                     }
 
                     if (!radialChart) {
-                        radialChart = new ApexCharts(elRad, getRadialOptions(t, payload.radialPercent));
+                        const val = Number(payload.radialPercent || 0);
+                        const rev = Number(payload.radialPercentRevision || 0);
+                        radialChart = new ApexCharts(elRad, getRadialOptions(t, val, rev));
                         await radialChart.render();
-                        await replaySeries(radialChart, [0], [Number(payload.radialPercent || 0)]);
+                        const zeroS = rev > 0 ? [0, 0] : [0];
+                        const finalS = rev > 0 ? [val, rev] : [val];
+                        await replaySeries(radialChart, zeroS, finalS);
                     }
                 } finally {
                     initializing = false;
@@ -1589,7 +1607,11 @@
                     { name: payload.isTecnico ? "Año anterior (tú)" : "Año anterior (equipo)", data: payload.tecnicoChart?.series?.anterior || [] }
                 ], true);
 
-                radialChart.updateSeries([Number(payload.radialPercent || 0)], true);
+                const val = Number(payload.radialPercent || 0);
+                const rev = Number(payload.radialPercentRevision || 0);
+                radialChart.updateOptions(getRadialOptions(t, val, rev), false, false);
+                const finalS = rev > 0 ? [val, rev] : [val];
+                radialChart.updateSeries(finalS, true);
                 pruneTooltipNodes();
 
                 // Mantiene activo el hover del chart de línea tras updates Livewire
@@ -1603,6 +1625,7 @@
                     lineChart: @js($lineChart),
                     tecnicoChart: @js($tecnicoChart),
                     radialPercent: @js($radialPercent),
+                    radialPercentRevision: @js($radialPercentRevision),
                     isTecnico: @js($isTecnico),
                 };
                 lastPayload = initial;

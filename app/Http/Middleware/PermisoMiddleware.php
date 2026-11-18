@@ -12,7 +12,16 @@ class PermisoMiddleware
     {
         $user = $request->user();
 
-        $ok = $user && method_exists($user, 'tienePermiso') && $user->tienePermiso($slug);
+        $slugs = explode('|', $slug);
+        $ok = false;
+        if ($user && method_exists($user, 'tienePermiso')) {
+            foreach ($slugs as $s) {
+                if ($user->tienePermiso(trim($s))) {
+                    $ok = true;
+                    break;
+                }
+            }
+        }
 
         Log::info('PERMISO_DEBUG', [
             'path' => $request->path(),

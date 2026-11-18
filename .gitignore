@@ -46,3 +46,11 @@ HISTORIAL_ERRORES.md
 MEMORIA_ESTATUS_Y_CAMINOS.md
 MEMORIA_ESTATUS_Y_CAMINOS.md
 MEMORIA_ESTATUS_Y_CAMINOS.md
+
+# Memorias del agente
+.memorias/
+/graphify-out
+
+# Configuraciones y memorias de IA
+/.agents/
+

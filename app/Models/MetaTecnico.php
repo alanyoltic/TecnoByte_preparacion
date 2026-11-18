@@ -49,13 +49,17 @@ class MetaTecnico extends Model
     {
         $periodo = $periodo ?? now()->format('Y-m');
         $puntos = PuntoTecnico::totalDelPeriodo($tecnicoId, $periodo);
+        $puntosRevision = PuntoTecnico::totalEnRevisionDelPeriodo($tecnicoId, $periodo);
         $meta = static::obtenerMeta($tecnicoId, $periodo);
         $pct = $meta > 0 ? round(($puntos / $meta) * 100, 1) : 0;
+        $pctConRevision = $meta > 0 ? round((($puntos + $puntosRevision) / $meta) * 100, 1) : 0;
 
         return [
             'puntos' => $puntos,
+            'puntos_en_revision' => $puntosRevision,
             'meta' => $meta,
             'porcentaje' => $pct,
+            'porcentaje_con_revision' => $pctConRevision,
             'cumplida' => $puntos >= $meta,
             'faltante' => max($meta - $puntos, 0),
         ];
