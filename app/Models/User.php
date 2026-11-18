@@ -23,6 +23,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->belongsTo(Puesto::class, 'puesto_id');
     }
 
+    public function sucursal()
+    {
+        return $this->belongsTo(Sucursal::class, 'sucursal_id');
+    }
+
     protected $fillable = [
         'nombre',
         'segundo_nombre',
@@ -82,7 +87,11 @@ class User extends Authenticatable implements MustVerifyEmail
         static::addGlobalScope('is_active', function ($query) {
             $query->where('is_active', true);
         });
+
+        static::addGlobalScope(new \App\Models\Scopes\UserDepartamentoScope);
     }
+
+    protected $permisosCachados = null;
 
     public function tienePermiso(string $slug): bool
     {
@@ -90,26 +99,31 @@ class User extends Authenticatable implements MustVerifyEmail
             return true;
         }
 
-        $porRol = \DB::table('rol_permiso')
-            ->join('permisos', 'permisos.id', '=', 'rol_permiso.permiso_id')
-            ->where('rol_permiso.rol_id', $this->role_id)
-            ->where('permisos.slug', $slug)
-            ->exists();
+        if ($this->permisosCachados === null) {
+            $permisosRol = \DB::table('rol_permiso')
+                ->join('permisos', 'permisos.id', '=', 'rol_permiso.permiso_id')
+                ->where('rol_permiso.rol_id', $this->role_id)
+                ->pluck('permisos.slug')->toArray();
 
-        if ($porRol) {
-            return true;
+            $permisosUser = \DB::table('usuario_permiso')
+                ->join('permisos', 'permisos.id', '=', 'usuario_permiso.permiso_id')
+                ->where('usuario_permiso.user_id', $this->id)
+                ->pluck('permisos.slug')->toArray();
+
+            $this->permisosCachados = array_flip(array_merge($permisosRol, $permisosUser));
         }
 
-        return \DB::table('usuario_permiso')
-            ->join('permisos', 'permisos.id', '=', 'usuario_permiso.permiso_id')
-            ->where('usuario_permiso.user_id', $this->id)
-            ->where('permisos.slug', $slug)
-            ->exists();
+        return isset($this->permisosCachados[$slug]);
     }
 
     public function isAdminCeo()
     {
         return in_array($this->role?->slug, ['admin', 'admin_sistema', 'ceo'], true);
+    }
+
+    public function getNameAttribute(): string
+    {
+        return trim(($this->nombre ?? '') . ' ' . ($this->apellido_paterno ?? ''));
     }
 
     public function getNombreInicialAttribute()
@@ -139,5 +153,34 @@ class User extends Authenticatable implements MustVerifyEmail
     public static function conBajas()
     {
         return static::withoutGlobalScopes();
+    }
+
+    /**
+     * Obtiene los slugs de los roles que este usuario puede crear/editar.
+     */
+    public function getManageableRoleSlugs(): array
+    {
+        $slug = strtolower(optional($this->role)->slug);
+        $depto = strtoupper(optional($this->departamento)->clave);
+
+        if (in_array($slug, ['ceo', 'admin', 'admin_sistema', 'sistemas'], true)) {
+            return []; // Los globales no filtran, ven todos.
+        }
+
+        if (in_array($slug, ['gerente', 'gerente_area'], true)) {
+            if ($depto === 'VENTAS') {
+                return ['gerente', 'supervisor', 'asesor_tienda', 'asesor_linea'];
+            }
+            return ['gerente', 'gerente_area', 'lider', 'lider_area', 'lider_de_area', 'tecnico', 'calidad'];
+        }
+
+        if (in_array($slug, ['lider', 'lider_area', 'lider_de_area', 'supervisor'], true)) {
+            if ($depto === 'VENTAS') {
+                return ['supervisor', 'asesor_tienda', 'asesor_linea'];
+            }
+            return ['lider', 'lider_area', 'lider_de_area', 'tecnico'];
+        }
+
+        return [];
     }
 }

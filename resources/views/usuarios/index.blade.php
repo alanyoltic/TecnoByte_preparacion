@@ -85,69 +85,81 @@
                                     </thead>
 
                                     <tbody class="divide-y divide-slate-200/60 dark:divide-slate-800/70">
-                                        @forelse ($users as $usuario)
-                                            @php
-                                                $roleName = $usuario->role?->nombre ?? 'Sin rol';
-                                                $roleSlug = $usuario->role?->slug ?? null;
-
-                                                if (in_array($roleSlug, ['ceo','admin','admin_sistema'])) {
-                                                    $chip = 'bg-rose-500/10 text-rose-300 border border-rose-400/40';
-                                                } elseif (in_array($roleSlug, ['supervisor','lider','gerente'])) {
-                                                    $chip = 'bg-amber-500/10 text-amber-300 border border-amber-400/40';
-                                                } elseif ($roleSlug) {
-                                                    $chip = 'bg-emerald-500/10 text-emerald-300 border border-emerald-400/40';
-                                                } else {
-                                                    $chip = 'bg-slate-500/10 text-slate-300 border border-slate-400/40';
-                                                }
-                                            @endphp
-
-                                            <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-900/60 transition-colors">
-                                                <td class="px-6 py-3 text-sm text-slate-900 dark:text-slate-50">
-                                                    {{ $usuario->nombre }} {{ $usuario->apellido_paterno }}
-                                                </td>
-
-                                                <td class="px-6 py-3 text-sm text-slate-600 dark:text-slate-300">
-                                                    {{ $usuario->email }}
-                                                </td>
-
-                                                <td class="px-6 py-3">
-                                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[0.7rem] font-medium {{ $chip }}">
-                                                        {{ $roleName }}
-                                                    </span>
-                                                </td>
-
-
-                                                <td class="px-6 py-3 text-right">
- {{-- BOTÓN DAR DE BAJA --}}
-    @if(auth()->user()?->tienePermiso('sistema.usuarios.editar'))
-        <livewire:usuarios.boton-baja :usuario="$usuario" :key="'baja-'.$usuario->id" />
-    @endif
-
-                                                </td>
-
-
-                                                <td class="px-6 py-3 text-right">
-                                                    @if(auth()->user()?->tienePermiso('sistema.usuarios.editar'))
-                                                    <a
-                                                        href="{{ route('users.edit', $usuario) }}"
-                                                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium
-                                                            text-blue-400 bg-blue-500/10 border border-blue-400/40
-                                                            hover:bg-blue-500/80 hover:text-white transition-all duration-200"
-                                                    >
-                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                d="M11 5H6a2 2 0 00-2 2v11
-                                                                    a2 2 0 002 2h11a2 2 0 002-2v-5
-                                                                    m-1.414-9.414a2 2 0 112.828 2.828L12 18l-4 1 1-4 9.586-9.586z" />
-                                                        </svg>
-                                                        Editar
-                                                    </a>
-                                                    @endif
+                                                                                @forelse ($groupedUsers as $area => $usersInArea)
+                                            @if(in_array(auth()->user()->role?->slug, ['ceo', 'admin_sistema', 'sistemas']) || count($groupedUsers) > 1)
+                                            {{-- Separador de Área --}}
+                                            <tr class="bg-slate-200/50 dark:bg-slate-800/40">
+                                                <td colspan="5" class="px-6 py-2.5 border-l-4 border-indigo-500">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">{{ $area }}</span>
+                                                        <span class="ml-2 text-[0.65rem] font-medium px-2 py-0.5 rounded-full bg-white/60 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400">{{ $usersInArea->count() }} usuarios</span>
+                                                    </div>
                                                 </td>
                                             </tr>
+                                            @endif
+
+                                            @foreach ($usersInArea as $usuario)
+                                                @php
+                                                    $roleName = $usuario->role?->nombre ?? 'Sin rol';
+                                                    $roleSlug = $usuario->role?->slug ?? null;
+
+                                                    if (in_array($roleSlug, ['ceo','admin','admin_sistema'])) {
+                                                        $chip = 'bg-rose-500/10 text-rose-300 border border-rose-400/40';
+                                                    } elseif (in_array($roleSlug, ['supervisor','lider','gerente'])) {
+                                                        $chip = 'bg-amber-500/10 text-amber-300 border border-amber-400/40';
+                                                    } elseif ($roleSlug) {
+                                                        $chip = 'bg-emerald-500/10 text-emerald-300 border border-emerald-400/40';
+                                                    } else {
+                                                        $chip = 'bg-slate-500/10 text-slate-300 border border-slate-400/40';
+                                                    }
+                                                @endphp
+
+                                                <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-900/60 transition-colors">
+                                                    <td class="px-6 py-3 text-sm text-slate-900 dark:text-slate-50">
+                                                        {{ $usuario->nombre }} {{ $usuario->apellido_paterno }}
+                                                    </td>
+
+                                                    <td class="px-6 py-3 text-sm text-slate-600 dark:text-slate-300">
+                                                        {{ $usuario->email }}
+                                                    </td>
+
+                                                    <td class="px-6 py-3">
+                                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[0.7rem] font-medium {{ $chip }}">
+                                                            {{ $roleName }}
+                                                        </span>
+                                                    </td>
+
+
+                                                    <td class="px-6 py-3 text-right">
+                                                        @if(auth()->user()?->tienePermiso('sistema.usuarios.editar'))
+                                                            <livewire:usuarios.boton-baja :usuario="$usuario" :key="'baja-'.$usuario->id" />
+                                                        @endif
+                                                    </td>
+
+
+                                                    <td class="px-6 py-3 text-right">
+                                                        @if(auth()->user()?->tienePermiso('sistema.usuarios.editar'))
+                                                        <a
+                                                            href="{{ route('users.edit', $usuario) }}"
+                                                            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium
+                                                                text-blue-400 bg-blue-500/10 border border-blue-400/40
+                                                                hover:bg-blue-500/80 hover:text-white transition-all duration-200"
+                                                        >
+                                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                    d="M11 5H6a2 2 0 00-2 2v11
+                                                                        a2 2 0 002 2h11a2 2 0 002-2v-5
+                                                                        m-1.414-9.414a2 2 0 112.828 2.828L12 18l-4 1 1-4 9.586-9.586z" />
+                                                            </svg>
+                                                            Editar
+                                                        </a>
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                            @endforeach
                                         @empty
                                             <tr>
-                                                <td colspan="4" class="px-6 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+                                                <td colspan="5" class="px-6 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
                                                     No hay usuarios registrados por el momento.
                                                 </td>
                                             </tr>
@@ -166,3 +178,4 @@
     </x-tb-background>
 
 </x-app-layout>
+

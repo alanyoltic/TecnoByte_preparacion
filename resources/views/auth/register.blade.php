@@ -4,10 +4,8 @@
             $isGlobalCreator = $isGlobalCreator ?? false;
             $fixedDepartamento = $fixedDepartamento ?? null;
             $departamentos = $departamentos ?? collect();
-            $puestoPreviewByDepartamento = $puestoPreviewByDepartamento ?? [];
 
             $selectedDeptId = (string) old('departamento_id', $fixedDepartamento->id ?? '');
-            $puestoPreview = $puestoPreviewByDepartamento[$selectedDeptId] ?? ($initialPuestoLabel ?? 'Sin puesto configurado');
         @endphp
 
         <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10">
@@ -175,7 +173,7 @@
 
                         <div class="space-y-4">
                             <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                                Rol y permisos
+                                Rol y Departamento
                             </h4>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -202,22 +200,8 @@
                                     <x-input-error :messages="$errors->get('role_id')" class="mt-2" />
                                 </div>
 
-                                <div class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 flex items-center">
-                                    <p>
-                                        Segun tu nivel, solo puedes asignar tu mismo rol o uno menor.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                                
 
-                        <div class="border-t border-slate-200/70 dark:border-slate-800/70"></div>
-
-                        <div class="space-y-4">
-                            <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                                Departamento y puesto
-                            </h4>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <x-input-label for="departamento_id" value="Departamento *" />
 
@@ -250,24 +234,12 @@
                                         <input type="hidden" id="departamento_id" name="departamento_id" value="{{ $fixedDepartamento?->id }}">
                                     @endif
 
-                                    <x-input-error :messages="$errors->get('departamento_id')" class="mt-2" />
+                                    
                                 </div>
-
-                                <div>
-                                    <x-input-label for="puesto_preview" value="Puesto asignado" />
-                                    <input
-                                        id="puesto_preview"
-                                        type="text"
-                                        value="{{ $puestoPreview }}"
-                                        class="block mt-1 w-full rounded-xl border border-slate-300/80 dark:border-slate-700/80 bg-slate-100/80 dark:bg-slate-900/40 text-sm text-slate-800 dark:text-slate-100"
-                                        readonly
-                                    >
-                                    <p class="mt-2 text-[0.7rem] text-slate-500 dark:text-slate-400">
-                                        El puesto se asigna automaticamente segun departamento y no es editable.
-                                    </p>
+                                <div class="text-xs text-slate-500 dark:text-slate-400 pt-1">
+                                    <p>Segun tu nivel, solo puedes asignar tu mismo rol o uno menor.</p>
                                 </div>
                             </div>
-                        </div>
 
                         <div class="flex items-center justify-between pt-2">
                             <a
@@ -289,24 +261,11 @@
             </div>
         </div>
 
-        @if($isGlobalCreator)
-            <script>
-                document.addEventListener('DOMContentLoaded', function () {
-                    const depto = document.getElementById('departamento_id');
-                    const puesto = document.getElementById('puesto_preview');
-                    const map = @json($puestoPreviewByDepartamento);
-
-                    if (!depto || !puesto) return;
-
-                    const updatePuesto = () => {
-                        const key = String(depto.value || '');
-                        puesto.value = map[key] || 'Sin puesto configurado';
-                    };
-
-                    depto.addEventListener('change', updatePuesto);
-                    updatePuesto();
-                });
-            </script>
-        @endif
+        
     </x-tb-background>
 </x-app-layout>
+
+
+
+
+

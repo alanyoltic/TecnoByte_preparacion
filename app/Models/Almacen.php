@@ -36,4 +36,14 @@ class Almacen extends Model
     {
         return $this->hasMany(\App\Models\AlmacenEncargado::class, 'almacen_id');
     }
+
+    public function sucursal()
+    {
+        return $this->belongsTo(Sucursal::class, 'sucursal_id');
+    }
+
+    public function departamento()
+    {
+        return $this->belongsTo(Departamento::class, 'departamento_id');
+    }
 }

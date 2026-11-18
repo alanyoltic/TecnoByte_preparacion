@@ -526,8 +526,27 @@
                     <div class="space-y-3 max-h-[420px] overflow-y-auto pr-1" x-data="{ openLotes: [], openSeries: [] }">
                         @forelse($this->lotesDisponibles as $lote)
                             @php $loteAgotado = $lote->modelosRecibidos->sum('equipos_libres') <= 0; @endphp
+
+                            {{-- Separador de lotes agotados --}}
+                            @if($loop->index === $this->lotesConDisponibles->count())
+                                @if($this->lotesConDisponibles->isEmpty())
+                                    <div class="px-4 py-3 rounded-xl bg-slate-100/60 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800 text-center mb-2">
+                                        <p class="text-xs text-slate-500 dark:text-slate-400">No hay lotes con unidades disponibles en este momento.</p>
+                                    </div>
+                                @endif
+                                <div class="pt-3 pb-1">
+                                    <div class="flex items-center gap-2 py-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                        <span>📦 Lotes agotados (sin disponibles)</span>
+                                        <span class="text-[0.65rem] px-2 py-0.5 rounded-full bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">
+                                            Mostrando {{ $this->lotesAgotados->count() }} de {{ $this->totalLotesAgotados }}
+                                        </span>
+                                        <div class="h-px flex-1 bg-slate-200 dark:bg-slate-700/60"></div>
+                                    </div>
+                                </div>
+                            @endif
                             {{-- Acordeón por lote --}}
-                            <div class="rounded-xl border border-slate-200/80 dark:border-slate-700/60 overflow-hidden">
+                            <div wire:key="lote-card-{{ $lote->id }}"
+                                 class="rounded-xl border border-slate-200/80 dark:border-slate-700/60 overflow-hidden">
 
                                 {{-- Header lote --}}
                                 <button type="button" @click="openLotes.includes({{ $lote->id }}) ? openLotes = openLotes.filter(i => i !== {{ $lote->id }}) : openLotes.push({{ $lote->id }})"
@@ -658,6 +677,36 @@
                                 No hay equipos disponibles para asignar.
                             </p>
                         @endforelse
+
+                        {{-- Botón de paginación para lotes agotados --}}
+                        @if($this->totalLotesAgotados > $this->lotesAgotados->count())
+                            <div class="pt-2 pb-1 text-center">
+                                <button type="button"
+                                    wire:click="cargarMasAgotados"
+                                    wire:loading.attr="disabled"
+                                    class="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl
+                                           bg-slate-100 hover:bg-slate-200/80 text-slate-700
+                                           dark:bg-slate-900/70 dark:hover:bg-slate-800 dark:text-slate-300
+                                           border border-slate-300/80 dark:border-slate-700 shadow-sm
+                                           hover:border-[#FF9521]/50 dark:hover:border-[#FF9521]/50
+                                           focus:outline-none focus:ring-2 focus:ring-[#FF9521]/40
+                                           transition active:scale-95 disabled:opacity-50">
+                                    <span wire:loading.remove wire:target="cargarMasAgotados" class="flex items-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5 text-[#FF9521]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                        Cargar 5 más agotados (quedan {{ $this->totalLotesAgotados - $this->lotesAgotados->count() }})
+                                    </span>
+                                    <span wire:loading wire:target="cargarMasAgotados" class="inline-flex items-center gap-1.5 text-[#FF9521]">
+                                        <svg class="animate-spin h-3.5 w-3.5 text-[#FF9521]" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                        </svg>
+                                        Cargando más lotes...
+                                    </span>
+                                </button>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>

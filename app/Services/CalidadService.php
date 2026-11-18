@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\Almacen;
 use App\Models\Asignacion;
 use App\Models\AsignacionEquipo;
 use App\Models\Equipo;
 use App\Models\ValidacionCalidad;
+use App\Services\EquipoMovimientoService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -65,6 +67,13 @@ class CalidadService
                 motivo: 'Equipo validado y aprobado en calidad.',
                 cambios: ['estatus_area' => Equipo::AREA_FINALIZADO]
             );
+
+            // Aprobar formalmente los puntos del técnico (de EN_REVISION a APROBADO)
+            \App\Models\PuntoTecnico::where('asignacion_equipo_id', $ae->id)
+                ->update([
+                    'estatus' => \App\Models\PuntoTecnico::ESTATUS_APROBADO,
+                    'aprobado_en' => now(),
+                ]);
 
             // Verificar si la asignación está completa (todos los equipos terminados)
             $this->verificarAsignacionCompleta($ae->asignacion_id);
@@ -131,10 +140,30 @@ class CalidadService
                 'num_rechazos' => ($ae->num_rechazos ?? 0) + 1,
             ]);
 
+            // Reactivar asignación padre si ya había sido entregada para que el técnico la vea en Mi Trabajo
+            if ($ae->asignacion && $ae->asignacion->estatus === Asignacion::ENTREGADO) {
+                $ae->asignacion->update([
+                    'estatus' => Asignacion::EN_PROCESO,
+                    'fecha_entrega' => null,
+                ]);
+            }
+
+            // Sincronizar almacén y estancia de regreso a Preparación
+            $almacenPrep = Almacen::find(Almacen::PREPARACION);
+            if ($almacenPrep && $equipo->almacen_id != Almacen::PREPARACION) {
+                app(EquipoMovimientoService::class)->mover(
+                    $equipo,
+                    $almacenPrep,
+                    'FINALIZAR_TECNICO',
+                    'Rechazado en calidad: ' . trim($motivo)
+                );
+            }
+
             // Actualizar equipo: EN_CALIDAD → EN_PROCESO (vuelve a preparación)
             $equipo->update([
                 'estatus_area' => Equipo::AREA_EN_PROCESO,
                 'estatus_ciclo' => Equipo::CICLO_PREPARACION,
+                'almacen_id' => Almacen::PREPARACION,
             ]);
 
             app(\App\Services\EquipoTraceService::class)->registrarAuditoria(
@@ -144,8 +173,11 @@ class CalidadService
                 cambios: ['estatus_area' => Equipo::AREA_EN_PROCESO]
             );
 
-            // Restar/Eliminar los puntos del técnico para que no se queden guardados si el equipo no pasó calidad
-            \App\Models\PuntoTecnico::where('asignacion_equipo_id', $ae->id)->delete();
+            // Cambiar los puntos a RECHAZADO para mantener historial de origen sin sumar a la meta
+            \App\Models\PuntoTecnico::where('asignacion_equipo_id', $ae->id)
+                ->update([
+                    'estatus' => \App\Models\PuntoTecnico::ESTATUS_RECHAZADO,
+                ]);
 
             return $validacion;
         });

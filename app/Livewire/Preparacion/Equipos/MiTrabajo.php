@@ -181,7 +181,8 @@ class MiTrabajo extends Component
             'termino_pieza' => $puntos->where('rol_en_equipo', PuntoTecnico::PIEZA_INSTALADA)->count(),
             'garantia' => $puntos->where('rol_en_equipo', PuntoTecnico::GARANTIA)->count(),
             'despiece' => $puntos->where('rol_en_equipo', PuntoTecnico::DESPIECE)->count(),
-            'puntos' => round($puntos->sum('puntos_final'), 2),
+            'puntos' => round($puntos->where('estatus', PuntoTecnico::ESTATUS_APROBADO)->sum('puntos_final'), 2),
+            'puntos_en_revision' => round($puntos->where('estatus', PuntoTecnico::ESTATUS_EN_REVISION)->sum('puntos_final'), 2),
         ];
     }
 
@@ -840,8 +841,13 @@ class MiTrabajo extends Component
             return;
         }
 
-        $loteModelo = $asignacion->loteModelo()->with('lote')->first();
-        $clasificacionLoteId = $loteModelo?->clasificacion_puntos_id;
+        $loteModelo = $asignacion->loteModelo()->with(['lote', 'catalogoEquipo'])->first();
+        $clasificacionLoteId = $loteModelo?->clasificacion_puntos_id 
+            ?: $loteModelo?->catalogoEquipo?->clasificacion_puntos_id;
+
+        if ($clasificacionLoteId && $loteModelo && ! $loteModelo->clasificacion_puntos_id) {
+            $loteModelo->update(['clasificacion_puntos_id' => $clasificacionLoteId]);
+        }
         $errores = [];
 
         $almacenPreparacion = Almacen::find(Almacen::PREPARACION);
@@ -867,7 +873,7 @@ class MiTrabajo extends Component
                         'notas_generales' => null,
                         'detalles_esteticos' => null,
                         'detalles_funcionamiento' => null,
-                        'estatus_area' => Equipo::AREA_EN_ESPERA,
+                        'estatus_area' => Equipo::AREA_SIN_ASIGNAR,
                     ]);
                     \App\Models\EquipoBateria::where('equipo_id', $equipo->id)->delete();
                     \App\Models\EquipoMonitor::where('equipo_id', $equipo->id)->delete();
@@ -922,6 +928,7 @@ class MiTrabajo extends Component
                 $equipo = Equipo::create([
                     'numero_serie' => $serie,
                     'lote_modelo_id' => $asignacion->lote_modelo_id,
+                    'catalogo_equipo_id' => $loteModelo?->catalogo_equipo_id,
                     'clasificacion_puntos_id' => $clasificacionLoteId,
                     'marca' => $loteModelo->marca ?? null,
                     'modelo' => $loteModelo->modelo ?? '',
@@ -1002,7 +1009,7 @@ class MiTrabajo extends Component
             DB::transaction(function () use ($equipo) {
                 $f = $this->form;
 
-                $equipo->update([
+                $data = [
                     'tipo_equipo' => $f->tipo_equipo ?: null,
                     'sistema_operativo' => $f->sistema_operativo ?: null,
                     'area_tienda' => $f->area_tienda ?: null,
@@ -1050,7 +1057,9 @@ class MiTrabajo extends Component
                     'notas_generales' => $f->notas_generales ?: null,
                     'detalles_esteticos' => $f->detalles_esteticos ?: null,
                     'detalles_funcionamiento' => $f->detalles_funcionamiento ?: null,
-                ]);
+                ];
+
+                $equipo->update($data);
 
                 $this->guardarBaterias($equipo->id);
                 $this->guardarMonitor($equipo->id);
@@ -1109,6 +1118,11 @@ class MiTrabajo extends Component
             return;
         }
 
+        if ($this->camino === 'COMPLETADO' && empty(trim((string) $equipo->numero_serie))) {
+            $this->error = 'Debes capturar y guardar el número de serie del equipo antes de enviarlo a Calidad.';
+            return;
+        }
+
         [$estatusCiclo, $estatusArea, $almacenId] = match ($this->camino) {
             'COMPLETADO'     => ['CALIDAD',     'EN_CALIDAD',        Almacen::CALIDAD],
             'PIEZA_PENDIENTE'=> ['PREPARACION', 'PENDIENTE_PIEZA',   Almacen::PIEZAS_PENDIENTES],
@@ -1128,8 +1142,20 @@ class MiTrabajo extends Component
                 $equipo->update([
                     'estatus_ciclo' => $estatusCiclo,
                     'estatus_area' => $estatusArea,
-                    'almacen_id' => $almacenId,
                 ]);
+
+                // Sincronizar almacén y estancia física
+                $almacenDestino = Almacen::find($almacenId);
+                if ($almacenDestino && $equipo->almacen_id != $almacenId) {
+                    app(\App\Services\EquipoMovimientoService::class)->mover(
+                        $equipo,
+                        $almacenDestino,
+                        'FINALIZAR_TECNICO',
+                        'Fin de trabajo por técnico (' . $this->camino . ')'
+                    );
+                } else {
+                    $equipo->update(['almacen_id' => $almacenId]);
+                }
 
                 // Crear registro de garantía externa con todos los datos de auditoría
                 if ($this->camino === 'GARANTIA_EXTERNA') {
@@ -1207,8 +1233,23 @@ class MiTrabajo extends Component
                 if (! $clasificacionId) {
                     $clasificacionId = (int) ($equipo->loteModelo()->value('clasificacion_puntos_id') ?? 0);
 
+                    // Si no está en loteModelo, buscarlo en el catálogo de equipos
+                    if (! $clasificacionId) {
+                        $catalogoId = $equipo->catalogo_equipo_id 
+                            ?: $equipo->loteModelo()?->value('catalogo_equipo_id');
+                        if ($catalogoId) {
+                            $clasificacionId = (int) (\App\Models\CatalogoEquipo::where('id', $catalogoId)->value('clasificacion_puntos_id') ?? 0);
+                        }
+                    }
+
                     if ($clasificacionId > 0) {
                         $equipo->update(['clasificacion_puntos_id' => $clasificacionId]);
+
+                        if ($equipo->lote_modelo_id) {
+                            \App\Models\LoteModeloRecibido::where('id', $equipo->lote_modelo_id)
+                                ->whereNull('clasificacion_puntos_id')
+                                ->update(['clasificacion_puntos_id' => $clasificacionId]);
+                        }
                     }
                 }
 
@@ -1235,9 +1276,16 @@ class MiTrabajo extends Component
                 $esRetrabajoSinPuntos = str_contains($notasUpper, 'RETRABAJO') || str_contains($notasUpper, 'SIN PUNTOS');
 
                 if (! $esRetrabajoSinPuntos) {
+                    $aprobarInmediato = in_array($this->camino, ['DESPIECE', 'GARANTIA_EXTERNA'], true);
+
                     PuntoTecnico::registrar(
-                        tecnicoId: Auth::id(), asignacionEquipoId: $ae->id,
-                        rol: $rol, puntosBase: (float) $puntosBase, clasificacionId: $clasificacionId,
+                        tecnicoId: Auth::id(),
+                        asignacionEquipoId: $ae->id,
+                        rol: $rol,
+                        puntosBase: (float) $puntosBase,
+                        clasificacionId: $clasificacionId,
+                        periodoOrigen: null,
+                        aprobarInmediato: $aprobarInmediato,
                     );
                 }
                 $asignacion->revisarYCompletar();
@@ -1939,13 +1987,15 @@ class MiTrabajo extends Component
             return;
         }
 
-        $loteModelo = $asignacion->loteModelo()->with('lote')->first();
-        $clasificacionLoteId = $loteModelo?->clasificacion_puntos_id;
+        $loteModelo = $asignacion->loteModelo()->with(['lote', 'catalogoEquipo'])->first();
+        $clasificacionLoteId = $loteModelo?->clasificacion_puntos_id 
+            ?: $loteModelo?->catalogoEquipo?->clasificacion_puntos_id;
 
         DB::transaction(function () use ($nuevoSerie, $asignacion, $loteModelo, $clasificacionLoteId) {
             $gemelo = Equipo::create([
                 'numero_serie' => $nuevoSerie,
                 'lote_modelo_id' => $asignacion->lote_modelo_id,
+                'catalogo_equipo_id' => $loteModelo?->catalogo_equipo_id,
                 'clasificacion_puntos_id' => $clasificacionLoteId,
                 'marca' => $loteModelo->marca ?? null,
                 'modelo' => $loteModelo->modelo ?? '',

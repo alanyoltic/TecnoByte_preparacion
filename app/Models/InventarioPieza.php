@@ -10,7 +10,8 @@ class InventarioPieza extends Model
     protected $table = 'inventario_piezas';
 
     protected $fillable = [
-        'catalogo_pieza_id', 'numero_serie', 'origen',
+        'catalogo_pieza_id', 'codigo_interno',
+        'especificaciones_tecnicas', 'numero_serie', 'origen',
         'compra_item_id', 'equipo_origen_id', 'equipo_destino_id',
         'almacen_id', 'costo', 'registrado_por_id',
         'estatus', 'fecha_ingreso', 'notas',
@@ -19,6 +20,7 @@ class InventarioPieza extends Model
     ];
 
     protected $casts = [
+        'especificaciones_tecnicas' => 'array',
         'costo' => 'decimal:2',
         'fecha_ingreso' => 'date',
         'cantidad_inicial' => 'integer',
@@ -79,7 +81,8 @@ class InventarioPieza extends Model
 
     public function scopePorCatalogo($query, int $catalogoPiezaId)
     {
-        return $query->where('catalogo_pieza_id', $catalogoPiezaId);
+        return $query->where('catalogo_pieza_id', 'codigo_interno',
+        'especificaciones_tecnicas', $catalogoPiezaId);
     }
 
     // ── Helpers de estado ─────────────────────────────────────────────
@@ -136,3 +139,4 @@ class InventarioPieza extends Model
         return 'Compra';
     }
 }
+

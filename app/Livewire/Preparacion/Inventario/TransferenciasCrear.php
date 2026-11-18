@@ -13,11 +13,15 @@ use Livewire\Component;
 #[Layout('layouts.app', ['pageTitle' => 'Nueva transferencia'])]
 class TransferenciasCrear extends Component
 {
-    public $almacenesOrigen = [];
+    public $sucursal_origen_id = '';
 
     public $almacen_origen_id = '';
 
+    public $sucursal_destino_id = '';
+
     public $almacen_destino_id = '';
+
+    public bool $puedeCambiarSucursales = false;
 
     public string $serialBusqueda = '';
 
@@ -37,9 +41,40 @@ class TransferenciasCrear extends Component
 
     public function mount(): void
     {
-        abort_unless(auth()->user()?->tienePermiso('prep.transferencias.crear'), 403);
+        $this->autorizarAcceso();
 
-        $this->almacenesOrigen = auth()->user()->almacenesPermitidosOrigen();
+        $user = auth()->user();
+        $this->puedeCambiarSucursales = $user->puedeCambiarSucursales();
+
+        // Inicializar sucursal origen y destino con la sucursal del usuario
+        if ($user->sucursal_id) {
+            $this->sucursal_origen_id = (string) $user->sucursal_id;
+            $this->sucursal_destino_id = (string) $user->sucursal_id;
+        } else {
+            // Si no tiene sucursal fija (ej. CEO o Gerente matriz), tomar la primera sucursal permitida
+            $primerSucursal = $user->sucursalesPermitidas()->first();
+            if ($primerSucursal) {
+                $this->sucursal_origen_id = (string) $primerSucursal->id;
+                $this->sucursal_destino_id = (string) $primerSucursal->id;
+            }
+        }
+    }
+
+    protected function autorizarAcceso(): void
+    {
+        $user = auth()->user();
+        abort_unless($user && $user->puedeCrearTransferencias(), 403, 'No tienes permiso para crear transferencias.');
+    }
+
+    public function updatedSucursalOrigenId(): void
+    {
+        $this->almacen_origen_id = '';
+        $this->updatedAlmacenOrigenId();
+    }
+
+    public function updatedSucursalDestinoId(): void
+    {
+        $this->almacen_destino_id = '';
     }
 
     public function updatedAlmacenOrigenId(): void
@@ -99,6 +134,13 @@ class TransferenciasCrear extends Component
             return;
         }
 
+        $motivoNoApto = '';
+        if (! $equipo->puedeTransferirse($motivoNoApto)) {
+            $this->errorSerial = "No se puede transferir [{$equipo->numero_serie}]: {$motivoNoApto}";
+
+            return;
+        }
+
         if (collect($this->equiposAgregados)->contains('id', $equipo->id)) {
             $this->errorSerial = "El equipo [{$equipo->numero_serie}] ya fue agregado.";
 
@@ -118,6 +160,79 @@ class TransferenciasCrear extends Component
         ];
 
         $this->serialBusqueda = '';
+    }
+
+    public function agregarEquipoPorId(int $id): void
+    {
+        $this->errorSerial = '';
+
+        if (! $this->almacen_origen_id) {
+            $this->errorSerial = 'Selecciona primero el almacén origen.';
+
+            return;
+        }
+
+        $equipo = Equipo::where('almacen_id', $this->almacen_origen_id)
+            ->where('id', $id)
+            ->first();
+
+        if (! $equipo) {
+            $this->errorSerial = 'El equipo ya no se encuentra en este almacén.';
+
+            return;
+        }
+
+        $motivoNoApto = '';
+        if (! $equipo->puedeTransferirse($motivoNoApto)) {
+            $this->errorSerial = "No se puede transferir [{$equipo->numero_serie}]: {$motivoNoApto}";
+
+            return;
+        }
+
+        if (collect($this->equiposAgregados)->contains('id', $equipo->id)) {
+            $this->errorSerial = "El equipo [{$equipo->numero_serie}] ya fue agregado.";
+
+            return;
+        }
+
+        $this->equiposAgregados[] = [
+            'id' => $equipo->id,
+            'serie' => $equipo->numero_serie,
+            'marca' => $equipo->marca,
+            'modelo' => $equipo->modelo,
+            'descripcion' => trim(implode(' / ', array_filter([
+                $equipo->ram_total,
+                $equipo->almacenamiento_principal_capacidad,
+                $equipo->almacenamiento_principal_tipo,
+            ]))),
+        ];
+
+        $this->serialBusqueda = '';
+    }
+
+    public function getEquiposSugeridosProperty()
+    {
+        $busqueda = trim($this->serialBusqueda);
+
+        if (strlen($busqueda) < 2 || ! $this->almacen_origen_id) {
+            return collect();
+        }
+
+        $idsAgregados = array_column($this->equiposAgregados, 'id');
+
+        return Equipo::where('almacen_id', $this->almacen_origen_id)
+            ->whereNotIn('id', $idsAgregados)
+            ->where('estatus_ciclo', '!=', Equipo::CICLO_VENDIDO)
+            ->where(function ($q) use ($busqueda) {
+                $q->where('numero_serie', 'like', "%{$busqueda}%")
+                    ->orWhere('marca', 'like', "%{$busqueda}%")
+                    ->orWhere('modelo', 'like', "%{$busqueda}%");
+                if (is_numeric($busqueda)) {
+                    $q->orWhere('id', (int) $busqueda);
+                }
+            })
+            ->limit(10)
+            ->get();
     }
 
     public function quitarEquipo(int $index): void
@@ -183,9 +298,9 @@ class TransferenciasCrear extends Component
     // =========================================================================
     // GUARDAR
     // =========================================================================
-    public function guardar(): void
+    public function guardar(bool $enviarInmediato = false, ?\App\Services\TransferenciaService $service = null): void
     {
-        abort_unless(auth()->user()?->tienePermiso('prep.transferencias.crear'), 403);
+        $this->autorizarAcceso();
 
         $this->validate([
             'almacen_origen_id' => 'required',
@@ -198,34 +313,53 @@ class TransferenciasCrear extends Component
             return;
         }
 
-        DB::transaction(function () {
-            $transferencia = Transferencia::create([
-                'almacen_origen_id' => $this->almacen_origen_id,
-                'almacen_destino_id' => $this->almacen_destino_id,
-                'created_by' => auth()->id(),
-                'estatus' => 'BORRADOR',
-                'observaciones' => $this->observaciones ?: null,
-            ]);
-
-            foreach ($this->equiposAgregados as $e) {
-                $transferencia->detalles()->create([
-                    'movible_id' => $e['id'],
-                    'movible_type' => Equipo::class,
-                    'cantidad' => 1,
+        try {
+            $transferencia = DB::transaction(function () use ($enviarInmediato, $service) {
+                $transferencia = Transferencia::create([
+                    'almacen_origen_id' => $this->almacen_origen_id,
+                    'almacen_destino_id' => $this->almacen_destino_id,
+                    'created_by' => auth()->id(),
+                    'estatus' => 'BORRADOR',
+                    'observaciones' => $this->observaciones ?: null,
                 ]);
+
+                foreach ($this->equiposAgregados as $e) {
+                    $transferencia->detalles()->create([
+                        'movible_id' => $e['id'],
+                        'movible_type' => Equipo::class,
+                        'cantidad' => 1,
+                    ]);
+                }
+
+                foreach ($this->consumiblesAgregados as $c) {
+                    $transferencia->detalles()->create([
+                        'movible_id' => $c['consumible_id'],
+                        'movible_type' => Consumible::class,
+                        'cantidad' => $c['cantidad'],
+                    ]);
+                }
+
+                if ($enviarInmediato) {
+                    $service = $service ?: app(\App\Services\TransferenciaService::class);
+                    $service->enviar($transferencia);
+                }
+
+                return $transferencia;
+            });
+
+            if ($enviarInmediato) {
+                session()->flash('success', "Transferencia #{$transferencia->id} creada y enviada correctamente.");
+            } else {
+                session()->flash('success', "Transferencia #{$transferencia->id} guardada como borrador.");
             }
 
-            foreach ($this->consumiblesAgregados as $c) {
-                $transferencia->detalles()->create([
-                    'movible_id' => $c['consumible_id'],
-                    'movible_type' => Consumible::class,
-                    'cantidad' => $c['cantidad'],
-                ]);
-            }
-        });
+            $rutaDestino = auth()->user()->rutaListadoTransferencias();
 
-        session()->flash('success', 'Transferencia guardada como borrador.');
-        $this->redirect(route('inventario.transferencias'), navigate: true);
+            $this->redirect($rutaDestino, navigate: true);
+
+        } catch (\Exception $e) {
+            $this->addError('general', 'Error al procesar transferencia: ' . $e->getMessage());
+        }
     }
 
     // =========================================================================
@@ -235,9 +369,29 @@ class TransferenciasCrear extends Component
     {
         $user = auth()->user();
 
+        $sucursales = $user->sucursalesPermitidas();
+
+        $almacenesOrigen = $user->almacenesPermitidosOrigen(
+            $this->sucursal_origen_id ? (int) $this->sucursal_origen_id : null
+        );
+
+        $almacenesDestino = $user->almacenesPermitidosDestino(
+            $this->sucursal_destino_id ? (int) $this->sucursal_destino_id : null
+        )->where('id', '!=', $this->almacen_origen_id ?: 0);
+
         return view('livewire.preparacion.inventario.transferencias-crear', [
-            'almacenesDestino' => $user->almacenesPermitidosDestino()
-                ->where('id', '!=', $this->almacen_origen_id ?: 0),
+            'puedeCambiarSucursales' => $this->puedeCambiarSucursales,
+            'sucursales' => $sucursales,
+            'almacenesOrigen' => $almacenesOrigen,
+            'almacenesDestino' => $almacenesDestino,
+            'equiposSugeridos' => $this->equiposSugeridos,
+            'equiposAgregados' => $this->equiposAgregados,
+            'consumiblesAgregados' => $this->consumiblesAgregados,
+            'almacen_origen_id' => $this->almacen_origen_id,
+            'almacen_destino_id' => $this->almacen_destino_id,
+            'sucursal_origen_id' => $this->sucursal_origen_id,
+            'sucursal_destino_id' => $this->sucursal_destino_id,
+            'serialBusqueda' => $this->serialBusqueda,
             'errorSerial' => $this->errorSerial,
             'errorConsumible' => $this->errorConsumible,
         ]);

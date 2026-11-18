@@ -8,7 +8,10 @@ class Consumible extends Model
 {
     protected $fillable = [
         'nombre',
+        'sku',
+        'codigo_barras',
         'categoria',
+        'area',
         'descripcion',
         'activo',
     ];

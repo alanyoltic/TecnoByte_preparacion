@@ -63,6 +63,15 @@ class Equipo extends Model
 
     const AREA_GARANTIA_EXT = 'GARANTIA_EXT';
 
+    // Ventas
+    const AREA_DISPONIBLE_VENTA    = 'DISPONIBLE_VENTA';
+
+    const AREA_EN_PISO_VENTA       = 'EN_PISO_VENTA';
+
+    const AREA_APARTADO_CLIENTE    = 'APARTADO_CLIENTE';
+
+    const AREA_EN_GARANTIA_CLIENTE = 'EN_GARANTIA_CLIENTE';
+
     /**
      * Estado del equipo ORIGINAL que fue reemplazado físicamente por el
      * proveedor en una garantía externa. El proveedor se queda con él.
@@ -165,6 +174,10 @@ class Equipo extends Model
             self::AREA_EN_CALIDAD,
             self::AREA_FINALIZADO,
             self::AREA_TRANSFERIDO => self::CICLO_CALIDAD,
+            self::AREA_DISPONIBLE_VENTA,
+            self::AREA_EN_PISO_VENTA,
+            self::AREA_APARTADO_CLIENTE => self::CICLO_VENTAS,
+            self::AREA_EN_GARANTIA_CLIENTE => self::CICLO_PREPARACION,
             default => self::CICLO_PREPARACION,
         };
     }
@@ -207,6 +220,96 @@ class Equipo extends Model
             self::CICLO_VENDIDO,
             self::CICLO_SCRAP,
         ], true);
+    }
+
+    /**
+     * ¿El equipo pertenece actualmente al área de Ventas?
+     */
+    public function esDeVentas(): bool
+    {
+        return in_array($this->estatus_ciclo, [
+            self::CICLO_VENTAS,
+            self::CICLO_APARTADO,
+        ], true);
+    }
+
+    /**
+     * ¿El equipo está disponible para ser despachado a Ventas?
+     * Debe estar FINALIZADO y no estar ya en un despacho activo.
+     */
+    public function puedeDespacharseAVentas(): bool
+    {
+        return $this->estatus_area === self::AREA_FINALIZADO
+            && $this->estatus_ciclo === self::CICLO_CALIDAD;
+    }
+
+    /**
+     * Valida si el equipo es apto para incluirse en una Transferencia entre almacenes.
+     * Retorna false y llena $motivo si el equipo está ocupado, en proceso, vendido o bloqueado.
+     */
+    public function puedeTransferirse(?string &$motivo = null, ?int $excluirTransferenciaId = null): bool
+    {
+        // 1. Estados finales
+        if ($this->estatus_ciclo === self::CICLO_VENDIDO) {
+            $motivo = "El equipo ya fue VENDIDO.";
+            return false;
+        }
+
+        // 2. Equipos en proceso activo o en prueba de calidad
+        if (in_array($this->estatus_area, [
+            self::AREA_ASIGNADO,
+            self::AREA_EN_PROCESO,
+            self::AREA_EN_CALIDAD,
+            self::AREA_PENDIENTE_PIEZA,
+            self::AREA_PENDIENTE_GARANTIA,
+            self::AREA_PENDIENTE_DESARME,
+        ], true)) {
+            $motivo = "El equipo está en proceso operativo o bloqueado ({$this->estatus_area}).";
+            return false;
+        }
+
+        // 3. Verificar si está en una asignación técnica activa
+        $tieneAsignacionActiva = \App\Models\AsignacionEquipo::where('equipo_id', $this->id)
+            ->whereIn('camino', [
+                \App\Models\AsignacionEquipo::PENDIENTE,
+                \App\Models\AsignacionEquipo::PRE_ASIGNADO,
+                \App\Models\AsignacionEquipo::EN_PROCESO,
+                \App\Models\AsignacionEquipo::EN_CALIDAD,
+            ])
+            ->whereNull('fin_en')
+            ->exists();
+
+        if ($tieneAsignacionActiva) {
+            $motivo = "El equipo tiene una asignación técnica en curso.";
+            return false;
+        }
+
+        // 4. Verificar si ya está en otra transferencia en curso (excluyendo la actual si se indica)
+        $enTransferencia = \App\Models\TransferenciaDetalle::where('movible_type', self::class)
+            ->where('movible_id', $this->id)
+            ->when($excluirTransferenciaId, fn ($q) => $q->where('transferencia_id', '!=', $excluirTransferenciaId))
+            ->whereHas('transferencia', fn ($q) => $q->whereIn('estatus', ['BORRADOR', 'ENVIADA']))
+            ->exists();
+
+        if ($enTransferencia) {
+            $motivo = "El equipo ya está incluido en otra transferencia activa.";
+            return false;
+        }
+
+        // 5. Verificar si está en un despacho activo
+        $enDespacho = \App\Models\DespachoVentasEquipo::where('equipo_id', $this->id)
+            ->whereHas('despacho', fn ($q) => $q->whereIn('estatus', [
+                \App\Models\DespachoVentas::BORRADOR,
+                \App\Models\DespachoVentas::ENVIADO,
+            ]))
+            ->exists();
+
+        if ($enDespacho) {
+            $motivo = "El equipo ya está en un despacho a ventas activo.";
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -255,25 +358,58 @@ class Equipo extends Model
     public static function labelsArea(): array
     {
         return [
-            self::AREA_EN_ESPERA => 'En espera',
-            self::AREA_SIN_ASIGNAR => 'Sin asignar',
-            self::AREA_ASIGNADO => 'Asignado',
-            self::AREA_EN_PROCESO => 'En proceso',
-            self::AREA_EN_CALIDAD => 'En calidad',
-            self::AREA_FINALIZADO => 'Finalizado',
-            self::AREA_TRANSFERIDO => 'Transferido',
-            self::AREA_PENDIENTE_PIEZA => 'Pendiente pieza',
-            self::AREA_PENDIENTE_GARANTIA => 'Pendiente garantía',
-            self::AREA_PENDIENTE_DESARME => 'Pendiente desarme',
-            self::AREA_GARANTIA_INT => 'Garantía interna',
-            self::AREA_GARANTIA_EXT => 'Garantía externa',
-            self::AREA_GARANTIA_CAMBIO => 'Garantía — equipo cambiado',
+            self::AREA_EN_ESPERA             => 'En espera',
+            self::AREA_SIN_ASIGNAR           => 'Sin asignar',
+            self::AREA_ASIGNADO              => 'Asignado',
+            self::AREA_EN_PROCESO            => 'En proceso',
+            self::AREA_EN_CALIDAD            => 'En calidad',
+            self::AREA_FINALIZADO            => 'Finalizado',
+            self::AREA_TRANSFERIDO           => 'Transferido',
+            self::AREA_PENDIENTE_PIEZA       => 'Pendiente pieza',
+            self::AREA_PENDIENTE_GARANTIA    => 'Pendiente garantía',
+            self::AREA_PENDIENTE_DESARME     => 'Pendiente desarme',
+            self::AREA_GARANTIA_INT          => 'Garantía interna',
+            self::AREA_GARANTIA_EXT          => 'Garantía externa',
+            // Ventas
+            self::AREA_DISPONIBLE_VENTA      => 'Disponible en Ventas',
+            self::AREA_EN_PISO_VENTA         => 'En piso de venta',
+            self::AREA_APARTADO_CLIENTE      => 'Apartado por cliente',
+            self::AREA_EN_GARANTIA_CLIENTE   => 'Garantía de cliente',
+            self::AREA_GARANTIA_CAMBIO       => 'Garantía — equipo cambiado',
         ];
     }
 
     // =========================================================
     // RELACIONES
     // =========================================================
+
+    public function sucursal()
+    {
+        return $this->belongsTo(Sucursal::class, 'sucursal_id');
+    }
+
+    public function almacen()
+    {
+        return $this->belongsTo(Almacen::class, 'almacen_id');
+    }
+
+    public function despachosVentas()
+    {
+        return $this->hasMany(DespachoVentasEquipo::class, 'equipo_id');
+    }
+
+    /**
+     * Despacho activo (BORRADOR o ENVIADO) en el que está incluido este equipo.
+     * Un equipo no debe estar en más de un despacho activo simultáneamente.
+     */
+    public function despachoVentasActivo()
+    {
+        return $this->hasOne(DespachoVentasEquipo::class, 'equipo_id')
+            ->whereHas('despacho', fn ($q) => $q->whereIn('estatus', [
+                DespachoVentas::BORRADOR,
+                DespachoVentas::ENVIADO,
+            ]));
+    }
 
     public function registradoPor()
     {
@@ -367,4 +503,9 @@ class Equipo extends Model
         'ram_es_soldada' => 'boolean',
         'ram_sin_slots' => 'boolean',
     ];
+
+    public function cargador()
+    {
+        return $this->hasOne(\App\Models\Cargador::class, 'equipo_id');
+    }
 }

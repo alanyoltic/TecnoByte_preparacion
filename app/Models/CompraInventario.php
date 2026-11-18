@@ -11,9 +11,23 @@ class CompraInventario extends Model
     protected $table = 'compras_inventario';
 
     protected $fillable = [
-        'proveedor_id', 'lote_id', 'fecha_compra',
-        'folio', 'total_estimado', 'notas', 'registrado_por_id',
+        'proveedor_id', 'lote_id', 'lote_compra_id', 'fecha_compra',
+        'folio', 'total_estimado', 'notas', 'registrado_por_id', 'area',
+        'subtotal', 'iva', 'total', 'tipo_iva',
+        'estatus', 'nombre_lote_propuesto', 'aprobado_por_id',
+        'aprobado_gerente_por_id', 'fecha_aprobacion_gerente',
+        'cancelado_por_id', 'fecha_cancelacion',
+        'moneda', 'tipo_cambio'
     ];
+
+    const AREA_PREPARACION = 'PREPARACION';
+    const AREA_VENTAS      = 'VENTAS';
+    const AREA_ADMIN       = 'ADMIN';
+
+    public function scopeDeArea($query, string $area)
+    {
+        return $query->where('area', $area);
+    }
 
     protected $casts = [
         'fecha_compra' => 'date',
@@ -25,10 +39,18 @@ class CompraInventario extends Model
         return $this->belongsTo(Proveedor::class, 'proveedor_id');
     }
 
+    public function loteDestino(): BelongsTo
+    {
+        // El lote de compra formal
+        return $this->belongsTo(LoteCompra::class, 'lote_compra_id');
+    }
+
     public function lote(): BelongsTo
     {
         return $this->belongsTo(Lote::class, 'lote_id');
     }
+
+
 
     public function registradoPor(): BelongsTo
     {
@@ -53,5 +75,10 @@ class CompraInventario extends Model
             ->whereNotNull('precio_unitario')
             ->selectRaw('SUM(cantidad * precio_unitario) as total')
             ->value('total') ?? 0;
+    }
+
+    public function cargadores(): HasMany
+    {
+        return $this->hasMany(Cargador::class, 'compra_inventario_id');
     }
 }

@@ -35,21 +35,8 @@ class UserController extends Controller
 
     private function allowedRoleSlugsForEditor(?User $user = null): array
     {
-        $slug = $this->roleSlug($user);
-
-        if ($this->isGlobal($user)) {
-            return [];
-        }
-
-        if (in_array($slug, ['gerente', 'gerente_area'], true)) {
-            return ['gerente', 'gerente_area', 'lider', 'lider_area', 'lider_de_area', 'tecnico'];
-        }
-
-        if (in_array($slug, ['lider', 'lider_area', 'lider_de_area'], true)) {
-            return ['lider', 'lider_area', 'lider_de_area', 'tecnico'];
-        }
-
-        return [];
+        $u = $user ?: auth()->user();
+        return $u ? $u->getManageableRoleSlugs() : [];
     }
 
     private function authorizeUserScope(User $target): void
@@ -77,26 +64,6 @@ class UserController extends Controller
         if (! in_array($targetSlug, $allowedSlugs, true)) {
             abort(403, 'No puedes gestionar un rol superior a tu nivel.');
         }
-    }
-
-    private function buildPuestoPreviewByDepartamento(): array
-    {
-        $rows = DB::table('departamento as d')
-            ->leftJoin('departamento_puestos as dp', function ($join) {
-                $join->on('dp.departamento_id', '=', 'd.id')
-                    ->where('dp.activo', '=', 1);
-            })
-            ->leftJoin('puestos as p', 'p.id', '=', 'dp.puesto_id')
-            ->select('d.id as departamento_id', DB::raw('MIN(p.nombre) as puesto_nombre'))
-            ->groupBy('d.id')
-            ->get();
-
-        $map = [];
-        foreach ($rows as $row) {
-            $map[(string) $row->departamento_id] = $row->puesto_nombre ?: 'Sin puesto configurado';
-        }
-
-        return $map;
     }
 
     private function resolvePuestoIdForUser(?int $departamentoId, int $roleId): ?int
@@ -127,7 +94,7 @@ class UserController extends Controller
     {
         $auth = auth()->user();
 
-        $query = User::query();
+        $query = User::query()->with(['role', 'departamento']);
 
         if (! $this->isGlobal($auth)) {
             $allowedSlugs = $this->allowedRoleSlugsForEditor($auth);
@@ -139,9 +106,35 @@ class UserController extends Controller
             $query->whereHas('role', fn ($q) => $q->whereIn('slug', $allowedSlugs));
         }
 
-        $users = $query->orderBy('nombre')->get();
+        $allUsers = $query->get();
 
-        return view('usuarios.index', compact('users'));
+        $roleHierarchy = [
+            'ceo'           => 1,
+            'gerente'       => 2,
+            'supervisor'    => 3,
+            'lider'         => 3,
+            'admin_sistema' => 4,
+            'sistemas'      => 5,
+            'calidad'       => 6,
+            'tecnico'       => 7,
+            'asesor_tienda' => 7,
+            'asesor_linea'  => 7,
+            'usuario'       => 8,
+            'exhibicion'    => 9,
+        ];
+
+        // Primero ordenamos por la jerarquía del rol
+        $sortedUsers = $allUsers->sortBy(function($user) use ($roleHierarchy) {
+            $slug = strtolower(optional($user->role)->slug ?? 'usuario');
+            return $roleHierarchy[$slug] ?? 99;
+        })->values();
+
+        // Luego agrupamos por nombre de departamento
+        $groupedUsers = $sortedUsers->groupBy(function($user) {
+            return optional($user->departamento)->nombre ?? 'Sin Departamento';
+        });
+
+        return view('usuarios.index', compact('groupedUsers'));
     }
 
     public function edit(User $user)
@@ -151,7 +144,7 @@ class UserController extends Controller
         $auth = auth()->user();
 
         if ($this->isGlobal($auth)) {
-            $roles = Roles::orderBy('nombre')->get();
+            $roles = Roles::all()->sortBy('hierarchy')->values();
         } else {
             $allowedSlugs = $this->allowedRoleSlugsForEditor($auth);
             if (empty($allowedSlugs)) {
@@ -168,16 +161,12 @@ class UserController extends Controller
             ? Departamento::query()->orderBy('nombre')->get(['id', 'nombre'])
             : collect();
 
-        $puestoPreviewByDepartamento = $canEditDepartment
-            ? $this->buildPuestoPreviewByDepartamento()
-            : [];
-
         return view('usuarios.edit', compact(
             'user',
             'roles',
             'canEditDepartment',
             'departamentos',
-            'puestoPreviewByDepartamento'
+            
         ));
     }
 
@@ -281,3 +270,6 @@ class UserController extends Controller
         return back()->with('success', 'Usuario dado de baja correctamente.');
     }
 }
+
+
+

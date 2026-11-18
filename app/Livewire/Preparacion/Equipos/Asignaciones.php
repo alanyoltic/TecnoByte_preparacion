@@ -30,6 +30,9 @@ class Asignaciones extends Component
     // ── Búsqueda lote ─────────────────────────────────────────────────────
     public string $busquedaLote = '';
 
+    // ── Paginación de lotes agotados ──────────────────────────────────────
+    public int $limiteLotesAgotados = 5;
+
     // ── Cancelar asignación ───────────────────────────────────────────────
     public ?int $cancelarAsignacionId = null;
 
@@ -77,7 +80,7 @@ class Asignaciones extends Component
         return \App\Models\Equipo::query()
             ->where('lote_modelo_id', $loteModeloId)
             ->whereNull('deleted_at')
-            ->where('estatus_area', \App\Models\Equipo::AREA_SIN_ASIGNAR);
+            ->whereIn('estatus_area', [\App\Models\Equipo::AREA_SIN_ASIGNAR, \App\Models\Equipo::AREA_EN_ESPERA]);
     }
 
     private function queryEquiposConSerieDeLotePorModelo(int $loteModeloId): Builder
@@ -138,9 +141,9 @@ class Asignaciones extends Component
             ->get();
     }
 
-    // ── Computed: lotes con modelos disponibles ───────────────────────────
+    // ── Computed: todos los lotes procesados con conteos ──────────────────
     #[Computed]
-    public function lotesDisponibles()
+    public function todosLosLotes()
     {
         return Lote::with(['modelosRecibidos' => function ($q) {
             $q->addSelect([
@@ -194,11 +197,13 @@ class Asignaciones extends Component
                     ) as slots_reservados"),
             ]);
         }])
+            ->where('estatus', '!=', 'VENTAS_DIRECTO')
             ->whereHas('modelosRecibidos', fn ($q) => $q->whereColumn('cantidad_recibida', '>', DB::raw('0'))
             )
             ->when($this->busquedaLote, fn ($q) => $q->where('nombre_lote', 'like', "%{$this->busquedaLote}%")
             )
-            ->orderByDesc('fecha_llegada')
+            ->orderByRaw('COALESCE(fecha_llegada, created_at) DESC')
+            ->orderByDesc('id')
             ->get()
             ->map(function ($lote) {
                 $lote->modelosRecibidos = $lote->modelosRecibidos->map(function ($modelo) {
@@ -216,12 +221,40 @@ class Asignaciones extends Component
                     return $modelo;
                 })->values();
 
+                $lote->total_equipos_libres = $lote->modelosRecibidos->sum('equipos_libres');
+
                 return $lote;
             })
             ->filter(fn ($lote) => $lote->modelosRecibidos->count() > 0)
-            // Lotes con disponibles primero, agotados al final
-            ->sortByDesc(fn ($lote) => $lote->modelosRecibidos->sum('equipos_libres'))
             ->values();
+    }
+
+    #[Computed]
+    public function lotesConDisponibles()
+    {
+        return $this->todosLosLotes->filter(fn ($lote) => ($lote->total_equipos_libres ?? 0) > 0)->values();
+    }
+
+    #[Computed]
+    public function totalLotesAgotados(): int
+    {
+        return $this->todosLosLotes->filter(fn ($lote) => ($lote->total_equipos_libres ?? 0) <= 0)->count();
+    }
+
+    #[Computed]
+    public function lotesAgotados()
+    {
+        return $this->todosLosLotes
+            ->filter(fn ($lote) => ($lote->total_equipos_libres ?? 0) <= 0)
+            ->take($this->limiteLotesAgotados)
+            ->values();
+    }
+
+    // ── Computed: lotes concatenados para la vista ────────────────────────
+    #[Computed]
+    public function lotesDisponibles()
+    {
+        return $this->lotesConDisponibles->concat($this->lotesAgotados);
     }
 
     #[Computed]
@@ -289,6 +322,7 @@ class Asignaciones extends Component
     public function irANuevaAsignacion(): void
     {
         $this->vista = 'nueva';
+        $this->limiteLotesAgotados = 5;
         $this->reset(['tecnicoId', 'seleccion', 'seriesAsignadas', 'notas', 'error', 'busquedaTecnico', 'busquedaLote']);
         unset($this->equiposSinAsignarPorModelo);
     }
@@ -296,8 +330,21 @@ class Asignaciones extends Component
     public function volverDesdeNueva(): void
     {
         $this->vista = 'panel';
+        $this->limiteLotesAgotados = 5;
         $this->reset(['tecnicoId', 'seleccion', 'seriesAsignadas', 'notas', 'error', 'busquedaTecnico', 'busquedaLote']);
         unset($this->equiposSinAsignarPorModelo);
+    }
+
+    public function updatedBusquedaLote(): void
+    {
+        $this->limiteLotesAgotados = 5;
+        unset($this->todosLosLotes, $this->lotesConDisponibles, $this->totalLotesAgotados, $this->lotesAgotados, $this->lotesDisponibles);
+    }
+
+    public function cargarMasAgotados(): void
+    {
+        $this->limiteLotesAgotados += 5;
+        unset($this->lotesAgotados, $this->lotesDisponibles);
     }
 
     // ── Seleccionar/deseleccionar técnico ─────────────────────────────────
@@ -462,14 +509,11 @@ class Asignaciones extends Component
                     }
                 }
 
-                // Luego auto-asignar aleatoriamente los slots restantes
+                // Luego auto-asignar aleatoriamente si hay equipos físicos con serie disponible
                 $restantes = $cantidad - $asignadas;
                 if ($restantes > 0) {
-                    $equiposAuto = $this->queryEquiposSinAsignarPorModelo($loteModeloId)
-                        ->where(function ($q) {
-                            $q->whereNull('numero_serie')
-                                ->orWhereRaw("TRIM(numero_serie) = ''");
-                        })
+                    $equiposAuto = $this->queryEquiposConSerieDeLotePorModelo($loteModeloId)
+                        ->whereNotIn('numero_serie', $seriesElegidas)
                         ->inRandomOrder()
                         ->limit($restantes)
                         ->get();
@@ -745,12 +789,10 @@ class Asignaciones extends Component
             DB::transaction(function () use ($asignacion, $diferencia, $loteModeloId) {
                 $asignacion->update(['cantidad' => $asignacion->cantidad + $diferencia]);
                 
-                // Auto-asignar si hay sin serie
-                $equiposAuto = $this->queryEquiposSinAsignarPorModelo($loteModeloId)
-                    ->where(function ($q) {
-                        $q->whereNull('numero_serie')
-                            ->orWhereRaw("TRIM(numero_serie) = ''");
-                    })
+                // Auto-asignar solo si hay equipos físicos con serie disponible
+                $seriesYaEnAsignacion = $asignacion->equipos->pluck('equipo.numero_serie')->filter()->toArray();
+                $equiposAuto = $this->queryEquiposConSerieDeLotePorModelo($loteModeloId)
+                    ->whereNotIn('numero_serie', $seriesYaEnAsignacion)
                     ->inRandomOrder()
                     ->limit($diferencia)
                     ->get();

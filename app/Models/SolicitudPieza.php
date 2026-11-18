@@ -531,8 +531,19 @@ class SolicitudPieza extends Model
                     $equipo->update([
                         'estatus_ciclo' => 'CALIDAD',
                         'estatus_area' => 'EN_CALIDAD',
-                        'almacen_id' => Almacen::CALIDAD,
                     ]);
+
+                    $almacenCalidad = Almacen::find(Almacen::CALIDAD);
+                    if ($almacenCalidad && $equipo->almacen_id != Almacen::CALIDAD) {
+                        app(\App\Services\EquipoMovimientoService::class)->mover(
+                            $equipo,
+                            $almacenCalidad,
+                            'FINALIZAR_TECNICO',
+                            'Pieza instalada con éxito: enviado a Calidad'
+                        );
+                    } else {
+                        $equipo->update(['almacen_id' => Almacen::CALIDAD]);
+                    }
                 }
 
                 // Registrar puntos de pieza si el gerente asignó puntos_override

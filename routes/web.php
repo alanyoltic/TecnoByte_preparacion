@@ -13,8 +13,6 @@ use App\Livewire\Preparacion\Garantias\GestionGarantias;
 use App\Livewire\Preparacion\Equipos\EditarEquipo;
 use App\Livewire\Preparacion\Equipos\MiTrabajo;
 use App\Livewire\Preparacion\Equipos\RegistrarEquipo;
-use App\Livewire\Preparacion\Inventario\CatalogoPiezas;
-use App\Livewire\Preparacion\Inventario\ComprasInventario;
 use App\Livewire\Preparacion\Inventario\GestionInventario;
 use App\Livewire\Preparacion\Inventario\InventarioListo;
 use App\Livewire\Preparacion\Inventario\ResumenInventario;
@@ -22,7 +20,14 @@ use App\Livewire\Preparacion\Inventario\Transferencias;
 use App\Livewire\Preparacion\Inventario\TransferenciasCrear;
 use App\Livewire\Preparacion\Lotes\EditarLote;
 use App\Livewire\Preparacion\Lotes\ListaLotes;
-use App\Livewire\Preparacion\Lotes\RegistrarLote;
+
+use App\Livewire\Preparacion\Inventario\DespachoVentasCrear;
+use App\Livewire\Preparacion\Inventario\DespachosVentas;
+use App\Livewire\Ventas\Dashboard as VentasDashboard;
+use App\Livewire\Ventas\DespachosEntrada;
+use App\Livewire\Ventas\Clientes;
+use App\Livewire\Ventas\Productos;
+use App\Livewire\Ventas\PuntoDeVenta;
 use App\Models\Equipo;
 use Illuminate\Support\Facades\Route;
 
@@ -33,6 +38,97 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', fn () => view('auth.login'));
+
+
+
+
+use Mike42\Escpos\PrintConnectors\WindowsPrintConnector;
+use Mike42\Escpos\Printer;
+
+
+
+
+
+
+Route::get('/ticket-completo', function () {
+    try {
+        $connector = new WindowsPrintConnector("smb://127.0.0.1/POS-800");
+        $printer = new Printer($connector);
+
+        // Función auxiliar para alinear columnas: Cantidad (4), Descripción (22), Importe (10)
+        // El ancho estándar de una impresora térmica de 80mm es de 42 a 48 caracteres.
+        $formatearLinea = function ($cant, $desc, $importe) {
+            $descTruncada = substr($desc, 0, 22); // Corta textos largos para no desalinear
+            return sprintf("%-4s %-22s %10s\n", $cant, $descTruncada, $importe);
+        };
+
+        // 1. ENCABEZADO
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+        $printer->setTextSize(2, 2); // Texto al doble de tamaño
+        $printer->text("TECNOBYTE ERP\n");
+        $printer->setTextSize(1, 1); // Regresar al tamaño normal
+        $printer->text("Sucursal Querétaro, Qro.\n");
+        $printer->text("RFC: XAXX010101000\n");
+        $printer->text("------------------------------------------\n");
+        $printer->setJustification(Printer::JUSTIFY_LEFT);
+        $printer->text("Folio: VENTA-001042\n");
+        $printer->text("Fecha: " . date('Y-m-d H:i:s') . "\n");
+        $printer->text("Cajero: Ala Guzman\n");
+        $printer->text("Destino: Preparación\n");
+        $printer->text("------------------------------------------\n");
+
+        // 2. CUERPO (10 Artículos)
+        $printer->setEmphasis(true);
+        $printer->text(sprintf("%-4s %-22s %10s\n", "CANT", "DESCRIPCION", "IMPORTE"));
+        $printer->setEmphasis(false);
+        $printer->text("------------------------------------------\n");
+
+        $printer->text($formatearLinea("1", "Monitor Gaming 24 pulg", "$2,500.00"));
+        $printer->text($formatearLinea("2", "Memoria RAM DDR4 16GB", "$1,400.00"));
+        $printer->text($formatearLinea("1", "SSD NVMe 1TB Kingston", "$1,100.00"));
+        $printer->text($formatearLinea("1", "Teclado Mecánico RGB", "$850.00"));
+        $printer->text($formatearLinea("1", "Mouse Inalámbrico", "$350.00"));
+        $printer->text($formatearLinea("3", "Cable de red Cat6 2m", "$150.00"));
+        $printer->text($formatearLinea("1", "Switch TP-Link Omada", "$1,200.00"));
+        $printer->text($formatearLinea("2", "Pasta Térmica Arctic", "$400.00"));
+        $printer->text($formatearLinea("1", "Fuente de Poder 650W", "$950.00"));
+        $printer->text($formatearLinea("1", "Gabinete ATX Cristal", "$1,300.00"));
+
+        $printer->text("------------------------------------------\n");
+
+        // 3. TOTALES
+        $printer->setJustification(Printer::JUSTIFY_RIGHT);
+        $printer->text("Subtotal: $8,793.10\n");
+        $printer->text("IVA (16%): $1,406.90\n");
+        $printer->setEmphasis(true);
+        $printer->setTextSize(1, 2); // Hacer el total más alto visualmente
+        $printer->text("TOTAL: $10,200.00\n");
+        $printer->setTextSize(1, 1);
+        $printer->setEmphasis(false);
+        $printer->text("\n");
+        
+        $printer->text("Pago en: Tarjeta de Crédito\n");
+        $printer->text("Autorización: 458902\n");
+        
+        // 4. PIE DE PÁGINA
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+        $printer->text("------------------------------------------\n");
+        $printer->text("¡Gracias por tu compra!\n");
+        $printer->text("Conserva este ticket para garantias.\n");
+        
+        // Código QR para facilitar búsqueda del folio en la base de datos
+        $printer->feed(1);
+        $printer->qrCode("VENTA-001042", Printer::QR_ECLEVEL_L, 5);
+        
+        $printer->feed(3); // Avanzar papel suficiente para que no corte el texto
+        $printer->cut();
+        $printer->close();
+
+        return "Ticket completo enviado con éxito.";
+    } catch (Exception $e) {
+        return "Error al imprimir: " . $e->getMessage();
+    }
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -98,8 +194,79 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::prefix('inventario')->group(function () {
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | EQUIPOS (GLOBAL)
+    |--------------------------------------------------------------------------
+    */
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | TRANSFERENCIAS (GLOBAL)
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('transferencias')->group(function () {
+        Route::get('/', Transferencias::class)
+            ->name('transferencias.index');
+
+        Route::get('/crear', TransferenciasCrear::class)
+            ->middleware('permiso:prep.transferencias.crear|ventas.transferencias.crear')
+            ->name('transferencias.crear');
+    });
+
+    // Alias global para compatibilidad
+    Route::get('/inventario/transferencias/crear', fn () => redirect()->route('transferencias.crear'))
+        ->name('inventario.prep.transferencias.crear');
+
+    /*
+    |--------------------------------------------------------------------------
+    */
+
+    /*
+    |--------------------------------------------------------------------------
+    | PREPARACION (PROTEGIDO POR DEPARTAMENTO)
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware(['departamento:PREPARACION'])->group(function () {
+
+        // Lotes
+        Route::prefix('lotes')->group(function () {
+            Route::get('/', \App\Livewire\Preparacion\Lotes\ListaLotes::class)
+                ->middleware('permiso:prep.lotes.ver')
+                ->name('preparacion.lotes');
+            
+            Route::get('/{lote}/editar', \App\Livewire\Preparacion\Lotes\EditarLote::class)
+                ->middleware('permiso:prep.lotes.gestion')
+                ->name('preparacion.lotes.editar');
+            Route::get('/{lote}/procesar', \App\Livewire\Preparacion\Lotes\VerLote::class)
+                ->middleware('permiso:prep.lotes.gestion')
+                ->name('preparacion.lotes.ver');
+
+        });
+
+        
+        // Direccion / CEO
+    Route::prefix('ceo')->group(function () {
+        Route::get('/dashboard', \App\Livewire\CEO\Dashboard::class)->name('ceo.dashboard');
+        Route::get('/aprobaciones', \App\Livewire\CEO\AprobacionesCompra::class)
+            ->middleware('permiso:prep.compras.aprobar_ceo')
+            ->name('ceo.aprobaciones');
+        Route::get('/aprobaciones/{compraId}', \App\Livewire\CEO\RevisionCompra::class)
+            ->middleware('permiso:prep.compras.aprobar_ceo')
+            ->name('ceo.aprobaciones.revision');
+    });
+
+        // Inventario (Preparación)
+    Route::prefix('inventario')->group(function () {
         Route::get('/listo', InventarioListo::class)
             ->middleware('permiso:prep.inventario.ver')
             ->name('inventario.listo');
@@ -108,22 +275,16 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
             ->middleware('permiso:prep.inventario.gestion')
             ->name('inventario.gestion');
 
-        Route::get('/transferencias', Transferencias::class)
-            ->middleware('permiso:prep.transferencias.ver')
+        Route::get('/transferencias', fn () => redirect()->route('transferencias.index'))
             ->name('inventario.transferencias');
 
-        Route::get('/transferencias/crear', TransferenciasCrear::class)
-            ->middleware('permiso:prep.transferencias.crear')
-            ->name('inventario.prep.transferencias.crear');
+
+
+
 
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | EQUIPOS (GLOBAL)
-    |--------------------------------------------------------------------------
-    */
-
+        // Equipos (Preparación)
     Route::prefix('equipos')->group(function () {
 
         Route::get('/registrar', RegistrarEquipo::class)
@@ -139,69 +300,40 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
             ->name('equipos.editar');
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | LOTES (GLOBAL)
-    |--------------------------------------------------------------------------
-    */
+        Route::get('/preparacion/dashboard', Dashboard::class)
+            ->middleware('permiso:modulo.preparacion')
+            ->name('preparacion.dashboard');
 
-    Route::prefix('lotes')->group(function () {
+        // ── NUEVO ──
+        Route::get('/preparacion/mi-trabajo', MiTrabajo::class)
+            ->middleware('permiso:prep.equipos.ver')
+            ->name('preparacion.mi-trabajo');
 
-        Route::get('/registrar', RegistrarLote::class)
-            ->middleware('permiso:prep.lotes.gestion')
-            ->name('lotes.registrar');
+        Route::get('/preparacion/asignaciones', Asignaciones::class)
+            ->middleware('permiso:prep.inventario.gestion')
+            ->name('preparacion.asignaciones');
 
-        Route::get('/editar', ListaLotes::class)
-            ->middleware('permiso:prep.lotes.ver')
-            ->name('lotes.editar');
+        Route::get('/preparacion/calidad', GestionCalidad::class)
+            ->middleware('permiso:prep.calidad.validar')
+            ->name('preparacion.calidad');
 
-        Route::get('/{lote}/editar', EditarLote::class)
-            ->middleware('permiso:prep.lotes.gestion')
-            ->name('lotes.edit');
-    });
+        Route::get('/preparacion/calidad/escaner', \App\Livewire\Preparacion\Calidad\EscanerCalidad::class)
+            ->middleware('permiso:prep.calidad.validar')
+            ->name('preparacion.calidad.escaner');
 
-    /*
-    |--------------------------------------------------------------------------
-    | TRANSFERENCIAS (GLOBAL)
-    |--------------------------------------------------------------------------
-    */
 
-    /*
-    |--------------------------------------------------------------------------
-    | PREPARACION (SOLO DASHBOARD)
-    |--------------------------------------------------------------------------
-    */
+        
+        Route::get('/preparacion/compras', \App\Livewire\Compras\OrdenesCompra::class)
+            ->middleware('permiso:prep.compras.ver')
+            ->name('preparacion.compras');
 
-    Route::get('/preparacion/dashboard', Dashboard::class)
-        ->middleware('permiso:modulo.preparacion')
-        ->name('preparacion.dashboard');
+        // Ruta legacy — redirige al nuevo módulo
+        Route::redirect('/inventario/compras', '/preparacion/compras')
+            ->name('inventario.compras');
 
-    // ── NUEVO ──
-    Route::get('/preparacion/mi-trabajo', MiTrabajo::class)
-        ->middleware('permiso:prep.equipos.ver')
-        ->name('preparacion.mi-trabajo');
-
-    Route::get('/preparacion/asignaciones', Asignaciones::class)
-        ->middleware('permiso:prep.inventario.gestion')
-        ->name('preparacion.asignaciones');
-
-    Route::get('/preparacion/calidad', GestionCalidad::class)
-        ->middleware('permiso:prep.calidad.validar')
-        ->name('preparacion.calidad');
-
-    Route::get('/preparacion/calidad/escaner', \App\Livewire\Preparacion\Calidad\EscanerCalidad::class)
-        ->middleware('permiso:prep.calidad.validar')
-        ->name('preparacion.calidad.escaner');
-
-    Route::get('/preparacion/catalogo-piezas', CatalogoPiezas::class)
-        ->middleware('permiso:prep.inventario.gestion')
-        ->name('preparacion.catalogo-piezas');
-
-    Route::get('/inventario/compras', ComprasInventario::class)
-        ->middleware('permiso:prep.inventario.gestion')
-        ->name('inventario.compras');
-
-    Route::middleware(['auth'])->group(function () {
+        Route::get('/inventario/cargadores', \App\Livewire\Preparacion\Inventario\GestionCargadores::class)
+            ->middleware('permiso:prep.inventario.gestion')
+            ->name('inventario.cargadores');
 
         // Vista de solicitudes de piezas (técnico — filtrada por auth)
         Route::get('/inventario/piezas/solicitudes', SolicitudesPiezas::class)
@@ -213,6 +345,27 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
             ->name('inventario.solicitudes.gestionar')
             ->middleware('permiso:prep.inventario.gestion');
 
+
+        // Despachos a Ventas
+        Route::prefix('preparacion/despachos-ventas')->group(function () {
+            Route::get('/', DespachosVentas::class)
+                ->middleware('permiso:prep.despachos.ver|prep.inventario.gestion')
+                ->name('preparacion.despachos-ventas');
+
+            Route::get('/crear', DespachoVentasCrear::class)
+                ->middleware('permiso:prep.despachos.crear|prep.inventario.gestion')
+                ->name('preparacion.despachos-ventas.crear');
+        });
+
+        // Estadísticas
+        Route::get('/preparacion/estadisticas-equipos', \App\Livewire\Preparacion\Dashboard\EstadisticasEquipos::class)
+            ->middleware('permiso:prep.inventario.gestion')
+            ->name('preparacion.estadisticas-equipos');
+
+        // Garantías Externas
+        Route::get('/preparacion/garantias', GestionGarantias::class)
+            ->middleware('permiso:prep.garantias.ver')
+            ->name('preparacion.garantias');
     });
 
     /*
@@ -259,9 +412,80 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::view('/ventas/dashboard', 'ventas.dashboard')
-        ->middleware('permiso:modulo.ventas')
-        ->name('ventas.dashboard');
+
+
+    // ──────────────────────────────────────────────────────────────────
+    // MÓDULO COMPRAS (Global)
+    // ──────────────────────────────────────────────────────────────────
+    Route::prefix('compras')->group(function () {
+        Route::get('/catalogo', \App\Livewire\Compras\CatalogoGlobal::class)
+            ->name('compras.catalogo');
+
+        Route::get('/{compraId}/recepcion', \App\Livewire\Compras\CentroRecepcion::class)
+            ->middleware('permiso:prep.compras.ver|ventas.compras.ver')
+            ->name('compras.recepcion');
+    });
+
+    // ──────────────────────────────────────────────────────────────────
+    // MÓDULO VENTAS (namespace /ventas)
+    // ──────────────────────────────────────────────────────────────────
+    Route::prefix('ventas')
+        ->middleware(['departamento:VENTAS', 'permiso:modulo.ventas'])
+        ->group(function () {
+            Route::get('/dashboard', VentasDashboard::class)
+                ->name('ventas.dashboard');
+
+            Route::get('/despachos', DespachosEntrada::class)
+                ->middleware('permiso:ventas.despachos.ver')
+                ->name('ventas.despachos');
+
+            Route::get('/clientes', Clientes::class)
+                ->middleware('permiso:ventas.clientes.ver')
+                ->name('ventas.clientes');
+
+
+
+            Route::get('/compras', \App\Livewire\Compras\OrdenesCompra::class)
+                ->middleware('permiso:ventas.compras.ver')
+                ->name('ventas.compras');
+                
+            Route::prefix('entradas')->group(function () {
+                Route::get('/', \App\Livewire\Ventas\Entradas\HistorialEntradas::class)
+                    ->name('ventas.entradas.historial');
+                    
+                Route::get('/registrar', \App\Livewire\Ventas\Entradas\CrearEntrada::class)
+                    ->name('ventas.entradas.crear');
+            });
+
+            Route::get('/pos', PuntoDeVenta::class)
+                ->middleware('permiso:ventas.venta.crear')
+                ->name('ventas.pos');
+
+            Route::get('/historial', \App\Livewire\Ventas\HistorialVentas::class)
+                ->middleware('permiso:ventas.historial.ver')
+                ->name('ventas.historial');
+
+            Route::get('/garantias', \App\Livewire\Ventas\Garantias\GarantiasIndex::class)
+                ->middleware('permiso:ventas.garantias.ver')
+                ->name('ventas.garantias');
+                
+            Route::get('/caja', \App\Livewire\Ventas\Caja\CajaIndex::class)
+                ->middleware('permiso:ventas.caja.ver')
+                ->name('ventas.caja');
+
+            // Administración de Inventario
+            Route::prefix('inventario')->group(function () {
+                Route::get('/almacenes', \App\Livewire\Ventas\Inventario\AdministracionAlmacenes::class)
+                    // ->middleware('permiso:ventas.almacenes.gestion')
+                    ->name('ventas.inventario.almacenes');
+                
+                Route::get('/', \App\Livewire\Ventas\Inventario\GestionInventario::class)
+                    ->name('ventas.inventario.index');
+                    
+                Route::get('/transferencias', fn () => redirect()->route('transferencias.index'))
+                    ->name('ventas.inventario.transferencias');
+            });
+        });
 
     Route::view('/soporte/dashboard', 'soporte.dashboard')
         ->middleware('permiso:modulo.soporte')
@@ -274,20 +498,7 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
     Route::view('/administracion/dashboard', 'administracion.dashboard')
         ->middleware('permiso:modulo.administracion')
         ->name('administracion.dashboard');
-    // Catálogo de Equipos
-    Route::get('/preparacion/catalogo-equipos', \App\Livewire\Preparacion\CatalogoEquipos::class)
-        ->middleware('permiso:prep.inventario.gestion')
-        ->name('preparacion.catalogo-equipos');
 
-    // Estadísticas
-    Route::get('/preparacion/estadisticas-equipos', \App\Livewire\Preparacion\Dashboard\EstadisticasEquipos::class)
-        ->middleware('permiso:prep.inventario.gestion')
-        ->name('preparacion.estadisticas-equipos');
-
-    // Garantías Externas
-    Route::get('/preparacion/garantias', GestionGarantias::class)
-        ->middleware('permiso:prep.garantias.ver')
-        ->name('preparacion.garantias');
 });
 
 require __DIR__.'/auth.php';
