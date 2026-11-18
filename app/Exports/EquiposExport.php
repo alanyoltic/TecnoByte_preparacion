@@ -16,6 +16,8 @@ class EquiposExport implements FromQuery, ShouldAutoSize, WithEvents, WithHeadin
 
     public function __construct(Builder $query)
     {
+        ini_set('memory_limit', '512M');
+        set_time_limit(300);
         $this->query = $query;
     }
 

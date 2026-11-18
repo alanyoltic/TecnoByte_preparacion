@@ -102,7 +102,13 @@ class GestionGarantias extends Component
     #[Computed]
     public function tecnicosDisponibles()
     {
-        return User::whereHas('role', fn ($q) => $q->whereIn('slug', ['tecnico']))
+        return User::where(function ($query) {
+                $query->whereHas('role', fn ($q) => $q->whereIn('slug', ['tecnico']))
+                      ->orWhere(function ($q) {
+                          $q->whereHas('role', fn ($r) => $r->where('slug', 'lider'))
+                            ->whereHas('liderModoTecnico', fn ($lmt) => $lmt->where('es_tecnico', true));
+                      });
+            })
             ->where('is_active', true)
             ->orderBy('nombre')
             ->get(['id', 'nombre', 'apellido_paterno']);

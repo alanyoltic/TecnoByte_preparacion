@@ -527,7 +527,14 @@ class GestionInventario extends Component
             $query->whereIn('id', $this->selected);
         }
 
-        $query->with(['loteModelo.lote.proveedor', 'registradoPor', 'clasificacionPuntos']);
+        $query->with([
+            'loteModelo.lote.proveedor',
+            'registradoPor',
+            'clasificacionPuntos',
+            'gpus',
+            'monitor',
+            'baterias',
+        ]);
 
         $fileName = 'inventario_'.now()->format('Ymd_His').'.xlsx';
 

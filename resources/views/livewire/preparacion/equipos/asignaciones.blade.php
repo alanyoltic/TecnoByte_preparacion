@@ -8,62 +8,82 @@
         {{-- TOPBAR DINÁMICO                     --}}
         {{-- ═══════════════════════════════════ --}}
         @if($vista === 'panel')
-            <x-topbar
-                title="Asignaciones"
-                chip="Preparación · Gestión"
-                description="Administra y monitorea los equipos asignados a cada técnico."
-            >
-                <x-slot name="right">
-                    <button wire:click="irANuevaAsignacion"
-                        class="inline-flex items-center gap-2 rounded-xl px-4 py-2
-                               bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
-                               text-white text-xs font-semibold
-                               shadow-md shadow-blue-800/40
-                               hover:shadow-blue-500/60 hover:-translate-y-0.5
-                               transition-all duration-200">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                        </svg>
-                        Nueva asignación
-                    </button>
-                </x-slot>
-            </x-topbar>
+            <div wire:key="topbar-panel">
+                <x-topbar
+                    title="Asignaciones"
+                    chip="Preparación · Gestión"
+                    description="Administra y monitorea los equipos asignados a cada técnico."
+                >
+                    <x-slot name="right">
+                        <button type="button" wire:click="irANuevaAsignacion"
+                            wire:loading.attr="disabled"
+                            wire:target="irANuevaAsignacion"
+                            class="inline-flex items-center gap-2 rounded-xl px-4 py-2
+                                   bg-gradient-to-r from-[#1E3A8A] via-[#3B82F6] to-[#2563EB]
+                                   text-white text-xs font-semibold
+                                   shadow-md shadow-blue-800/40
+                                   hover:shadow-blue-500/60 hover:-translate-y-0.5
+                                   disabled:opacity-60 disabled:cursor-wait
+                                   transition-all duration-200">
+                            <span wire:loading.remove wire:target="irANuevaAsignacion" class="flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                                Nueva asignación
+                            </span>
+                            <span wire:loading wire:target="irANuevaAsignacion">Cargando...</span>
+                        </button>
+                    </x-slot>
+                </x-topbar>
+            </div>
 
         @elseif($vista === 'nueva')
-            <x-topbar
-                title="Nueva asignación"
-                chip="Preparación · Asignaciones"
-                description="Selecciona el técnico y los equipos a asignar."
-            >
-                <x-slot name="right">
-                    <button wire:click="volverDesdeNueva"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl
-                               bg-white/80 dark:bg-slate-900/60
-                               border border-slate-300/70 dark:border-slate-700
-                               text-xs font-medium text-slate-700 dark:text-slate-200
-                               hover:bg-slate-100 dark:hover:bg-slate-800/80 transition">
-                        ← Volver
-                    </button>
-                </x-slot>
-            </x-topbar>
+            <div wire:key="topbar-nueva">
+                <x-topbar
+                    title="Nueva asignación"
+                    chip="Preparación · Asignaciones"
+                    description="Selecciona el técnico y los equipos a asignar."
+                >
+                    <x-slot name="right">
+                        <button type="button" wire:click="volverDesdeNueva"
+                            wire:loading.attr="disabled"
+                            wire:target="volverDesdeNueva"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl
+                                   bg-white/80 dark:bg-slate-900/60
+                                   border border-slate-300/70 dark:border-slate-700
+                                   text-xs font-medium text-slate-700 dark:text-slate-200
+                                   hover:bg-slate-100 dark:hover:bg-slate-800/80 
+                                   disabled:opacity-60 disabled:cursor-wait transition">
+                            <span wire:loading.remove wire:target="volverDesdeNueva">← Volver</span>
+                            <span wire:loading wire:target="volverDesdeNueva">Cargando...</span>
+                        </button>
+                    </x-slot>
+                </x-topbar>
+            </div>
 
         @elseif($vista === 'detalle')
-            <x-topbar
-                title="{{ $this->tecnicoDetalle?->nombre }} {{ $this->tecnicoDetalle?->apellido_paterno }}"
-                chip="Técnico · Asignaciones activas"
-                description="{{ $this->asignacionesTecnico->count() }} asignación(es) en proceso."
-            >
-                <x-slot name="right">
-                    <button wire:click="volverAPanel"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl
-                               bg-white/80 dark:bg-slate-900/60
-                               border border-slate-300/70 dark:border-slate-700
-                               text-xs font-medium text-slate-700 dark:text-slate-200
-                               hover:bg-slate-100 dark:hover:bg-slate-800/80 transition">
-                        ← Panel
-                    </button>
-                </x-slot>
-            </x-topbar>
+            <div wire:key="topbar-detalle">
+                <x-topbar
+                    title="{{ $this->tecnicoDetalle?->nombre }} {{ $this->tecnicoDetalle?->apellido_paterno }}"
+                    chip="Técnico · Asignaciones activas"
+                    description="{{ $this->asignacionesTecnico->count() }} asignación(es) en proceso."
+                >
+                    <x-slot name="right">
+                        <button type="button" wire:click="volverAPanel"
+                            wire:loading.attr="disabled"
+                            wire:target="volverAPanel"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl
+                                   bg-white/80 dark:bg-slate-900/60
+                                   border border-slate-300/70 dark:border-slate-700
+                                   text-xs font-medium text-slate-700 dark:text-slate-200
+                                   hover:bg-slate-100 dark:hover:bg-slate-800/80 
+                                   disabled:opacity-60 disabled:cursor-wait transition">
+                            <span wire:loading.remove wire:target="volverAPanel">← Panel</span>
+                            <span wire:loading wire:target="volverAPanel">Cargando...</span>
+                        </button>
+                    </x-slot>
+                </x-topbar>
+            </div>
         @endif
 
 
@@ -71,6 +91,7 @@
         {{-- VISTA 1: PANEL GENERAL              --}}
         {{-- ═══════════════════════════════════ --}}
         @if($vista === 'panel')
+            <div wire:key="content-panel">
 
             {{-- MÉTRICAS --}}
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
@@ -359,12 +380,16 @@
                                         <td class="px-5 py-3 text-right">
                                             <button
                                                 wire:click="verDetalle({{ $tecnicoId }})"
+                                                wire:loading.attr="disabled"
+                                                wire:target="verDetalle({{ $tecnicoId }})"
                                                 class="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5
                                                        bg-white/80 dark:bg-slate-900/60
                                                        border border-slate-300/70 dark:border-slate-700
                                                        text-xs font-medium text-slate-700 dark:text-slate-200
-                                                       hover:bg-slate-100 dark:hover:bg-slate-800 transition">
-                                                Ver detalle
+                                                       hover:bg-slate-100 dark:hover:bg-slate-800 
+                                                       disabled:opacity-60 disabled:cursor-wait transition">
+                                                <span wire:loading.remove wire:target="verDetalle({{ $tecnicoId }})">Ver detalle</span>
+                                                <span wire:loading wire:target="verDetalle({{ $tecnicoId }})">Cargando...</span>
                                             </button>
                                         </td>
                                     </tr>
@@ -379,7 +404,9 @@
         {{-- ═══════════════════════════════════ --}}
         {{-- VISTA 2: NUEVA ASIGNACIÓN           --}}
         {{-- ═══════════════════════════════════ --}}
+            </div>
         @elseif($vista === 'nueva')
+            <div wire:key="content-nueva">
 
             {{-- Error --}}
             @if($error)
@@ -496,21 +523,20 @@
                                    focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none">
                     </div>
 
-                    <div class="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                    <div class="space-y-3 max-h-[420px] overflow-y-auto pr-1" x-data="{ openLotes: [], openSeries: [] }">
                         @forelse($this->lotesDisponibles as $lote)
                             @php $loteAgotado = $lote->modelosRecibidos->sum('equipos_libres') <= 0; @endphp
                             {{-- Acordeón por lote --}}
-                            <div x-data="{ open: {{ $loteAgotado ? 'false' : 'false' }} }"
-                                 class="rounded-xl border border-slate-200/80 dark:border-slate-700/60 overflow-hidden">
+                            <div class="rounded-xl border border-slate-200/80 dark:border-slate-700/60 overflow-hidden">
 
                                 {{-- Header lote --}}
-                                <button type="button" @click="open = !open"
+                                <button type="button" @click="openLotes.includes({{ $lote->id }}) ? openLotes = openLotes.filter(i => i !== {{ $lote->id }}) : openLotes.push({{ $lote->id }})"
                                     class="w-full flex items-center justify-between px-4 py-3
                                            {{ $loteAgotado ? 'bg-slate-100/60 dark:bg-slate-900/30' : 'bg-slate-50/80 dark:bg-slate-900/60' }}
                                            hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition">
                                     <div class="flex items-center gap-2">
                                         <svg class="w-4 h-4 text-slate-400 transition-transform duration-200"
-                                             :class="open ? 'rotate-180' : ''"
+                                             :class="openLotes.includes({{ $lote->id }}) ? 'rotate-180' : ''"
                                              fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd"
                                                   d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
@@ -536,7 +562,7 @@
                                 </button>
 
                                 {{-- Modelos del lote --}}
-                                <div x-show="open" x-transition>
+                                <div x-show="openLotes.includes({{ $lote->id }})" x-transition>
                                     @foreach($lote->modelosRecibidos as $modelo)
                                         @php
                                             $agotado       = ($modelo->equipos_libres ?? 0) <= 0;
@@ -587,11 +613,11 @@
 
                                             {{-- Series específicas (solo si hay SIN_ASIGNAR y cantidad seleccionada) --}}
                                             @if(!$agotado && $cantSelec > 0 && $sinAsignar->isNotEmpty())
-                                                <div x-data="{ openSeries: false }" class="px-4 pb-3">
-                                                    <button type="button" @click="openSeries = !openSeries"
+                                                <div class="px-4 pb-3">
+                                                    <button type="button" @click="openSeries.includes({{ $modelo->id }}) ? openSeries = openSeries.filter(i => i !== {{ $modelo->id }}) : openSeries.push({{ $modelo->id }})"
                                                         class="text-[0.65rem] font-medium text-slate-500 dark:text-slate-400
                                                                hover:text-[#FF9521] transition flex items-center gap-1">
-                                                        <svg class="w-3 h-3 transition-transform" :class="openSeries ? 'rotate-180' : ''"
+                                                        <svg class="w-3 h-3 transition-transform" :class="openSeries.includes({{ $modelo->id }}) ? 'rotate-180' : ''"
                                                              fill="currentColor" viewBox="0 0 20 20">
                                                             <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
                                                         </svg>
@@ -601,7 +627,7 @@
                                                         @endif
                                                     </button>
 
-                                                    <div x-show="openSeries" x-transition class="mt-2 space-y-1 max-h-40 overflow-y-auto pr-1">
+                                                    <div x-show="openSeries.includes({{ $modelo->id }})" x-transition class="mt-2 space-y-1 max-h-40 overflow-y-auto pr-1">
                                                         <p class="text-[0.6rem] text-slate-400 mb-1">
                                                             Máximo {{ $cantSelec }}. Los no seleccionados se asignan al azar.
                                                         </p>
@@ -703,7 +729,9 @@
         {{-- ═══════════════════════════════════════════════════════════ --}}
         {{-- VISTA 3: DETALLE DE TÉCNICO                                --}}
         {{-- ═══════════════════════════════════════════════════════════ --}}
+            </div>
         @elseif($vista === 'detalle')
+            <div wire:key="content-detalle">
 
             @php
                 $tecnico      = $this->tecnicoDetalle;
@@ -976,7 +1004,8 @@
                         </div>
                     @endforeach
                 </div>
-            @endif
+        @endif
+            </div>
         @endif
 
     </div>

@@ -15,6 +15,8 @@ class PuntosTecnicosExport implements FromCollection, ShouldAutoSize, WithHeadin
 
     public function __construct(Collection $puntos)
     {
+        ini_set('memory_limit', '512M');
+        set_time_limit(300);
         $this->puntos = $puntos;
     }
 
