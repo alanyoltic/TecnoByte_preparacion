@@ -63,4 +63,50 @@ class CompraInventarioItem extends Model
 
         return (float) ($this->precio_unitario * $this->cantidad);
     }
+
+    /**
+     * Determina si el item corresponde a un lote/partida de cargadores.
+     */
+    public function esCargador(): bool
+    {
+        if ($this->catalogo_equipo_id || $this->catalogo_pieza_id || $this->producto_id || $this->consumible_id) {
+            return false;
+        }
+
+        if (empty($this->notas)) {
+            return false;
+        }
+
+        $decoded = json_decode($this->notas, true);
+        if (is_array($decoded) && ($decoded['tipo'] ?? '') === 'cargador') {
+            return true;
+        }
+
+        return str_contains(strtolower($this->notas), 'cargador');
+    }
+
+    /**
+     * Retorna especificaciones del cargador si vienen en JSON o notas.
+     */
+    public function datosCargador(): array
+    {
+        $decoded = json_decode($this->notas, true);
+        if (is_array($decoded) && ($decoded['tipo'] ?? '') === 'cargador') {
+            return [
+                'tipo'     => 'cargador',
+                'marca'    => $decoded['marca'] ?? 'GENÉRICO',
+                'voltaje'  => $decoded['voltaje'] ?? '',
+                'amperaje' => $decoded['amperaje'] ?? '',
+                'punta'    => $decoded['punta'] ?? '',
+            ];
+        }
+
+        return [
+            'tipo'     => 'cargador',
+            'marca'    => 'GENÉRICO',
+            'voltaje'  => '',
+            'amperaje' => '',
+            'punta'    => '',
+        ];
+    }
 }

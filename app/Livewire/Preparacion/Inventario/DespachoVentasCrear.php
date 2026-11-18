@@ -64,6 +64,9 @@ class DespachoVentasCrear extends Component
                             'numero_serie'    => $item->equipo->numero_serie,
                             'marca'           => $item->equipo->marca,
                             'modelo'          => $item->equipo->modelo,
+                            'tipo_equipo'     => $item->equipo->tipo_equipo,
+                            'lote_id'         => $item->equipo->lote_id,
+                            'lote_nombre'     => $item->equipo->lote_nombre,
                             'precio_sugerido' => (float) $item->precio_sugerido,
                             'observacion'     => $item->observacion ?? '',
                         ];
@@ -121,7 +124,7 @@ class DespachoVentasCrear extends Component
         $idsYaSeleccionados = array_column($this->equiposSeleccionados, 'equipo_id');
 
         return Equipo::query()
-            ->with(['loteModelo.catalogoEquipo'])
+            ->with(['loteModelo.catalogoEquipo', 'loteModelo.lote'])
             ->where('estatus_area', Equipo::AREA_FINALIZADO)
             ->where('estatus_ciclo', Equipo::CICLO_CALIDAD)
             ->whereNotIn('id', $idsYaSeleccionados)
@@ -225,6 +228,9 @@ class DespachoVentasCrear extends Component
                 'numero_serie'    => $equipo->numero_serie,
                 'marca'           => $equipo->marca,
                 'modelo'          => $equipo->modelo,
+                'tipo_equipo'     => $equipo->tipo_equipo,
+                'lote_id'         => $equipo->lote_id,
+                'lote_nombre'     => $equipo->lote_nombre,
                 'precio_sugerido' => $precioBase,
                 'observacion'     => '',
             ];

@@ -13,6 +13,7 @@ class Venta extends Model
         'cliente_id',
         'vendedor_id',
         'almacen_id',
+        'sucursal_id',
         'metodo_pago',
         'subtotal',
         'tipo_descuento',
@@ -69,6 +70,16 @@ class Venta extends Model
     public function almacen(): BelongsTo
     {
         return $this->belongsTo(Almacen::class);
+    }
+
+    public function sucursal(): BelongsTo
+    {
+        return $this->belongsTo(Sucursal::class);
+    }
+
+    public function scopeDeSucursal($query, $sucursalId)
+    {
+        return $query->where('sucursal_id', $sucursalId);
     }
 
     public function canceladaPor(): BelongsTo

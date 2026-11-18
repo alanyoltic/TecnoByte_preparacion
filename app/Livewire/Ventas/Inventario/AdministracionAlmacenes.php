@@ -32,6 +32,7 @@ class AdministracionAlmacenes extends Component
 
         $almacenes = $query->withCount('equipos')
         ->with([
+            'sucursal',
             'encargados' => fn ($q) => $q->where('activo', 1)->with('user'),
         ])
         ->orderBy('nombre')

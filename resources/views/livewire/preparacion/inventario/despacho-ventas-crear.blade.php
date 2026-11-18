@@ -212,15 +212,20 @@
                                             bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60
                                             hover:border-[#FF9521]/40 transition-all duration-150">
                                     <div>
-                                        <div class="font-semibold text-slate-900 dark:text-slate-100 text-sm">
-                                            {{ $eq->marca }} {{ $eq->modelo }}
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-semibold text-slate-900 dark:text-slate-100 text-sm">{{ $eq->marca }} {{ $eq->modelo }}</span>
+                                            @if($eq->tipo_equipo)
+                                                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-700 text-slate-300 uppercase">{{ $eq->tipo_equipo }}</span>
+                                            @endif
+                                            @if($eq->lote_nombre)
+                                                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#FF9521]/20 text-[#FF9521] border border-[#FF9521]/30">
+                                                    📦 {{ $eq->lote_nombre }}
+                                                </span>
+                                            @endif
                                         </div>
                                         <div class="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
                                             SN: <span class="text-slate-700 dark:text-slate-200 font-semibold">{{ $eq->numero_serie }}</span>
                                         </div>
-                                        @if($eq->loteModelo)
-                                            <div class="text-[11px] text-slate-400">Lote: {{ $eq->loteModelo->lote?->nombre_lote ?? '—' }}</div>
-                                        @endif
                                     </div>
                                     <button wire:click="agregarEquipo({{ $eq->id }})"
                                             wire:loading.attr="disabled"
@@ -276,8 +281,18 @@
                                     @foreach($equiposSeleccionados as $i => $item)
                                         <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                                             <td class="px-6 py-3.5">
-                                                <div class="font-semibold text-slate-900 dark:text-slate-100">{{ $item['marca'] }} {{ $item['modelo'] }}</div>
-                                                <div class="text-xs text-slate-500 dark:text-slate-400 font-mono">SN: {{ $item['numero_serie'] }}</div>
+                                                <div class="flex items-center gap-2 flex-wrap">
+                                                    <span class="font-semibold text-slate-900 dark:text-slate-100">{{ $item['marca'] }} {{ $item['modelo'] }}</span>
+                                                    @if(!empty($item['tipo_equipo']))
+                                                        <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-700 text-slate-300 uppercase">{{ $item['tipo_equipo'] }}</span>
+                                                    @endif
+                                                    @if(!empty($item['lote_nombre']))
+                                                        <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#FF9521]/20 text-[#FF9521] border border-[#FF9521]/30">
+                                                            📦 {{ $item['lote_nombre'] }}
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                                <div class="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">SN: {{ $item['numero_serie'] }}</div>
                                             </td>
                                             <td class="px-6 py-3.5 text-right">
                                                 <input wire:change="actualizarPrecio({{ $i }}, $event.target.value)"

@@ -28,6 +28,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->belongsTo(Sucursal::class, 'sucursal_id');
     }
 
+    public function sucursalesEncargado()
+    {
+        return $this->hasMany(Sucursal::class, 'encargado_id');
+    }
+
     protected $fillable = [
         'nombre',
         'segundo_nombre',

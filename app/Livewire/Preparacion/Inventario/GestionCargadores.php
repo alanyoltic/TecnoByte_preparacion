@@ -24,6 +24,7 @@ class GestionCargadores extends Component
     public $modalAbierto = false;
     public $cargadorId;
     public $serie;
+    public $serie_fabricante;
     public $marca;
     public $voltaje;
     public $amperaje;
@@ -32,6 +33,7 @@ class GestionCargadores extends Component
 
     protected $rules = [
         'serie' => 'nullable|string|max:255',
+        'serie_fabricante' => 'nullable|string|max:255',
         'marca' => 'nullable|string|max:255',
         'voltaje' => 'nullable|string|max:255',
         'amperaje' => 'nullable|string|max:255',
@@ -52,7 +54,7 @@ class GestionCargadores extends Component
     public function abrirModalNuevo()
     {
         $this->resetValidation();
-        $this->reset(['cargadorId', 'serie', 'marca', 'voltaje', 'amperaje', 'punta', 'estatus']);
+        $this->reset(['cargadorId', 'serie', 'serie_fabricante', 'marca', 'voltaje', 'amperaje', 'punta', 'estatus']);
         $this->estatus = 'DISPONIBLE';
         $this->modalAbierto = true;
     }
@@ -63,6 +65,7 @@ class GestionCargadores extends Component
         $cargador = Cargador::findOrFail($id);
         $this->cargadorId = $cargador->id;
         $this->serie = $cargador->serie;
+        $this->serie_fabricante = $cargador->serie_fabricante;
         $this->marca = $cargador->marca;
         $this->voltaje = $cargador->voltaje;
         $this->amperaje = $cargador->amperaje;
@@ -74,7 +77,7 @@ class GestionCargadores extends Component
 
     public function guardar()
     {
-        // Validar unicidad si hay serie
+        // Validar unicidad si hay serie interna especificada manualmente
         $rules = $this->rules;
         if ($this->serie) {
             $rules['serie'] = 'nullable|string|max:255|unique:cargadores,serie,' . $this->cargadorId;
@@ -82,10 +85,16 @@ class GestionCargadores extends Component
 
         $this->validate($rules);
 
+        // Si es nuevo y no se ingresó serie interna, se autogenera obligatoria
+        if (!$this->cargadorId && empty($this->serie)) {
+            $this->serie = Cargador::generarSerieInterna('TB');
+        }
+
         if ($this->cargadorId) {
             $cargador = Cargador::findOrFail($this->cargadorId);
             $cargador->update([
                 'serie' => $this->serie,
+                'serie_fabricante' => $this->serie_fabricante ?: null,
                 'marca' => $this->marca,
                 'voltaje' => $this->voltaje,
                 'amperaje' => $this->amperaje,
@@ -97,14 +106,15 @@ class GestionCargadores extends Component
         } else {
             $cargador = Cargador::create([
                 'serie' => $this->serie,
+                'serie_fabricante' => $this->serie_fabricante ?: null,
                 'marca' => $this->marca,
                 'voltaje' => $this->voltaje,
                 'amperaje' => $this->amperaje,
                 'punta' => $this->punta,
                 'estatus' => $this->estatus,
             ]);
-            CargadorTraceService::log($cargador, 'CREADO', 'Cargador creado manualmente');
-            $this->dispatch('toast', type: 'success', message: 'Cargador creado correctamente.');
+            CargadorTraceService::log($cargador, 'CREADO', 'Cargador creado con serie interna ' . $this->serie);
+            $this->dispatch('toast', type: 'success', message: 'Cargador registrado correctamente con serie ' . $this->serie);
         }
 
         $this->modalAbierto = false;

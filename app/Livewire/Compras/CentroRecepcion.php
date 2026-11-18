@@ -30,6 +30,10 @@ class CentroRecepcion extends Component
     // [itemId] => [ ['cantidad' => x, 'especificacion' => ''] ]
     public $clasificacionesComponentes = []; 
 
+    // Para capturar series de fabricante de cargadores (opcionales):
+    // [itemId] => [ '0' => 'SERIE_FAB', '1' => '' ]
+    public $seriesFabricanteCargadores = [];
+
     public function mount($compraId)
     {
         $this->compraId = $compraId;
@@ -61,12 +65,19 @@ class CentroRecepcion extends Component
                 $this->clasificacionesComponentes[$item->id] = [
                     ['cantidad' => $item->cantidad, 'especificacion' => '']
                 ];
+            } elseif ($item->esCargador()) {
+                $this->seriesFabricanteCargadores[$item->id] = [];
+                for ($i = 0; $i < $item->cantidad; $i++) {
+                    $this->seriesFabricanteCargadores[$item->id][] = '';
+                }
             }
         }
 
         // Pestaña inicial por defecto
         if ($this->compra->items->whereNotNull('catalogo_equipo_id')->isNotEmpty()) {
             $this->tab = 'equipos';
+        } elseif ($this->compra->items->filter(fn($i) => $i->esCargador())->isNotEmpty()) {
+            $this->tab = 'cargadores';
         } elseif ($this->compra->items->whereNotNull('catalogo_pieza_id')->isNotEmpty()) {
             $this->tab = 'componentes';
         } else {
@@ -260,28 +271,37 @@ class CentroRecepcion extends Component
                     $inv->save();
                 }
 
-                // 5. CARGADORES (Genéricos por nota)
-                if (!$item->catalogo_pieza_id && !$item->producto_id && !$item->consumible_id && str_contains(strtolower($item->notas ?? ''), 'cargador')) {
+                // 5. CARGADORES
+                if ($item->esCargador()) {
                     $prov = $this->compra->proveedor;
-                    $abr = $prov ? strtoupper(trim($prov->abreviacion)) : 'PROV';
-                    $prefijo = "{$abr}" . date('dmY') . "-";
+                    $abr = $prov ? strtoupper(trim($prov->abreviacion ?? 'TB')) : 'TB';
+                    $datos = $item->datosCargador();
 
                     for ($i = 0; $i < $item->cantidad; $i++) {
-                        $correlativo = 1;
-                        do {
-                            $candidato = $prefijo . $correlativo;
-                            $existe = Cargador::where('serie', $candidato)->exists();
-                            if ($existe) $correlativo++;
-                        } while ($existe);
+                        $serieInterna = Cargador::generarSerieInterna($abr, $this->compra->fecha_compra);
+                        $serieFab = !empty($this->seriesFabricanteCargadores[$item->id][$i])
+                            ? strtoupper(trim($this->seriesFabricanteCargadores[$item->id][$i]))
+                            : null;
 
-                        Cargador::create([
-                            'serie' => $candidato,
-                            'costo' => $item->precio_unitario,
+                        $cargador = Cargador::create([
+                            'serie'                => $serieInterna,
+                            'serie_fabricante'     => $serieFab,
+                            'marca'                => $datos['marca'] ?? null,
+                            'voltaje'              => $datos['voltaje'] ?? null,
+                            'amperaje'             => $datos['amperaje'] ?? null,
+                            'punta'                => $datos['punta'] ?? null,
+                            'costo'                => $item->precio_unitario,
                             'compra_inventario_id' => $this->compra->id,
-                            'lote_id' => $lote?->id,
-                            'estatus' => 'DISPONIBLE',
-                            'area' => $this->compra->area,
+                            'lote_id'              => $lote?->id,
+                            'estatus'              => 'DISPONIBLE',
+                            'area'                 => $this->compra->area,
                         ]);
+
+                        \App\Services\CargadorTraceService::log(
+                            $cargador,
+                            'CREADO',
+                            'Alta inicial por recepción de orden ' . ($this->compra->folio ?: 'OC-'.$this->compra->id)
+                        );
                     }
                 }
             }
@@ -298,6 +318,13 @@ class CentroRecepcion extends Component
 
     public function render()
     {
-        return view('livewire.compras.centro-recepcion');
+        return view('livewire.compras.centro-recepcion', [
+            'compra'                     => $this->compra,
+            'tab'                        => $this->tab,
+            'seriesEquipos'              => $this->seriesEquipos,
+            'clasificacionesComponentes' => $this->clasificacionesComponentes,
+            'seriesFabricanteCargadores' => $this->seriesFabricanteCargadores,
+            'seriesPendientesCount'      => $this->seriesPendientesCount,
+        ]);
     }
 }

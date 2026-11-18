@@ -74,6 +74,11 @@
                                     <span class="font-mono text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
                                         {{ $cargador->serie ?? 'PENDIENTE' }}
                                     </span>
+                                    @if($cargador->serie_fabricante)
+                                        <div class="text-[10px] text-slate-400 font-mono mt-1" title="Serie del fabricante">
+                                            Fab: {{ $cargador->serie_fabricante }}
+                                        </div>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="font-bold text-slate-900 dark:text-slate-100">{{ $cargador->marca ?? 'Genérico' }}</div>
@@ -166,10 +171,22 @@
                                 <form wire:submit.prevent="guardar" class="space-y-4">
                                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                         <div class="sm:col-span-2">
-                                            <label for="serie" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">No. Serie</label>
-                                            <input type="text" wire:model="serie" id="serie"
+                                            <div class="flex items-center justify-between mb-1.5">
+                                                <label for="serie" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">No. Serie Interna TecnoByte</label>
+                                                <span class="text-[11px] text-slate-400">Autogenerada si se deja vacía</span>
+                                            </div>
+                                            <input type="text" wire:model="serie" id="serie" placeholder="Ej: CARG-TB18112026-1 (o dejar vacío)"
                                                    class="w-full px-4 py-2.5 rounded-2xl text-sm font-mono border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#FF9521]">
                                             @error('serie') <span class="text-xs text-rose-500 mt-1 block font-medium">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="sm:col-span-2">
+                                            <div class="flex items-center justify-between mb-1.5">
+                                                <label for="serie_fabricante" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">No. Serie Fabricante (Opcional)</label>
+                                                <span class="text-[11px] text-slate-400">Para garantías físicas</span>
+                                            </div>
+                                            <input type="text" wire:model="serie_fabricante" id="serie_fabricante" placeholder="Serie del fabricante (si viene etiquetada)..."
+                                                   class="w-full px-4 py-2.5 rounded-2xl text-sm font-mono border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#FF9521]">
+                                            @error('serie_fabricante') <span class="text-xs text-rose-500 mt-1 block font-medium">{{ $message }}</span> @enderror
                                         </div>
                                         <div>
                                             <label for="marca" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Marca</label>

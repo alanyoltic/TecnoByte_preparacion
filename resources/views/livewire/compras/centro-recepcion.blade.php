@@ -116,6 +116,11 @@
                             {{ $compra->items->whereNotNull('consumible_id')->sum('cantidad') }} Consumibles
                         </span>
                     @endif
+                    @if($compra->items->filter(fn($i) => $i->esCargador())->sum('cantidad') > 0)
+                        <span class="px-2 py-0.5 rounded-md bg-amber-500/15 text-[#FF9521] border border-[#FF9521]/30">
+                            {{ $compra->items->filter(fn($i) => $i->esCargador())->sum('cantidad') }} Cargadores
+                        </span>
+                    @endif
                 </div>
             </div>
 
@@ -137,15 +142,27 @@
                         class="px-5 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition flex items-center gap-2 {{ $tab === 'equipos' ? 'bg-slate-800 text-[#FF9521] border border-[#FF9521]/40 shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50' }}">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                     Mesa de Equipos
-                    @if($this->seriesPendientesCount > 0)
+                    @if($seriesPendientesCount > 0)
                         <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-700 text-slate-300 border border-slate-600">
-                            {{ $this->seriesPendientesCount }} sin serie
+                            {{ $seriesPendientesCount }} sin serie
                         </span>
                     @else
                         <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                             ✓ Todas con serie
                         </span>
                     @endif
+                </button>
+            @endif
+
+            {{-- Pestaña Cargadores --}}
+            @if($compra->items->filter(fn($i) => $i->esCargador())->isNotEmpty())
+                <button wire:click="setTab('cargadores')"
+                        class="px-5 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition flex items-center gap-2 {{ $tab === 'cargadores' ? 'bg-slate-800 text-[#FF9521] border border-[#FF9521]/40 shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50' }}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    Mesa de Cargadores
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-700 text-slate-300">
+                        {{ $compra->items->filter(fn($i) => $i->esCargador())->sum('cantidad') }} uds
+                    </span>
                 </button>
             @endif
 
@@ -197,6 +214,8 @@
                                         <td class="py-4 px-6">
                                             @if($item->catalogo_equipo_id)
                                                 <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-sky-500/15 text-sky-400 border border-sky-500/30">EQUIPO</span>
+                                            @elseif($item->esCargador())
+                                                <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/15 text-[#FF9521] border border-[#FF9521]/30">CARGADOR</span>
                                             @elseif($item->catalogo_pieza_id)
                                                 <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">PIEZA</span>
                                             @elseif($item->producto_id)
@@ -210,6 +229,14 @@
                                         <td class="py-4 px-6">
                                             @if($item->catalogo_equipo_id)
                                                 <span class="font-bold text-slate-800 dark:text-slate-100">{{ optional($item->catalogoEquipo)->marca }} {{ optional($item->catalogoEquipo)->modelo }}</span>
+                                            @elseif($item->esCargador())
+                                                @php $cd = $item->datosCargador(); @endphp
+                                                <span class="font-bold text-slate-800 dark:text-slate-100">
+                                                    Cargador {{ $cd['marca'] ?: 'Genérico' }}
+                                                    {{ $cd['voltaje'] ? $cd['voltaje'].'V' : '' }}
+                                                    {{ $cd['amperaje'] ? $cd['amperaje'].'A' : '' }}
+                                                    @if(!empty($cd['punta'])) (Punta: {{ $cd['punta'] }}) @endif
+                                                </span>
                                             @elseif($item->catalogo_pieza_id)
                                                 <span class="font-bold text-slate-800 dark:text-slate-100">{{ optional($item->catalogoPieza)->nombre }}</span>
                                             @elseif($item->producto_id)
@@ -450,16 +477,88 @@
             </div>
         @endif
 
+        {{-- 4. TAB: MESA DE CARGADORES --}}
+        @if($tab === 'cargadores')
+            <div class="space-y-6">
+                {{-- Banner Informativo de Reglas de Serie --}}
+                <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 sm:p-5 flex items-start gap-3 backdrop-blur-xl shadow-xl">
+                    <div class="p-2.5 rounded-xl bg-amber-500/20 text-[#FF9521] shrink-0 mt-0.5">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-[#FF9521] uppercase tracking-wider">Regla de Negocio: Trazabilidad de Cargadores</h4>
+                        <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+                            La <strong class="text-white">serie interna de TecnoByte es obligatoria y se autogenera automáticamente</strong> para cada unidad al confirmar la recepción (formato: <code class="text-amber-400 font-mono">CARG-{{ strtoupper(optional($compra->proveedor)->abreviacion ?: 'TB') }}...</code>). La <strong class="text-white">serie del fabricante es opcional</strong>: si el cargador físico cuenta con una serie legible en su etiqueta, captúrala aquí para respaldar futuras reclamaciones de garantía.
+                        </p>
+                    </div>
+                </div>
+
+                @foreach($compra->items->filter(fn($i) => $i->esCargador()) as $item)
+                    @php $cargData = $item->datosCargador(); @endphp
+                    <div class="bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-xl backdrop-blur-xl p-6 space-y-5">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-3">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2.5 py-0.5 rounded-md text-[11px] font-black bg-amber-500/15 text-[#FF9521] border border-[#FF9521]/30">CARGADOR</span>
+                                    <h3 class="text-base font-bold text-slate-800 dark:text-slate-100">
+                                        {{ $cargData['marca'] ?: 'Genérico' }}
+                                    </h3>
+                                </div>
+                                <div class="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1.5">
+                                    @if(!empty($cargData['voltaje']))
+                                        <span class="bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-md font-mono text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">{{ $cargData['voltaje'] }}V</span>
+                                    @endif
+                                    @if(!empty($cargData['amperaje']))
+                                        <span class="bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-md font-mono text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">{{ $cargData['amperaje'] }}A</span>
+                                    @endif
+                                    @if(!empty($cargData['punta']))
+                                        <span class="bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-md font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">Punta: {{ $cargData['punta'] }}</span>
+                                    @endif
+                                    <span class="text-slate-400 dark:text-slate-500">· Destino: <strong class="text-slate-700 dark:text-slate-300">{{ optional($item->almacen)->nombre ?? 'Almacén de Preparación' }}</strong></span>
+                                </div>
+                            </div>
+                            <span class="px-3.5 py-1.5 rounded-xl font-mono font-bold text-xs bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 self-start sm:self-auto">
+                                {{ $item->cantidad }} {{ $item->cantidad == 1 ? 'unidad' : 'unidades' }}
+                            </span>
+                        </div>
+
+                        {{-- Grilla de Captura Ergonómica por Unidad --}}
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            @for($i = 0; $i < $item->cantidad; $i++)
+                                <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80 space-y-3 shadow-inner">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs font-bold text-slate-600 dark:text-slate-400">Unidad #{{ $i + 1 }}</span>
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-[#FF9521] border border-amber-500/20">
+                                            Serie Int: [Auto]
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                                            Serie del Fabricante (Opcional):
+                                        </label>
+                                        <input type="text"
+                                               wire:model="seriesFabricanteCargadores.{{ $item->id }}.{{ $i }}"
+                                               placeholder="Escanear o digitar serie..."
+                                               class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-xs font-mono focus:ring-2 focus:ring-[#FF9521] focus:border-[#FF9521] outline-none transition placeholder-slate-400">
+                                    </div>
+                                </div>
+                            @endfor
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
         {{-- BARRA FLOTANTE INFERIOR DE ACCIÓN (STICKY ACTION BAR) --}}
         <div class="sticky bottom-4 z-30 bg-slate-900/95 border border-slate-700/80 backdrop-blur-2xl shadow-2xl p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
             <div class="flex items-center gap-3">
-                @if($this->seriesPendientesCount > 0)
+                @if($seriesPendientesCount > 0)
                     <div class="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                     </div>
                     <div>
                         <h4 class="text-sm font-bold text-slate-100">Listo para ingreso (con Lote Ciego)</h4>
-                        <p class="text-xs text-slate-400 font-medium">Hay {{ $this->seriesPendientesCount }} equipo(s) sin serie que ingresarán para escaneo del técnico en taller.</p>
+                        <p class="text-xs text-slate-400 font-medium">Hay {{ $seriesPendientesCount }} equipo(s) sin serie que ingresarán para escaneo del técnico en taller.</p>
                     </div>
                 @else
                     <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
