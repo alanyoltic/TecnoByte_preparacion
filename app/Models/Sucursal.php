@@ -22,7 +22,7 @@ class Sucursal extends Model
     // CLAVES FIJAS
     // =========================================================
 
-    const QRO = 'QRO';
+    const QRO = 'QRO_CORREGIDORA';
 
     // =========================================================
     // SCOPES
@@ -93,6 +93,6 @@ class Sucursal extends Model
 
     public static function qro(): ?self
     {
-        return static::where('clave', self::QRO)->first();
+        return static::where('clave', self::QRO)->orWhere('clave', 'QRO')->first();
     }
 }
