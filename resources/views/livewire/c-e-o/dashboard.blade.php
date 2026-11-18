@@ -14,9 +14,9 @@
                 <label for="filtroSucursal" class="text-[0.65rem] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider shrink-0">Sucursal</label>
                 <select id="filtroSucursal" wire:model.live="filtroSucursal" class="w-full sm:w-auto text-sm font-medium bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 rounded-xl px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-700 dark:text-slate-200 shadow-sm transition-all cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">
                     <option value="todas">Todas las sucursales</option>
-                    <option value="1">Querétaro Corregidora</option>
-                    <option value="2">León Guanajuato</option>
-                    <option value="3">Ventas en Línea</option>
+                    @foreach($sucursalesSelect as $s)
+                        <option value="{{ $s->id }}">{{ $s->nombre }}</option>
+                    @endforeach
                 </select>
             </div>
             <div class="hidden sm:block w-px h-6 bg-slate-200 dark:bg-slate-800"></div>
@@ -156,27 +156,34 @@
 
             {{-- Sucursales --}}
             <div class="lg:col-span-2 rounded-2xl bg-white/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-white/10 backdrop-blur-xl dark:backdrop-blur-2xl p-5 sm:p-6 shadow-md shadow-slate-900/10 dark:shadow-lg dark:shadow-slate-900/30 flex flex-col">
-                <h3 class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide mb-6">Rendimiento por Canal / Sucursal</h3>
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide">Rendimiento por Canal / Sucursal</h3>
+                    <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">{{ count($sucursales) }} sedes registradas</span>
+                </div>
                 
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 flex-1 items-center">
-                    @php $coloresSucursales = ['text-blue-500', 'text-indigo-500', 'text-emerald-500']; @endphp
-                    @foreach($sucursales as $index => $suc)
-                    <div class="flex flex-col items-center justify-center p-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 flex-1 items-center">
+                    @php $coloresSucursales = ['text-blue-500', 'text-indigo-500', 'text-emerald-500', 'text-amber-500', 'text-purple-500', 'text-cyan-500', 'text-rose-500']; @endphp
+                    @forelse($sucursales as $index => $suc)
+                    <div class="flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50/50 dark:bg-slate-900/40 border border-slate-200/50 dark:border-white/5">
                         <!-- SVG Circular Progress (Responsive Size) -->
-                        <div class="relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center mb-3">
+                        <div class="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center mb-2">
                             <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                                 <circle cx="18" cy="18" r="16" fill="none" class="stroke-slate-200 dark:stroke-slate-800" stroke-width="2.5"></circle>
-                                <circle cx="18" cy="18" r="16" fill="none" class="stroke-current {{ $coloresSucursales[$index] }}" stroke-width="2.5" stroke-dasharray="100" stroke-dashoffset="{{ 100 - $suc['porcentaje'] }}" stroke-linecap="round"></circle>
+                                <circle cx="18" cy="18" r="16" fill="none" class="stroke-current {{ $coloresSucursales[$index % count($coloresSucursales)] }}" stroke-width="2.5" stroke-dasharray="100" stroke-dashoffset="{{ 100 - min(100, max(0, $suc['porcentaje'])) }}" stroke-linecap="round"></circle>
                             </svg>
                             <div class="absolute inset-0 flex items-center justify-center flex-col">
-                                <span class="text-lg sm:text-xl font-black text-slate-800 dark:text-white">{{ $suc['porcentaje'] }}%</span>
+                                <span class="text-base sm:text-lg font-black text-slate-800 dark:text-white">{{ $suc['porcentaje'] }}%</span>
                             </div>
                         </div>
-                        <h4 class="text-[0.7rem] sm:text-sm font-bold text-slate-700 dark:text-slate-300 text-center truncate w-full" title="{{ $suc['nombre'] }}">{{ $suc['nombre'] }}</h4>
-                        <p class="text-[0.65rem] font-bold text-emerald-500 mt-1">{{ $suc['tendencia'] }}</p>
-                        <p class="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-2 truncate w-full text-center">${{ number_format($suc['ventas'], 0) }}</p>
+                        <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 text-center truncate w-full" title="{{ $suc['nombre'] }}">{{ $suc['nombre'] }}</h4>
+                        <p class="text-[0.65rem] font-bold {{ str_starts_with($suc['tendencia'], '+') ? 'text-emerald-500' : 'text-slate-400' }} mt-0.5">{{ $suc['tendencia'] }}</p>
+                        <p class="text-sm sm:text-base font-black text-slate-900 dark:text-white mt-1 truncate w-full text-center">${{ number_format($suc['ventas'], 0) }}</p>
                     </div>
-                    @endforeach
+                    @empty
+                    <div class="col-span-3 text-center py-8 text-slate-400 text-xs">
+                        No hay sucursales registradas o con actividad en este periodo.
+                    </div>
+                    @endforelse
                 </div>
             </div>
 
@@ -229,7 +236,7 @@
                             {{-- Default Center --}}
                             <div x-show="!hovered" x-transition.opacity class="flex flex-col items-center">
                                 <span class="text-sm sm:text-base font-bold text-slate-500 dark:text-slate-400">Total</span>
-                                <span class="text-xl sm:text-2xl font-black text-slate-800 dark:text-white truncate max-w-[80%]">${{ number_format($ventaTotal/1000, 0) }}k</span>
+                                <span class="text-xl sm:text-2xl font-black text-slate-800 dark:text-white truncate max-w-[80%]">${{ number_format($ventaTotal, 0) }}</span>
                             </div>
                             
                             {{-- Hover Center --}}
