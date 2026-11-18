@@ -456,10 +456,6 @@ class EditarLote extends Component
             if (!empty($this->modelosCargadores)) {
                 $proveedor = Proveedor::find($this->proveedor_id);
                 $abrev = strtoupper(trim($proveedor->abreviacion ?? 'LOT'));
-                $fechaAbrev = date('dmY', strtotime($this->fecha_llegada ?? now()));
-                $prefijo = "{$abrev}{$fechaAbrev}";
-
-                $secuencialGlobal = 1;
 
                 foreach ($this->modelosCargadores as $mc) {
                     $cantidad = (int) $mc['cantidad'];
@@ -470,25 +466,20 @@ class EditarLote extends Component
                     ));
 
                     for ($i = 0; $i < $cantidad; $i++) {
-                        if (isset($seriesM[$i])) {
-                            $serieFinal = $seriesM[$i];
-                        } else {
-                            $serieFinal = "{$prefijo}-{$secuencialGlobal}";
-                            while (\App\Models\Cargador::where('serie', $serieFinal)->exists()) {
-                                $secuencialGlobal++;
-                                $serieFinal = "{$prefijo}-{$secuencialGlobal}";
-                            }
-                            $secuencialGlobal++;
-                        }
+                        // Serie interna autogenerada obligatoria
+                        $serieInterna = \App\Models\Cargador::generarSerieInterna($abrev, $this->fecha_llegada ?? now());
+                        // Serie fabricante opcional si fue capturada
+                        $serieFabricante = $seriesM[$i] ?? null;
 
                         $nuevoCargador = \App\Models\Cargador::create([
-                            'serie' => $serieFinal,
-                            'marca' => $mc['marca'] ?: null,
-                            'voltaje' => $mc['voltaje'] ?: null,
-                            'amperaje' => $mc['amperaje'] ?: null,
-                            'punta' => $mc['punta'] ?: null,
-                            'lote_id' => $lote->id,
-                            'estatus' => 'DISPONIBLE',
+                            'serie'            => $serieInterna,
+                            'serie_fabricante' => $serieFabricante,
+                            'marca'            => $mc['marca'] ?: null,
+                            'voltaje'          => $mc['voltaje'] ?: null,
+                            'amperaje'         => $mc['amperaje'] ?: null,
+                            'punta'            => $mc['punta'] ?: null,
+                            'lote_id'          => $lote->id,
+                            'estatus'          => 'DISPONIBLE',
                         ]);
                         
                         \App\Services\CargadorTraceService::log($nuevoCargador, 'CREADO', 'Alta inicial desde edición de lote');

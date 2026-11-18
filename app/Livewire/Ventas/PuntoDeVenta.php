@@ -155,13 +155,19 @@ class PuntoDeVenta extends Component
         }
 
         $this->carrito[] = [
-            'tipo'           => 'equipo',
-            'id'             => $equipo->id,
-            'nombre'         => "{$equipo->marca} {$equipo->modelo}",
-            'detalle'        => $equipo->numero_serie,
-            'cantidad'       => 1,
-            'precio'         => $equipo->despachoVentasActivo?->precio_sugerido ?? 0,
-            'precio_manual'  => false,
+            'tipo'              => 'equipo',
+            'id'                => $equipo->id,
+            'tipo_equipo'       => $equipo->tipo_equipo,
+            'lote_id'           => $equipo->lote_id,
+            'lote_nombre'       => $equipo->lote_nombre,
+            'requiere_cargador' => $equipo->requiere_cargador_externo,
+            'nombre'            => "{$equipo->marca} {$equipo->modelo}",
+            'detalle'           => $equipo->numero_serie,
+            'cantidad'          => 1,
+            'precio'            => $equipo->despachoVentasActivo?->precio_sugerido ?? 0,
+            'precio_manual'     => false,
+            'cargador_id'       => null,
+            'cargador_serie'    => null,
         ];
 
         $this->busquedaSerial = '';
@@ -248,6 +254,18 @@ class PuntoDeVenta extends Component
     {
         unset($this->carrito[$index]);
         $this->carrito = array_values($this->carrito);
+    }
+
+    public function alternarRequiereCargador(int $index): void
+    {
+        if (isset($this->carrito[$index]) && $this->carrito[$index]['tipo'] === 'equipo') {
+            $nuevoEstado = !($this->carrito[$index]['requiere_cargador'] ?? false);
+            $this->carrito[$index]['requiere_cargador'] = $nuevoEstado;
+            if (!$nuevoEstado) {
+                $this->carrito[$index]['cargador_id'] = null;
+                $this->carrito[$index]['cargador_serie'] = null;
+            }
+        }
     }
 
     public function limpiarCarrito(): void
@@ -431,12 +449,53 @@ class PuntoDeVenta extends Component
             return;
         }
 
-        
-        // Check if all laptops have a charger assigned
+        // 1. Validar cargadores / eliminadores según requerimiento de energía
         foreach ($this->carrito as $index => $item) {
-            if ($item['tipo'] === 'equipo' && empty($item['cargador_id'])) {
-                $this->addError('general', 'Debes escanear y asignar un cargador para la Laptop ' . $item['nombre'] . ' antes de cobrar.');
-                return;
+            if ($item['tipo'] === 'equipo') {
+                $requiere = $item['requiere_cargador'] ?? false;
+
+                if ($requiere && empty($item['cargador_id'])) {
+                    $esMini = str_contains(strtoupper($item['nombre'] ?? ''), 'MICRO')
+                           || str_contains(strtoupper($item['nombre'] ?? ''), 'TINY')
+                           || str_contains(strtoupper($item['nombre'] ?? ''), 'MINI')
+                           || in_array(strtoupper(trim($item['tipo_equipo'] ?? '')), ['ESCRITORIO', 'DESKTOP', 'CPU', 'MINI PC'], true);
+                    $etiqueta = $esMini ? 'eliminador externo' : 'cargador';
+
+                    $this->addError('general', "Debes escanear y asignar un {$etiqueta} para el equipo {$item['nombre']} antes de cobrar.");
+                    return;
+                }
+            }
+        }
+
+        // 2. Regla de Oro Financiera: Combos de Computadora de Escritorio + Monitor deben pertenecer al MISMO LOTE
+        $equiposEscritorio = [];
+        $monitores = [];
+
+        foreach ($this->carrito as $item) {
+            if ($item['tipo'] === 'equipo') {
+                $tipoEq = strtoupper(trim($item['tipo_equipo'] ?? ''));
+                if (in_array($tipoEq, ['ESCRITORIO', 'DESKTOP', 'CPU', 'PC'], true)) {
+                    $equiposEscritorio[] = $item;
+                } elseif ($tipoEq === 'MONITOR' || str_contains(strtoupper($item['nombre'] ?? ''), 'MONITOR')) {
+                    $monitores[] = $item;
+                }
+            } elseif ($item['tipo'] === 'producto') {
+                if (str_contains(strtoupper($item['nombre'] ?? ''), 'MONITOR') || str_contains(strtoupper($item['detalle'] ?? ''), 'MONITOR')) {
+                    $monitores[] = $item;
+                }
+            }
+        }
+
+        if (!empty($equiposEscritorio) && !empty($monitores)) {
+            foreach ($equiposEscritorio as $pc) {
+                if (!empty($pc['lote_id'])) {
+                    foreach ($monitores as $mon) {
+                        if (!empty($mon['lote_id']) && $mon['lote_id'] !== $pc['lote_id']) {
+                            $this->addError('general', "Incompatibilidad de Lote en Combo: El equipo de escritorio {$pc['nombre']} (" . ($pc['lote_nombre'] ?? "Lote #{$pc['lote_id']}") . ") y el monitor {$mon['nombre']} pertenecen a lotes de compra distintos. Para mantener la garantía y costeo de combo, deben provenir del mismo lote.");
+                            return;
+                        }
+                    }
+                }
             }
         }
 
@@ -462,13 +521,17 @@ class PuntoDeVenta extends Component
 
         abort_unless($almacenId, 422, 'No tienes un almacén de ventas asignado.');
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($user, $almacenId, $corteActual) {
+        $almacenObj = \App\Models\Almacen::find($almacenId);
+        $sucursalId = $almacenObj?->sucursal_id ?? $user->sucursal_id ?? $corteActual->sucursal_id ?? null;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($user, $almacenId, $sucursalId, $corteActual) {
             // Crear cabecera de venta
             $venta = Venta::create([
                 'folio'           => Venta::generarFolio(),
                 'cliente_id'      => $this->clienteId ?: null,
                 'vendedor_id'     => $user->id,
                 'almacen_id'      => $almacenId,
+                'sucursal_id'     => $sucursalId,
                 'corte_caja_id'   => $corteActual->id,
                 'metodo_pago'     => $this->metodoPago,
                 'subtotal'        => $this->subtotal,

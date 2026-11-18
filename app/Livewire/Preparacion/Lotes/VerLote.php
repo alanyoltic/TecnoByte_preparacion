@@ -34,14 +34,13 @@ class VerLote extends Component
 
     public function mount(Lote $lote)
     {
-        abort_unless(Auth::user()?->tienePermiso('prep.lotes.gestion'), 403);
-        if (!$lote->compra_inventario_id) return redirect()->route('preparacion.lotes.editar', $lote->id);
+        abort_unless(Auth::user()?->tienePermiso('prep.lotes.ver') || Auth::user()?->tienePermiso('prep.lotes.gestion'), 403);
 
-        $this->lote = $lote->load('compraInventario.items.catalogoEquipo', 'compraInventario.items.catalogoPieza', 'proveedor');
+        $this->lote = $lote->load('compraInventario.items.catalogoEquipo', 'modelosRecibidos.equipos.asignacionEquipos.asignacion.tecnico', 'proveedor');
         
         $this->nombre_lote = $lote->nombre_lote;
         $this->fecha_llegada = $lote->fecha_llegada ? date('Y-m-d', strtotime($lote->fecha_llegada)) : date('Y-m-d');
-        $this->proveedor_nombre = $lote->proveedor->nombre ?? 'Proveedor Desconocido';
+        $this->proveedor_nombre = $lote->proveedor->nombre_empresa ?? $lote->proveedor->nombre ?? 'Proveedor Desconocido';
         
         $this->clasificaciones = ClasificacionPuntos::where('activo', true)->orderBy('clave')->get();
 
@@ -54,101 +53,149 @@ class VerLote extends Component
         $this->piezas = [];
         $this->cargadores = [];
 
-        foreach ($this->lote->compraInventario->items as $item) {
-            
-            if ($item->catalogo_equipo_id) {
-                $loteModeloIds = LoteModeloRecibido::where('lote_id', $this->lote->id)->where('catalogo_equipo_id', $item->catalogo_equipo_id)->pluck('id');
-                $equiposDB = Equipo::whereIn('lote_modelo_id', $loteModeloIds)->orderBy('id')->get();
-                
+        // 1. Cargar equipos desde Compra Inventario si existe
+        if ($this->lote->compraInventario && $this->lote->compraInventario->items->isNotEmpty()) {
+            foreach ($this->lote->compraInventario->items as $item) {
+                if ($item->catalogo_equipo_id) {
+                    $loteModeloIds = LoteModeloRecibido::where('lote_id', $this->lote->id)
+                        ->where('catalogo_equipo_id', $item->catalogo_equipo_id)
+                        ->pluck('id');
+                    $equiposDB = Equipo::whereIn('lote_modelo_id', $loteModeloIds)->orderBy('id')->get();
+                    
+                    $registrados = $equiposDB->count();
+                    $usados = $equiposDB->where('estatus_area', '!=', 'SIN_ASIGNAR')->count();
+                    $faltantes = max(0, $item->cantidad - $registrados);
+                    
+                    $registrosExistentes = [];
+                    foreach ($equiposDB as $eq) {
+                        $registrosExistentes[] = [
+                            'id'            => $eq->id,
+                            'numero_serie'  => $eq->numero_serie,
+                            'bloqueado'     => ($eq->estatus_area !== 'SIN_ASIGNAR'),
+                            'tecnico'       => $eq->tecnico_asignado?->name ?? 'Sin asignar',
+                            'estatus_area'  => $eq->estatus_area,
+                            'estatus_ciclo' => $eq->estatus_ciclo,
+                            'area_label'    => $eq->estatus_area_label,
+                            'ciclo_label'   => $eq->estatus_ciclo_label,
+                        ];
+                    }
+
+                    $this->modelos[] = [
+                        'item_id' => $item->id,
+                        'catalogo_equipo_id' => $item->catalogo_equipo_id,
+                        'marca' => optional($item->catalogoEquipo)->marca ?: 'Genérica',
+                        'modelo' => optional($item->catalogoEquipo)->modelo ?: 'Genérico',
+                        'cantidad' => $item->cantidad,
+                        'registrados' => $registrados,
+                        'usados' => $usados,
+                        'pendientes' => $faltantes > 0 ? $faltantes : 0,
+                        'valor_unitario' => $item->precio_unitario,
+                        'clasificacion_puntos_id' => '',
+                        'registros_existentes' => $registrosExistentes,
+                        'numeros_serie_nuevos' => [],
+                        'almacen_id' => $item->almacen_id
+                    ];
+                } elseif ($item->catalogo_pieza_id) {
+                    $piezasDB = InventarioPieza::where('compra_item_id', $item->id)->orderBy('id')->get();
+                    $registrados = $piezasDB->count();
+                    $usados = $piezasDB->where('estatus', '!=', InventarioPieza::DISPONIBLE)->count();
+                    $faltantes = $item->cantidad - $registrados;
+
+                    $registrosExistentes = [];
+                    foreach ($piezasDB as $pz) {
+                        $registrosExistentes[] = [
+                            'id' => $pz->id,
+                            'numero_serie' => $pz->numero_serie,
+                            'codigo_interno' => $pz->codigo_interno,
+                            'tiene_externa' => !empty($pz->numero_serie),
+                            'bloqueado' => ($pz->estatus !== InventarioPieza::DISPONIBLE)
+                        ];
+                    }
+                    
+                    $this->piezas[] = [
+                        'item_id' => $item->id,
+                        'catalogo_pieza_id' => $item->catalogo_pieza_id,
+                        'nombre' => $item->catalogoPieza->nombre,
+                        'cantidad' => $item->cantidad,
+                        'registrados' => $registrados,
+                        'usados' => $usados,
+                        'pendientes' => $faltantes > 0 ? $faltantes : 0,
+                        'costo' => $item->precio_unitario,
+                        'registros_existentes' => $registrosExistentes,
+                        'numeros_serie_nuevos' => [],
+                        'nuevos_tiene_externa' => [],
+                        'almacen_id' => $item->almacen_id
+                    ];
+                    
+                } elseif (!$item->producto_id && !$item->consumible_id && str_contains(strtolower($item->notas), 'cargador')) {
+                    $cargadoresDB = Cargador::where('compra_inventario_id', $this->lote->compra_inventario_id)->orderBy('id')->get();
+                    $registrados = $cargadoresDB->count();
+                    $usados = $cargadoresDB->where('estatus', '!=', 'DISPONIBLE')->count();
+                    $faltantes = $item->cantidad - $registrados;
+
+                    $registrosExistentes = [];
+                    foreach ($cargadoresDB as $cr) {
+                        $registrosExistentes[] = [
+                            'id' => $cr->id,
+                            'numero_serie' => $cr->serie_fabricante,
+                            'codigo_interno' => $cr->serie,
+                            'tiene_externa' => !empty($cr->serie_fabricante),
+                            'bloqueado' => ($cr->estatus !== 'DISPONIBLE')
+                        ];
+                    }
+
+                    $this->cargadores[] = [
+                        'item_id' => $item->id,
+                        'notas' => $item->notas,
+                        'cantidad' => $item->cantidad,
+                        'registrados' => $registrados,
+                        'usados' => $usados,
+                        'pendientes' => $faltantes > 0 ? $faltantes : 0,
+                        'costo' => $item->precio_unitario,
+                        'registros_existentes' => $registrosExistentes,
+                        'numeros_serie_nuevos' => [],
+                        'nuevos_tiene_externa' => []
+                    ];
+                }
+            }
+        }
+
+        // Si no se cargaron modelos por compra_inventario, cargar directamente desde LoteModeloRecibido
+        if (empty($this->modelos) && $this->lote->modelosRecibidos) {
+            foreach ($this->lote->modelosRecibidos as $lm) {
+                $equiposDB = Equipo::where('lote_modelo_id', $lm->id)->orderBy('id')->get();
                 $registrados = $equiposDB->count();
                 $usados = $equiposDB->where('estatus_area', '!=', 'SIN_ASIGNAR')->count();
-                $faltantes = $item->cantidad - $registrados;
-                
+                $faltantes = max(0, $lm->cantidad_recibida - $registrados);
+
                 $registrosExistentes = [];
                 foreach ($equiposDB as $eq) {
                     $registrosExistentes[] = [
-                        'id' => $eq->id,
-                        'numero_serie' => $eq->numero_serie,
-                        'bloqueado' => ($eq->estatus_area !== 'SIN_ASIGNAR')
+                        'id'            => $eq->id,
+                        'numero_serie'  => $eq->numero_serie,
+                        'bloqueado'     => ($eq->estatus_area !== 'SIN_ASIGNAR'),
+                        'tecnico'       => $eq->tecnico_asignado?->name ?? 'Sin asignar',
+                        'estatus_area'  => $eq->estatus_area,
+                        'estatus_ciclo' => $eq->estatus_ciclo,
+                        'area_label'    => $eq->estatus_area_label,
+                        'ciclo_label'   => $eq->estatus_ciclo_label,
                     ];
                 }
 
                 $this->modelos[] = [
-                    'item_id' => $item->id,
-                    'catalogo_equipo_id' => $item->catalogo_equipo_id,
-                    'marca' => $item->catalogoEquipo->marca,
-                    'modelo' => $item->catalogoEquipo->modelo,
-                    'cantidad' => $item->cantidad,
+                    'item_id' => $lm->id,
+                    'catalogo_equipo_id' => $lm->catalogo_equipo_id,
+                    'marca' => $lm->marca ?: 'Genérica',
+                    'modelo' => $lm->modelo ?: 'Genérico',
+                    'cantidad' => $lm->cantidad_recibida,
                     'registrados' => $registrados,
                     'usados' => $usados,
                     'pendientes' => $faltantes > 0 ? $faltantes : 0,
-                    'valor_unitario' => $item->precio_unitario,
-                    'clasificacion_puntos_id' => '', // Default for new or bulk update
+                    'valor_unitario' => $lm->valor_unitario,
+                    'clasificacion_puntos_id' => $lm->clasificacion_puntos_id,
                     'registros_existentes' => $registrosExistentes,
                     'numeros_serie_nuevos' => [],
-                    'almacen_id' => $item->almacen_id
-                ];
-                
-            } elseif ($item->catalogo_pieza_id) {
-                $piezasDB = InventarioPieza::where('compra_item_id', $item->id)->orderBy('id')->get();
-                $registrados = $piezasDB->count();
-                $usados = $piezasDB->where('estatus', '!=', InventarioPieza::DISPONIBLE)->count();
-                $faltantes = $item->cantidad - $registrados;
-
-                $registrosExistentes = [];
-                foreach ($piezasDB as $pz) {
-                    $registrosExistentes[] = [
-                        'id' => $pz->id,
-                        'numero_serie' => $pz->numero_serie,
-                        'codigo_interno' => $pz->codigo_interno,
-                        'tiene_externa' => !empty($pz->numero_serie),
-                        'bloqueado' => ($pz->estatus !== InventarioPieza::DISPONIBLE)
-                    ];
-                }
-                
-                $this->piezas[] = [
-                    'item_id' => $item->id,
-                    'catalogo_pieza_id' => $item->catalogo_pieza_id,
-                    'nombre' => $item->catalogoPieza->nombre,
-                    'cantidad' => $item->cantidad,
-                    'registrados' => $registrados,
-                    'usados' => $usados,
-                    'pendientes' => $faltantes > 0 ? $faltantes : 0,
-                    'costo' => $item->precio_unitario,
-                    'registros_existentes' => $registrosExistentes,
-                    'numeros_serie_nuevos' => [],
-                    'nuevos_tiene_externa' => [],
-                    'almacen_id' => $item->almacen_id
-                ];
-                
-            } elseif (!$item->producto_id && !$item->consumible_id && str_contains(strtolower($item->notas), 'cargador')) {
-                $cargadoresDB = Cargador::where('compra_inventario_id', $this->lote->compra_inventario_id)->orderBy('id')->get();
-                $registrados = $cargadoresDB->count();
-                $usados = $cargadoresDB->where('estatus', '!=', 'DISPONIBLE')->count();
-                $faltantes = $item->cantidad - $registrados;
-
-                $registrosExistentes = [];
-                foreach ($cargadoresDB as $cr) {
-                    $registrosExistentes[] = [
-                        'id' => $cr->id,
-                        'numero_serie' => $cr->serie_fabricante,
-                        'codigo_interno' => $cr->serie,
-                        'tiene_externa' => !empty($cr->serie_fabricante),
-                        'bloqueado' => ($cr->estatus !== 'DISPONIBLE')
-                    ];
-                }
-
-                $this->cargadores[] = [
-                    'item_id' => $item->id,
-                    'notas' => $item->notas,
-                    'cantidad' => $item->cantidad,
-                    'registrados' => $registrados,
-                    'usados' => $usados,
-                    'pendientes' => $faltantes > 0 ? $faltantes : 0,
-                    'costo' => $item->precio_unitario,
-                    'registros_existentes' => $registrosExistentes,
-                    'numeros_serie_nuevos' => [],
-                    'nuevos_tiene_externa' => []
+                    'almacen_id' => $lm->equipos->first()?->almacen_id
                 ];
             }
         }
@@ -373,6 +420,15 @@ class VerLote extends Component
 
     public function render()
     {
-        return view('livewire.preparacion.lotes.ver-lote');
+        return view('livewire.preparacion.lotes.ver-lote', [
+            'lote'             => $this->lote,
+            'nombre_lote'      => $this->nombre_lote,
+            'fecha_llegada'    => $this->fecha_llegada,
+            'proveedor_nombre' => $this->proveedor_nombre,
+            'modelos'          => $this->modelos,
+            'clasificaciones'  => $this->clasificaciones,
+            'modalSeries'      => $this->modalSeries,
+            'serialesIndex'    => $this->serialesIndex,
+        ]);
     }
 }

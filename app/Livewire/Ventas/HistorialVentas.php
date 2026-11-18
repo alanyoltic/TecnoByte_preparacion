@@ -36,7 +36,7 @@ class HistorialVentas extends Component
 
     public function render()
     {
-        $query = Venta::with(['cliente', 'vendedor'])
+        $query = Venta::with(['cliente', 'vendedor', 'sucursal'])
             ->orderBy('created_at', 'desc');
 
         // Limitar la vista para Asesores (solo ven sus propias ventas)

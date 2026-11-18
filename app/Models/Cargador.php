@@ -55,4 +55,35 @@ class Cargador extends Model
     {
         return $this->hasMany(CargadorAuditoria::class);
     }
+
+    /**
+     * Genera una serie interna obligatoria y única para TecnoByte.
+     * Formato: CARG-{ABREV}{FECHA}-{SECUENCIAL}
+     */
+    public static function generarSerieInterna(?string $abrevProveedor = null, $fecha = null): string
+    {
+        $abrev = strtoupper(trim($abrevProveedor ?: 'TB'));
+        $abrev = preg_replace('/[^A-Z0-9]/', '', $abrev) ?: 'TB';
+
+        if ($fecha instanceof \DateTimeInterface) {
+            $fechaStr = $fecha->format('dmY');
+        } elseif (is_string($fecha) && !empty($fecha)) {
+            $fechaStr = date('dmY', strtotime($fecha));
+        } else {
+            $fechaStr = date('dmY');
+        }
+
+        $prefijo = "CARG-{$abrev}{$fechaStr}-";
+
+        $secuencial = 1;
+        do {
+            $candidato = $prefijo . $secuencial;
+            $existe = static::where('serie', $candidato)->exists();
+            if ($existe) {
+                $secuencial++;
+            }
+        } while ($existe);
+
+        return $candidato;
+    }
 }

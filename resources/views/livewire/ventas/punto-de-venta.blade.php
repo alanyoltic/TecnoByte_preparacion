@@ -181,18 +181,54 @@
                     </div>
 
                     @if($item['tipo'] === 'equipo')
-                    <div class="mt-2 ml-36 flex items-center gap-2">
-                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Cargador:</label>
+                    @php
+                        $requiere = $item['requiere_cargador'] ?? false;
+                        $esDesktop = in_array(strtoupper(trim($item['tipo_equipo'] ?? '')), ['ESCRITORIO', 'DESKTOP', 'ALL IN ONE', 'CPU', 'MINI PC'], true)
+                                  || str_contains(strtoupper($item['nombre'] ?? ''), 'MICRO')
+                                  || str_contains(strtoupper($item['nombre'] ?? ''), 'TINY')
+                                  || str_contains(strtoupper($item['nombre'] ?? ''), 'MINI');
+                        $etiqueta = $esDesktop ? 'Eliminador:' : 'Cargador:';
+                    @endphp
+                    @if($requiere)
+                    <div class="mt-2 ml-36 flex items-center gap-2 flex-wrap">
+                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">{{ $etiqueta }}</label>
                         <select wire:model="carrito.{{ $index }}.cargador_id" 
-                            class="w-80 rounded-xl px-3 py-1.5 text-sm bg-white dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 dark:text-slate-300">
-                            <option value="">-- No incluir cargador --</option>
+                            class="w-80 rounded-xl px-3 py-1.5 text-sm bg-white dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-[#FF9521] outline-none text-slate-700 dark:text-slate-300">
+                            <option value="">-- No incluir {{ strtolower(trim($etiqueta, ':')) }} --</option>
                             @foreach($this->cargadoresDisponibles as $cargador)
                                 <option value="{{ $cargador->id }}">
                                     {{ $cargador->marca }} {{ $cargador->serie }} ({{ $cargador->voltaje }}V {{ $cargador->amperaje }}A) - Punta: {{ $cargador->punta }}
                                 </option>
                             @endforeach
                         </select>
+                        @if(!empty($item['lote_nombre']))
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#FF9521]/15 text-[#FF9521] border border-[#FF9521]/30">
+                                📦 {{ $item['lote_nombre'] }}
+                            </span>
+                        @endif
+                        <button type="button" wire:click="alternarRequiereCargador({{ $index }})" 
+                            title="Cambiar a alimentación interna si este modelo no usa eliminador externo"
+                            class="text-[11px] text-slate-400 hover:text-slate-200 underline ml-2">
+                            ⚡ Cambiar a fuente interna
+                        </button>
                     </div>
+                    @else
+                    <div class="mt-2 ml-36 flex items-center gap-2 flex-wrap">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            ⚡ Fuente interna (No requiere cargador)
+                        </span>
+                        @if(!empty($item['lote_nombre']))
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#FF9521]/15 text-[#FF9521] border border-[#FF9521]/30">
+                                📦 {{ $item['lote_nombre'] }}
+                            </span>
+                        @endif
+                        <button type="button" wire:click="alternarRequiereCargador({{ $index }})" 
+                            title="Haz clic si este equipo (ej. Tiny / Micro) requiere eliminador de corriente externo"
+                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 transition">
+                            🔌 Requiere eliminador externo
+                        </button>
+                    </div>
+                    @endif
                     @endif
                 </div>
                 @empty

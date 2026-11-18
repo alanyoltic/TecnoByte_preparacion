@@ -192,6 +192,67 @@ class Equipo extends Model
         return $this->hasMany(\App\Models\ValidacionCalidad::class, 'equipo_id');
     }
 
+    public function getTecnicoAsignadoAttribute(): ?\App\Models\User
+    {
+        $ae = $this->asignacionEquipos()->with('asignacion.tecnico')->latest('id')->first();
+        return $ae?->asignacion?->tecnico;
+    }
+
+    public function getEstatusAreaLabelAttribute(): string
+    {
+        return static::labelsArea()[$this->estatus_area] ?? ($this->estatus_area ?: 'Sin Asignar');
+    }
+
+    public function getEstatusCicloLabelAttribute(): string
+    {
+        return static::labelsCiclo()[$this->estatus_ciclo] ?? ($this->estatus_ciclo ?: 'Preparación');
+    }
+
+    public function getLoteIdAttribute(): ?int
+    {
+        return $this->loteModelo?->lote_id;
+    }
+
+    public function getLoteNombreAttribute(): ?string
+    {
+        return $this->loteModelo?->lote?->nombre_lote ?? ($this->lote_id ? "Lote #{$this->lote_id}" : null);
+    }
+
+    /**
+     * Determina si el equipo requiere cargador o eliminador externo.
+     * Verdadero para Laptops, 2 en 1 y Desktops compactos tipo Tiny / Micro / Mini / USFF.
+     * Falso para Torres, gabinetes SFF y All in One con fuente de poder interna.
+     */
+    public function getRequiereCargadorExternoAttribute(): bool
+    {
+        $tipo = strtoupper(trim($this->tipo_equipo ?? ''));
+        $modelo = strtoupper(trim($this->modelo ?? ''));
+
+        // 1. Laptops y portátiles siempre requieren cargador externo
+        if (in_array($tipo, ['LAPTOP', '2 EN 1', 'GAMER'], true)) {
+            return true;
+        }
+
+        // 2. Mini PCs / Desktops compactos que usan eliminador externo
+        $keywordsMini = ['MICRO', 'TINY', 'MINI', 'USFF', 'DM', 'NUC'];
+        foreach ($keywordsMini as $kw) {
+            if (str_contains($modelo, $kw) || str_contains($tipo, $kw)) {
+                return true;
+            }
+        }
+
+        // 3. Si no tiene tipo asignado, deducir por modelo
+        if (empty($tipo)) {
+            if (str_contains($modelo, 'TOWER') || str_contains($modelo, 'SFF') || str_contains($modelo, 'DESK') || str_contains($modelo, 'ALL IN ONE') || str_contains($modelo, 'AIO')) {
+                return false;
+            }
+            return true; // Predeterminado para laptops
+        }
+
+        // 4. Torres, SFF tradicionales y All In One con fuente interna
+        return false;
+    }
+
     // =========================================================
     // HELPERS DE ÁREA
     // =========================================================
@@ -424,6 +485,18 @@ class Equipo extends Model
     public function loteModelo()
     {
         return $this->belongsTo(LoteModeloRecibido::class, 'lote_modelo_id');
+    }
+
+    public function lote()
+    {
+        return $this->hasOneThrough(
+            Lote::class,
+            LoteModeloRecibido::class,
+            'id',
+            'id',
+            'lote_modelo_id',
+            'lote_id'
+        );
     }
 
     public function catalogoEquipo()

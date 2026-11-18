@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Sucursal extends Model
@@ -13,6 +14,7 @@ class Sucursal extends Model
 
     protected $casts = [
         'es_virtual' => 'boolean',
+        'es_matriz'  => 'boolean',
         'activo'     => 'boolean',
     ];
 
@@ -31,9 +33,24 @@ class Sucursal extends Model
         return $query->where('activo', true);
     }
 
+    public function scopeMatriz($query)
+    {
+        return $query->where('es_matriz', true);
+    }
+
     // =========================================================
     // RELACIONES
     // =========================================================
+
+    public function encargado(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'encargado_id')->withoutGlobalScopes();
+    }
+
+    public function ventas(): HasMany
+    {
+        return $this->hasMany(Venta::class, 'sucursal_id');
+    }
 
     public function almacenes(): HasMany
     {
@@ -53,8 +70,26 @@ class Sucursal extends Model
     }
 
     // =========================================================
-    // HELPERS
+    // HELPERS & ACCESSORS
     // =========================================================
+
+    public function getDireccionCompletaAttribute(): string
+    {
+        $partes = array_filter([
+            $this->direccion,
+            $this->colonia ? 'Col. ' . $this->colonia : null,
+            $this->codigo_postal ? 'C.P. ' . $this->codigo_postal : null,
+            $this->ciudad,
+            $this->estado,
+        ]);
+
+        return implode(', ', $partes);
+    }
+
+    public static function matriz(): ?self
+    {
+        return static::where('es_matriz', true)->first() ?? static::qro();
+    }
 
     public static function qro(): ?self
     {

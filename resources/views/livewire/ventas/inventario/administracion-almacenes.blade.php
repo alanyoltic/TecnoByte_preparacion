@@ -52,10 +52,16 @@
                                         </div>
                                         <div>
                                             <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">{{ $almacen->nombre }}</h3>
+                                            <div class="flex items-center gap-2 mt-0.5">
+                                                @if($almacen->sucursal)
+                                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">
+                                                        <span>📍</span> {{ $almacen->sucursal->nombre }}
+                                                    </span>
+                                                @endif
+                                                <span class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">{{ $almacen->tipo }}</span>
+                                            </div>
                                             @if($almacen->descripcion)
-                                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ $almacen->descripcion }}</p>
-                                            @else
-                                                <p class="text-[10px] text-slate-400 uppercase tracking-wider font-bold mt-0.5">{{ $almacen->tipo }}</p>
+                                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ $almacen->descripcion }}</p>
                                             @endif
                                         </div>
                                     </div>

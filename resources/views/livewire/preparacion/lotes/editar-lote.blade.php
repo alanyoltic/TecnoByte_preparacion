@@ -533,7 +533,7 @@
 
                 <div class="flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                        Series manuales (Opcional) —
+                        Series de Fabricante (Opcional) —
                         {{ $modelosCargadores[$serialesCargadorIndex]['marca'] ?? 'Cargador' }}
                         {{ $modelosCargadores[$serialesCargadorIndex]['voltaje'] ?? '' }}
                     </h3>
@@ -542,7 +542,7 @@
                 </div>
 
                 <p class="text-xs text-slate-400 leading-relaxed">
-                    Si dejas campos vacíos, se generarán series automáticamente usando el proveedor y la fecha de compra.<br>
+                    La <strong class="text-slate-300">serie interna TecnoByte se autogenera automáticamente</strong> para cada cargador. Si el cargador físico cuenta con serie del fabricante, captúrala aquí para trazabilidad de garantías (opcional).<br>
                     Máximo {{ $modelosCargadores[$serialesCargadorIndex]['cantidad'] ?? 0 }} series.
                 </p>
 
@@ -552,7 +552,7 @@
                             <span class="text-xs text-slate-400 w-5 text-right shrink-0">{{ $si + 1 }}</span>
                             <input type="text"
                                    wire:model="modelosCargadores.{{ $serialesCargadorIndex }}.numeros_serie.{{ $si }}"
-                                   placeholder="Serie específica..."
+                                   placeholder="Serie del fabricante (ej. S/N, opcional)..."
                                    class="flex-1 rounded-xl px-3 py-2 text-sm
                                           bg-white/70 dark:bg-slate-900/40
                                           border border-slate-300/80 dark:border-slate-700

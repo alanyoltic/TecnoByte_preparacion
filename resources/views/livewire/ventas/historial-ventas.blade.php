@@ -62,6 +62,11 @@
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm font-medium text-slate-900 dark:text-white">{{ $venta->folio }}</div>
                                     <div class="text-xs text-slate-500">{{ $venta->created_at->format('d/m/Y H:i') }}</div>
+                                    @if($venta->sucursal)
+                                        <div class="text-[11px] font-semibold text-blue-600 dark:text-blue-400 mt-0.5 flex items-center gap-1">
+                                            <span>📍</span> {{ $venta->sucursal->nombre }}
+                                        </div>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm font-medium text-slate-900 dark:text-white">{{ optional($venta->cliente)->nombre ?? 'Venta Mostrador' }}</div>
