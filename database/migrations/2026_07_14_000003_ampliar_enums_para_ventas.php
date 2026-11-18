@@ -32,6 +32,7 @@ return new class extends Migration
                 'PENDIENTE_DESARME',
                 'GARANTIA_INT',
                 'GARANTIA_EXT',
+                'GARANTIA_CAMBIO',
                 'DISPONIBLE_VENTA',
                 'EN_PISO_VENTA',
                 'APARTADO_CLIENTE',
@@ -77,7 +78,8 @@ return new class extends Migration
                 'PENDIENTE_GARANTIA',
                 'PENDIENTE_DESARME',
                 'GARANTIA_INT',
-                'GARANTIA_EXT'
+                'GARANTIA_EXT',
+                'GARANTIA_CAMBIO'
             ) NOT NULL DEFAULT 'EN_ESPERA'
         ");
 
