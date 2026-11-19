@@ -84,7 +84,9 @@ class TransferenciaService
     {
         // 1. Destino pertenece al área de VENTAS (departamento_id = 2)
         if ($destino->departamento_id == 2) {
-            if (str_contains(strtolower($destino->clave), 'apartado')) {
+            $claveLower = strtolower($destino->clave ?? '');
+            $nombreLower = strtolower($destino->nombre ?? '');
+            if ($destino->clave === Almacen::CLAVE_APARTADOS || str_contains($claveLower, 'apar') || str_contains($nombreLower, 'apartad')) {
                 return [Equipo::CICLO_APARTADO, Equipo::AREA_APARTADO_CLIENTE];
             }
             return [Equipo::CICLO_VENTAS, Equipo::AREA_DISPONIBLE_VENTA];
