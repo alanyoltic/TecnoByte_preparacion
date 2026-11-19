@@ -8,7 +8,7 @@
             chip="Preparación · Envíos a Tiendas"
             description="Equipos FINALIZADOS y productos enviados al área de Ventas para su aprobación e inventario."
         >
-            @if(auth()->user()->tienePermiso('prep.despachos.crear') || auth()->user()->tienePermiso('prep.inventario.gestion') || auth()->user()->esCeoOAdmin())
+            @if(auth()->user()->tienePermiso('prep.despachos.crear') || auth()->user()->esCeoOAdmin())
             <x-slot name="right">
                 <a href="{{ route('preparacion.despachos-ventas.crear') }}"
                    wire:navigate

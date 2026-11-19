@@ -349,11 +349,11 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
         // Despachos a Ventas
         Route::prefix('preparacion/despachos-ventas')->group(function () {
             Route::get('/', DespachosVentas::class)
-                ->middleware('permiso:prep.despachos.ver|prep.inventario.gestion')
+                ->middleware('permiso:prep.despachos.ver')
                 ->name('preparacion.despachos-ventas');
 
             Route::get('/crear', DespachoVentasCrear::class)
-                ->middleware('permiso:prep.despachos.crear|prep.inventario.gestion')
+                ->middleware('permiso:prep.despachos.crear')
                 ->name('preparacion.despachos-ventas.crear');
         });
 

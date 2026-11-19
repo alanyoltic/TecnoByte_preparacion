@@ -130,8 +130,8 @@
             $puedeClientes        = $isDeptoVentas && $u && $u->tienePermiso('ventas.clientes.ver');
             $puedeProductos       = $isDeptoVentas && $u && $u->tienePermiso('ventas.productos.ver');
             $puedePOS             = $isDeptoVentas && $u && $u->tienePermiso('ventas.venta.crear');
-            $puedeDespachoCrear   = $isDeptoPrep && $u && ($u->tienePermiso('prep.despachos.crear') || $u->tienePermiso('prep.inventario.gestion') || $esGerente || $isCEO);
-            $puedeDespachoVer     = $isDeptoPrep && $u && ($u->tienePermiso('prep.despachos.ver') || $u->tienePermiso('prep.inventario.gestion') || $esGerente || $isCEO);
+            $puedeDespachoCrear   = $isDeptoPrep && $u && ($u->tienePermiso('prep.despachos.crear') || $esGerente || $isCEO);
+            $puedeDespachoVer     = $isDeptoPrep && $u && ($u->tienePermiso('prep.despachos.ver') || $esGerente || $isCEO);
 
             $isVentas         = request()->routeIs('ventas.*');
             $isDespachoPrep   = request()->routeIs('preparacion.despachos-ventas*');
