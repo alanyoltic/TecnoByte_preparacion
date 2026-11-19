@@ -1165,6 +1165,11 @@
                 'visible' => (bool)($isDeptoVentas && $u && $u->tienePermiso('ventas.historial.ver')),
             ],
             [
+                'label'   => 'Corte de Caja',
+                'href'    => route('ventas.caja'),
+                'visible' => (bool)($isDeptoVentas && $u && $u->tienePermiso('ventas.caja.ver')),
+            ],
+            [
                 'label'   => 'Clientes',
                 'href'    => route('ventas.clientes'),
                 'visible' => (bool)$puedeClientes,
@@ -1176,7 +1181,7 @@
             ],
         ];
         $ventasOperacionesItems = array_values(array_filter($ventasOperacionesItems, fn ($it) => $it['visible'] ?? false));
-        $isOperacionesVentasActive = request()->routeIs('ventas.historial*') || request()->routeIs('ventas.clientes*') || request()->routeIs('ventas.garantias*');
+        $isOperacionesVentasActive = request()->routeIs('ventas.historial*') || request()->routeIs('ventas.caja*') || request()->routeIs('ventas.clientes*') || request()->routeIs('ventas.garantias*');
     @endphp
 
     @if(count($ventasOperacionesItems) > 0)
