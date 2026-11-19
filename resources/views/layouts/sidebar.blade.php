@@ -98,8 +98,8 @@
             $isCEO = $roleSlug === 'ceo';
             $isAdmin = in_array($roleSlug, ['admin_sistema', 'sistemas']);
 
-            $isDeptoPrep   = ($deptoClave === 'PREPARACION' || $isAdmin);
-            $isDeptoVentas = ($deptoClave === 'VENTAS' || $isAdmin);
+            $isDeptoPrep   = ($deptoClave === 'PREPARACION' || $isAdmin || $isCEO);
+            $isDeptoVentas = ($deptoClave === 'VENTAS' || $isAdmin || $isCEO);
 
             // Preparacion
             $puedePrep   = $isDeptoPrep && $u && $u->tienePermiso('modulo.preparacion');
