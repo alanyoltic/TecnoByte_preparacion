@@ -123,6 +123,24 @@ class PuntoDeVenta extends Component
             ?? \App\Models\Almacen::where('departamento_id', 2)->value('id');
     }
 
+    public function updatedSucursalId($val): void
+    {
+        if (! $val) {
+            $this->almacenId = null;
+            return;
+        }
+
+        $this->almacenId = \App\Models\Almacen::where('sucursal_id', $val)
+            ->where('departamento_id', 2)
+            ->where('activo', 1)
+            ->where('clave', \App\Models\Almacen::CLAVE_PISO)
+            ->value('id')
+            ?? \App\Models\Almacen::where('sucursal_id', $val)
+            ->where('departamento_id', 2)
+            ->where('activo', 1)
+            ->value('id');
+    }
+
     // ── Búsqueda de Equipo por número de serie ────────────────────────────────
     public function buscarEquipo(): void
     {
@@ -133,6 +151,7 @@ class PuntoDeVenta extends Component
 
         $equipo = Equipo::where('estatus_ciclo', Equipo::CICLO_VENTAS)
             ->where('estatus_area', Equipo::AREA_DISPONIBLE_VENTA)
+            ->when($this->sucursalId, fn ($q) => $q->where('sucursal_id', $this->sucursalId))
             ->where(function ($q) use ($serial) {
                 $q->whereRaw('UPPER(numero_serie) = ?', [strtoupper($serial)]);
                 if (is_numeric($serial)) {
@@ -605,7 +624,10 @@ class PuntoDeVenta extends Component
         return view('livewire.ventas.punto-de-venta', [
             'metodosPago' => Venta::METODOS_PAGO,
             'sucursales' => \App\Models\Sucursal::where('activo', true)->get(),
-            'almacenes' => \App\Models\Almacen::where('departamento_id', 2)->where('activo', 1)->get(),
+            'almacenes' => \App\Models\Almacen::where('departamento_id', 2)
+                ->where('activo', 1)
+                ->when($this->sucursalId, fn ($q) => $q->where('sucursal_id', $this->sucursalId))
+                ->get(),
             'clienteSeleccionado' => $clienteSeleccionado,
             'opcionesRegimen' => \App\Models\Cliente::opcionesRegimenFiscal(),
             'opcionesUsoCfdi' => \App\Models\Cliente::opcionesUsoCfdi(),

@@ -34,7 +34,7 @@
 
                 <div>
                     <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Sucursal:</label>
-                    <select wire:model="sucursalId" class="w-full bg-white/60 dark:bg-slate-900/40 backdrop-blur-md text-slate-900 dark:text-white border-slate-200/70 dark:border-white/10 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 shadow-sm">
+                    <select wire:model.live="sucursalId" class="w-full bg-white/60 dark:bg-slate-900/40 backdrop-blur-md text-slate-900 dark:text-white border-slate-200/70 dark:border-white/10 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 shadow-sm">
                         <option value="">Seleccione Sucursal...</option>
                         @foreach($sucursales as $suc)
                             <option value="{{ $suc->id }}">{{ $suc->nombre }}</option>
