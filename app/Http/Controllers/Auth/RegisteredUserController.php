@@ -180,6 +180,7 @@ class RegisteredUserController extends Controller
             'email' => $validated['email'],
             'role_id' => $validated['role_id'],
             'departamento_id' => $validated['departamento_id'] ?? null,
+            'sucursal_id' => $auth->sucursal_id ?? 1,
             'puesto_id' => $puestoId,
 
             'password' => Hash::make($validated['password']),
