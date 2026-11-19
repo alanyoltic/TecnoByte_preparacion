@@ -23,6 +23,7 @@ class Sucursal extends Model
     // =========================================================
 
     const QRO = 'QRO_CORREGIDORA';
+    const LEON = 'LEON';
 
     // =========================================================
     // SCOPES
@@ -94,5 +95,10 @@ class Sucursal extends Model
     public static function qro(): ?self
     {
         return static::where('clave', self::QRO)->orWhere('clave', 'QRO')->first();
+    }
+
+    public static function leon(): ?self
+    {
+        return static::where('clave', self::LEON)->first();
     }
 }

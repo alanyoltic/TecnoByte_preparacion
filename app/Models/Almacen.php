@@ -27,6 +27,26 @@ class Almacen extends Model
 
     const AREA_TRANSFERENCIA = 8;
 
+    // Claves fijas de almacenes de Ventas
+    const CLAVE_PISO = 'Piso';
+    const CLAVE_BODEGA = 'Bode';
+    const CLAVE_APARTADOS = 'Apar';
+
+    public function scopeActivos($query)
+    {
+        return $query->where('activo', 1);
+    }
+
+    public function scopeVentas($query)
+    {
+        return $query->where('departamento_id', 2);
+    }
+
+    public function scopePorSucursal($query, $sucursalId)
+    {
+        return $query->where('sucursal_id', $sucursalId);
+    }
+
     public function equipos()
     {
         return $this->hasMany(Equipo::class);
