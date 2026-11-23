@@ -469,6 +469,7 @@ class Equipo extends Model
             ->whereHas('despacho', fn ($q) => $q->whereIn('estatus', [
                 DespachoVentas::BORRADOR,
                 DespachoVentas::ENVIADO,
+                DespachoVentas::APROBADO,
             ]));
     }
 

@@ -97,6 +97,7 @@ class InventarioListo extends Component
 
             if ($ae) {
                 $ae->update(['camino' => AsignacionEquipo::COMPLETADO]);
+                $ae->asignacion?->revisarYCompletar();
             }
 
             $equipo->update(['estatus_area' => Equipo::AREA_FINALIZADO]);

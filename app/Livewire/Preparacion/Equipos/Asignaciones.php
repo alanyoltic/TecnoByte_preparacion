@@ -108,6 +108,14 @@ class Asignaciones extends Component
             ->whereIn('estatus', [Asignacion::PENDIENTE, Asignacion::EN_PROCESO])
             ->orderBy('fecha_asignacion', 'desc')
             ->get()
+            ->filter(function ($asig) {
+                // Auto-completar si ya alcanzó el 100% y excluirla del listado activo
+                if ($asig->revisarYCompletar()) {
+                    return false;
+                }
+
+                return true;
+            })
             ->groupBy('tecnico_id');
     }
 
@@ -302,7 +310,16 @@ class Asignaciones extends Component
             ->where('tecnico_id', $this->tecnicoSeleccionadoId)
             ->whereIn('estatus', [Asignacion::PENDIENTE, Asignacion::EN_PROCESO])
             ->orderByDesc('fecha_asignacion')
-            ->get();
+            ->get()
+            ->filter(function ($asig) {
+                // Auto-completar si ya alcanzó el 100% y excluirla del listado activo
+                if ($asig->revisarYCompletar()) {
+                    return false;
+                }
+
+                return true;
+            })
+            ->values();
     }
 
     // ── Navegar a detalle de técnico ──────────────────────────────────────
@@ -829,6 +846,9 @@ class Asignaciones extends Component
                 }
             });
         }
+
+        // Revisar si con la nueva cantidad la asignación ya quedó completada
+        $asignacion->fresh()?->revisarYCompletar();
 
         $this->dispatch('toast', [
             'type' => 'success',

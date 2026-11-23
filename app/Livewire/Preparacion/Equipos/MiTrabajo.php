@@ -160,11 +160,20 @@ class MiTrabajo extends Component
     #[Computed]
     public function asignaciones()
     {
-        return Asignacion::with(['loteModelo.lote', 'equipos'])
+        $asignaciones = Asignacion::with(['loteModelo.lote', 'equipos'])
             ->delTecnico(Auth::id())
             ->whereIn('estatus', [Asignacion::PENDIENTE, Asignacion::EN_PROCESO])
             ->orderByDesc('fecha_asignacion')
             ->get();
+
+        return $asignaciones->filter(function ($asig) {
+            // Auto-completar si ya alcanzó el 100% y excluirla de la vista de activas
+            if ($asig->revisarYCompletar()) {
+                return false;
+            }
+
+            return true;
+        })->values();
     }
 
     #[Computed]
@@ -1309,9 +1318,15 @@ class MiTrabajo extends Component
             return;
         }
 
-        $this->dispatch('toast', type: 'success', title: 'Equipo terminado', message: 'El equipo fue marcado como terminado.');
-        unset($this->asignacionActual);
-        $this->volverAEquipos();
+        $asigModel = $ae->asignacion?->fresh();
+        if ($asigModel && $asigModel->estatus === Asignacion::ENTREGADO) {
+            $this->volverALista();
+            $this->dispatch('toast', type: 'success', title: '¡Asignación terminada!', message: 'Todos los equipos de la asignación fueron completados.');
+        } else {
+            $this->dispatch('toast', type: 'success', title: 'Equipo terminado', message: 'El equipo fue marcado como terminado.');
+            unset($this->asignacionActual);
+            $this->volverAEquipos();
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════
