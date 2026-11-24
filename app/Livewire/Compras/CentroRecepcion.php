@@ -196,11 +196,8 @@ class CentroRecepcion extends Component
 
                     foreach ($this->seriesEquipos[$item->id] as $serie) {
                         $serieLimpia = strtoupper(trim($serie));
-                        if ($serieLimpia === '') {
-                            continue; // Si viene sin serie (lote ciego), no se crean registros en blanco; el técnico los da de alta en Mi Trabajo
-                        }
                         $equipo = Equipo::create([
-                            'numero_serie' => $serieLimpia,
+                            'numero_serie' => $serieLimpia !== '' ? $serieLimpia : null,
                             'lote_modelo_id' => $loteModelo->id,
                             'catalogo_equipo_id' => $item->catalogo_equipo_id,
                             'clasificacion_puntos_id' => $clasificacionPuntosId,

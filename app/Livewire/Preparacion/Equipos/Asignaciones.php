@@ -87,12 +87,15 @@ class Asignaciones extends Component
     {
         return $this->queryEquiposSinAsignarPorModelo($loteModeloId)
             ->whereNotNull('numero_serie')
-            ->whereRaw("TRIM(numero_serie) <> ''")
-            ->whereExists(function ($q) {
-                $q->select(DB::raw('1'))
-                    ->from('equipo_movimientos as em')
-                    ->whereColumn('em.equipo_id', 'equipos.id')
-                    ->where('em.tipo', 'ALTA_LOTE');
+            ->whereRaw("TRIM(numero_serie) <> ''");
+    }
+
+    private function queryEquiposSinSeriePorModelo(int $loteModeloId): Builder
+    {
+        return $this->queryEquiposSinAsignarPorModelo($loteModeloId)
+            ->where(function ($q) {
+                $q->whereNull('numero_serie')
+                    ->orWhereRaw("TRIM(numero_serie) = ''");
             });
     }
 
@@ -175,7 +178,7 @@ class Asignaciones extends Component
                             OR TRIM(equipos.numero_serie) = ''
                         )
                     ) as equipos_sin_serie_disponibles"),
-                // Equipos con serie elegibles para selector (solo alta de lote)
+                // Equipos con serie elegibles para selector
                 DB::raw("(
                         SELECT COUNT(*)
                         FROM equipos
@@ -184,12 +187,6 @@ class Asignaciones extends Component
                         AND equipos.estatus_area = 'SIN_ASIGNAR'
                         AND equipos.numero_serie IS NOT NULL
                         AND TRIM(equipos.numero_serie) <> ''
-                        AND EXISTS (
-                            SELECT 1
-                            FROM equipo_movimientos em
-                            WHERE em.equipo_id = equipos.id
-                            AND em.tipo = 'ALTA_LOTE'
-                        )
                     ) as equipos_con_serie_lote_disponibles"),
                 // Slots reservados por asignaciones activas aún no escaneados
                 DB::raw("(
@@ -381,15 +378,9 @@ class Asignaciones extends Component
         }
 
         return \App\Models\Equipo::whereIn('lote_modelo_id', $ids)
-            ->where('estatus_area', \App\Models\Equipo::AREA_SIN_ASIGNAR)
+            ->whereIn('estatus_area', [\App\Models\Equipo::AREA_SIN_ASIGNAR, \App\Models\Equipo::AREA_EN_ESPERA])
             ->whereNotNull('numero_serie')
             ->whereRaw("TRIM(numero_serie) <> ''")
-            ->whereExists(function ($q) {
-                $q->select(DB::raw('1'))
-                    ->from('equipo_movimientos as em')
-                    ->whereColumn('em.equipo_id', 'equipos.id')
-                    ->where('em.tipo', 'ALTA_LOTE');
-            })
             ->get(['id', 'numero_serie', 'lote_modelo_id'])
             ->groupBy('lote_modelo_id');
     }
@@ -543,6 +534,27 @@ class Asignaciones extends Component
                             'pre_asignado' => true,
                         ]);
                         $equipo->update(['estatus_area' => \App\Models\Equipo::AREA_ASIGNADO]);
+                        $asignadas++;
+                    }
+                }
+
+                // Si aún faltan slots, auto-asignar equipos físicos del lote SIN serie (S/N Pendiente)
+                $restantesSinSerie = $cantidad - $asignadas;
+                if ($restantesSinSerie > 0) {
+                    $equiposSinSerieAuto = $this->queryEquiposSinSeriePorModelo($loteModeloId)
+                        ->inRandomOrder()
+                        ->limit($restantesSinSerie)
+                        ->get();
+
+                    foreach ($equiposSinSerieAuto as $equipo) {
+                        AsignacionEquipo::create([
+                            'asignacion_id' => $asignacion->id,
+                            'equipo_id' => $equipo->id,
+                            'camino' => AsignacionEquipo::PRE_ASIGNADO,
+                            'pre_asignado' => false,
+                        ]);
+                        $equipo->update(['estatus_area' => \App\Models\Equipo::AREA_ASIGNADO]);
+                        $asignadas++;
                     }
                 }
             }
@@ -806,8 +818,10 @@ class Asignaciones extends Component
             DB::transaction(function () use ($asignacion, $diferencia, $loteModeloId) {
                 $asignacion->update(['cantidad' => $asignacion->cantidad + $diferencia]);
                 
-                // Auto-asignar solo si hay equipos físicos con serie disponible
+                // Auto-asignar: primero equipos con serie, luego sin serie
                 $seriesYaEnAsignacion = $asignacion->equipos->pluck('equipo.numero_serie')->filter()->toArray();
+                $asignadasEdicion = 0;
+
                 $equiposAuto = $this->queryEquiposConSerieDeLotePorModelo($loteModeloId)
                     ->whereNotIn('numero_serie', $seriesYaEnAsignacion)
                     ->inRandomOrder()
@@ -822,6 +836,25 @@ class Asignaciones extends Component
                         'pre_asignado' => true,
                     ]);
                     $equipo->update(['estatus_area' => \App\Models\Equipo::AREA_ASIGNADO]);
+                    $asignadasEdicion++;
+                }
+
+                $restantesEdicion = $diferencia - $asignadasEdicion;
+                if ($restantesEdicion > 0) {
+                    $equiposSinSerieAuto = $this->queryEquiposSinSeriePorModelo($loteModeloId)
+                        ->inRandomOrder()
+                        ->limit($restantesEdicion)
+                        ->get();
+
+                    foreach ($equiposSinSerieAuto as $equipo) {
+                        AsignacionEquipo::create([
+                            'asignacion_id' => $asignacion->id,
+                            'equipo_id' => $equipo->id,
+                            'camino' => AsignacionEquipo::PRE_ASIGNADO,
+                            'pre_asignado' => false,
+                        ]);
+                        $equipo->update(['estatus_area' => \App\Models\Equipo::AREA_ASIGNADO]);
+                    }
                 }
             });
         }

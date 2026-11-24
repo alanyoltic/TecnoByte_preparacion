@@ -835,8 +835,15 @@ class MiTrabajo extends Component
             return;
         }
 
-        $yaEscaneados = $asignacion->equipos->count();
-        $disponibles = $asignacion->cantidad - $yaEscaneados;
+        $aeSinSerie = $asignacion->equipos()
+            ->whereIn('camino', [AsignacionEquipo::PENDIENTE, AsignacionEquipo::PRE_ASIGNADO])
+            ->whereHas('equipo', function ($q) {
+                $q->whereNull('numero_serie')->orWhereRaw("TRIM(numero_serie) = ''");
+            })
+            ->get();
+
+        $slotsLibres = max($asignacion->cantidad - $asignacion->equipos()->count(), 0);
+        $disponibles = $slotsLibres + $aeSinSerie->count();
 
         if (count($seriesLimpias) > $disponibles) {
             $this->errorSerie = "Solo puedes iniciar {$disponibles} equipo(s) más en esta asignación.";
@@ -909,62 +916,144 @@ class MiTrabajo extends Component
                     continue;
                 }
 
-                // También bloquear si ya está PENDIENTE en ESTA asignación (pre-asignado)
-                $enEsta = AsignacionEquipo::where('equipo_id', $equipo->id)
+                // Si ya está en ESTA asignación con esta serie
+                $aeEnEsta = AsignacionEquipo::where('equipo_id', $equipo->id)
                     ->where('asignacion_id', $asignacion->id)
-                    ->where('camino', AsignacionEquipo::PENDIENTE)
-                    ->exists();
-                if ($enEsta) {
-                    $errores[] = "{$serie}: ya está en tu lista, dale a Iniciar.";
+                    ->first();
 
-                    continue;
-                }
-
-                if ($equipo->estatus_area === Equipo::AREA_EN_ESPERA) {
+                if ($aeEnEsta) {
+                    if ($aeEnEsta->camino === AsignacionEquipo::EN_PROCESO) {
+                        $errores[] = "{$serie}: ya está en proceso.";
+                        continue;
+                    }
+                    $aeEnEsta->update([
+                        'camino' => AsignacionEquipo::EN_PROCESO,
+                        'inicio_en' => now(),
+                    ]);
                     $equipo->update([
                         'estatus_ciclo' => 'PREPARACION',
-                        'estatus_area' => 'EN_PROCESO',
+                        'estatus_area' => Equipo::AREA_EN_PROCESO,
                         'registrado_por_user_id' => Auth::id(),
                     ]);
-                }
-
-                if (! $equipo->clasificacion_puntos_id && $clasificacionLoteId) {
-                    $equipo->update([
-                        'clasificacion_puntos_id' => $clasificacionLoteId,
-                    ]);
+                } else {
+                    $aeReutilizar = $aeSinSerie->shift();
+                    if ($aeReutilizar) {
+                        $equipoViejo = $aeReutilizar->equipo;
+                        $aeReutilizar->update([
+                            'equipo_id' => $equipo->id,
+                            'camino' => AsignacionEquipo::EN_PROCESO,
+                            'inicio_en' => now(),
+                        ]);
+                        $equipo->update([
+                            'estatus_ciclo' => 'PREPARACION',
+                            'estatus_area' => Equipo::AREA_EN_PROCESO,
+                            'registrado_por_user_id' => Auth::id(),
+                        ]);
+                        if ($equipoViejo && $equipoViejo->id !== $equipo->id && empty(trim((string) $equipoViejo->numero_serie))) {
+                            $equipoViejo->delete();
+                        }
+                    } else {
+                        AsignacionEquipo::create([
+                            'asignacion_id' => $asignacion->id,
+                            'equipo_id' => $equipo->id,
+                            'inicio_en' => now(),
+                            'camino' => AsignacionEquipo::EN_PROCESO,
+                        ]);
+                        $equipo->update([
+                            'estatus_ciclo' => 'PREPARACION',
+                            'estatus_area' => Equipo::AREA_EN_PROCESO,
+                            'registrado_por_user_id' => Auth::id(),
+                        ]);
+                    }
                 }
             } else {
-                $equipo = Equipo::create([
-                    'numero_serie' => $serie,
-                    'lote_modelo_id' => $asignacion->lote_modelo_id,
-                    'catalogo_equipo_id' => $loteModelo?->catalogo_equipo_id,
-                    'clasificacion_puntos_id' => $clasificacionLoteId,
-                    'marca' => $loteModelo->marca ?? null,
-                    'modelo' => $loteModelo->modelo ?? '',
-                    'estatus_ciclo' => 'PREPARACION',
-                    'estatus_area' => 'EN_PROCESO',
-                    'registrado_por_user_id' => Auth::id(),
-                    'proveedor_id' => $loteModelo->lote->proveedor_id ?? null,
-                    'almacen_id' => Almacen::PREPARACION,
-                    'sucursal_id' => Auth::user()->sucursal_id ?? 1,
-                ]);
+                // NO existe equipo con esta serie en la BD.
+                // 1) ¿Hay un AsignacionEquipo en esta asignación esperando serie?
+                $aeReutilizar = $aeSinSerie->shift();
 
-                if ($almacenPreparacion) {
-                    app(EquipoMovimientoService::class)->abrirEstanciaInicial(
-                        $equipo,
-                        $almacenPreparacion,
-                        'ALTA_MANUAL',
-                        'Alta desde Mi Trabajo al iniciar equipo'
-                    );
+                if ($aeReutilizar && $aeReutilizar->equipo && empty(trim((string) $aeReutilizar->equipo->numero_serie))) {
+                    $equipo = $aeReutilizar->equipo;
+                    $equipo->update([
+                        'numero_serie' => $serie,
+                        'estatus_ciclo' => 'PREPARACION',
+                        'estatus_area' => Equipo::AREA_EN_PROCESO,
+                        'registrado_por_user_id' => Auth::id(),
+                    ]);
+                    $aeReutilizar->update([
+                        'camino' => AsignacionEquipo::EN_PROCESO,
+                        'inicio_en' => now(),
+                    ]);
+                } else {
+                    // 2) ¿Hay algún equipo en el lote en SIN_ASIGNAR con serie NULL libre?
+                    $equipoLoteSinSerie = Equipo::where('lote_modelo_id', $asignacion->lote_modelo_id)
+                        ->whereNull('deleted_at')
+                        ->where('estatus_area', Equipo::AREA_SIN_ASIGNAR)
+                        ->where(function ($q) {
+                            $q->whereNull('numero_serie')->orWhereRaw("TRIM(numero_serie) = ''");
+                        })
+                        ->first();
+
+                    if ($equipoLoteSinSerie) {
+                        $equipo = $equipoLoteSinSerie;
+                        $equipo->update([
+                            'numero_serie' => $serie,
+                            'estatus_ciclo' => 'PREPARACION',
+                            'estatus_area' => Equipo::AREA_EN_PROCESO,
+                            'registrado_por_user_id' => Auth::id(),
+                        ]);
+                        AsignacionEquipo::create([
+                            'asignacion_id' => $asignacion->id,
+                            'equipo_id' => $equipo->id,
+                            'inicio_en' => now(),
+                            'camino' => AsignacionEquipo::EN_PROCESO,
+                        ]);
+                    } else {
+                        // 3) Solo crear nuevo si el lote aún tiene cupo no registrado
+                        $registradosTotal = Equipo::where('lote_modelo_id', $asignacion->lote_modelo_id)->whereNull('deleted_at')->count();
+                        $cantidadRecibidaLote = (int) ($loteModelo->cantidad_recibida ?? 0);
+
+                        if ($registradosTotal >= $cantidadRecibidaLote) {
+                            $errores[] = "{$serie}: El lote ya tiene todos sus equipos registrados ({$registradosTotal} de {$cantidadRecibidaLote}). No se pueden agregar más.";
+                            continue;
+                        }
+
+                        $equipo = Equipo::create([
+                            'numero_serie' => $serie,
+                            'lote_modelo_id' => $asignacion->lote_modelo_id,
+                            'catalogo_equipo_id' => $loteModelo?->catalogo_equipo_id,
+                            'clasificacion_puntos_id' => $clasificacionLoteId,
+                            'marca' => $loteModelo->marca ?? null,
+                            'modelo' => $loteModelo->modelo ?? '',
+                            'estatus_ciclo' => 'PREPARACION',
+                            'estatus_area' => 'EN_PROCESO',
+                            'registrado_por_user_id' => Auth::id(),
+                            'proveedor_id' => $loteModelo->lote->proveedor_id ?? null,
+                            'almacen_id' => Almacen::PREPARACION,
+                            'sucursal_id' => Auth::user()->sucursal_id ?? 1,
+                        ]);
+
+                        if ($almacenPreparacion) {
+                            app(EquipoMovimientoService::class)->abrirEstanciaInicial(
+                                $equipo,
+                                $almacenPreparacion,
+                                'ALTA_MANUAL',
+                                'Alta desde Mi Trabajo al iniciar equipo'
+                            );
+                        }
+
+                        AsignacionEquipo::create([
+                            'asignacion_id' => $asignacion->id,
+                            'equipo_id' => $equipo->id,
+                            'inicio_en' => now(),
+                            'camino' => AsignacionEquipo::EN_PROCESO,
+                        ]);
+                    }
                 }
             }
 
-            AsignacionEquipo::create([
-                'asignacion_id' => $asignacion->id,
-                'equipo_id' => $equipo->id,
-                'inicio_en' => now(),
-                'camino' => AsignacionEquipo::EN_PROCESO,
-            ]);
+            if ($equipo && ! $equipo->clasificacion_puntos_id && $clasificacionLoteId) {
+                $equipo->update(['clasificacion_puntos_id' => $clasificacionLoteId]);
+            }
         }
 
         $asignacion->update(['estatus' => Asignacion::EN_PROCESO]);
@@ -1019,6 +1108,7 @@ class MiTrabajo extends Component
                 $f = $this->form;
 
                 $data = [
+                    'numero_serie' => ! empty(trim((string) $f->numero_serie)) ? strtoupper(trim((string) $f->numero_serie)) : $equipo->numero_serie,
                     'tipo_equipo' => $f->tipo_equipo ?: null,
                     'sistema_operativo' => $f->sistema_operativo ?: null,
                     'area_tienda' => $f->area_tienda ?: null,

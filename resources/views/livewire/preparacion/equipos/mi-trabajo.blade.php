@@ -428,10 +428,13 @@
 
                 @php
                     $pendientes = $a?->equipos->whereIn('camino', [\App\Models\AsignacionEquipo::PENDIENTE, \App\Models\AsignacionEquipo::PRE_ASIGNADO]) ?? collect();
+                    $aeSinSerieCount = $a?->equipos->filter(fn ($ae) => empty(trim((string) $ae->equipo?->numero_serie)))->count() ?? 0;
+                    $slotsLibresCount = max(($a?->cantidad ?? 0) - ($a?->equipos?->count() ?? 0), 0);
+                    $puedeEscanear = ($slotsLibresCount + $aeSinSerieCount) > 0;
                 @endphp
 
                 {{-- Iniciar equipos --}}
-                @if(($a?->equipos?->count() ?? 0) < ($a?->cantidad ?? 0))
+                @if($puedeEscanear)
                     <div class="rounded-2xl bg-white/80 dark:bg-slate-950/60
                                 border border-slate-200/80 dark:border-white/10
                                 backdrop-blur-xl dark:backdrop-blur-2xl
@@ -488,7 +491,7 @@
 
                         <div class="flex justify-between items-center">
                             <p class="text-[0.65rem] text-slate-400 dark:text-slate-500">
-                                Puedes agregar múltiples series a la vez. Máximo {{ max($a?->cantidad - ($a?->equipos?->count() ?? 0), 0) }} más.
+                                Puedes agregar múltiples series a la vez. Máximo {{ $slotsLibresCount + $aeSinSerieCount }} más.
                             </p>
                             <button wire:click="iniciarEquipos"
                                 wire:loading.attr="disabled"
