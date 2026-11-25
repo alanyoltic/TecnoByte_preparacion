@@ -127,6 +127,8 @@ class DespachoVentasCrear extends Component
             ->with(['loteModelo.catalogoEquipo', 'loteModelo.lote'])
             ->where('estatus_area', Equipo::AREA_FINALIZADO)
             ->where('estatus_ciclo', Equipo::CICLO_CALIDAD)
+            ->whereNotNull('numero_serie')
+            ->whereRaw("TRIM(numero_serie) != ''")
             ->whereNotIn('id', $idsYaSeleccionados)
             // Verificar que no esté ya en un despacho activo
             ->whereDoesntHave('despachosVentas', fn ($q) => $q->whereHas('despacho', fn ($dq) =>
@@ -149,6 +151,11 @@ class DespachoVentasCrear extends Component
         }
 
         return \App\Models\Producto::where('activo', 1)
+            ->whereHas('inventarios', fn ($q) => $q
+                ->where('almacen_id', Almacen::PREPARACION)
+                ->where('cantidad', '>', 0)
+            )
+            ->with(['inventarios' => fn ($q) => $q->where('almacen_id', Almacen::PREPARACION)])
             ->where(fn ($q) => $q
                 ->where('nombre', 'like', "%{$this->busquedaProducto}%")
                 ->orWhere('sku', 'like', "%{$this->busquedaProducto}%")

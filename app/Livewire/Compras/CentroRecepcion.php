@@ -118,14 +118,23 @@ class CentroRecepcion extends Component
 
     public function procesarRecepcion()
     {
-        // 1. Validación de series de Equipos (Opcionales para Lotes Ciegos)
+        $requiereSerieObligatoria = ($this->compra->area === 'VENTAS');
+
+        // 1. Validación de series de Equipos (Obligatorias en compras directas a Ventas; opcionales en Preparación para Lotes Ciegos)
         $seriesCapturadas = [];
         foreach ($this->compra->items as $item) {
             if ($item->catalogo_equipo_id) {
                 foreach ($this->seriesEquipos[$item->id] ?? [] as $index => $serie) {
                     $serieLimpia = strtoupper(trim($serie));
                     if ($serieLimpia === '') {
-                        // Serie vacía permitida: se registrará como NULL (lote ciego)
+                        if ($requiereSerieObligatoria) {
+                            $modeloNombre = trim((optional($item->catalogoEquipo)->marca ?? '') . ' ' . (optional($item->catalogoEquipo)->modelo ?? ''));
+                            $this->dispatch('toast', type: 'error', message: "En compras directas para Ventas, todos los equipos deben llevar número de serie obligatorio (falta en {$modeloNombre}, unidad #" . ($index + 1) . ").");
+                            $this->tab = 'equipos';
+                            return;
+                        }
+
+                        // Serie vacía permitida en Preparación: se registrará como NULL (lote ciego)
                         continue;
                     }
                     if (in_array($serieLimpia, $seriesCapturadas, true)) {

@@ -9,7 +9,7 @@
             <x-topbar
                 title="Supervisión de Lote: {{ $lote->nombre_lote ?? ('Lote #' . $lote->id) }}"
                 chip="Preparación · Supervisión de Taller"
-                description="Vista exclusiva de laptops y equipos, asignación de series y estado operativo en taller."
+                description="Vista de solo lectura para consultar los equipos del lote, sus series registradas y su estado operativo en taller."
             />
             <div>
                 <a href="{{ route('preparacion.lotes') }}"
@@ -73,12 +73,12 @@
                 {{-- Resumen de Equipos --}}
                 @php
                     $totalLaptops = collect($modelos)->sum('cantidad');
-                    $totalRegistradas = collect($modelos)->sum('registrados');
+                    $totalConSerie = collect($modelos)->sum('con_serie');
                     $totalUsadas = collect($modelos)->sum('usados');
                     $totalPendientes = collect($modelos)->sum('pendientes');
                 @endphp
                 <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 space-y-1">
-                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Laptops Totales</span>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Equipos Totales</span>
                     <p class="text-sm font-black text-[#FF9521]">
                         {{ $totalLaptops }} unidades
                     </p>
@@ -93,7 +93,7 @@
                     </div>
                     <div>
                         <span class="text-[11px] text-slate-400 block">Con Serie Registrada:</span>
-                        <strong class="text-emerald-400 text-sm font-bold">{{ $totalRegistradas }} equipos</strong>
+                        <strong class="text-emerald-400 text-sm font-bold">{{ $totalConSerie }} equipos</strong>
                     </div>
                 </div>
 
@@ -112,7 +112,7 @@
                         🔧
                     </div>
                     <div>
-                        <span class="text-[11px] text-slate-400 block">Asignados a Técnicos:</span>
+                        <span class="text-[11px] text-slate-400 block">Asignados / En Taller:</span>
                         <strong class="text-blue-400 text-sm font-bold">{{ $totalUsadas }} equipos</strong>
                     </div>
                 </div>
@@ -120,7 +120,7 @@
 
         </div>
 
-        {{-- TABLA EXCLUSIVA DE LAPTOPS Y MODELOS --}}
+        {{-- TABLA EXCLUSIVA DE LAPTOPS Y MODELOS (SOLO LECTURA) --}}
         @if(count($modelos) > 0)
             <div class="space-y-6">
                 @foreach($modelos as $index => $m)
@@ -132,7 +132,7 @@
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200/80 dark:border-slate-800 gap-4">
                             <div>
                                 <div class="flex items-center gap-2">
-                                    <span class="px-2.5 py-0.5 rounded-md text-[11px] font-black bg-sky-500/15 text-sky-400 border border-sky-500/30">LAPTOP</span>
+                                    <span class="px-2.5 py-0.5 rounded-md text-[11px] font-black bg-sky-500/15 text-sky-400 border border-sky-500/30">EQUIPOS</span>
                                     <h3 class="text-lg font-black text-slate-900 dark:text-white">
                                         {{ $m['marca'] }} {{ $m['modelo'] }}
                                     </h3>
@@ -140,34 +140,23 @@
                                 <div class="flex flex-wrap gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1">
                                     <span>Cantidad: <strong class="text-slate-800 dark:text-slate-200">{{ $m['cantidad'] }}</strong></span>
                                     <span>· Costo Unitario: <strong class="text-slate-800 dark:text-slate-200 font-mono">${{ number_format($m['valor_unitario'], 2) }}</strong></span>
-                                    <span>· Registrados: <strong class="text-emerald-500">{{ $m['registrados'] }}</strong></span>
+                                    <span>· Con Serie: <strong class="text-emerald-500">{{ $m['con_serie'] }}</strong></span>
                                     @if($m['pendientes'] > 0)
-                                        <span>· Pendientes: <strong class="text-amber-500">{{ $m['pendientes'] }}</strong></span>
+                                        <span>· Serie Pendiente: <strong class="text-amber-500">{{ $m['pendientes'] }}</strong></span>
                                     @endif
                                 </div>
                             </div>
 
-                            <div class="flex items-center gap-3">
-                                <div class="w-48">
-                                    <select wire:model.defer="modelos.{{ $index }}.clasificacion_puntos_id"
-                                            class="w-full px-3 py-1.5 rounded-xl text-xs font-semibold
-                                                   bg-slate-100 dark:bg-slate-800
-                                                   border border-slate-300 dark:border-slate-700
-                                                   text-slate-800 dark:text-slate-200
-                                                   focus:ring-2 focus:ring-[#FF9521] outline-none">
-                                        <option value="">Clasificación de Puntos...</option>
-                                        @foreach($clasificaciones as $c)
-                                            <option value="{{ $c->id }}">Tipo {{ $c->clave }} ({{ number_format($c->puntos_base, 2) }} pts)</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <button type="button" wire:click="abrirModalSeries({{ $index }}, 'equipo')"
-                                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold
-                                               bg-[#FF9521]/15 hover:bg-[#FF9521]/25 text-[#FF9521] border border-[#FF9521]/30 transition shadow-sm">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                    Gestionar Series
-                                </button>
+                            <div class="flex items-center gap-2">
+                                @if(!empty($m['clasificacion_label']))
+                                    <span class="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#FF9521]/10 text-[#FF9521] border border-[#FF9521]/30">
+                                        {{ $m['clasificacion_label'] }}
+                                    </span>
+                                @else
+                                    <span class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                        Solo Lectura
+                                    </span>
+                                @endif
                             </div>
                         </div>
 
@@ -230,13 +219,13 @@
                                                 </span>
                                             </td>
                                             <td class="py-3 px-4 text-right">
-                                                @if($reg['bloqueado'])
-                                                    <span class="text-[11px] font-bold text-slate-400 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
-                                                        🔒 En Proceso / Bloqueado
+                                                @if($reg['en_proceso'])
+                                                    <span class="text-[11px] font-bold text-blue-400 px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20">
+                                                        🔧 En Taller / Proceso
                                                     </span>
                                                 @else
-                                                    <span class="text-[11px] font-bold text-emerald-500 px-2 py-0.5 rounded bg-emerald-500/10">
-                                                        ✓ Libre para Edición
+                                                    <span class="text-[11px] font-bold text-emerald-500 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                                                        ✓ Disponible (Sin Asignar)
                                                     </span>
                                                 @endif
                                             </td>
@@ -264,91 +253,6 @@
             </div>
         @endif
 
-        {{-- Botón Guardar Cambios --}}
-        <div class="flex justify-end pt-4">
-            <button wire:click="guardarLote"
-                    class="px-8 py-3 rounded-2xl text-sm font-bold tracking-wide
-                           bg-gradient-to-r from-[#FF9521] to-[#e07d10]
-                           text-slate-950 shadow-lg shadow-[#FF9521]/20
-                           hover:shadow-[#FF9521]/40 hover:-translate-y-0.5
-                           transition-all duration-300 active:scale-95">
-                Guardar Cambios del Lote
-            </button>
-        </div>
-
     </div>
-
-    {{-- MODAL EXCLUSIVO PARA EDICIÓN DE SERIES DE LAPTOPS --}}
-    @if($modalSeries && $serialesIndex >= 0)
-        @php
-            $itemData = $modelos[$serialesIndex] ?? [];
-            $title = ($itemData['marca'] ?? '') . ' ' . ($itemData['modelo'] ?? '');
-            $pendientes = (int)($itemData['pendientes'] ?? 0);
-            $existentes = $itemData['registros_existentes'] ?? [];
-        @endphp
-        
-        <div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div class="fixed inset-0 bg-black/70 backdrop-blur-sm" wire:click="cerrarModalSeries"></div>
-            <div class="relative w-full max-w-4xl rounded-3xl bg-slate-900 border border-slate-700 p-6 shadow-2xl flex flex-col max-h-[90vh]">
-                
-                <div class="flex items-center justify-between pb-4 border-b border-slate-800 shrink-0">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-[#FF9521]/20 flex items-center justify-center text-[#FF9521] shrink-0 font-bold">
-                            #
-                        </div>
-                        <div>
-                            <h3 class="text-base font-bold text-white">Series de Equipos: {{ $title }}</h3>
-                            <p class="text-xs text-slate-400">
-                                Captura o edita números de serie. Los equipos ya asignados a técnicos se encuentran protegidos.
-                            </p>
-                        </div>
-                    </div>
-                    <button wire:click="cerrarModalSeries" class="text-slate-400 hover:text-white transition">
-                        ✕
-                    </button>
-                </div>
-
-                <div class="overflow-y-auto pr-2 my-4 space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        @foreach($existentes as $i => $reg)
-                            <div class="flex gap-3 items-center p-3 rounded-2xl border {{ $reg['bloqueado'] ? 'bg-slate-800/30 border-slate-700/30 opacity-60' : 'bg-slate-800/60 border-slate-700/60' }}">
-                                <div class="w-8 text-center text-slate-400 font-mono text-xs font-bold">#{{ $i + 1 }}</div>
-                                <div class="flex-1">
-                                    <input type="text"
-                                           wire:model.defer="modelos.{{ $serialesIndex }}.registros_existentes.{{ $i }}.numero_serie"
-                                           placeholder="Serie física (ej. CN-0JNKWD...)"
-                                           {{ $reg['bloqueado'] ? 'disabled' : '' }}
-                                           class="w-full px-3 py-2 text-xs font-mono font-bold rounded-xl bg-slate-950 border border-slate-700 text-slate-100 uppercase focus:ring-2 focus:ring-[#FF9521] outline-none disabled:bg-slate-900/50 disabled:border-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed">
-                                </div>
-                                @if($reg['bloqueado'])
-                                    <span class="text-[10px] text-slate-400 font-bold px-2 py-0.5 rounded bg-slate-800">En Taller</span>
-                                @endif
-                            </div>
-                        @endforeach
-
-                        @for($i = 0; $i < $pendientes; $i++)
-                            <div class="flex gap-3 items-center p-3 rounded-2xl bg-slate-800/60 border border-slate-700/60">
-                                <div class="w-8 text-center text-[#FF9521] font-mono text-xs font-bold">*{{ count($existentes) + $i + 1 }}</div>
-                                <div class="flex-1">
-                                    <input type="text"
-                                           wire:model.defer="modelos.{{ $serialesIndex }}.numeros_serie_nuevos.{{ $i }}"
-                                           placeholder="Nueva Serie (Opcional - Lote Ciego)"
-                                           class="w-full px-3 py-2 text-xs font-mono font-bold rounded-xl bg-slate-950 border border-slate-700 text-slate-100 uppercase focus:ring-2 focus:ring-[#FF9521] outline-none">
-                                </div>
-                            </div>
-                        @endfor
-                    </div>
-                </div>
-
-                <div class="pt-4 border-t border-slate-800 flex justify-end gap-3 shrink-0">
-                    <button wire:click="cerrarModalSeries"
-                            class="px-6 py-2.5 rounded-xl text-xs font-bold bg-[#FF9521] hover:bg-[#e0821b] text-slate-950 shadow-md shadow-[#FF9521]/20 transition active:scale-95">
-                        Listo
-                    </button>
-                </div>
-
-            </div>
-        </div>
-    @endif
 </x-tb-background>
 </div>

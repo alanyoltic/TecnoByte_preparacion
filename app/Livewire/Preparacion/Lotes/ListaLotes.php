@@ -9,7 +9,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-#[Layout('layouts.app', ['pageTitle' => 'Editar lotes'])]
+#[Layout('layouts.app', ['pageTitle' => 'Lista de lotes'])]
 class ListaLotes extends Component
 {
     use WithPagination;

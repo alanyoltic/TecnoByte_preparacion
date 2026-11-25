@@ -570,6 +570,12 @@ class MiTrabajo extends Component
             return;
         }
 
+        if (! $ae->equipo || ! $ae->equipo->tieneNumeroSerie()) {
+            $this->dispatch('toast', type: 'error', message: 'Este equipo es de lote ciego sin serie capturada. Escanea su número de serie físico en la caja de "Iniciar equipos" arriba.');
+
+            return;
+        }
+
         DB::transaction(function () use ($ae) {
             $ae->update([
                 'camino' => AsignacionEquipo::EN_PROCESO,
@@ -1217,8 +1223,9 @@ class MiTrabajo extends Component
             return;
         }
 
-        if ($this->camino === 'COMPLETADO' && empty(trim((string) $equipo->numero_serie))) {
-            $this->error = 'Debes capturar y guardar el número de serie del equipo antes de enviarlo a Calidad.';
+        if (! $equipo->tieneNumeroSerie()) {
+            $this->error = 'Debes capturar y guardar el número de serie del equipo antes de enviarlo a cualquier área o proceso.';
+
             return;
         }
 
@@ -2097,27 +2104,49 @@ class MiTrabajo extends Component
             ?: $loteModelo?->catalogoEquipo?->clasificacion_puntos_id;
 
         DB::transaction(function () use ($nuevoSerie, $asignacion, $loteModelo, $clasificacionLoteId) {
-            $gemelo = Equipo::create([
-                'numero_serie' => $nuevoSerie,
-                'lote_modelo_id' => $asignacion->lote_modelo_id,
-                'catalogo_equipo_id' => $loteModelo?->catalogo_equipo_id,
-                'clasificacion_puntos_id' => $clasificacionLoteId,
-                'marca' => $loteModelo->marca ?? null,
-                'modelo' => $loteModelo->modelo ?? '',
-                'estatus_ciclo' => 'PREPARACION',
-                'estatus_area' => Equipo::AREA_EN_PROCESO,
-                'registrado_por_user_id' => Auth::id(),
-                'proveedor_id' => $loteModelo->lote->proveedor_id ?? null,
-                'almacen_id' => Almacen::PREPARACION,
-                'sucursal_id' => Auth::user()->sucursal_id ?? 1,
-            ]);
+            // Buscar si hay un equipo en la asignación con serie NULL esperando captura
+            $aeSinSerie = AsignacionEquipo::where('asignacion_id', $asignacion->id)
+                ->whereIn('camino', [AsignacionEquipo::PENDIENTE, AsignacionEquipo::PRE_ASIGNADO])
+                ->whereHas('equipo', function ($q) {
+                    $q->whereNull('numero_serie')->orWhereRaw("TRIM(numero_serie) = ''");
+                })
+                ->first();
 
-            AsignacionEquipo::create([
-                'asignacion_id' => $asignacion->id,
-                'equipo_id' => $gemelo->id,
-                'inicio_en' => now(),
-                'camino' => AsignacionEquipo::EN_PROCESO,
-            ]);
+            if ($aeSinSerie && $aeSinSerie->equipo) {
+                $gemelo = $aeSinSerie->equipo;
+                $gemelo->update([
+                    'numero_serie' => $nuevoSerie,
+                    'estatus_ciclo' => 'PREPARACION',
+                    'estatus_area' => Equipo::AREA_EN_PROCESO,
+                    'registrado_por_user_id' => Auth::id(),
+                ]);
+                $aeSinSerie->update([
+                    'camino' => AsignacionEquipo::EN_PROCESO,
+                    'inicio_en' => now(),
+                ]);
+            } else {
+                $gemelo = Equipo::create([
+                    'numero_serie' => $nuevoSerie,
+                    'lote_modelo_id' => $asignacion->lote_modelo_id,
+                    'catalogo_equipo_id' => $loteModelo?->catalogo_equipo_id,
+                    'clasificacion_puntos_id' => $clasificacionLoteId,
+                    'marca' => $loteModelo->marca ?? null,
+                    'modelo' => $loteModelo->modelo ?? '',
+                    'estatus_ciclo' => 'PREPARACION',
+                    'estatus_area' => Equipo::AREA_EN_PROCESO,
+                    'registrado_por_user_id' => Auth::id(),
+                    'proveedor_id' => $loteModelo->lote->proveedor_id ?? null,
+                    'almacen_id' => Almacen::PREPARACION,
+                    'sucursal_id' => Auth::user()->sucursal_id ?? 1,
+                ]);
+
+                AsignacionEquipo::create([
+                    'asignacion_id' => $asignacion->id,
+                    'equipo_id' => $gemelo->id,
+                    'inicio_en' => now(),
+                    'camino' => AsignacionEquipo::EN_PROCESO,
+                ]);
+            }
             
             if ($asignacion->estatus === Asignacion::PENDIENTE) {
                 $asignacion->update(['estatus' => Asignacion::EN_PROCESO]);

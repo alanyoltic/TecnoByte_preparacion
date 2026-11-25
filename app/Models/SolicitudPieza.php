@@ -528,6 +528,10 @@ class SolicitudPieza extends Model
                 }
 
                 if ($equipo) {
+                    if (! $equipo->tieneNumeroSerie()) {
+                        throw new \Exception("El equipo #{$equipo->id} no tiene número de serie capturado y no puede pasar a Calidad.");
+                    }
+
                     $equipo->update([
                         'estatus_ciclo' => 'CALIDAD',
                         'estatus_area' => 'EN_CALIDAD',

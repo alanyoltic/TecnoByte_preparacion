@@ -285,10 +285,17 @@
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             </div>
                             <div>
-                                <h4 class="text-sm font-bold text-slate-100">Captura de Números de Serie (Opcional)</h4>
-                                <p class="text-xs text-slate-300 mt-0.5">
-                                    Puedes registrar las series de las laptops ahora en la <strong class="text-[#FF9521]">"Mesa de Equipos"</strong>. Si las dejas vacías, el sistema creará un <strong class="text-sky-300">Lote Ciego</strong> y los técnicos escanearán cada máquina físicamente en su mesa de trabajo.
-                                </p>
+                                @if($compra->area === 'VENTAS')
+                                    <h4 class="text-sm font-bold text-slate-100">Captura de Números de Serie (Obligatorio para Ventas)</h4>
+                                    <p class="text-xs text-slate-300 mt-0.5">
+                                        Como esta compra ingresa directo al área de <strong class="text-emerald-400">Ventas</strong>, es obligatorio capturar el número de serie de cada equipo en la <strong class="text-[#FF9521]">"Mesa de Equipos"</strong> antes de confirmar.
+                                    </p>
+                                @else
+                                    <h4 class="text-sm font-bold text-slate-100">Captura de Números de Serie (Opcional)</h4>
+                                    <p class="text-xs text-slate-300 mt-0.5">
+                                        Puedes registrar las series de las laptops ahora en la <strong class="text-[#FF9521]">"Mesa de Equipos"</strong>. Si las dejas vacías, el sistema creará un <strong class="text-sky-300">Lote Ciego</strong> y los técnicos escanearán cada máquina físicamente en su mesa de trabajo.
+                                    </p>
+                                @endif
                             </div>
                         </div>
                         <button wire:click="setTab('equipos')"
@@ -318,7 +325,11 @@
                     <div class="text-right">
                         <span class="text-xs text-slate-400 block font-medium">Estado de Captura:</span>
                         @if($this->seriesPendientesCount > 0)
-                            <span class="text-xs font-black text-slate-300">{{ $this->seriesPendientesCount }} pendiente(s) (Lote ciego)</span>
+                            @if($compra->area === 'VENTAS')
+                                <span class="text-xs font-black text-rose-400">{{ $this->seriesPendientesCount }} pendiente(s) (Obligatorias para Ventas)</span>
+                            @else
+                                <span class="text-xs font-black text-slate-300">{{ $this->seriesPendientesCount }} pendiente(s) (Lote ciego)</span>
+                            @endif
                         @else
                             <span class="text-xs font-black text-emerald-400">✓ Todas las series completas</span>
                         @endif

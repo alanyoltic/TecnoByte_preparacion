@@ -72,6 +72,12 @@ class DespachoVentasService
                 throw new \Exception('Solo se pueden agregar equipos a despachos en estado BORRADOR.');
             }
 
+            if (! $equipo->tieneNumeroSerie()) {
+                throw new \Exception(
+                    "El equipo #{$equipo->id} no tiene número de serie capturado y no puede despacharse a Ventas."
+                );
+            }
+
             if (! $equipo->puedeDespacharseAVentas()) {
                 throw new \Exception(
                     "El equipo [{$equipo->numero_serie}] no está en estado FINALIZADO. ".
@@ -154,7 +160,7 @@ class DespachoVentasService
     }
 
     /**
-     * Agrega un producto / accesorio comercial al despacho.
+     * Agrega un producto / accesorio comercial al despacho validando stock real en Preparación.
      */
     public function agregarProducto(
         DespachoVentas $despacho,
@@ -171,22 +177,39 @@ class DespachoVentasService
             throw new \Exception('La cantidad debe ser al menos 1.');
         }
 
-        $existente = DespachoVentasProducto::where('despacho_ventas_id', $despacho->id)
-            ->where('producto_id', $producto->id)
-            ->first();
+        return DB::transaction(function () use ($despacho, $producto, $cantidad, $precioSugerido, $observacion) {
+            $existente = DespachoVentasProducto::where('despacho_ventas_id', $despacho->id)
+                ->where('producto_id', $producto->id)
+                ->lockForUpdate()
+                ->first();
 
-        if ($existente) {
-            $existente->increment('cantidad', $cantidad);
-            return $existente;
-        }
+            $cantidadFinal = ($existente?->cantidad ?? 0) + $cantidad;
 
-        return DespachoVentasProducto::create([
-            'despacho_ventas_id' => $despacho->id,
-            'producto_id'        => $producto->id,
-            'cantidad'           => $cantidad,
-            'precio_sugerido'    => $precioSugerido ?: $producto->precio_venta,
-            'observacion'        => $observacion ? trim($observacion) : null,
-        ]);
+            $stockOrigen = InventarioProducto::where('producto_id', $producto->id)
+                ->where('almacen_id', Almacen::PREPARACION)
+                ->lockForUpdate()
+                ->value('cantidad') ?? 0;
+
+            if ($stockOrigen < $cantidadFinal) {
+                throw new \Exception(
+                    "Stock insuficiente en Preparación para '{$producto->nombre}'. Disponible: {$stockOrigen}, solicitado: {$cantidadFinal}."
+                );
+            }
+
+            if ($existente) {
+                $existente->increment('cantidad', $cantidad);
+
+                return $existente->fresh();
+            }
+
+            return DespachoVentasProducto::create([
+                'despacho_ventas_id' => $despacho->id,
+                'producto_id'        => $producto->id,
+                'cantidad'           => $cantidad,
+                'precio_sugerido'    => $precioSugerido ?: $producto->precio_venta,
+                'observacion'        => $observacion ? trim($observacion) : null,
+            ]);
+        });
     }
 
     /**
@@ -209,91 +232,150 @@ class DespachoVentasService
 
     /**
      * Envía el despacho a Ventas para aprobación (BORRADOR → ENVIADO).
+     * Verifica equipos listos y descuenta/reserva stock real de productos en Preparación.
      *
      * @throws \Exception
      */
     public function enviar(DespachoVentas $despacho): void
     {
-        if (! $despacho->puedeEnviarse()) {
-            throw new \Exception(
-                'El despacho debe estar en BORRADOR y tener al menos un equipo para enviarse.'
-            );
-        }
+        DB::transaction(function () use ($despacho) {
+            $despacho = DespachoVentas::whereKey($despacho->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $despacho->update([
-            'estatus'    => DespachoVentas::ENVIADO,
-            'enviado_at' => now(),
-        ]);
+            if (! $despacho->puedeEnviarse()) {
+                throw new \Exception(
+                    'El despacho debe estar en BORRADOR y tener al menos un equipo o producto para enviarse.'
+                );
+            }
+
+            // Validar equipos vigentes antes de salir
+            foreach ($despacho->equipos()->orderBy('equipo_id')->get() as $despachoEquipo) {
+                $equipo = Equipo::whereKey($despachoEquipo->equipo_id)->lockForUpdate()->first();
+                if (! $equipo || ! $equipo->puedeDespacharseAVentas()) {
+                    $serie = $equipo?->numero_serie ?: "#{$despachoEquipo->equipo_id}";
+                    throw new \Exception("El equipo [{$serie}] ya no cumple los requisitos para despacharse a Ventas.");
+                }
+            }
+
+            // Descontar/reservar productos del almacén de origen (Preparación) al enviar
+            foreach ($despacho->productos()->with('producto')->orderBy('producto_id')->get() as $despachoProd) {
+                $stockOrigen = InventarioProducto::where('producto_id', $despachoProd->producto_id)
+                    ->where('almacen_id', Almacen::PREPARACION)
+                    ->lockForUpdate()
+                    ->first();
+
+                $disponible = $stockOrigen->cantidad ?? 0;
+                if (! $stockOrigen || $disponible < $despachoProd->cantidad) {
+                    $nombre = $despachoProd->producto?->nombre ?? "Producto #{$despachoProd->producto_id}";
+                    throw new \Exception(
+                        "Stock insuficiente en Preparación para '{$nombre}'. Disponible: {$disponible}, requerido: {$despachoProd->cantidad}."
+                    );
+                }
+
+                $stockOrigen->decrement('cantidad', $despachoProd->cantidad);
+            }
+
+            $despacho->update([
+                'estatus'    => DespachoVentas::ENVIADO,
+                'enviado_at' => now(),
+            ]);
+        });
     }
 
     /**
      * Ventas aprueba el despacho (ENVIADO → APROBADO).
-     * Transiciona cada equipo al almacén de Ventas.
+     * Transiciona cada equipo al almacén de Ventas y acredita productos recibidos.
      *
      * @throws \Exception
      */
     public function aprobar(DespachoVentas $despacho): void
     {
-        if (! $despacho->estaEnviado()) {
-            throw new \Exception('Solo se pueden aprobar despachos en estado ENVIADO.');
-        }
-
         DB::transaction(function () use ($despacho) {
-            $despacho->update([
-                'estatus'                => DespachoVentas::APROBADO,
-                'aprobado_por_user_id'   => Auth::id(),
-                'aprobado_at'            => now(),
-            ]);
+            $despacho = DespachoVentas::whereKey($despacho->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! $despacho->estaEnviado()) {
+                throw new \Exception('Solo se pueden aprobar despachos en estado ENVIADO.');
+            }
 
             $almacenDestino = Almacen::findOrFail($despacho->almacen_destino_id);
 
-            foreach ($despacho->equipos()->with('equipo')->get() as $despachoEquipo) {
-                $equipo = $despachoEquipo->equipo;
+            foreach ($despacho->equipos()->orderBy('equipo_id')->get() as $despachoEquipo) {
+                $equipo = Equipo::whereKey($despachoEquipo->equipo_id)->lockForUpdate()->first();
 
                 if (! $equipo) {
                     continue;
                 }
 
+                if (! $equipo->puedeDespacharseAVentas()) {
+                    $serie = $equipo->numero_serie ?: "#{$equipo->id}";
+                    throw new \Exception("El equipo [{$serie}] ya no está disponible para ingresar a Ventas.");
+                }
+
                 $this->transicionarEquipoAVentas($equipo, $almacenDestino, $despacho);
             }
 
-            // Procesar productos / accesorios comerciales
-            foreach ($despacho->productos()->with('producto')->get() as $despachoProd) {
-                InventarioProducto::firstOrCreate(
-                    [
-                        'producto_id' => $despachoProd->producto_id,
-                        'almacen_id'  => $despacho->almacen_destino_id,
-                    ],
-                    ['cantidad' => 0]
-                )->increment('cantidad', $despachoProd->cantidad);
+            // El stock de origen ya fue descontado al enviar; acreditar al almacén destino.
+            $this->acreditarProductosEnAlmacen($despacho, (int) $despacho->almacen_destino_id);
 
-                // Descontar del almacén de origen si tiene stock registrado
-                $stockOrigen = InventarioProducto::where('producto_id', $despachoProd->producto_id)
-                    ->where('almacen_id', Almacen::PREPARACION)
-                    ->first();
-                if ($stockOrigen && $stockOrigen->cantidad >= $despachoProd->cantidad) {
-                    $stockOrigen->decrement('cantidad', $despachoProd->cantidad);
-                }
-            }
+            $despacho->update([
+                'estatus'              => DespachoVentas::APROBADO,
+                'aprobado_por_user_id' => Auth::id(),
+                'aprobado_at'          => now(),
+            ]);
         });
     }
 
     /**
      * Ventas rechaza el despacho (ENVIADO → RECHAZADO).
-     * Los equipos permanecen en Preparación con su estado actual.
+     * Los equipos permanecen en Preparación y los productos retornan al stock de Preparación.
      *
      * @throws \Exception
      */
     public function rechazar(DespachoVentas $despacho, string $motivo): void
     {
-        if (! $despacho->estaEnviado()) {
-            throw new \Exception('Solo se pueden rechazar despachos en estado ENVIADO.');
-        }
+        DB::transaction(function () use ($despacho, $motivo) {
+            $despacho = DespachoVentas::whereKey($despacho->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $despacho->update([
-            'estatus'        => DespachoVentas::RECHAZADO,
-            'notas_rechazo'  => trim($motivo),
-        ]);
+            if (! $despacho->estaEnviado()) {
+                throw new \Exception('Solo se pueden rechazar despachos en estado ENVIADO.');
+            }
+
+            // Devolver al almacén origen (Preparación) los productos descontados al enviar
+            $this->acreditarProductosEnAlmacen($despacho, Almacen::PREPARACION);
+
+            $despacho->update([
+                'estatus'       => DespachoVentas::RECHAZADO,
+                'notas_rechazo' => trim($motivo),
+            ]);
+        });
+    }
+
+    /**
+     * Acredita las cantidades de productos de un despacho al almacén indicado (con lockForUpdate).
+     */
+    private function acreditarProductosEnAlmacen(DespachoVentas $despacho, int $almacenId): void
+    {
+        foreach ($despacho->productos()->orderBy('producto_id')->get() as $despachoProd) {
+            $inv = InventarioProducto::where('producto_id', $despachoProd->producto_id)
+                ->where('almacen_id', $almacenId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($inv) {
+                $inv->increment('cantidad', $despachoProd->cantidad);
+            } else {
+                InventarioProducto::create([
+                    'producto_id' => $despachoProd->producto_id,
+                    'almacen_id'  => $almacenId,
+                    'cantidad'    => $despachoProd->cantidad,
+                ]);
+            }
+        }
     }
 
     /**
@@ -303,11 +385,17 @@ class DespachoVentasService
      */
     public function cancelar(DespachoVentas $despacho): void
     {
-        if (! $despacho->esBorrador()) {
-            throw new \Exception('Solo se pueden cancelar despachos en BORRADOR.');
-        }
+        DB::transaction(function () use ($despacho) {
+            $despacho = DespachoVentas::whereKey($despacho->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $despacho->update(['estatus' => DespachoVentas::CANCELADO]);
+            if (! $despacho->esBorrador()) {
+                throw new \Exception('Solo se pueden cancelar despachos en BORRADOR.');
+            }
+
+            $despacho->update(['estatus' => DespachoVentas::CANCELADO]);
+        });
     }
 
     // =========================================================

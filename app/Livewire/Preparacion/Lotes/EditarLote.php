@@ -43,42 +43,8 @@ class EditarLote extends Component
 
     public function mount(Lote $lote)
     {
-        abort_unless(auth()->user()?->tienePermiso('prep.lotes.gestion'), 403);
-
-        $this->loteId = $lote->id;
-
-        $this->proveedores = Proveedor::orderBy('abreviacion')->get();
-
-        $this->lote = Lote::with(['modelosRecibidos' => function ($q) {
-            $q->withCount('equipos')->orderBy('id');
-        }, 'cargadores'])->findOrFail($this->loteId);
-
-        $this->nombre_lote = $this->lote->nombre_lote;
-        $this->proveedor_id = $this->lote->proveedor_id;
-        $this->fecha_llegada = $this->lote->fecha_llegada;
-
-        $this->modelos = $this->lote->modelosRecibidos->map(function ($m) {
-            $tempMarca = $m->catalogoEquipo?->marca ?? '';
-            $modelosFiltrados = $tempMarca ? CatalogoEquipo::where('marca', $tempMarca)->orderBy('modelo')->get(['id', 'modelo'])->toArray() : [];
-
-            return [
-                'id' => $m->id,
-                'temp_marca' => $tempMarca,
-                'catalogo_equipo_id' => $m->catalogo_equipo_id,
-                'modelos_filtrados' => $modelosFiltrados,
-                'cantidad_recibida' => (int) $m->cantidad_recibida,
-                'valor_unitario' => $m->valor_unitario !== null ? (string) $m->valor_unitario : '',
-                'clasificacion_puntos_id' => $m->clasificacion_puntos_id,
-                'equipos_registrados' => (int) ($m->equipos_count ?? 0),
-                'numeros_serie' => [],
-            ];
-        })->toArray();
-
-        if (count($this->modelos) === 0) {
-            $this->addModeloRow();
-        }
-
-        $this->cargadoresExistentes = $this->lote->cargadores->toArray();
+        // Los lotes nacen desde Órdenes de Compra y son inmutables por control financiero.
+        abort(403, 'Los lotes recibidos son de solo lectura y no se pueden editar.');
     }
 
     protected function rules()

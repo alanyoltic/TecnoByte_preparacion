@@ -551,7 +551,7 @@ class Asignaciones extends Component
                             'asignacion_id' => $asignacion->id,
                             'equipo_id' => $equipo->id,
                             'camino' => AsignacionEquipo::PRE_ASIGNADO,
-                            'pre_asignado' => false,
+                            'pre_asignado' => true,
                         ]);
                         $equipo->update(['estatus_area' => \App\Models\Equipo::AREA_ASIGNADO]);
                         $asignadas++;
@@ -851,7 +851,7 @@ class Asignaciones extends Component
                             'asignacion_id' => $asignacion->id,
                             'equipo_id' => $equipo->id,
                             'camino' => AsignacionEquipo::PRE_ASIGNADO,
-                            'pre_asignado' => false,
+                            'pre_asignado' => true,
                         ]);
                         $equipo->update(['estatus_area' => \App\Models\Equipo::AREA_ASIGNADO]);
                     }

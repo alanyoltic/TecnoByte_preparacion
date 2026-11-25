@@ -24,24 +24,35 @@ class VentaService
         }
 
         DB::transaction(function () use ($venta) {
+            $ventaBloqueada = Venta::whereKey($venta->id)->lockForUpdate()->firstOrFail();
 
-            $venta->detalles()->with('vendible')->get()
-                ->each(function ($detalle) use ($venta) {
+            if ($ventaBloqueada->estatus !== Venta::ESTATUS_PENDIENTE) {
+                throw new Exception('Esta venta ya fue procesada o cancelada previamente.');
+            }
 
-                    if ($detalle->esEquipo()) {
-                        $this->cerrarEquipo($detalle->vendible, $venta);
+            $detalles = $ventaBloqueada->detalles()->with('vendible')->get();
 
-                    } elseif ($detalle->esProducto()) {
-                        $detalle->vendible->decrementarStock(
-                            $venta->almacen_id,
-                            $detalle->cantidad
-                        );
-                    }
-                });
+            // Orden determinístico para evitar deadlocks en cobros concurrentes
+            $detallesEquipos = $detalles->filter(fn ($d) => $d->esEquipo())->sortBy('vendible_id');
+            foreach ($detallesEquipos as $detalle) {
+                $this->cerrarEquipoPorId((int) $detalle->vendible_id, $ventaBloqueada);
+            }
 
-            $venta->recalcularTotales();
+            $detallesProductos = $detalles->filter(fn ($d) => $d->esProducto())->sortBy('vendible_id');
+            foreach ($detallesProductos as $detalle) {
+                if (! $detalle->vendible) {
+                    throw new Exception("El producto #{$detalle->vendible_id} ya no existe.");
+                }
+                $detalle->vendible->decrementarStock(
+                    $ventaBloqueada->almacen_id,
+                    $detalle->cantidad
+                );
+            }
 
-            $venta->update(['estatus' => Venta::ESTATUS_COMPLETADA]);
+            $ventaBloqueada->recalcularTotales();
+
+            $ventaBloqueada->update(['estatus' => Venta::ESTATUS_COMPLETADA]);
+            $venta->refresh();
         });
     }
 
@@ -129,10 +140,42 @@ class VentaService
     // ─── Helpers privados ────────────────────────────────────────────────────
 
     /**
+     * Bloquea con lockForUpdate, revalida disponibilidad y marca un equipo como VENDIDO.
+     */
+    private function cerrarEquipoPorId(int $equipoId, Venta $venta): void
+    {
+        $equipo = Equipo::whereKey($equipoId)->lockForUpdate()->first();
+
+        if (! $equipo) {
+            throw new Exception("El equipo #{$equipoId} no existe en el sistema.");
+        }
+
+        $this->cerrarEquipo($equipo, $venta);
+    }
+
+    /**
      * Marca un equipo como VENDIDO y registra la auditoría correspondiente.
      */
     private function cerrarEquipo(Equipo $equipo, Venta $venta): void
     {
+        if (! $equipo->tieneNumeroSerie()) {
+            throw new Exception("El equipo #{$equipo->id} no tiene número de serie capturado y no puede venderse.");
+        }
+
+        if ($equipo->estatus_ciclo !== Equipo::CICLO_VENTAS || $equipo->estatus_area !== Equipo::AREA_DISPONIBLE_VENTA) {
+            throw new Exception(
+                "El equipo [{$equipo->numero_serie}] ya fue vendido o no está disponible para venta (estado actual: {$equipo->estatus_ciclo} / {$equipo->estatus_area})."
+            );
+        }
+
+        if ($venta->sucursal_id && $equipo->sucursal_id && (int) $equipo->sucursal_id !== (int) $venta->sucursal_id) {
+            throw new Exception(
+                "El equipo [{$equipo->numero_serie}] pertenece a otra sucursal y no puede venderse desde esta caja."
+            );
+        }
+
+        $almacenOrigenId = $equipo->almacen_id ?: $venta->almacen_id;
+
         $equipo->update([
             'estatus_ciclo' => Equipo::CICLO_VENDIDO,
             // EN_PISO_VENTA es el último área antes de VENDIDO en el ciclo.
@@ -144,7 +187,7 @@ class VentaService
         app(EquipoMovimientoService::class)->registrar(
             equipo    : $equipo,
             tipo      : 'VENTA',
-            desde     : $venta->almacen_id,
+            desde     : $almacenOrigenId,
             hacia     : null,
             motivo    : "Venta #{$venta->folio}",
             createdBy : $venta->vendedor_id

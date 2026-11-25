@@ -3,9 +3,9 @@
     <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-6 pb-10 space-y-6">
 
         <x-topbar
-            title="Editar lotes"
-            chip="Lotes · Editar lotes"
-            description="Selecciona un lote para entrar a su edición."
+            title="Lista de lotes"
+            chip="Lotes · Lista de lotes"
+            description="Selecciona un lote para consultar sus equipos, series y avance en taller."
         />
 
         <div class="space-y-6 relative">
@@ -280,7 +280,6 @@
                                         Se recibe desde Órdenes de Compra
                                     </span>
                                 @else
-                                    @if($lote->compra_inventario_id)
                                     <a
                                       href="{{ route('preparacion.lotes.ver', $lote->id) }}"
                                       title="Ver lote"
@@ -290,17 +289,6 @@
                                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                       <span>Ver Lote</span>
                                   </a>
-                                  @else
-                                  <a
-                                        href="{{ route('preparacion.lotes.editar', $lote->id) }}"
-                                        title="Editar lote"
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl
-                                               bg-blue-600 hover:bg-blue-500 text-white shadow transition-all"
-                                    >
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                                        <span>Editar</span>
-                                    </a>
-                                  @endif
                                 @endif
                                 
                                 @if(!$lote->compra_inventario_id)

@@ -12,7 +12,6 @@ use App\Livewire\Preparacion\Equipos\Asignaciones;
 use App\Livewire\Preparacion\Garantias\GestionGarantias;
 use App\Livewire\Preparacion\Equipos\EditarEquipo;
 use App\Livewire\Preparacion\Equipos\MiTrabajo;
-use App\Livewire\Preparacion\Equipos\RegistrarEquipo;
 use App\Livewire\Preparacion\Inventario\GestionInventario;
 use App\Livewire\Preparacion\Inventario\InventarioListo;
 use App\Livewire\Preparacion\Inventario\ResumenInventario;
@@ -238,17 +237,18 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
 
     Route::middleware(['departamento:PREPARACION'])->group(function () {
 
-        // Lotes
+        // Lotes (solo consulta y supervisión; la alta viene de Órdenes de Compra)
         Route::prefix('lotes')->group(function () {
             Route::get('/', \App\Livewire\Preparacion\Lotes\ListaLotes::class)
                 ->middleware('permiso:prep.lotes.ver')
                 ->name('preparacion.lotes');
-            
-            Route::get('/{lote}/editar', \App\Livewire\Preparacion\Lotes\EditarLote::class)
-                ->middleware('permiso:prep.lotes.gestion')
+
+            Route::get('/{lote}/editar', fn (\App\Models\Lote $lote) => redirect()->route('preparacion.lotes.ver', $lote))
+                ->middleware('permiso:prep.lotes.ver|prep.lotes.gestion')
                 ->name('preparacion.lotes.editar');
+
             Route::get('/{lote}/procesar', \App\Livewire\Preparacion\Lotes\VerLote::class)
-                ->middleware('permiso:prep.lotes.gestion')
+                ->middleware('permiso:prep.lotes.ver|prep.lotes.gestion')
                 ->name('preparacion.lotes.ver');
 
         });
@@ -286,10 +286,6 @@ Route::middleware(['auth', 'role_depto'])->group(function () {
 
         // Equipos (Preparación)
     Route::prefix('equipos')->group(function () {
-
-        Route::get('/registrar', RegistrarEquipo::class)
-            ->middleware('permiso:prep.equipos.crear')
-            ->name('equipos.create');
 
         Route::get('/caracteristicas', ResumenInventario::class)
             ->middleware('permiso:prep.equipos.ver')

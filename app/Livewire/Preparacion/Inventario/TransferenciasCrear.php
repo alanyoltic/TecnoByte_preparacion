@@ -223,6 +223,8 @@ class TransferenciasCrear extends Component
         return Equipo::where('almacen_id', $this->almacen_origen_id)
             ->whereNotIn('id', $idsAgregados)
             ->where('estatus_ciclo', '!=', Equipo::CICLO_VENDIDO)
+            ->whereNotNull('numero_serie')
+            ->whereRaw("TRIM(numero_serie) != ''")
             ->where(function ($q) use ($busqueda) {
                 $q->where('numero_serie', 'like', "%{$busqueda}%")
                     ->orWhere('marca', 'like', "%{$busqueda}%")

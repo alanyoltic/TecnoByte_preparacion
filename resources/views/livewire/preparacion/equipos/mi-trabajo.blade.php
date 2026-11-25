@@ -540,34 +540,43 @@
                         </div>
 
                         <p class="text-[0.65rem] text-slate-500 dark:text-slate-400">
-                            Estos equipos te fueron asignados con número de serie. Dale a Iniciar cuando vayas a trabajar en ellos.
+                            Estos equipos fueron asignados a tu mesa. Si ya tienen número de serie, presiona Iniciar; si dicen S/N Pendiente, escanéalos en la caja superior para capturar su serie real.
                         </p>
 
                         <div class="space-y-2">
                             @foreach($pendientes as $ae)
+                                @php
+                                    $tieneSerie = ! empty(trim((string) $ae->equipo?->numero_serie));
+                                @endphp
                                 <div class="flex items-center justify-between gap-3 rounded-xl px-4 py-2.5
                                             bg-amber-50/80 dark:bg-amber-950/20
                                             border border-amber-200/50 dark:border-amber-700/30">
                                     <div class="min-w-0">
                                         <p class="text-sm font-mono font-medium text-slate-800 dark:text-slate-100 truncate">
-                                            {{ $ae->equipo?->numero_serie ?: 'S/N Pendiente' }}
+                                            {{ $tieneSerie ? $ae->equipo->numero_serie : 'S/N Pendiente (Lote Ciego)' }}
                                         </p>
                                         <p class="text-[0.65rem] text-slate-400">
                                             {{ $ae->equipo?->marca }} {{ $ae->equipo?->modelo }}
                                         </p>
                                     </div>
                                     <div class="shrink-0">
-                                        <button wire:click="iniciarEquipoPendiente({{ $ae->id }})"
-                                            wire:loading.attr="disabled"
-                                            wire:target="iniciarEquipoPendiente({{ $ae->id }})"
-                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl
-                                                   text-xs font-semibold
-                                                   bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow
-                                                   hover:shadow-amber-500/40 hover:-translate-y-0.5
-                                                   disabled:opacity-60 transition-all duration-200">
-                                            <span wire:loading.remove wire:target="iniciarEquipoPendiente({{ $ae->id }})">Iniciar</span>
-                                            <span wire:loading wire:target="iniciarEquipoPendiente({{ $ae->id }})">...</span>
-                                        </button>
+                                        @if($tieneSerie)
+                                            <button wire:click="iniciarEquipoPendiente({{ $ae->id }})"
+                                                wire:loading.attr="disabled"
+                                                wire:target="iniciarEquipoPendiente({{ $ae->id }})"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl
+                                                       text-xs font-semibold
+                                                       bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow
+                                                       hover:shadow-amber-500/40 hover:-translate-y-0.5
+                                                       disabled:opacity-60 transition-all duration-200">
+                                                <span wire:loading.remove wire:target="iniciarEquipoPendiente({{ $ae->id }})">Iniciar</span>
+                                                <span wire:loading wire:target="iniciarEquipoPendiente({{ $ae->id }})">...</span>
+                                            </button>
+                                        @else
+                                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                                                Escanea la serie arriba
+                                            </span>
+                                        @endif
                                     </div>
                                 </div>
                             @endforeach

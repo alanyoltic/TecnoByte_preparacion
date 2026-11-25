@@ -374,6 +374,7 @@
                                         <div class="font-semibold text-slate-900 dark:text-slate-100 text-sm">{{ $prod->nombre }}</div>
                                         <div class="text-xs text-slate-400">
                                             @if($prod->sku) SKU: {{ $prod->sku }} · @endif
+                                            Stock Prep.: <strong class="text-emerald-400">{{ $prod->inventarios->first()?->cantidad ?? 0 }}</strong> ·
                                             ${{ number_format($prod->precio_venta, 2) }}
                                         </div>
                                     </div>
@@ -387,7 +388,7 @@
                                 </div>
                             @empty
                                 <div class="p-3 text-center text-slate-400 text-xs bg-slate-900/30 rounded-xl">
-                                    No se encontraron productos en catálogo.
+                                    No se encontraron productos con stock disponible en Preparación.
                                 </div>
                             @endforelse
                         </div>

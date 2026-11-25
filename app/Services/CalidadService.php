@@ -28,6 +28,12 @@ class CalidadService
         return DB::transaction(function () use ($equipoId, $calificacion, $qsalioBien, $notas) {
             $equipo = Equipo::findOrFail($equipoId);
 
+            if (! $equipo->tieneNumeroSerie()) {
+                throw new \RuntimeException(
+                    "Equipo #{$equipoId} no tiene número de serie capturado y no puede aprobarse en Calidad."
+                );
+            }
+
             // Validar que está en EN_CALIDAD
             if ($equipo->estatus_area !== Equipo::AREA_EN_CALIDAD) {
                 throw new \RuntimeException(

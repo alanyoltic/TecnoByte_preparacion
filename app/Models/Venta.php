@@ -104,6 +104,7 @@ class Venta extends Model
 
         $ultimo = static::where('folio', 'like', "{$prefijo}%")
             ->orderByDesc('folio')
+            ->lockForUpdate()
             ->value('folio');
 
         $siguiente = $ultimo

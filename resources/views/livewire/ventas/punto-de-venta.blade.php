@@ -329,11 +329,20 @@
                         </div>
                     </div>
 
+                    @error('venta')
+                        <div class="mt-4 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2.5 text-sm font-medium text-rose-400">
+                            {{ $message }}
+                        </div>
+                    @enderror
+
                     <div class="mt-6 flex justify-end gap-3">
-                        <button wire:click="procesarVenta" 
-                                class="px-8 py-3 rounded-full text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all active:scale-95 disabled:opacity-50"
+                        <button wire:click="procesarVenta"
+                                wire:loading.attr="disabled"
+                                wire:target="procesarVenta"
+                                class="px-8 py-3 rounded-full text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                 {{ empty($carrito) ? 'disabled' : '' }}>
-                            Guardar
+                            <span wire:loading.remove wire:target="procesarVenta">Guardar</span>
+                            <span wire:loading wire:target="procesarVenta">Procesando...</span>
                         </button>
                     </div>
                 </div>

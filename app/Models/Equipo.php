@@ -295,21 +295,37 @@ class Equipo extends Model
     }
 
     /**
+     * Indica si el equipo ya cuenta con un número de serie físico capturado.
+     */
+    public function tieneNumeroSerie(): bool
+    {
+        return ! empty(trim((string) $this->numero_serie));
+    }
+
+    /**
      * ¿El equipo está disponible para ser despachado a Ventas?
-     * Debe estar FINALIZADO y no estar ya en un despacho activo.
+     * Debe tener número de serie, estar FINALIZADO y en ciclo CALIDAD.
      */
     public function puedeDespacharseAVentas(): bool
     {
-        return $this->estatus_area === self::AREA_FINALIZADO
+        return $this->tieneNumeroSerie()
+            && $this->estatus_area === self::AREA_FINALIZADO
             && $this->estatus_ciclo === self::CICLO_CALIDAD;
     }
 
     /**
      * Valida si el equipo es apto para incluirse en una Transferencia entre almacenes.
-     * Retorna false y llena $motivo si el equipo está ocupado, en proceso, vendido o bloqueado.
+     * Retorna false y llena $motivo si el equipo no tiene serie, está ocupado, en proceso, vendido o bloqueado.
      */
     public function puedeTransferirse(?string &$motivo = null, ?int $excluirTransferenciaId = null): bool
     {
+        // 0. Equipos de lote ciego sin número de serie capturado no pueden moverse de almacén
+        if (! $this->tieneNumeroSerie()) {
+            $motivo = 'El equipo aún no tiene número de serie capturado (lote ciego).';
+
+            return false;
+        }
+
         // 1. Estados finales
         if ($this->estatus_ciclo === self::CICLO_VENDIDO) {
             $motivo = "El equipo ya fue VENDIDO.";

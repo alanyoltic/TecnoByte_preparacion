@@ -115,24 +115,40 @@ class TransferenciaService
 
     public function enviar(Transferencia $transferencia): void
     {
-        if ($transferencia->estatus !== 'BORRADOR') {
-            throw new Exception('La transferencia no está en estado BORRADOR.');
-        }
-
         if (! $this->esEncargadoActivo($transferencia->almacen_origen_id)) {
             throw new Exception('No tienes permisos suficientes en el almacén de origen.');
         }
 
-        $detalles = $transferencia->detalles()->with('movible')->get();
-        if ($detalles->count() === 0) {
-            throw new Exception('No puedes enviar una transferencia sin artículos.');
-        }
+        DB::transaction(function () use ($transferencia) {
+            $transferencia = Transferencia::whereKey($transferencia->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        DB::transaction(function () use ($transferencia, $detalles) {
-            // Validar y bloquear en tránsito cada equipo serializado
+            if ($transferencia->estatus !== 'BORRADOR') {
+                throw new Exception('La transferencia no está en estado BORRADOR.');
+            }
+
+            $detalles = $transferencia->detalles()
+                ->with('movible')
+                ->orderBy('movible_type')
+                ->orderBy('movible_id')
+                ->get();
+
+            if ($detalles->count() === 0) {
+                throw new Exception('No puedes enviar una transferencia sin artículos.');
+            }
+
+            // Validar y bloquear equipos en tránsito; descontar stock en origen para consumibles/productos
             foreach ($detalles as $detalle) {
-                if ($detalle->esEquipo() && $detalle->movible) {
-                    $equipo = $detalle->movible;
+                if ($detalle->esEquipo()) {
+                    $equipo = Equipo::whereKey($detalle->movible_id)->lockForUpdate()->first();
+                    if (! $equipo) {
+                        throw new Exception("El equipo #{$detalle->movible_id} ya no existe.");
+                    }
+                    if ((int) $equipo->almacen_id !== (int) $transferencia->almacen_origen_id) {
+                        throw new Exception("El equipo [{$equipo->numero_serie}] ya no se encuentra en el almacén origen.");
+                    }
+
                     $motivo = '';
                     if (! $equipo->puedeTransferirse($motivo, $transferencia->id)) {
                         throw new Exception("El equipo [{$equipo->numero_serie}] no puede transferirse: {$motivo}");
@@ -142,6 +158,13 @@ class TransferenciaService
                     $equipo->update([
                         'estatus_area' => Equipo::AREA_TRANSFERIDO,
                     ]);
+                } elseif ($detalle->esConsumible() || $detalle->esProducto()) {
+                    $this->descontarStock(
+                        $detalle->movible_type,
+                        (int) $detalle->movible_id,
+                        (int) $transferencia->almacen_origen_id,
+                        (int) $detalle->cantidad
+                    );
                 }
             }
 
@@ -157,23 +180,34 @@ class TransferenciaService
      */
     public function aceptar(Transferencia $transferencia): void
     {
-        if ($transferencia->estatus !== 'ENVIADA') {
-            throw new Exception('La transferencia no está en estado ENVIADA.');
-        }
-
         if (! $this->esEncargadoActivo($transferencia->almacen_destino_id)) {
             throw new Exception('No tienes permisos suficientes en el almacén de destino.');
         }
 
         DB::transaction(function () use ($transferencia) {
+            $transferencia = Transferencia::whereKey($transferencia->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($transferencia->estatus !== 'ENVIADA') {
+                throw new Exception('La transferencia no está en estado ENVIADA.');
+            }
+
             $destino = $transferencia->destino ?: Almacen::findOrFail($transferencia->almacen_destino_id);
             $movService = $this->getMovimientoService();
 
-            $transferencia->detalles()->with('movible')->get()
+            $transferencia->detalles()
+                ->with('movible')
+                ->orderBy('movible_type')
+                ->orderBy('movible_id')
+                ->get()
                 ->each(function ($detalle) use ($transferencia, $destino, $movService) {
 
                     if ($detalle->esEquipo() && $detalle->movible) {
-                        $equipo = $detalle->movible;
+                        $equipo = Equipo::whereKey($detalle->movible_id)->lockForUpdate()->first();
+                        if (! $equipo) {
+                            return;
+                        }
 
                         // Determinar automáticamente el estatus correspondiente al nuevo almacén
                         [$nuevoCiclo, $nuevoArea] = $this->resolverEstatusDestino($destino, $equipo);
@@ -192,20 +226,13 @@ class TransferenciaService
                             "Transferencia #{$transferencia->id} recibida en {$destino->nombre}."
                         );
 
-                    } elseif ($detalle->esConsumible()) {
-                        $this->moverStockConsumible(
-                            $detalle->movible_id,
-                            $transferencia->almacen_origen_id,
-                            $transferencia->almacen_destino_id,
-                            $detalle->cantidad
-                        );
-
-                    } elseif ($detalle->esProducto()) {
-                        $this->moverStockProducto(
-                            $detalle->movible_id,
-                            $transferencia->almacen_origen_id,
-                            $transferencia->almacen_destino_id,
-                            $detalle->cantidad
+                    } elseif ($detalle->esConsumible() || $detalle->esProducto()) {
+                        // El origen ya fue descontado al enviar; aquí solo acreditamos al destino.
+                        $this->acreditarStock(
+                            $detalle->movible_type,
+                            (int) $detalle->movible_id,
+                            (int) $transferencia->almacen_destino_id,
+                            (int) $detalle->cantidad
                         );
                     }
                 });
@@ -220,29 +247,20 @@ class TransferenciaService
 
     public function rechazar(Transferencia $transferencia, ?string $motivo = null): void
     {
-        if ($transferencia->estatus !== 'ENVIADA') {
-            throw new Exception('Solo se pueden rechazar transferencias ENVIADAS.');
-        }
-
         if (! $this->esEncargadoActivo($transferencia->almacen_destino_id)) {
             throw new Exception('No tienes permisos suficientes en el almacén de destino.');
         }
 
         DB::transaction(function () use ($transferencia, $motivo) {
-            $origen = $transferencia->origen ?: Almacen::find($transferencia->almacen_origen_id);
+            $transferencia = Transferencia::whereKey($transferencia->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-            // Revertir el bloqueo de los equipos y devolverlos a su estado en el origen
-            $transferencia->detalles()->with('movible')->get()
-                ->each(function ($detalle) use ($origen) {
-                    if ($detalle->esEquipo() && $detalle->movible && $origen) {
-                        $equipo = $detalle->movible;
-                        [$cicloOrigen, $areaOrigen] = $this->resolverEstatusDestino($origen, $equipo);
-                        $equipo->update([
-                            'estatus_ciclo' => $cicloOrigen,
-                            'estatus_area'  => $areaOrigen,
-                        ]);
-                    }
-                });
+            if ($transferencia->estatus !== 'ENVIADA') {
+                throw new Exception('Solo se pueden rechazar transferencias ENVIADAS.');
+            }
+
+            $this->liberarRecursosDeEnvio($transferencia);
 
             $transferencia->update([
                 'estatus'       => 'RECHAZADA',
@@ -255,25 +273,18 @@ class TransferenciaService
 
     public function cancelar(Transferencia $transferencia, ?string $motivo = null): void
     {
-        if (! in_array($transferencia->estatus, ['BORRADOR', 'ENVIADA'], true)) {
-            throw new Exception('Solo se pueden cancelar transferencias en BORRADOR o ENVIADAS.');
-        }
-
         DB::transaction(function () use ($transferencia, $motivo) {
-            // Si ya estaba ENVIADA, liberar los equipos de regreso al estado de origen
+            $transferencia = Transferencia::whereKey($transferencia->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! in_array($transferencia->estatus, ['BORRADOR', 'ENVIADA'], true)) {
+                throw new Exception('Solo se pueden cancelar transferencias en BORRADOR o ENVIADAS.');
+            }
+
+            // Si ya estaba ENVIADA, revertir equipos y devolver stock reservado al origen
             if ($transferencia->estatus === 'ENVIADA') {
-                $origen = $transferencia->origen ?: Almacen::find($transferencia->almacen_origen_id);
-                $transferencia->detalles()->with('movible')->get()
-                    ->each(function ($detalle) use ($origen) {
-                        if ($detalle->esEquipo() && $detalle->movible && $origen) {
-                            $equipo = $detalle->movible;
-                            [$cicloOrigen, $areaOrigen] = $this->resolverEstatusDestino($origen, $equipo);
-                            $equipo->update([
-                                'estatus_ciclo' => $cicloOrigen,
-                                'estatus_area'  => $areaOrigen,
-                            ]);
-                        }
-                    });
+                $this->liberarRecursosDeEnvio($transferencia);
             }
 
             $transferencia->update([
@@ -283,57 +294,99 @@ class TransferenciaService
         });
     }
 
-    // ─── Movimientos de stock internos (Consumibles y Productos) ─────────────
+    // ─── Helpers privados de stock e inventario ──────────────────────────────
 
-    private function moverStockConsumible(
-        int $consumibleId,
-        int $origenId,
-        int $destinoId,
-        int $cantidad
-    ): void {
-        $origen = InventarioConsumible::where('consumible_id', $consumibleId)
-            ->where('almacen_id', $origenId)
-            ->lockForUpdate()
-            ->first();
+    /**
+     * Revierte equipos y devuelve al almacén origen el stock descontado al enviar.
+     */
+    private function liberarRecursosDeEnvio(Transferencia $transferencia): void
+    {
+        $origen = $transferencia->origen ?: Almacen::find($transferencia->almacen_origen_id);
 
-        if (! $origen || $origen->cantidad < $cantidad) {
-            $disponible = $origen->cantidad ?? 0;
-            throw new Exception(
-                "Stock insuficiente para el consumible #{$consumibleId}. Disponible: {$disponible}"
-            );
-        }
-
-        $origen->decrement('cantidad', $cantidad);
-
-        InventarioConsumible::firstOrCreate(
-            ['consumible_id' => $consumibleId, 'almacen_id' => $destinoId],
-            ['cantidad' => 0]
-        )->increment('cantidad', $cantidad);
+        $transferencia->detalles()
+            ->with('movible')
+            ->orderBy('movible_type')
+            ->orderBy('movible_id')
+            ->get()
+            ->each(function ($detalle) use ($transferencia, $origen) {
+                if ($detalle->esEquipo() && $detalle->movible && $origen) {
+                    $equipo = Equipo::whereKey($detalle->movible_id)->lockForUpdate()->first();
+                    if ($equipo) {
+                        [$cicloOrigen, $areaOrigen] = $this->resolverEstatusDestino($origen, $equipo);
+                        $equipo->update([
+                            'estatus_ciclo' => $cicloOrigen,
+                            'estatus_area'  => $areaOrigen,
+                        ]);
+                    }
+                } elseif ($detalle->esConsumible() || $detalle->esProducto()) {
+                    $this->acreditarStock(
+                        $detalle->movible_type,
+                        (int) $detalle->movible_id,
+                        (int) $transferencia->almacen_origen_id,
+                        (int) $detalle->cantidad
+                    );
+                }
+            });
     }
 
-    private function moverStockProducto(
-        int $productoId,
-        int $origenId,
-        int $destinoId,
+    /**
+     * Resuelve clase de inventario, columna FK y etiqueta legible según tipo polimórfico.
+     *
+     * @return array{0: class-string, 1: string, 2: string}
+     */
+    private function resolverModeloInventario(string $movibleType): array
+    {
+        return match ($movibleType) {
+            Consumible::class => [InventarioConsumible::class, 'consumible_id', 'consumible'],
+            Producto::class   => [InventarioProducto::class,   'producto_id',   'producto'],
+            default           => throw new Exception("Tipo de inventario no soportado: {$movibleType}"),
+        };
+    }
+
+    private function descontarStock(
+        string $movibleType,
+        int $movibleId,
+        int $almacenId,
         int $cantidad
     ): void {
-        $origen = InventarioProducto::where('producto_id', $productoId)
-            ->where('almacen_id', $origenId)
+        [$modeloInv, $fkCol, $etiqueta] = $this->resolverModeloInventario($movibleType);
+
+        $origen = $modeloInv::where($fkCol, $movibleId)
+            ->where('almacen_id', $almacenId)
             ->lockForUpdate()
             ->first();
 
         if (! $origen || $origen->cantidad < $cantidad) {
             $disponible = $origen->cantidad ?? 0;
             throw new Exception(
-                "Stock insuficiente para el producto #{$productoId}. Disponible: {$disponible}"
+                "Stock insuficiente para el {$etiqueta} #{$movibleId}. Disponible: {$disponible}"
             );
         }
 
         $origen->decrement('cantidad', $cantidad);
+    }
 
-        InventarioProducto::firstOrCreate(
-            ['producto_id' => $productoId, 'almacen_id' => $destinoId],
-            ['cantidad' => 0]
-        )->increment('cantidad', $cantidad);
+    private function acreditarStock(
+        string $movibleType,
+        int $movibleId,
+        int $almacenId,
+        int $cantidad
+    ): void {
+        [$modeloInv, $fkCol] = $this->resolverModeloInventario($movibleType);
+
+        $registro = $modeloInv::where($fkCol, $movibleId)
+            ->where('almacen_id', $almacenId)
+            ->lockForUpdate()
+            ->first();
+
+        if ($registro) {
+            $registro->increment('cantidad', $cantidad);
+        } else {
+            $modeloInv::create([
+                $fkCol       => $movibleId,
+                'almacen_id' => $almacenId,
+                'cantidad'   => $cantidad,
+            ]);
+        }
     }
 }

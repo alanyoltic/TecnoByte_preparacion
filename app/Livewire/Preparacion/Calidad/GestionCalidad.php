@@ -2,9 +2,15 @@
 
 namespace App\Livewire\Preparacion\Calidad;
 
+use App\Models\Almacen;
+use App\Models\DespachoVentas;
+use App\Models\DespachoVentasEquipo;
 use App\Models\Equipo;
+use App\Models\TransferenciaDetalle;
 use App\Models\ValidacionCalidad;
 use App\Services\CalidadService;
+use App\Services\EquipoMovimientoService;
+use App\Services\EquipoTraceService;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -198,23 +204,14 @@ class GestionCalidad extends Component
 
     public function abrirRetrabajo(int $equipoId): void
     {
-        $equipo = Equipo::findOrFail($equipoId);
+        $this->autorizarAcceso();
 
-        // Validar estatus permitidos para retrabajo/reasignación
-        $estatusPermitidos = [Equipo::AREA_SIN_ASIGNAR, Equipo::AREA_EN_CALIDAD, Equipo::AREA_FINALIZADO];
-        
-        if (!in_array($equipo->estatus_area, $estatusPermitidos)) {
-            $this->dispatch('toast', type: 'error', message: 'El equipo no está en una etapa válida para reasignarse.');
-            return;
-        }
+        try {
+            $equipo = Equipo::findOrFail($equipoId);
+            $this->validarEquipoParaRetrabajo($equipo);
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
 
-        // Validar que no tenga otra asignación activa simultáneamente
-        $activa = \App\Models\AsignacionEquipo::where('equipo_id', $equipo->id)
-            ->whereIn('camino', [\App\Models\AsignacionEquipo::PENDIENTE, \App\Models\AsignacionEquipo::PRE_ASIGNADO, \App\Models\AsignacionEquipo::EN_PROCESO])
-            ->exists();
-            
-        if ($activa) {
-            $this->dispatch('toast', type: 'error', message: 'El equipo ya tiene una asignación en curso (Duplicidad bloqueada).');
             return;
         }
 
@@ -227,31 +224,25 @@ class GestionCalidad extends Component
 
     public function confirmarRetrabajo(): void
     {
+        $this->autorizarAcceso();
         $this->error = '';
 
-        if (!$this->retrabajoTecnicoId) {
+        if (! $this->retrabajoTecnicoId) {
             $this->error = 'Debes seleccionar un técnico.';
+
             return;
         }
 
-        try {
-            $equipo = Equipo::findOrFail($this->equipoSeleccionadoId);
-            
-            // Re-validación de seguridad estricta antes de guardar
-            $estatusPermitidos = [Equipo::AREA_SIN_ASIGNAR, Equipo::AREA_EN_CALIDAD, Equipo::AREA_FINALIZADO];
-            if (!in_array($equipo->estatus_area, $estatusPermitidos)) {
-                throw new \Exception('El equipo no está en una etapa válida para reasignarse.');
-            }
+        $motivo = trim($this->retrabajoNotas) ?: 'RETRABAJO';
 
-            $activa = \App\Models\AsignacionEquipo::where('equipo_id', $equipo->id)
-                ->whereIn('camino', [\App\Models\AsignacionEquipo::PENDIENTE, \App\Models\AsignacionEquipo::PRE_ASIGNADO, \App\Models\AsignacionEquipo::EN_PROCESO])
-                ->exists();
-                
-            if ($activa) {
-                throw new \Exception('El equipo ya tiene una asignación activa.');
-            }
-            
-            \DB::transaction(function() use ($equipo) {
+        try {
+            \DB::transaction(function () use ($motivo) {
+                $equipo = Equipo::whereKey($this->equipoSeleccionadoId)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $this->validarEquipoParaRetrabajo($equipo);
+
                 $asignacion = \App\Models\Asignacion::create([
                     'tecnico_id' => $this->retrabajoTecnicoId,
                     'asignado_por_id' => auth()->id(),
@@ -259,9 +250,9 @@ class GestionCalidad extends Component
                     'cantidad' => 1,
                     'fecha_asignacion' => \Carbon\Carbon::today(),
                     'estatus' => \App\Models\Asignacion::PENDIENTE,
-                    'notas' => trim($this->retrabajoNotas) ?: 'RETRABAJO',
+                    'notas' => $motivo,
                 ]);
-                
+
                 // Creamos una NUEVA AsignacionEquipo, conservando el historial de la anterior
                 \App\Models\AsignacionEquipo::create([
                     'asignacion_id' => $asignacion->id,
@@ -269,17 +260,42 @@ class GestionCalidad extends Component
                     'camino' => \App\Models\AsignacionEquipo::PRE_ASIGNADO,
                     'pre_asignado' => true,
                 ]);
-                
+
+                // Sincronizar almacén físico y estancia de regreso a Preparación
+                $almacenPrep = Almacen::find(Almacen::PREPARACION);
+                if ($almacenPrep) {
+                    app(EquipoMovimientoService::class)->mover(
+                        $equipo,
+                        $almacenPrep,
+                        'ASIGNAR_TECNICO',
+                        'Retrabajo desde Calidad: ' . $motivo
+                    );
+                }
+
                 $equipo->update([
-                    'estatus_ciclo' => Equipo::CICLO_PREPARACION, 
-                    'estatus_area' => Equipo::AREA_ASIGNADO
+                    'estatus_ciclo' => Equipo::CICLO_PREPARACION,
+                    'estatus_area' => Equipo::AREA_ASIGNADO,
+                    'almacen_id' => Almacen::PREPARACION,
                 ]);
+
+                app(EquipoTraceService::class)->registrarAuditoria(
+                    equipo: $equipo,
+                    accion: 'CALIDAD_RETRABAJO',
+                    motivo: $motivo,
+                    cambios: [
+                        'asignacion_id' => $asignacion->id,
+                        'tecnico_id' => $this->retrabajoTecnicoId,
+                        'estatus_ciclo' => Equipo::CICLO_PREPARACION,
+                        'estatus_area' => Equipo::AREA_ASIGNADO,
+                        'almacen_id' => Almacen::PREPARACION,
+                    ]
+                );
             });
 
             $this->dispatch('toast',
                 type: 'success',
                 title: 'Reasignado',
-                message: 'El equipo ha sido reasignado para retrabajo/mejora.'
+                message: 'El equipo ha sido reasignado a Preparación para retrabajo/mejora.'
             );
 
             $this->cerrarModales();
@@ -287,6 +303,49 @@ class GestionCalidad extends Component
         } catch (\Throwable $e) {
             $this->error = "Error al reasignar: {$e->getMessage()}";
             \Log::error('confirmarRetrabajo error: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Valida que el equipo pueda enviarse a retrabajo sin duplicar asignaciones ni chocar con envíos activos.
+     */
+    private function validarEquipoParaRetrabajo(Equipo $equipo): void
+    {
+        $estatusPermitidos = [Equipo::AREA_SIN_ASIGNAR, Equipo::AREA_EN_CALIDAD, Equipo::AREA_FINALIZADO];
+        if (! in_array($equipo->estatus_area, $estatusPermitidos, true)) {
+            throw new \Exception('El equipo no está en una etapa válida para reasignarse.');
+        }
+
+        $activa = \App\Models\AsignacionEquipo::where('equipo_id', $equipo->id)
+            ->whereIn('camino', [
+                \App\Models\AsignacionEquipo::PENDIENTE,
+                \App\Models\AsignacionEquipo::PRE_ASIGNADO,
+                \App\Models\AsignacionEquipo::EN_PROCESO,
+            ])
+            ->exists();
+
+        if ($activa) {
+            throw new \Exception('El equipo ya tiene una asignación activa (Duplicidad bloqueada).');
+        }
+
+        $enDespachoActivo = DespachoVentasEquipo::where('equipo_id', $equipo->id)
+            ->whereHas('despacho', fn ($q) => $q->whereIn('estatus', [
+                DespachoVentas::BORRADOR,
+                DespachoVentas::ENVIADO,
+            ]))
+            ->exists();
+
+        if ($enDespachoActivo) {
+            throw new \Exception('El equipo está incluido en un Despacho a Ventas activo; retíralo o cancélalo antes de enviarlo a retrabajo.');
+        }
+
+        $enTransferenciaActiva = TransferenciaDetalle::where('movible_type', Equipo::class)
+            ->where('movible_id', $equipo->id)
+            ->whereHas('transferencia', fn ($q) => $q->whereIn('estatus', ['BORRADOR', 'ENVIADA']))
+            ->exists();
+
+        if ($enTransferenciaActiva) {
+            throw new \Exception('El equipo está en una transferencia activa; cancélala antes de enviarlo a retrabajo.');
         }
     }
 
